@@ -20,3 +20,11 @@ variable p = pointer x;
 ```aurora
 variable fn = function () { ... }
 ```
+
+### Declaring with params
+
+```aurora
+variable = fn function (x: number, y: pointer char) { ... }
+```
+
+When you use params in your function you must to put type in params statements

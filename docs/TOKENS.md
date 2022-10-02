@@ -8,5 +8,5 @@
 - [ ] **return** - return a value from a function
 - [ ] **while** - loop operator given a condition
 - [ ] **range** - interate a reference pointer-to-pointer in sequence until find out a null value allocated for that pointer
-- [ ] **pointer** - get memory pointer from a variable or constant
+- [ ] **pointer** - get memory pointer from a variable
 - [ ] **if** - condition

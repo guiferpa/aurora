@@ -14,6 +14,21 @@ All variable type given for value then inference type
 variable p = pointer x;
 ```
 
+### Declaring a string variable
+
+```aurora
+variable str = "Hello world";
+```
+
+This type is `pointer char`
+
+### Declaring a variable with type equals a pointer from pointer, it's used to array data struct for example
+
+```aurora
+variable arr = ["First string", "Second string"];
+```
+
+This type is `pointer pointer char`
 
 ## Function statment
 

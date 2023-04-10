@@ -1,27 +1,35 @@
-import fs from 'fs';
-import util from 'util';
+import fs from "fs";
 
-import Lexer from './lexer';
+import { Lexer } from "./lexer";
+import { Parser } from "./parser";
 
-import { Command } from 'commander';
+async function read(path: string): Promise<Buffer> {
+	return new Promise((resolve, reject) => {
+		let buffer = Buffer.from("");
 
-const lexer = new Lexer();
+		const reader = fs.createReadStream(path);
 
-const command = new Command();
+		reader.on('data', (chunk: Buffer) => {
+			buffer = Buffer.concat([buffer, chunk]);
+		});
 
-command.action(async (str, opts) => {
-  try {
-    const files: string[] = opts.args.map((arg: string) => arg);
-  
-    const analized = await Promise.all(files.map(async (file) => {
-      const content = await util.promisify(fs.readFile)(file, { encoding: 'utf-8' });
-      return [file, lexer.analyze(file, content)];
-    }));
-    
-    console.log(analized.map((item) => JSON.stringify(item)));
-  } catch(err) {
-    console.error(`${(err as Error).message}`);
-  }
-});
+		reader.on('error', (err) => {
+			reject(err);
+		});
 
-command.parse();
+		reader.on('close', () => {
+			resolve(buffer);
+		});
+	});
+}
+
+
+;(async () => {
+	const buffer = await read('./src/test.ar');
+
+	const lexer = new Lexer(buffer); // Tokenizer
+	const parser = new Parser(lexer);
+	
+	const ast = await parser.parse();
+	console.log(ast);
+})();

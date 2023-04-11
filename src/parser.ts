@@ -3,107 +3,193 @@ import {Token, TokenIdentifier, TokenRecordList} from "./tokens";
 
 export class Parser {
 	private readonly _lexer: Lexer;
-	private _lookahead: Token | null = null;
+	private _lookahead: Token;
 
 	constructor(lexer: Lexer) {
 		this._lexer = lexer;
+		this._lookahead = this._lexer.getNextToken();
 	}
 
-	// factor =>
-	//	| NUMBER
-	//	| IDENT
-	public async _factor() {
-		const { id: tokenId, type: tokenType } = this._lookahead as Token;
-
-		if (tokenId === TokenIdentifier.IDENT) {
-			const token = await this._eat(tokenType);
-			return ["factor", [token.type, token.value]];
+	/**
+	* Grain handler
+	* 
+	* Grain =>
+	*	| NUMBER (Token)
+	*	| IDENT (Token)
+	*	;
+	*/
+	public _grain() {
+		if (this._lookahead.id === TokenIdentifier.NUMBER) {
+			return {
+				type: "Grain",
+				body: this._eat(TokenIdentifier.NUMBER, "_grain")
+			}
 		}
 
-		if (tokenId === TokenIdentifier.NUMBER) {
-			const token = await this._eat(tokenType);
-			return ["factor", [token.type, Number.parseInt(token.value)]];
+		return {
+			type: "Grain",
+			body: this._eat(TokenIdentifier.IDENT, "_grain")
 		}
-
-		throw new SyntaxError(`Factor: unexpected factor production`);
 	}
 
-	// expression | expr =>
-	//  | factor
-	//  | factor ADD expr
-	//  | factor SUB expr
-	public async _expr() {
-		const left = await this._factor();
+	/**
+	* Expression handler
+	* 
+	* Expr =>
+	*	| Grain
+	*	| Grain ADD (Token) Expr
+	*	| Grain SUB (Token) Expr
+	*	;
+	*/
+	public _expr() {
+		const grain = this._grain();
 
 		if (![
-			TokenRecordList[TokenIdentifier.ADD],
-			TokenRecordList[TokenIdentifier.SUB]
-		].includes(this._lookahead?.type as string)) {
-			return left;
+			TokenIdentifier.ADD, 
+			TokenIdentifier.SUB,
+			TokenIdentifier.MULT
+		].includes(this._lookahead.id)) {
+			return {
+				type: "Expr",
+				body: grain
+			}
 		}
 
-		const operator = await this._eat(this._lookahead?.type as string)
-		const right: any = await this._expr();
+		const operator = this._eat(this._lookahead.id);
+		const expr: any = this._expr();
 
-		return ["expr", ["operator", [operator.type, operator.value]], left, right];
+		return {
+			type: "Expr",
+			body: {
+				operator,
+				grain,
+				expr
+			}
+		}
 	}
 
-	// statement || stmt =>
-	//	| expr ;
-	//	| DEF IDENT ASSIGN expr ;
-	public async _stmt() {
-		if (this._lookahead?.id === TokenIdentifier.DEF) {
-			await this._eat(TokenRecordList[TokenIdentifier.DEF]);
-			const id = await this._eat(TokenRecordList[TokenIdentifier.IDENT]);
-			await this._eat(TokenRecordList[TokenIdentifier.ASSIGN]);
-			const expr = await this._expr();
-			await this._eat(TokenRecordList[TokenIdentifier.SEMI]);
+	/**
+	* Variable definition handler
+	* 
+	* VarDef =>
+	*	| DEF (Token) IDENT (Token) ASSIN (Token) Expr
+	*	;
+	*/
+	public _varDef() {
+		this._eat(TokenIdentifier.DEF);
+		const ident = this._eat(TokenIdentifier.IDENT);
+		this._eat(TokenIdentifier.ASSIGN)
+		const expr = this._expr();
 
-			return ["stmt", ["id", [id.type, id.value], expr]];
+		return {
+			type: "VarDef",
+			body: {
+				ident,
+				expr
+			}
+		}
+	}
+
+	/**
+	* BlockStatement handler
+	* 
+	* Statement =>
+	*	| BEGIN_BLOCK (Token) Statement * FINISH_BLOCK (Token)
+	*	;
+	*/
+	public _blockStatement(): any {
+		this._eat(TokenIdentifier.BEGIN_BLOCK, "_blockStatement");
+
+		const blockStatement = [];
+
+		while (this._lookahead.id !== TokenIdentifier.FINISH_BLOCK) {
+			blockStatement.push(this._statement());
 		}
 
-		const expr = await this._expr();
-		await this._eat(TokenRecordList[TokenIdentifier.SEMI]);
+		this._eat(TokenIdentifier.FINISH_BLOCK, "_blockStatement")
 
-		return ["stmt", expr];
+		return {
+			type: "BlockStatement",
+			body: blockStatement
+		}
 	}
 
-	/***
-	 * program =>
-	 *	| stmt*
-	 */
-	public async _program() {
-		const stmts = [];
-
-		while (this._lexer.hasMoreTokens()) {
-			const stmt = await this._stmt();
-			stmts.push(stmt);
+	/**
+	* Statement handler
+	* 
+	* Statement =>
+	*	| Expr SEMI (Token)
+	*	| VarDef SEMI (Token)
+	*	| BlockStatement
+	*	;
+	*/
+	public _statement() {
+		if (this._lookahead.id === TokenIdentifier.BEGIN_BLOCK) {
+			return this._blockStatement();
 		}
 
-		return ["program", stmts];
+		if (this._lookahead.id === TokenIdentifier.DEF) {
+			const varDef = this._varDef();
+			this._eat(TokenIdentifier.SEMI, "_statement");
+
+			return varDef;
+		}
+
+		const expr = this._expr();
+		this._eat(TokenIdentifier.SEMI, "_statement");
+
+		return expr;
 	}
 
-	private async _eat(tokenType: string): Promise<Token> {
+	/**
+	* Statement list handler
+	* 
+	* StatementList =>
+	*	| Statement *
+	*	;
+	*/
+	public _statementList() {
+		const statementList = [this._statement()];
+
+		while (this._lookahead.id !== TokenIdentifier.EOT) {
+			statementList.push(this._statement());
+		}
+
+		return statementList;
+	}
+
+	/**
+	* Program entry point
+	* 
+	* Program =>
+	*	| StatementList
+	*	;
+	*/
+	public _program() {
+		return {
+			type: "Program",
+			body: this._statementList()
+		}
+	}
+
+
+	public _eat(tokenId: number, from?: string): Token {
 		const token = this._lookahead;
-		console.log("T", token);
+		if (from) console.log(`From: ${from}, Lookahead: ${JSON.stringify(this._lookahead)}`);
 
-		if (token === null) {
-			throw new SyntaxError(`Unexpected end of input, expected: ${tokenType}`);
-		}
+		if (token.id === TokenIdentifier.EOT)
+			throw new SyntaxError(`Unexpected end of tokens, expected token: ${TokenRecordList[tokenId]}`);
 
-		if (token.type !== tokenType) {
-			throw new SyntaxError(`Unexpected token: ${token.value}, expected: ${tokenType}`)
-		}
+		if (token.id !== tokenId)
+			throw new SyntaxError(`Unexpected token: ${token.value}`);
 
-		this._lookahead = await this._lexer.getAsyncNextToken();
+		this._lookahead = this._lexer.getNextToken();
 
-		return token as Token;
+		return token;
 	}
 
-	public async parse(): Promise<any> {
-		this._lookahead = await this._lexer.getAsyncNextToken();
-
-		return await this._program();
+	public parse() {
+		return this._program();
 	}
 }
 

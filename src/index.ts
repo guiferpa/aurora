@@ -1,7 +1,7 @@
 import fs from "fs";
 
 import { Lexer } from "./lexer";
-import { Parser } from "./v2/parser";
+import { Parser } from "./parser";
 
 async function read(path: string): Promise<Buffer> {
 	return new Promise((resolve, reject) => {
@@ -29,7 +29,7 @@ async function read(path: string): Promise<Buffer> {
 
 	const lexer = new Lexer(buffer); // Tokenizer
 	const p = new Parser(lexer);
-	const astv2 = p.parse();
-	console.log("AST v2:", JSON.stringify(astv2, null, 2));
+	const ast = p.parse();
 
+	console.log(JSON.stringify(ast, null, 2));
 })();

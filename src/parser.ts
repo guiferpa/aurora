@@ -11,16 +11,18 @@ export class Parser {
 
 	// factor =>
 	//	| NUMBER
+	//	| IDENT
 	public async _factor() {
-		if ([
-			TokenRecordList[TokenIdentifier.NUMBER],
-		].includes(this._lookahead?.type as string)) {
-			const factor = await this._eat(this._lookahead?.type as string);
+		const { id: tokenId, type: tokenType } = this._lookahead as Token;
 
-			return { 
-				type: 'factor',
-				node: factor
-			}
+		if (tokenId === TokenIdentifier.IDENT) {
+			const token = await this._eat(tokenType);
+			return ["factor", [token.type, token.value]];
+		}
+
+		if (tokenId === TokenIdentifier.NUMBER) {
+			const token = await this._eat(tokenType);
+			return ["factor", [token.type, Number.parseInt(token.value)]];
 		}
 
 		throw new SyntaxError(`Factor: unexpected factor production`);
@@ -31,41 +33,39 @@ export class Parser {
 	//  | factor ADD expr
 	//  | factor SUB expr
 	public async _expr() {
-		let left: any = null;
+		const left = await this._factor();
 
-		left = await this._factor();
-	
-		while ([
+		if (![
 			TokenRecordList[TokenIdentifier.ADD],
 			TokenRecordList[TokenIdentifier.SUB]
 		].includes(this._lookahead?.type as string)) {
-			const operator = await this._eat(this._lookahead?.type as string)
-
-			const right = await this._expr();
-
-			left = {
-				type: 'expr',
-				node: {
-					operator,
-					left,
-					right
-				}
-			}
+			return left;
 		}
 
-		return left;
+		const operator = await this._eat(this._lookahead?.type as string)
+		const right: any = await this._expr();
+
+		return ["expr", ["operator", [operator.type, operator.value]], left, right];
 	}
 
 	// statement || stmt =>
 	//	| expr ;
+	//	| DEF IDENT ASSIGN expr ;
 	public async _stmt() {
+		if (this._lookahead?.id === TokenIdentifier.DEF) {
+			await this._eat(TokenRecordList[TokenIdentifier.DEF]);
+			const id = await this._eat(TokenRecordList[TokenIdentifier.IDENT]);
+			await this._eat(TokenRecordList[TokenIdentifier.ASSIGN]);
+			const expr = await this._expr();
+			await this._eat(TokenRecordList[TokenIdentifier.SEMI]);
+
+			return ["stmt", ["id", [id.type, id.value], expr]];
+		}
+
 		const expr = await this._expr();
 		await this._eat(TokenRecordList[TokenIdentifier.SEMI]);
 
-		return {
-			type: 'stmt',
-			node: expr
-		}
+		return ["stmt", expr];
 	}
 
 	/***
@@ -80,14 +80,12 @@ export class Parser {
 			stmts.push(stmt);
 		}
 
-		return {
-			type: "program",
-			body: stmts
-		}
+		return ["program", stmts];
 	}
 
 	private async _eat(tokenType: string): Promise<Token> {
 		const token = this._lookahead;
+		console.log("T", token);
 
 		if (token === null) {
 			throw new SyntaxError(`Unexpected end of input, expected: ${tokenType}`);
@@ -97,13 +95,13 @@ export class Parser {
 			throw new SyntaxError(`Unexpected token: ${token.value}, expected: ${tokenType}`)
 		}
 
-		this._lookahead = await this._lexer.getNextToken();
+		this._lookahead = await this._lexer.getAsyncNextToken();
 
 		return token as Token;
 	}
 
 	public async parse(): Promise<any> {
-		this._lookahead = await this._lexer.getNextToken();
+		this._lookahead = await this._lexer.getAsyncNextToken();
 
 		return await this._program();
 	}

@@ -1,4 +1,4 @@
-import {Token, TokenIdentifier, TokenIdentifierType, TokenSpecList} from "./tokens";
+import {Token, TokenIdentifier, TokenRecordList, TokenSpecList} from "./tokens";
 
 export class Lexer {
 	public _cursor = 0;
@@ -8,11 +8,50 @@ export class Lexer {
 		this._buffer = buffer;
 	}
 
-	public hasMoreTokens(): boolean {
-		return this._cursor < this._buffer.length;	
+	public async tokenify(): Promise<any> {
+		const tokens: any[] = [];
+
+		while (this.hasMoreTokens()) {
+			const token = await this.getAsyncNextToken();
+			tokens.push(token);
+		}
+
+		// Info about end of token list
+		tokens.push(null);
+
+		this._cursor = 0;
+
+		return tokens;
 	}
 
-	public async getNextToken(): Promise<Token | null> {
+	public hasMoreTokens(): boolean {
+		return this._cursor < this._buffer.length;
+	}
+
+	public getNextToken(): Token {
+		if (!this.hasMoreTokens()) return {
+			id: TokenIdentifier.EOT,
+			type: TokenRecordList[TokenIdentifier.EOT],
+			value: ""
+		}
+
+		const str = this._buffer.toString('utf-8', this._cursor);
+
+		for (const [regex, tokenType, tokenId] of TokenSpecList) {
+			const tokenValue = this._match(regex, str);
+
+			if (tokenValue === null) continue;
+
+			if (tokenId === TokenIdentifier.WHITESPACE)
+				return this.getNextToken();
+
+			return {id: tokenId, type: tokenType, value: tokenValue}
+		}
+
+		throw new SyntaxError(`Unexpected token: ${str}`);
+	}
+
+	public async getAsyncNextToken(): Promise<Token | null> {
 		if (!this.hasMoreTokens()) return null;
 
 		const str = this._buffer.toString('utf-8', this._cursor);
@@ -23,14 +62,10 @@ export class Lexer {
 			if (tokenValue === null) continue;
 
 			if (tokenId === TokenIdentifier.WHITESPACE) {
-				return this.getNextToken();
+				return this.getAsyncNextToken();
 			}
 
-			return {
-				id: tokenId as TokenIdentifierType,
-				type: tokenType as string,
-				value: tokenValue
-			}
+			return { id: tokenId, type: tokenType, value: tokenValue }
 		}
 
 		throw new SyntaxError(`Unexpected token: ${str}`);
@@ -38,7 +73,7 @@ export class Lexer {
 
 	private _match(product: RegExp, str: string) {
 		const matched = product.exec(str);
-		if (matched === null) return null;
+		if (matched === null) return null
 
 		const value = matched[0];
 		this._cursor += value.length;

@@ -1,3 +1,5 @@
-1 + 2;
-10 + 10;
-100;
+var solution = 042;
+
+{
+	var s = solution + 2 + 1;
+}

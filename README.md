@@ -1,14 +1,15 @@
 # aurora
 Aurora's just for studying programming language concepts
 
-> :warning: Don't use it to develop something that'll go to production
+> :warning: Don't use it to develop something that'll go to production environment
 
 ## Get started
 
 ### Hello world example
 
 ```aurora
-variable text = "Hello World";
+var fd = 1;
+var text = "Hello World";
 
-stdout(text);
+print(text, fd);
 ```

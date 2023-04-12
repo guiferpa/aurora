@@ -11,6 +11,6 @@ Aurora's just for studying programming language concepts
 var fd = 1;
 var text = "Hello World";
 
-print(text, fd);
+print(fd, text);
 ```
 

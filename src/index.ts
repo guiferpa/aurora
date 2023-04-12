@@ -1,8 +1,6 @@
 import fs from "fs";
 import rl from "readline";
 
-import chalk from "chalk";
-
 import Lexer from "./lexer";
 import OperatorEvaluator from "./operator-evaluator";
 import OperatorParser from "./operator-parser";

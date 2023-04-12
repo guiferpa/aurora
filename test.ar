@@ -1,5 +1,1 @@
-var solution = 042;
-
-{
-	var s = solution + 2 + 1;
-}
+2 + 2 * 10;

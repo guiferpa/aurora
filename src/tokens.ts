@@ -68,5 +68,6 @@ export const TokenSpecList: [RegExp, string, TokenIdentifierType][] = [
   [TokenProductList[TokenIdentifier.SUB], TokenRecordList[TokenIdentifier.SUB], TokenIdentifier.SUB],
   [TokenProductList[TokenIdentifier.BEGIN_BLOCK], TokenRecordList[TokenIdentifier.BEGIN_BLOCK], TokenIdentifier.BEGIN_BLOCK],
   [TokenProductList[TokenIdentifier.FINISH_BLOCK], TokenRecordList[TokenIdentifier.FINISH_BLOCK], TokenIdentifier.FINISH_BLOCK],
+  [TokenProductList[TokenIdentifier.MULT], TokenRecordList[TokenIdentifier.MULT], TokenIdentifier.MULT],
 ];
 

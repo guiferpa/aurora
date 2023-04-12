@@ -1,7 +1,7 @@
 # aurora
 Aurora's just for studying programming language concepts
 
-> :warning: Don't use it to develop something that'll go to production environment
+> ⚠ Don't use it to develop something that'll go to production environment
 
 ## Get started
 
@@ -13,3 +13,4 @@ var text = "Hello World";
 
 print(text, fd);
 ```
+

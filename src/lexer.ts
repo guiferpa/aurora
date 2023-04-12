@@ -1,6 +1,6 @@
 import {Token, TokenIdentifier, TokenRecordList, TokenSpecList} from "./tokens";
 
-export class Lexer {
+export default class Lexer {
   public _cursor = 0;
   public readonly _buffer: Buffer;
 
@@ -8,16 +8,13 @@ export class Lexer {
     this._buffer = buffer;
   }
 
-  public async tokenify(): Promise<any> {
-    const tokens: any[] = [];
+  public tokenify(): Token[] {
+    const tokens: Token[] = [];
 
     while (this.hasMoreTokens()) {
-      const token = await this.getAsyncNextToken();
+      const token = this.getNextToken();
       tokens.push(token);
     }
-
-    // Info about end of token list
-    tokens.push(null);
 
     this._cursor = 0;
 
@@ -46,26 +43,6 @@ export class Lexer {
         return this.getNextToken();
 
       return {id: tokenId, type: tokenType, value: tokenValue}
-    }
-
-    throw new SyntaxError(`Unexpected token: ${str}`);
-  }
-
-  public async getAsyncNextToken(): Promise<Token | null> {
-    if (!this.hasMoreTokens()) return null;
-
-    const str = this._buffer.toString('utf-8', this._cursor);
-
-    for (const [regex, tokenType, tokenId] of TokenSpecList) {
-      const tokenValue = this._match(regex as RegExp, str);
-
-      if (tokenValue === null) continue;
-
-      if (tokenId === TokenIdentifier.WHITESPACE) {
-        return this.getAsyncNextToken();
-      }
-
-      return { id: tokenId, type: tokenType, value: tokenValue }
     }
 
     throw new SyntaxError(`Unexpected token: ${str}`);

@@ -32,6 +32,45 @@ export class Parser {
     }
   }
 
+  private _multiplicativeExpr() {
+
+  }
+
+  /**
+  * Additive expression handler
+  * 
+  * AdditiveExpr =>
+  * | 
+  * | Grain ADD (Token) Expr
+  * | Grain SUB (Token) Expr
+  * ;
+  */
+  private _additiveExpr() {
+    const grain = this._grain();
+
+    if (![
+      TokenIdentifier.ADD, 
+      TokenIdentifier.SUB,
+    ].includes(this._lookahead.id)) {
+      return {
+        type: "Expr",
+        body: grain
+      }
+    }
+
+    const operator = this._eat(this._lookahead.id);
+    const expr: any = this._expr();
+
+    return {
+      type: "Expr",
+      body: {
+        operator,
+        grain,
+        expr
+      }
+    }
+  }
+
   /**
   * Expression handler
   * 

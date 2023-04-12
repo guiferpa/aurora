@@ -1,13 +1,17 @@
 import fs from "fs";
+import rl from "readline";
 
-import { Lexer } from "./lexer";
-import { Parser } from "./parser";
+import chalk from "chalk";
 
-async function read(path: string): Promise<Buffer> {
+import Lexer from "./lexer";
+import OperatorEvaluator from "./operator-evaluator";
+import OperatorParser from "./operator-parser";
+
+async function read(args: string[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let buffer = Buffer.from("");
 
-    const reader = fs.createReadStream(path);
+    const reader = fs.createReadStream(args[0]);
 
     reader.on('data', (chunk: Buffer) => {
       buffer = Buffer.concat([buffer, chunk]);
@@ -23,13 +27,36 @@ async function read(path: string): Promise<Buffer> {
   });
 }
 
-
-;(async () => {
-  const buffer = await read('./test.ar');
-
+function runInterpret(buffer: Buffer): string {
   const lexer = new Lexer(buffer); // Tokenizer
-  const p = new Parser(lexer);
-  const ast = p.parse();
+  const parser = new OperatorParser(lexer);
+  const ast = parser.parse();
+  const result = OperatorEvaluator.eval(ast);
+  return `${result}`;
+}
 
-  console.log(JSON.stringify(ast, null, 2));
-})();
+async function run(args: string[]) {
+  if (args.length > 0) {
+    const buffer = await read(process.argv.slice(2));
+    const result = runInterpret(buffer);
+    console.log(result);
+    return
+  }
+
+  const repl = rl.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  repl.on('line', (chunk) => {
+    const out = runInterpret(Buffer.from(chunk));
+    console.log(`= ${out}`);
+  });
+
+  repl.once('close', () => {
+    console.log('Bye :)');
+    process.exit(0);
+  });
+}
+
+run(process.argv.slice(2)).catch(console.error);

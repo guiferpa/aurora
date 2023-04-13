@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+
+const { run } = require('../dist/src');
+
+run(process.argv.slice(2)).catch(console.error);

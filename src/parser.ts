@@ -1,4 +1,4 @@
-import {Lexer} from "./lexer";
+import Lexer from "./lexer";
 import {Token, TokenIdentifier, TokenRecordList} from "./tokens";
 
 export class Parser {
@@ -22,52 +22,13 @@ export class Parser {
     if (this._lookahead.id === TokenIdentifier.NUMBER) {
       return {
         type: "Grain",
-        body: this._eat(TokenIdentifier.NUMBER, "_grain")
+        body: this._eat(TokenIdentifier.NUMBER)
       }
     }
 
     return {
       type: "Grain",
-      body: this._eat(TokenIdentifier.IDENT, "_grain")
-    }
-  }
-
-  private _multiplicativeExpr() {
-
-  }
-
-  /**
-  * Additive expression handler
-  * 
-  * AdditiveExpr =>
-  * | 
-  * | Grain ADD (Token) Expr
-  * | Grain SUB (Token) Expr
-  * ;
-  */
-  private _additiveExpr() {
-    const grain = this._grain();
-
-    if (![
-      TokenIdentifier.ADD, 
-      TokenIdentifier.SUB,
-    ].includes(this._lookahead.id)) {
-      return {
-        type: "Expr",
-        body: grain
-      }
-    }
-
-    const operator = this._eat(this._lookahead.id);
-    const expr: any = this._expr();
-
-    return {
-      type: "Expr",
-      body: {
-        operator,
-        grain,
-        expr
-      }
+      body: this._eat(TokenIdentifier.IDENT)
     }
   }
 
@@ -137,7 +98,7 @@ export class Parser {
   * ;
   */
   public _blockStatement(): any {
-    this._eat(TokenIdentifier.BEGIN_BLOCK, "_blockStatement");
+    this._eat(TokenIdentifier.BEGIN_BLOCK);
 
     const blockStatement = [];
 
@@ -145,7 +106,7 @@ export class Parser {
       blockStatement.push(this._statement());
     }
 
-    this._eat(TokenIdentifier.FINISH_BLOCK, "_blockStatement")
+    this._eat(TokenIdentifier.FINISH_BLOCK)
 
     return {
       type: "BlockStatement",
@@ -169,13 +130,13 @@ export class Parser {
 
     if (this._lookahead.id === TokenIdentifier.DEF) {
       const varDef = this._varDef();
-      this._eat(TokenIdentifier.SEMI, "_statement");
+      this._eat(TokenIdentifier.SEMI);
 
       return varDef;
     }
 
     const expr = this._expr();
-    this._eat(TokenIdentifier.SEMI, "_statement");
+    this._eat(TokenIdentifier.SEMI);
 
     return expr;
   }
@@ -212,9 +173,8 @@ export class Parser {
   }
 
 
-  public _eat(tokenId: number, from?: string): Token {
+  public _eat(tokenId: number): Token {
     const token = this._lookahead;
-    if (from) console.log(`From: ${from}, Lookahead: ${JSON.stringify(this._lookahead)}`);
 
     if (token.id === TokenIdentifier.EOT)
       throw new SyntaxError(`Unexpected end of tokens, expected token: ${TokenRecordList[tokenId]}`);

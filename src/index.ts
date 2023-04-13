@@ -5,7 +5,7 @@ import Lexer from "./lexer";
 import OperatorEvaluator from "./operator-evaluator";
 import OperatorParser from "./operator-parser";
 
-async function read(args: string[]): Promise<Buffer> {
+export async function read(args: string[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let buffer = Buffer.from("");
 
@@ -25,7 +25,7 @@ async function read(args: string[]): Promise<Buffer> {
   });
 }
 
-function runInterpret(buffer: Buffer): string {
+export function runInterpret(buffer: Buffer): string {
   const lexer = new Lexer(buffer); // Tokenizer
   const parser = new OperatorParser(lexer);
   const ast = parser.parse();
@@ -33,7 +33,7 @@ function runInterpret(buffer: Buffer): string {
   return `${result}`;
 }
 
-async function run(args: string[]) {
+export async function run(args: string[]) {
   if (args.length > 0) {
     const buffer = await read(process.argv.slice(2));
     const result = runInterpret(buffer);
@@ -57,4 +57,3 @@ async function run(args: string[]) {
   });
 }
 
-run(process.argv.slice(2)).catch(console.error);

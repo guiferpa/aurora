@@ -1,61 +1,137 @@
 import Lexer from "./lexer";
-import {Token, TokenIdentifier} from "./tokens";
+import {Token, TokenIdentifier, TokenRecordList, TokenIdentifierType} from "./tokens";
 
 export default class OperatorParser {
   private readonly _lexer: Lexer;
-  private readonly _precedenceTable: Map<string, number>;
+  private _lookahead: Token;
+  private _match = {
+    primary: [TokenIdentifier.NUMBER],
+    seconday: [TokenIdentifier.MULT],
+    tertiary: [
+      TokenIdentifier.ADD,
+      TokenIdentifier.SUB
+    ]
+  };
+  private _precedenceTable: Map<TokenIdentifierType, number> = new Map([
+    [TokenIdentifier.ADD, 1],
+    [TokenIdentifier.SUB, 1],
+    [TokenIdentifier.MULT, 2],
+    [TokenIdentifier.NUMBER, 3]
+  ]);
 
   constructor(lexer: Lexer) {
     this._lexer = lexer;
-    this._precedenceTable = new Map([
-      ["$", 0],
-      ["ADD", 1],
-      ["SUB", 1],
-      ["MULT", 2],
-      ["NUMBER", 3],
-      ["IDENT", 3]
-    ]);
+    this._lookahead = this._lexer.getNextToken();
   }
 
-  public parse(): Token[] {
-    const stack: (Token | null)[] = [null]; // Assign initial symbol
+  private _eat(id: TokenIdentifierType) {
+    const token = this._lookahead;
+
+    if (token.id === TokenIdentifier.EOT)
+      throw new SyntaxError(`Unexpected end of token, expected token: ${TokenRecordList[id]}`);
+
+    if (id !== token.id)
+      throw new SyntaxError(`Unexpected token type: ${token.id}`);
+
+    this._lookahead = this._lexer.getNextToken();
+    return token;
+  }
+
+  /***
+  * Primary =>
+  *   | NUMBER (Token)
+  */
+  private _primary(): any {
+    const token = this._eat(TokenIdentifier.NUMBER);
+
+    return {
+      type: "ParameterOperation",
+      value: token.value
+    };
+  }
+
+  /***
+  * Secondary =>
+  *   | Primary (1)
+  *   | Primary * Primary (1 x 1)
+  *   | Primary / Primary (2 / 10)
+  */
+  private _secondary(): any {
+    const value = this._primary();
+
+    if (!this._match.seconday.includes(this._lookahead.id)) {
+      return value;
+    }
+
+    const operator = this._eat(this._lookahead.id);
+    const node = this._primary();
+
+    return {
+      type: "BinaryOperation",
+      operator, value, node
+    };
+  }
+
+  /***
+  * Tertiary =>
+  *   | Secondary
+  *   | Secondary + Secondary (1 + 1)
+  *   | Secondary - Secondary (1 - 1)
+  */
+  private _tertiary(): any {
+    const value = this._secondary();
+
+    if (!this._match.tertiary.includes(this._lookahead.id)) {
+      return value;
+    }
+
+    const operator = this._eat(this._lookahead.id);
+    const node = this._tertiary();
+
+    return {
+      type: "BinaryOperation",
+      operator, value, node
+    };
+  }
+
+  public precedenceTree(): Token[] {
+    const stack: Token[] = [];
     const tree: Token[] = [];
-    let lookahead = this._lexer.getNextToken();
-    
-    while (lookahead.id !== TokenIdentifier.EOT) {
-      const item = stack[stack.length - 1];
 
-      if (item === null) {
-        stack.push(lookahead);
-        lookahead = this._lexer.getNextToken();
+    while (true) {
+      console.log(this._lookahead, stack, tree);
+      if (this._lookahead.id === TokenIdentifier.EOT && stack.length === 0)
+        break
+
+      if (stack.length === 0) {
+        stack.push(this._lookahead);
+        this._lookahead = this._lexer.getNextToken();
         continue;
       }
 
-      const itemPrecedence = this._precedenceTable.get(item.type);
-      const lookaheadPrecedence = this._precedenceTable.get(lookahead.type);
-
-      if (!itemPrecedence || !lookaheadPrecedence) {
-        lookahead = this._lexer.getNextToken();
+      if (this._lookahead.id === TokenIdentifier.EOT) {
+        const token = stack.pop() as Token;
+        tree.push(token);
         continue;
       }
 
-      if (lookaheadPrecedence > itemPrecedence) {
-        stack.push(lookahead);
-        lookahead = this._lexer.getNextToken();
+      const lookaheadPrecedence = this._precedenceTable.get(this._lookahead.id) as number;
+      const stackedPrecedence = this._precedenceTable.get(stack[stack.length - 1].id) as number;
+
+      if (lookaheadPrecedence > stackedPrecedence) {
+        stack.push(this._lookahead);
+        this._lookahead = this._lexer.getNextToken();
         continue;
       }
 
-      const token = stack.pop();
-      if (!token) throw new Error(`Undefined token popped from stack`);
-
+      const token = stack.pop() as Token;
       tree.push(token);
     }
 
-    for (let index = stack.length - 1; index >= 0; index--) {
-      const item = stack[index]; // Removes null item
-      if (item) tree.push(item);
-    }
-
     return tree;
+  }
+
+  public parse(): any {
+    return this._tertiary();
   }
 }

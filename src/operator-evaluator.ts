@@ -1,30 +1,23 @@
-import {Token, TokenIdentifier} from "./tokens";
+import {TokenIdentifier} from "./tokens";
 
 export default class OperatorEvaluator {
-  static eval(ast: Token[]) {
-    let stack: number[] = [];
+  static eval(ast: any): number {
+    if (ast.type === "ParameterOperation") {
+      return Number.parseInt(ast.value);
+    }
 
-    for (let index = 0; index < ast.length; index++) {
-      const token = ast[index];
+    if (ast.type === "BinaryOperation") {
+      const {operator, left, right} = ast.value;
 
-      if (token.id === TokenIdentifier.NUMBER) {
-        stack.push(Number.parseInt(token.value));
-        continue;
-      }
+      switch (operator.id) {
+        case TokenIdentifier.ADD:
+          return Number.parseInt(left.value) + this.eval(right);
 
-      if (token.id === TokenIdentifier.ADD) {
-        const [a, b] = stack.splice(stack.length - 2, 2);
-        stack = [(a + b), ...stack];
-        continue;
-      }
-
-      if (token.id === TokenIdentifier.MULT) {
-        const [a, b] = stack.splice(stack.length - 2, 2);
-        stack = [(a * b), ...stack];
-        continue;
+        case TokenIdentifier.SUB:
+          return Number.parseInt(left.value) - this.eval(right);
       }
     }
 
-    return stack[0];
+    return NaN;
   }
 }

@@ -1,4 +1,4 @@
-import {Lexer} from "./lexer";
+import Lexer from "./lexer";
 import {TokenIdentifier, TokenRecordList} from "./tokens";
 import {Parser} from "./parser";
 

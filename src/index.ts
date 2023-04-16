@@ -1,9 +1,8 @@
 import fs from "fs";
 import rl from "readline";
 
-import Lexer from "./lexer";
-import OperatorEvaluator from "./operator-evaluator";
-import OperatorParser from "./operator-parser";
+import {Evaluator, Lexer} from "./v1";
+import {Parser} from "./v3";
 
 export async function read(args: string[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -27,9 +26,9 @@ export async function read(args: string[]): Promise<Buffer> {
 
 export function runInterpret(buffer: Buffer): string {
   const lexer = new Lexer(buffer); // Tokenizer
-  const parser = new OperatorParser(lexer);
-  const ast = parser.parse();
-  const result = OperatorEvaluator.eval(ast);
+  const parser = new Parser(lexer);
+  const tree = parser.parse();
+  const result = Evaluator.evaluate(tree);
   return `${result}`;
 }
 

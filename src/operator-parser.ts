@@ -99,7 +99,6 @@ export default class OperatorParser {
     const tree: Token[] = [];
 
     while (true) {
-      console.log(this._lookahead, stack, tree);
       if (this._lookahead.id === TokenIdentifier.EOT && stack.length === 0)
         break
 
@@ -117,7 +116,12 @@ export default class OperatorParser {
 
       const lookaheadPrecedence = this._precedenceTable.get(this._lookahead.id) as number;
       const stackedPrecedence = this._precedenceTable.get(stack[stack.length - 1].id) as number;
-
+      
+      console.log('-------------------------------');
+      console.log(`Stack: ${JSON.stringify(stack)}`);
+      console.log(`Tree: ${JSON.stringify(tree)}`);
+      console.log(`Lookahead: ${this._lookahead.value}`, '<==>', `Stack: ${stack[stack.length - 1].value}`);
+      console.log('-------------------------------');
       if (lookaheadPrecedence > stackedPrecedence) {
         stack.push(this._lookahead);
         this._lookahead = this._lexer.getNextToken();

@@ -8,9 +8,9 @@ Aurora's just for studying programming language concepts
 ### Hello world example
 
 ```aurora
-var fd = 1;
-var text = "Hello World";
-
-print(fd, text);
+1 + 10
+= 11
+1 + 10 - 9
+= 2
 ```
 

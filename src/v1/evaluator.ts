@@ -3,17 +3,16 @@ import {
   BinaryOperationNode, 
   ParameterOperationNode, 
   ParserNode, 
-  ParserNodeTag
 } from "../v3/parser/node";
 
 export default class Evaluator {
   static evaluate(tree: ParserNode): number {
-    if (tree.tag === ParserNodeTag.ParameterOperation) {
-      return (tree as ParameterOperationNode).value;
+    if (tree instanceof ParameterOperationNode) {
+      return tree.value;
     }
 
-    if (tree.tag === ParserNodeTag.BinaryOperation) {
-      const {operator, left, right} = (tree as BinaryOperationNode);
+    if (tree instanceof BinaryOperationNode) {
+      const {operator, left, right} = tree;
 
       switch (operator.tag) {
         case TokenTag.ADD:

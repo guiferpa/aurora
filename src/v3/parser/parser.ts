@@ -26,10 +26,19 @@ export default class Parser {
   /**
    * fact =>
    *  | NUM
-   *  | IDENT
+   *  | PAREN_BEGIN expr PAREN_END
    */
-  private _fact(): Token {
-    return this._eat(TokenTag.NUM);
+  private _fact(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.NUM) {
+      const num = this._eat(TokenTag.NUM);
+      return new ParameterOperationNode((num as TokenNumber).value);
+    }
+
+    this._eat(TokenTag.PAREN_BEGIN);
+    const expr = this._expr();
+    this._eat(TokenTag.PAREN_END);
+
+    return expr;
   }
 
   /**
@@ -39,7 +48,7 @@ export default class Parser {
    *  | fact
    */
   private _expr(): ParserNode {
-    const left = new ParameterOperationNode((this._fact() as TokenNumber).value);
+    const left = this._fact();
 
     if (![TokenTag.ADD, TokenTag.SUB].includes(this._lookahead?.tag as TokenTag))
       return left;
@@ -59,6 +68,9 @@ export default class Parser {
   public parse(): ParserNode {
     this._lookahead = this._lexer.getNextToken();
 
-    return this._program();
+    const result = this._program();
+    console.log(result);
+
+    return result;
   }
 }

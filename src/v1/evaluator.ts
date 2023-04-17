@@ -20,6 +20,9 @@ export default class Evaluator {
 
         case TokenTag.SUB:
           return (left as ParameterOperationNode).value - this.evaluate(right);
+
+        case TokenTag.MULT:
+          return (left as ParameterOperationNode).value * this.evaluate(right);
       }
     }
 

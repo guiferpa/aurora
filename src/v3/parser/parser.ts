@@ -42,19 +42,42 @@ export default class Parser {
   }
 
   /**
-   * expr =>
-   *  | fact + expr
-   *  | fact - expr
+   * mult =>
+   *  | fact * mult
    *  | fact
    */
-  private _expr(): ParserNode {
+  private _mult(): ParserNode {
     const left = this._fact();
+
+    if (![TokenTag.MULT].includes(this._lookahead?.tag as TokenTag))
+      return left;
+    
+    const operator = this._eat(this._lookahead?.tag as TokenTag);
+    return new BinaryOperationNode(left, this._mult(), operator);
+  }
+
+  /**
+   * add =>
+   *  | mult + add
+   *  | mult - add
+   *  | mult
+   */
+  private _add(): ParserNode {
+    const left = this._mult();
 
     if (![TokenTag.ADD, TokenTag.SUB].includes(this._lookahead?.tag as TokenTag))
       return left;
     
     const operator = this._eat(this._lookahead?.tag as TokenTag);
-    return new BinaryOperationNode(left, this._expr(), operator);
+    return new BinaryOperationNode(left, this._add(), operator);
+  }
+
+  /**
+   * expr =>
+   *  | add
+   */
+  private _expr(): ParserNode {
+    return this._add();
   }
 
   /***

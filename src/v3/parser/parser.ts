@@ -1,7 +1,11 @@
-import {Lexer, Token, TokenTag, TokenNumber} from "../../v1";
+import colorize from "json-colorizer";
+
+import {Lexer, Token, TokenTag, TokenNumber, Environment} from "../../v1";
+import {TokenIdentifier} from "../../v1/tokens";
 import {
   BinaryOperationNode, 
   BlockStatmentNode, 
+  IdentifierNode, 
   ParameterOperationNode, 
   ParserNode
 } from "./node";
@@ -9,6 +13,7 @@ import {
 export default class Parser {
   private readonly _lexer: Lexer;
   private _lookahead: Token | null = null;
+  private _environ: Environment | null = null;
 
   constructor(lexer: Lexer) {
     this._lexer = lexer;
@@ -35,12 +40,30 @@ export default class Parser {
   /**
    * fact =>
    *  | NUM
+   *  | IDENT
+   *  | DEF IDENT ASSIGN expr
    *  | PAREN_BEGIN expr PAREN_END
    */
   private _fact(): ParserNode {
     if (this._lookahead?.tag === TokenTag.NUM) {
       const num = this._eat(TokenTag.NUM);
       return new ParameterOperationNode((num as TokenNumber).value);
+    }
+
+    if (this._lookahead?.tag === TokenTag.IDENT) {
+      const ident = this._eat(TokenTag.IDENT);
+      return (this._environ as Environment)
+        .query((ident as TokenIdentifier).name);
+    }
+
+    if (this._lookahead?.tag === TokenTag.DEF) {
+      this._eat(TokenTag.DEF);
+      const ident = this._eat(TokenTag.IDENT);
+      this._eat(TokenTag.ASSIGN);
+      const expr = this._expr();
+      this._environ?.set((ident as TokenIdentifier).name, expr);
+
+      return new IdentifierNode((ident as TokenIdentifier).name);
     }
 
     this._eat(TokenTag.PAREN_BEGIN);
@@ -109,9 +132,10 @@ export default class Parser {
   private _blckStmt(): ParserNode {
     this._eat(TokenTag.BLOCK_BEGIN);
 
-    const blockID = `${Date.now()}`;
+    const id = `${Date.now()}`;
+    this._environ = new Environment(id, this._environ);
     const block = this._stmtList(TokenTag.BLOCK_END);
-    const stmt = new BlockStatmentNode(blockID, block);
+    const stmt = new BlockStatmentNode(this._environ.id, block);
 
     this._eat(TokenTag.BLOCK_END);
 
@@ -152,8 +176,11 @@ export default class Parser {
   public parse(): BlockStatmentNode {
     this._lookahead = this._lexer.getNextToken();
 
-    const tree = new BlockStatmentNode("root", this._program());
-    console.log(tree);
+    const id = "root";
+    this._environ = new Environment(id, this._environ);
+    const tree = new BlockStatmentNode(this._environ.id, this._program());
+
+    console.log(colorize(JSON.stringify(tree, null, 2)));
 
     return tree;
   }

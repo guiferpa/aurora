@@ -3,7 +3,7 @@ import rl from "readline";
 
 import {Evaluator, Lexer} from "./v1";
 import {Parser} from "./v3";
-import {BlockStatmentNode, ParserNode} from "./v3/parser/node";
+import {BlockStatmentNode, IdentifierNode, ParserNode} from "./v3/parser/node";
 
 const DEFAULT_PROMPT = ">> ";
 
@@ -32,13 +32,21 @@ export function runInterpret(buffer: Buffer): string[] {
   const parser = new Parser(lexer);
   const tree = parser.parse();
 
-  function evaluate(block: ParserNode[]): any {
-    return block.map((stmt) => {
+  function evaluate(block: ParserNode[]): string[] {
+    const outputs: string[] = [];
+
+    for (const stmt of block) {
+      if (stmt instanceof IdentifierNode) continue;
+
       if (stmt instanceof BlockStatmentNode) {
-        return evaluate(stmt.block);
+        outputs.push(evaluate(stmt.block).join(","));
+        continue;
       }
-      return `${Evaluator.evaluate(stmt)}`;
-    });
+
+      outputs.push(`${Evaluator.evaluate(stmt)}`);
+    }
+
+    return outputs;
   }
 
   return evaluate(tree.block);

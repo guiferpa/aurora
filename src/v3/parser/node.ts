@@ -2,6 +2,7 @@ import {Token} from "../../v1";
 
 export enum ParserNodeTag {
   ParameterOperation = "ParameterOperation",
+  Identifier = "Identifier",
   BinaryOperation = "BinaryOperation",
   BlockStatment = "BlockStatment"
 };
@@ -44,6 +45,16 @@ export class BinaryOperationNode extends ParserNode {
   }
 }
 
+export class IdentifierNode extends ParserNode {
+  public name: string;
+
+  constructor (name: string) {
+    super(ParserNodeTag.Identifier);
+
+    this.name = name;
+  }
+}
+
 export class ParameterOperationNode extends ParserNode {
   public value: number;
 
@@ -53,3 +64,4 @@ export class ParameterOperationNode extends ParserNode {
     this.value = value;
   }
 }
+

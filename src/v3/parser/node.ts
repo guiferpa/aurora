@@ -2,7 +2,8 @@ import {Token} from "../../v1";
 
 export enum ParserNodeTag {
   ParameterOperation = "ParameterOperation",
-  BinaryOperation = "BinaryOperation"
+  BinaryOperation = "BinaryOperation",
+  BlockStatment = "BlockStatment"
 };
 
 export class ParserNode {
@@ -11,6 +12,18 @@ export class ParserNode {
   constructor (tag: ParserNodeTag) {
     this.tag = tag;
   } 
+}
+
+export class BlockStatmentNode extends ParserNode {
+  public id: string;
+  public block: ParserNode[];
+
+  constructor(id: string, block: ParserNode[]) {
+    super(ParserNodeTag.BlockStatment);
+
+    this.id = id;
+    this.block = block;
+  }
 }
 
 export class BinaryOperationNode extends ParserNode {

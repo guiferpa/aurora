@@ -8,7 +8,7 @@ describe('v1.Evaluator test suite', () => {
     const lexer = new Lexer(program);
     const parser = new Parser(lexer);
     const tree = parser.parse();
-    const got = Evaluator.evaluate(tree);
+    const got = Evaluator.evaluate(tree.block[0]);
 
     expect(got).toBe(2);
   });
@@ -18,7 +18,7 @@ describe('v1.Evaluator test suite', () => {
     const lexer = new Lexer(program);
     const parser = new Parser(lexer);
     const tree = parser.parse();
-    const got = Evaluator.evaluate(tree);
+    const got = Evaluator.evaluate(tree.block[0]);
 
     expect(got).toBe(-5);
   });

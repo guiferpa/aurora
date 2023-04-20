@@ -6,9 +6,13 @@ interface IToken {
 
 export class Token implements IToken {
   public readonly tag: TokenTag;
+  public readonly line: number;
+  public readonly column: number;
 
-  constructor(tag: TokenTag) {
+  constructor(tag: TokenTag, line: number, column: number) {
     this.tag = tag;
+    this.line = line;
+    this.column = column;
   }
 
   public toString(): string {
@@ -19,8 +23,8 @@ export class Token implements IToken {
 export class TokenIdentifier extends Token {
   public readonly name: string;
 
-  constructor(name: string) {
-    super(TokenTag.IDENT);
+  constructor(name: string, line: number, column: number) {
+    super(TokenTag.IDENT, line, column);
     
     this.name = name;
   }
@@ -33,8 +37,8 @@ export class TokenIdentifier extends Token {
 export class TokenNumber extends Token {
   public readonly value: number;
 
-  constructor(value: number) {
-    super(TokenTag.NUM);
+  constructor(value: number, line: number, column: number) {
+    super(TokenTag.NUM, line, column);
     
     this.value = value;
   }

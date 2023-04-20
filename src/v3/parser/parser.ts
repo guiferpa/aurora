@@ -1,6 +1,10 @@
-import {Lexer, Token, TokenTag} from "../../v1";
-import {TokenNumber} from "../../v1/tokens";
-import {BinaryOperationNode, ParameterOperationNode, ParserNode} from "./node";
+import {Lexer, Token, TokenTag, TokenNumber} from "../../v1";
+import {
+  BinaryOperationNode, 
+  BlockStatmentNode, 
+  ParameterOperationNode, 
+  ParserNode
+} from "./node";
 
 export default class Parser {
   private readonly _lexer: Lexer;
@@ -14,10 +18,14 @@ export default class Parser {
     const token = this._lookahead;
 
     if (token?.tag === TokenTag.EOT)
-      throw new SyntaxError(`Unexpected end of token, expected token: ${tokenTag.toString()}`);
+      throw new SyntaxError(
+        `Unexpected end of token, expected token: ${tokenTag.toString()}, on line: ${token.line}, column: ${token.column}`
+      );
 
     if (tokenTag !== token?.tag)
-      throw new SyntaxError(`Unexpected token: ${token?.toString()}`);
+      throw new SyntaxError(
+        `Unexpected token: ${token?.toString()}, on line: ${token?.line}, column: ${token?.column}`
+      );
 
 
     this._lookahead = this._lexer.getNextToken();
@@ -66,7 +74,10 @@ export default class Parser {
   private _add(): ParserNode {
     const left = this._mult();
 
-    if (![TokenTag.ADD, TokenTag.SUB].includes(this._lookahead?.tag as TokenTag))
+    if (![
+      TokenTag.ADD, 
+      TokenTag.SUB
+    ].includes(this._lookahead?.tag as TokenTag))
       return left;
     
     const operator = this._eat(this._lookahead?.tag as TokenTag);
@@ -82,30 +93,68 @@ export default class Parser {
   }
 
   /**
-   * stmt =>
+   * exprStmt =>
    *  | expr SEMI
    */
-  private _stmt(): ParserNode {
-    const expr = this._expr();
+  private _exprStmt(): ParserNode {
+    const add = this._add();
     this._eat(TokenTag.SEMI);
-    
-    return expr;
+    return add;
+  }
+
+  /**
+   * blckStmt =>
+   *  | BLOCK_BEGIN stmt* BLOCK_END
+   */
+  private _blckStmt(): ParserNode {
+    this._eat(TokenTag.BLOCK_BEGIN);
+
+    const blockID = `${Date.now()}`;
+    const block = this._stmtList(TokenTag.BLOCK_END);
+    const stmt = new BlockStatmentNode(blockID, block);
+
+    this._eat(TokenTag.BLOCK_END);
+
+    return stmt;
+  }
+
+  /**
+   * stmt =>
+   *  | blckStmt
+   *  | exprStmt
+   */
+  private _stmt(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
+      return this._blckStmt();
+    }
+
+    return this._exprStmt();
+  }
+
+  private _stmtList(et?: TokenTag): ParserNode[] {
+    const list = [];
+  
+    while (this._lookahead?.tag !== et) {
+      list.push(this._stmt());
+    }
+
+    return list;
   }
 
   /***
    * prorgram =>
-   *  | stmt
+   *  | stmt*
    */
-  private _program(): ParserNode {
-    return this._stmt();
+  private _program(): ParserNode[] {
+    return this._stmtList(TokenTag.EOT);
   }
 
-  public parse(): ParserNode {
+  public parse(): BlockStatmentNode {
     this._lookahead = this._lexer.getNextToken();
 
-    const result = this._program();
-    console.log(result);
+    const tree = new BlockStatmentNode("root", this._program());
+    console.log(tree);
 
-    return result;
+    return tree;
   }
 }

@@ -3,6 +3,7 @@ import rl from "readline";
 
 import {Evaluator, Lexer} from "./v1";
 import {Parser} from "./v3";
+import {BlockStatmentNode, ParserNode} from "./v3/parser/node";
 
 export async function read(args: string[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -24,12 +25,21 @@ export async function read(args: string[]): Promise<Buffer> {
   });
 }
 
-export function runInterpret(buffer: Buffer): string {
+export function runInterpret(buffer: Buffer): string[] {
   const lexer = new Lexer(buffer); // Tokenizer
   const parser = new Parser(lexer);
   const tree = parser.parse();
-  const result = Evaluator.evaluate(tree);
-  return `${result}`;
+
+  function evaluate(block: ParserNode[]): any {
+    return block.map((stmt) => {
+      if (stmt instanceof BlockStatmentNode) {
+        return evaluate(stmt.block);
+      }
+      return `${Evaluator.evaluate(stmt)}`;
+    });
+  }
+
+  return evaluate(tree.block);
 }
 
 export async function run(args: string[]) {

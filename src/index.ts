@@ -5,6 +5,8 @@ import {Evaluator, Lexer} from "./v1";
 import {Parser} from "./v3";
 import {BlockStatmentNode, ParserNode} from "./v3/parser/node";
 
+const DEFAULT_PROMPT = ">> ";
+
 export async function read(args: string[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let buffer = Buffer.from("");
@@ -55,9 +57,13 @@ export async function run(args: string[]) {
     output: process.stdout
   });
 
+  repl.setPrompt(DEFAULT_PROMPT);
+  repl.prompt(true);
+
   repl.on('line', (chunk) => {
     const out = runInterpret(Buffer.from(chunk));
     console.log(`= ${out}`);
+    repl.prompt(true);
   });
 
   repl.once('close', () => {

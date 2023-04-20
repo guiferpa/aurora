@@ -16,13 +16,13 @@ export default class Evaluator {
 
       switch (operator.tag) {
         case TokenTag.ADD:
-          return (left as ParameterOperationNode).value + this.evaluate(right);
+          return this.evaluate(left) + this.evaluate(right);
 
         case TokenTag.SUB:
-          return (left as ParameterOperationNode).value - this.evaluate(right);
+          return this.evaluate(left) - this.evaluate(right);
 
         case TokenTag.MULT:
-          return (left as ParameterOperationNode).value * this.evaluate(right);
+          return this.evaluate(left) * this.evaluate(right);
       }
     }
 

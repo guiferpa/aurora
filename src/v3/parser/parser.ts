@@ -13,11 +13,12 @@ export default class Parser {
   private _eat(tokenTag: TokenTag): Token {
     const token = this._lookahead;
 
+    if (token?.tag === TokenTag.EOT)
+      throw new SyntaxError(`Unexpected end of token, expected token: ${tokenTag.toString()}`);
+
     if (tokenTag !== token?.tag)
       throw new SyntaxError(`Unexpected token: ${token?.toString()}`);
 
-    if (token?.tag === TokenTag.EOT)
-      throw new SyntaxError(`Unexpected end of token, expected token: ${tokenTag}`);
 
     this._lookahead = this._lexer.getNextToken();
     return token;
@@ -80,12 +81,23 @@ export default class Parser {
     return this._add();
   }
 
+  /**
+   * stmt =>
+   *  | expr SEMI
+   */
+  private _stmt(): ParserNode {
+    const expr = this._expr();
+    this._eat(TokenTag.SEMI);
+    
+    return expr;
+  }
+
   /***
    * prorgram =>
-   *  | expr
+   *  | stmt
    */
   private _program(): ParserNode {
-    return this._expr();
+    return this._stmt();
   }
 
   public parse(): ParserNode {

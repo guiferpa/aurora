@@ -35,8 +35,8 @@ export function runInterpret(buffer: Buffer): string {
 export async function run(args: string[]) {
   if (args.length > 0) {
     const buffer = await read(process.argv.slice(2));
-    const result = runInterpret(buffer);
-    console.log(result);
+    const out = runInterpret(buffer);
+    console.log(`= ${out}`);
     return
   }
 

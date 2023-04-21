@@ -25,7 +25,7 @@ export default class Environment {
       environ = environ.prev;
     }
 
-    throw new SyntaxError(`Symbol ${key} not found`);
+    throw new SyntaxError(`Symbol "${key}" not found`);
   }
 
   public describe() {

@@ -47,11 +47,13 @@ export class BinaryOperationNode extends ParserNode {
 
 export class IdentifierNode extends ParserNode {
   public name: string;
+  public value: ParserNode;
 
-  constructor (name: string) {
+  constructor (name: string, value: ParserNode) {
     super(ParserNodeTag.Identifier);
 
     this.name = name;
+    this.value = value;
   }
 }
 

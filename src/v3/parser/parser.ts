@@ -62,7 +62,7 @@ export default class Parser {
       const expr = this._expr();
       this._environ?.set(ident.name, expr);
 
-      return new IdentifierNode(ident.name);
+      return new IdentifierNode(ident.name, expr);
     }
 
     this._eat(TokenTag.PAREN_BEGIN);

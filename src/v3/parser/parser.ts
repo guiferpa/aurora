@@ -139,6 +139,8 @@ export default class Parser {
 
     this._eat(TokenTag.BLOCK_END);
 
+    this._environ = this._environ.prev;
+
     return stmt;
   }
 

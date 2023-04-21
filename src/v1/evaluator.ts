@@ -1,11 +1,32 @@
 import {TokenTag} from "./tokens";
 import {
   BinaryOperationNode, 
+  BlockStatmentNode, 
+  IdentifierNode, 
   ParameterOperationNode, 
   ParserNode, 
 } from "../v3/parser/node";
 
 export default class Evaluator {
+  static compose(block: ParserNode[]): string[] {
+    const out = [];
+
+    for (const stmt of block) {
+      if (stmt instanceof IdentifierNode) {
+        continue;
+      }
+
+      if (stmt instanceof BlockStatmentNode) {
+        out.push(Evaluator.compose(stmt.block).join(','));
+        continue;
+      }
+
+      out.push(`${Evaluator.evaluate(stmt)}`);
+    }
+
+    return out;
+  }
+
   static evaluate(tree: ParserNode): number {
     if (tree instanceof ParameterOperationNode) {
       return tree.value;

@@ -31,25 +31,7 @@ export function runInterpret(buffer: Buffer): string[] {
   const lexer = new Lexer(buffer); // Tokenizer
   const parser = new Parser(lexer);
   const tree = parser.parse();
-
-  function evaluate(block: ParserNode[]): string[] {
-    const outputs: string[] = [];
-
-    for (const stmt of block) {
-      if (stmt instanceof IdentifierNode) continue;
-
-      if (stmt instanceof BlockStatmentNode) {
-        outputs.push(evaluate(stmt.block).join(","));
-        continue;
-      }
-
-      outputs.push(`${Evaluator.evaluate(stmt)}`);
-    }
-
-    return outputs;
-  }
-
-  return evaluate(tree.block);
+  return Evaluator.compose(tree.block);
 }
 
 export async function run(args: string[]) {

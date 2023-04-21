@@ -1,10 +1,8 @@
 import {ParserNode} from "../v3/parser/node";
 
-type SymbolPayload = ParserNode;
-
 export default class Environment {
   public readonly id: string;
-  private _table: Map<string, SymbolPayload>; 
+  private _table: Map<string, ParserNode>; 
   public readonly prev: Environment | null;
 
   constructor (id: string, prev: Environment | null = null) {
@@ -17,14 +15,14 @@ export default class Environment {
     this._table.set(key, payload);
   }
 
-  public query(key: string): SymbolPayload {
-    let stmt: Environment | null = this;
+  public query(key: string): ParserNode {
+    let environ: Environment | null = this;
 
-    while (stmt !== null) {
-      const payload = this._table.get(key);
+    while (environ !== null) {
+      const payload = environ._table.get(key);
       if (payload !== undefined) return payload;
 
-      stmt = stmt.prev;
+      environ = environ.prev;
     }
 
     throw new SyntaxError(`Symbol ${key} not found`);

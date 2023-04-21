@@ -51,19 +51,18 @@ export default class Parser {
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
-      const ident = this._eat(TokenTag.IDENT);
-      return (this._environ as Environment)
-        .query((ident as TokenIdentifier).name);
+      const ident = (this._eat(TokenTag.IDENT) as TokenIdentifier);
+      return (this._environ as Environment).query(ident.name);
     }
 
     if (this._lookahead?.tag === TokenTag.DEF) {
       this._eat(TokenTag.DEF);
-      const ident = this._eat(TokenTag.IDENT);
+      const ident = (this._eat(TokenTag.IDENT) as TokenIdentifier);
       this._eat(TokenTag.ASSIGN);
       const expr = this._expr();
-      this._environ?.set((ident as TokenIdentifier).name, expr);
+      this._environ?.set(ident.name, expr);
 
-      return new IdentifierNode((ident as TokenIdentifier).name);
+      return new IdentifierNode(ident.name);
     }
 
     this._eat(TokenTag.PAREN_BEGIN);
@@ -112,30 +111,22 @@ export default class Parser {
    *  | add
    */
   private _expr(): ParserNode {
-    return this._add();
-  }
-
-  /**
-   * exprStmt =>
-   *  | expr SEMI
-   */
-  private _exprStmt(): ParserNode {
     const add = this._add();
-    this._eat(TokenTag.SEMI);
+
     return add;
   }
 
   /**
    * blckStmt =>
-   *  | BLOCK_BEGIN stmt* BLOCK_END
+   *  | BLOCK_BEGIN stmts BLOCK_END
    */
-  private _blckStmt(): ParserNode {
+  private _block(): ParserNode {
     this._eat(TokenTag.BLOCK_BEGIN);
 
     const id = `${Date.now()}`;
     this._environ = new Environment(id, this._environ);
-    const block = this._stmtList(TokenTag.BLOCK_END);
-    const stmt = new BlockStatmentNode(this._environ.id, block);
+    const stmts = this._stmts(TokenTag.BLOCK_END);
+    const stmt = new BlockStatmentNode(this._environ.id, stmts);
 
     this._eat(TokenTag.BLOCK_END);
 
@@ -146,18 +137,21 @@ export default class Parser {
 
   /**
    * stmt =>
-   *  | blckStmt
-   *  | exprStmt
+   *  | block
+   *  | expr SEMI
    */
   private _stmt(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
-      return this._blckStmt();
+      return this._block();
     }
 
-    return this._exprStmt();
+    const expr = this._expr();
+    this._eat(TokenTag.SEMI);
+
+    return expr;
   }
 
-  private _stmtList(et?: TokenTag): ParserNode[] {
+  private _stmts(et?: TokenTag): ParserNode[] {
     const list = [];
   
     while (this._lookahead?.tag !== et) {
@@ -169,10 +163,10 @@ export default class Parser {
 
   /***
    * prorgram =>
-   *  | stmt*
+   *  | stmts
    */
   private _program(): ParserNode[] {
-    return this._stmtList(TokenTag.EOT);
+    return this._stmts(TokenTag.EOT);
   }
 
   public parse(): BlockStatmentNode {

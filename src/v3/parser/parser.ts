@@ -1,14 +1,23 @@
 import colorize from "json-colorizer";
 
-import {Lexer, Token, TokenTag, TokenNumber, Environment} from "../../v1";
-import {TokenIdentifier, TokenLogical} from "../../v1/tokens";
+import {
+  Lexer, 
+  Token, 
+  TokenTag, 
+  TokenNumber, 
+  Environment,
+  TokenLogical,
+  TokenIdentifier
+} from "../../v1";
+
 import {
   BinaryOperationNode, 
+  RelativeOperationNode,
   BlockStatmentNode, 
   IdentifierNode, 
   IntegerNode, 
   LogicalNode, 
-  ParserNode
+  ParserNode,
 } from "./node";
 
 export default class Parser {
@@ -25,12 +34,12 @@ export default class Parser {
 
     if (token?.tag === TokenTag.EOT)
       throw new SyntaxError(
-        `Unexpected end of token, expected token: ${tokenTag.toString()}, on line: ${token.line}, column: ${token.column}`
+        `Unexpected end of token, expected token: ${tokenTag.toString()}`
       );
 
     if (tokenTag !== token?.tag)
       throw new SyntaxError(
-        `Unexpected token: ${token?.toString()}, on line: ${token?.line}, column: ${token?.column}`
+        `Unexpected token: ${token?.toString()}`
       );
 
     this._lookahead = this._lexer.getNextToken();
@@ -114,15 +123,20 @@ export default class Parser {
 
   /**
    * rel =>
-   *  | add < add
-   *  | add <= add
-   *  | add == add
-   *  | add >= add
-   *  | add > add
+   *  | add == rel
    *  | add
    */
   private _rel(): ParserNode {
-    return this._add();
+    const add = this._add();
+
+    if (![
+      TokenTag.EQUAL
+    ].includes(this._lookahead?.tag as TokenTag))
+      return add;
+
+    const comparator = this._eat(this._lookahead?.tag as TokenTag);
+
+    return new RelativeOperationNode(add, this._rel(), comparator);
   }
 
   /**

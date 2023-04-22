@@ -10,8 +10,6 @@ import {
 export default class Lexer {
   public _cursor = 0;
   public readonly _buffer: Buffer;
-  private line: number = 1;
-  private column: number = 1;
 
   constructor(buffer: Buffer) {
     this._buffer = buffer;
@@ -23,7 +21,7 @@ export default class Lexer {
 
   public getNextToken(): Token {
     if (!this.hasMoreTokens()) 
-      return new Token(TokenTag.EOT, this.line, this.column)
+      return new Token(TokenTag.EOT)
 
     const str = this._buffer.toString('utf-8', this._cursor);
 
@@ -38,18 +36,18 @@ export default class Lexer {
 
       if (tag === TokenTag.NUM) {
         const num = Number.parseInt(value);
-        return new TokenNumber(num, this.line, this.column);
+        return new TokenNumber(num);
       }
 
       if (tag === TokenTag.LOGICAL) {
         const logical = value === "true";
-        return new TokenLogical(logical, this.line, this.column);
+        return new TokenLogical(logical);
       }
 
       if (tag === TokenTag.IDENT)
-        return new TokenIdentifier(value, this.line, this.column);
+        return new TokenIdentifier(value);
 
-      return new Token(tag, this.line, this.column);
+      return new Token(tag);
     }
 
     throw new SyntaxError(`Unexpected token: ${str}`);

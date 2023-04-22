@@ -4,8 +4,8 @@ import {
   BlockStatmentNode, 
   IdentifierNode, 
   IntegerNode, 
-  LogicalNode, 
-  ParserNode, 
+  ParserNode,
+  RelativeOperationNode, 
 } from "../v3/parser/node";
 
 export default class Evaluator {
@@ -17,8 +17,9 @@ export default class Evaluator {
         continue;
       }
 
-      if (stmt instanceof LogicalNode) {
-        out.push(`${stmt.value}`);
+      if (stmt instanceof RelativeOperationNode) {
+        const { left, right } = stmt;
+        out.push(`${Evaluator.evaluate(left) == Evaluator.evaluate(right)}`);
         continue;
       }
 

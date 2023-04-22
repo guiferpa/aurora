@@ -5,6 +5,7 @@ export enum ParserNodeTag {
   Logical = "Logical",
   Identifier = "Identifier",
   BinaryOperation = "BinaryOperation",
+  RelativeOperation = "RelativeOperation",
   BlockStatment = "BlockStatment"
 };
 
@@ -43,6 +44,24 @@ export class BinaryOperationNode extends ParserNode {
     this.left = left;
     this.right = right;
     this.operator = operator;
+  }
+}
+
+export class RelativeOperationNode extends ParserNode {
+  public left: ParserNode;
+  public right: ParserNode;
+  public comparator: Token;
+
+  constructor (
+    left: ParserNode, 
+    right: ParserNode, 
+    comparator: Token
+  ) {
+    super(ParserNodeTag.RelativeOperation);
+
+    this.left = left;
+    this.right = right;
+    this.comparator = comparator;
   }
 }
 

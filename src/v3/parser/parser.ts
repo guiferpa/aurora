@@ -18,6 +18,7 @@ import {
   IntegerNode, 
   LogicalNode, 
   ParserNode,
+  NegativeOperationNode,
 } from "./node";
 
 export default class Parser {
@@ -150,6 +151,31 @@ export default class Parser {
   }
 
   /**
+   * neg =>
+   *  | NOT expr
+   *  | expr
+   */
+  private _neg(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.NEG) {
+      this._eat(this._lookahead.tag);
+
+      const expr = this._expr();
+
+      if (
+        (expr instanceof RelativeOperationNode) 
+        || (expr instanceof LogicalNode)
+      )
+        return new NegativeOperationNode(expr);
+
+      throw new SyntaxError(
+        `Invalid negative syntax for no relative expression`
+      );
+    }
+
+    return this._expr();
+  }
+
+  /**
    * blckStmt =>
    *  | BLOCK_BEGIN stmts BLOCK_END
    */
@@ -171,14 +197,14 @@ export default class Parser {
   /**
    * stmt =>
    *  | block
-   *  | expr SEMI
+   *  | neg SEMI
    */
   private _stmt(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
       return this._block();
     }
 
-    const expr = this._expr();
+    const expr = this._neg();
     this._eat(TokenTag.SEMI);
 
     return expr;

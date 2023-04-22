@@ -5,6 +5,7 @@ import {
   IdentifierNode,
   IntegerNode,
   LogicalNode,
+  NegativeOperationNode,
   ParserNode,
   RelativeOperationNode,
 } from "../v3/parser/node";
@@ -20,6 +21,18 @@ export default class Evaluator {
 
       if (stmt instanceof RelativeOperationNode) {
         out.push(`${Evaluator.relative(stmt)}`);
+        continue;
+      }
+
+      if (stmt instanceof NegativeOperationNode) {
+        const { expr } = stmt;
+
+        if (expr instanceof LogicalNode) {
+          out.push(`${!expr.value}`);
+          continue;
+        }
+
+        out.push(`${!Evaluator.relative(expr)}`);
         continue;
       }
 

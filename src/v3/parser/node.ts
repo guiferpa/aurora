@@ -6,6 +6,7 @@ export enum ParserNodeTag {
   Identifier = "Identifier",
   BinaryOperation = "BinaryOperation",
   RelativeOperation = "RelativeOperation",
+  NegativeOperation = "NegativeOperation",
   BlockStatment = "BlockStatment"
 };
 
@@ -62,6 +63,16 @@ export class RelativeOperationNode extends ParserNode {
     this.left = left;
     this.right = right;
     this.comparator = comparator;
+  }
+}
+
+export class NegativeOperationNode extends ParserNode {
+  public expr: RelativeOperationNode | LogicalNode;
+
+  constructor (expr: RelativeOperationNode | LogicalNode) {
+    super(ParserNodeTag.NegativeOperation);
+
+    this.expr = expr;;
   }
 }
 

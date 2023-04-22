@@ -130,7 +130,9 @@ export default class Parser {
     const add = this._add();
 
     if (![
-      TokenTag.EQUAL
+      TokenTag.EQUAL,
+      TokenTag.GREATER_THAN,
+      TokenTag.LESS_THAN
     ].includes(this._lookahead?.tag as TokenTag))
       return add;
 

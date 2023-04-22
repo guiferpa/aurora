@@ -12,3 +12,5 @@ var result = (2 + 2) - 10 * 10;
   }
 }
 result + 4;
+
+true eq true;

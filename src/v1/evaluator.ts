@@ -1,11 +1,11 @@
 import {TokenTag} from "./tokens";
 import {
-  BinaryOperationNode, 
-  BlockStatmentNode, 
-  IdentifierNode, 
-  IntegerNode, 
+  BinaryOperationNode,
+  BlockStatmentNode,
+  IdentifierNode,
+  IntegerNode,
   ParserNode,
-  RelativeOperationNode, 
+  RelativeOperationNode,
 } from "../v3/parser/node";
 
 export default class Evaluator {
@@ -18,8 +18,7 @@ export default class Evaluator {
       }
 
       if (stmt instanceof RelativeOperationNode) {
-        const { left, right } = stmt;
-        out.push(`${Evaluator.evaluate(left) == Evaluator.evaluate(right)}`);
+        out.push(`${Evaluator.relative(stmt)}`);
         continue;
       }
 
@@ -32,6 +31,29 @@ export default class Evaluator {
     }
 
     return out;
+  }
+
+  static relative(tree: RelativeOperationNode): boolean {
+    const {comparator, left, right} = tree;
+
+    switch (comparator.tag) {
+      case TokenTag.EQUAL:
+        return this.evaluate(left) == this.evaluate(right);
+
+      case TokenTag.GREATER_THAN:
+        return this.evaluate(left) > this.evaluate(right);
+
+      case TokenTag.LESS_THAN:
+        return this.evaluate(left) < this.evaluate(right);
+    }
+
+    throw new SyntaxError(
+      `It was possible evaluate relative op:
+            Comparator: ${comparator}
+            Left: ${left}
+            Right: ${right}
+        `
+    );
   }
 
   static evaluate(tree: ParserNode): number {

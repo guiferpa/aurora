@@ -3,7 +3,8 @@ import {
   BinaryOperationNode, 
   BlockStatmentNode, 
   IdentifierNode, 
-  ParameterOperationNode, 
+  IntegerNode, 
+  LogicalNode, 
   ParserNode, 
 } from "../v3/parser/node";
 
@@ -13,6 +14,11 @@ export default class Evaluator {
 
     for (const stmt of block) {
       if (stmt instanceof IdentifierNode) {
+        continue;
+      }
+
+      if (stmt instanceof LogicalNode) {
+        out.push(`${stmt.value}`);
         continue;
       }
 
@@ -28,7 +34,7 @@ export default class Evaluator {
   }
 
   static evaluate(tree: ParserNode): number {
-    if (tree instanceof ParameterOperationNode) {
+    if (tree instanceof IntegerNode) {
       return tree.value;
     }
 

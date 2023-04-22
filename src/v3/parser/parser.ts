@@ -1,12 +1,13 @@
 import colorize from "json-colorizer";
 
 import {Lexer, Token, TokenTag, TokenNumber, Environment} from "../../v1";
-import {TokenIdentifier} from "../../v1/tokens";
+import {TokenIdentifier, TokenLogical} from "../../v1/tokens";
 import {
   BinaryOperationNode, 
   BlockStatmentNode, 
   IdentifierNode, 
-  ParameterOperationNode, 
+  IntegerNode, 
+  LogicalNode, 
   ParserNode
 } from "./node";
 
@@ -32,7 +33,6 @@ export default class Parser {
         `Unexpected token: ${token?.toString()}, on line: ${token?.line}, column: ${token?.column}`
       );
 
-
     this._lookahead = this._lexer.getNextToken();
     return token;
   }
@@ -40,6 +40,7 @@ export default class Parser {
   /**
    * fact =>
    *  | NUM
+   *  | LOGICAL
    *  | IDENT
    *  | DEF IDENT ASSIGN expr
    *  | PAREN_BEGIN expr PAREN_END
@@ -47,7 +48,12 @@ export default class Parser {
   private _fact(): ParserNode {
     if (this._lookahead?.tag === TokenTag.NUM) {
       const num = this._eat(TokenTag.NUM);
-      return new ParameterOperationNode((num as TokenNumber).value);
+      return new IntegerNode((num as TokenNumber).value);
+    }
+
+    if (this._lookahead?.tag === TokenTag.LOGICAL) {
+      const logical = this._eat(TokenTag.LOGICAL);
+      return new LogicalNode((logical as TokenLogical).value);
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
@@ -107,13 +113,24 @@ export default class Parser {
   }
 
   /**
-   * expr =>
+   * rel =>
+   *  | add < add
+   *  | add <= add
+   *  | add == add
+   *  | add >= add
+   *  | add > add
    *  | add
    */
-  private _expr(): ParserNode {
-    const add = this._add();
+  private _rel(): ParserNode {
+    return this._add();
+  }
 
-    return add;
+  /**
+   * expr =>
+   *  | rel
+   */
+  private _expr(): ParserNode {
+    return this._rel();
   }
 
   /**

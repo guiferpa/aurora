@@ -48,3 +48,16 @@ export class TokenNumber extends Token {
   }
 }
 
+export class TokenLogical extends Token {
+  public readonly value: boolean;
+
+  constructor(value: boolean, line: number, column: number) {
+    super(TokenTag.LOGICAL, line, column);
+    
+    this.value = value;
+  }
+
+  public toString(): string {
+    return `<${this.tag}, ${this.value}>`
+  }
+}

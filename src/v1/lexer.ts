@@ -1,4 +1,11 @@
-import {Token, TokenIdentifier, TokenNumber, TokenProduct, TokenTag} from "./tokens";
+import {
+  Token, 
+  TokenIdentifier, 
+  TokenNumber, 
+  TokenLogical,
+  TokenProduct, 
+  TokenTag
+} from "./tokens";
 
 export default class Lexer {
   public _cursor = 0;
@@ -29,12 +36,15 @@ export default class Lexer {
       if (tag === TokenTag.WHITESPACE)
         return this.getNextToken();
 
-      if (tag === TokenTag.NUM)
-        return new TokenNumber(
-          Number.parseInt(value),
-          this.line,
-          this.column
-        );
+      if (tag === TokenTag.NUM) {
+        const num = Number.parseInt(value);
+        return new TokenNumber(num, this.line, this.column);
+      }
+
+      if (tag === TokenTag.LOGICAL) {
+        const logical = value === "true";
+        return new TokenLogical(logical, this.line, this.column);
+      }
 
       if (tag === TokenTag.IDENT)
         return new TokenIdentifier(value, this.line, this.column);

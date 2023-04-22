@@ -4,6 +4,7 @@ import {
   BlockStatmentNode,
   IdentifierNode,
   IntegerNode,
+  LogicalNode,
   ParserNode,
   RelativeOperationNode,
 } from "../v3/parser/node";
@@ -36,19 +37,22 @@ export default class Evaluator {
   static relative(tree: RelativeOperationNode): boolean {
     const {comparator, left, right} = tree;
 
+    const a = left instanceof LogicalNode ? left.value : Evaluator.evaluate(left);
+    const b = right instanceof LogicalNode ? right.value : Evaluator.evaluate(right);
+
     switch (comparator.tag) {
       case TokenTag.EQUAL:
-        return this.evaluate(left) == this.evaluate(right);
+        return a === b;
 
       case TokenTag.GREATER_THAN:
-        return this.evaluate(left) > this.evaluate(right);
+        return a > b;
 
       case TokenTag.LESS_THAN:
-        return this.evaluate(left) < this.evaluate(right);
+        return a < b;
     }
 
     throw new SyntaxError(
-      `It was possible evaluate relative op:
+      `It was not possible evaluate relative op:
             Comparator: ${comparator}
             Left: ${left}
             Right: ${right}

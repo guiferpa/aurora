@@ -6,7 +6,7 @@ export enum TokenTag {
   BLOCK_BEGIN = "BLOCK_BEGIN", BLOCK_END = "BLOCK_END",
   ADD = "ADD", SUB = "SUB", MULT = "MULT", LOGICAL = "LOGICAL",
   EQUAL = "EQUAL", GREATER_THAN = "GREATER_THAN", LESS_THAN = "LESS_THAN",
-  NEG = "NEG"
+  NEG = "NEG", AND = "AND", OR = "OR"
 }
 
 export const TokenProduct: [RegExp, TokenTag][] = [
@@ -14,6 +14,8 @@ export const TokenProduct: [RegExp, TokenTag][] = [
   [new RegExp(/^(true|false)/), TokenTag.LOGICAL],
   [new RegExp(/^var/), TokenTag.DEF],
   [new RegExp(/^not/), TokenTag.NEG],
+  [new RegExp(/^or/), TokenTag.OR],
+  [new RegExp(/^and/), TokenTag.AND],
   [new RegExp(/^==/), TokenTag.EQUAL],
   [new RegExp(/^>/), TokenTag.GREATER_THAN],
   [new RegExp(/^</), TokenTag.LESS_THAN],

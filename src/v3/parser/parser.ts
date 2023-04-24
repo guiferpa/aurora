@@ -9,16 +9,17 @@ import {
   TokenLogical,
   TokenIdentifier
 } from "../../v1";
+import {isLogicalOperatorToken, isRelativeOperatorToken} from "../../v1/tokens";
+import {isAdditiveOperatorToken, isMultiplicativeOperatorToken} from "../../v1/tokens/token";
 
 import {
   BinaryOperationNode, 
-  RelativeOperationNode,
   BlockStatmentNode, 
   IdentifierNode, 
   IntegerNode, 
   LogicalNode, 
   ParserNode,
-  NegativeOperationNode,
+  ParserNodeReturnType,
 } from "./node";
 
 export default class Parser {
@@ -75,14 +76,14 @@ export default class Parser {
       this._eat(TokenTag.DEF);
       const ident = (this._eat(TokenTag.IDENT) as TokenIdentifier);
       this._eat(TokenTag.ASSIGN);
-      const expr = this._expr();
-      this._environ?.set(ident.name, expr);
+      const log = this._log();
+      this._environ?.set(ident.name, log);
 
-      return new IdentifierNode(ident.name, expr);
+      return new IdentifierNode(ident.name);
     }
 
     this._eat(TokenTag.PAREN_BEGIN);
-    const expr = this._expr();
+    const expr = this._log();
     this._eat(TokenTag.PAREN_END);
 
     return expr;
@@ -94,13 +95,17 @@ export default class Parser {
    *  | fact
    */
   private _mult(): ParserNode {
-    const left = this._fact();
+    const fact = this._fact();
 
-    if (![TokenTag.MULT].includes(this._lookahead?.tag as TokenTag))
-      return left;
+    if (!isMultiplicativeOperatorToken(this._lookahead as Token))
+      return fact;
     
     const operator = this._eat(this._lookahead?.tag as TokenTag);
-    return new BinaryOperationNode(left, this._mult(), operator);
+    const mult = this._mult();
+
+    return new BinaryOperationNode(
+      fact, mult, operator, ParserNodeReturnType.Integer
+    );
   }
 
   /**
@@ -110,69 +115,66 @@ export default class Parser {
    *  | mult
    */
   private _add(): ParserNode {
-    const left = this._mult();
+    const mult = this._mult();
 
-    if (![
-      TokenTag.ADD, 
-      TokenTag.SUB
-    ].includes(this._lookahead?.tag as TokenTag))
-      return left;
+    if (!isAdditiveOperatorToken(this._lookahead as Token))
+      return mult;
     
     const operator = this._eat(this._lookahead?.tag as TokenTag);
-    return new BinaryOperationNode(left, this._add(), operator);
+    const add = this._add();
+
+    return new BinaryOperationNode(
+      mult, add, operator, ParserNodeReturnType.Integer
+    );
   }
 
   /**
    * rel =>
    *  | add == rel
+   *  | add > rel
+   *  | add < rel
    *  | add
    */
   private _rel(): ParserNode {
     const add = this._add();
 
-    if (![
-      TokenTag.EQUAL,
-      TokenTag.GREATER_THAN,
-      TokenTag.LESS_THAN
-    ].includes(this._lookahead?.tag as TokenTag))
+    if (!isRelativeOperatorToken(this._lookahead as Token))
       return add;
 
-    const comparator = this._eat(this._lookahead?.tag as TokenTag);
+    const operator = this._eat(this._lookahead?.tag as TokenTag);
+    const rel = this._rel();
 
-    return new RelativeOperationNode(add, this._rel(), comparator);
+    return new BinaryOperationNode(
+      add, rel, operator, ParserNodeReturnType.Logical
+    );
   }
 
   /**
-   * expr =>
+   * log =>
+   *  | rel OR log
+   *  | rel AND log
    *  | rel
    */
-  private _expr(): ParserNode {
-    return this._rel();
-  }
+  private _log(): ParserNode {
+    const rel = this._rel();
 
-  /**
-   * neg =>
-   *  | NOT expr
-   *  | expr
-   */
-  private _neg(): ParserNode {
-    if (this._lookahead?.tag === TokenTag.NEG) {
-      this._eat(this._lookahead.tag);
+    if (!isLogicalOperatorToken(this._lookahead as Token))
+      return rel;
 
-      const expr = this._expr();
+    const operator = this._eat(this._lookahead?.tag as TokenTag);
+    const log = this._log();
 
-      if (
-        (expr instanceof RelativeOperationNode) 
-        || (expr instanceof LogicalNode)
-      )
-        return new NegativeOperationNode(expr);
-
+    if (
+      rel.returnType !== ParserNodeReturnType.Logical
+      || log.returnType !== ParserNodeReturnType.Logical
+    )
       throw new SyntaxError(
-        `Invalid negative syntax for no relative expression`
+        `It's not possible use ${operator} operator with non-boolean parameters`
       );
-    }
 
-    return this._expr();
+    return new BinaryOperationNode(
+      rel, log, operator, ParserNodeReturnType.Logical
+    );
   }
 
   /**
@@ -197,17 +199,17 @@ export default class Parser {
   /**
    * stmt =>
    *  | block
-   *  | neg SEMI
+   *  | log SEMI
    */
   private _stmt(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
       return this._block();
     }
 
-    const expr = this._neg();
+    const log = this._log();
     this._eat(TokenTag.SEMI);
 
-    return expr;
+    return log;
   }
 
   private _stmts(et?: TokenTag): ParserNode[] {

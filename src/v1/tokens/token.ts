@@ -58,3 +58,30 @@ export class TokenLogical extends Token {
   }
 }
 
+export function isRelativeOperatorToken(token: Token) {
+  return [
+    TokenTag.EQUAL,
+    TokenTag.GREATER_THAN,
+    TokenTag.LESS_THAN,
+  ].includes(token.tag);
+}
+
+export function isLogicalOperatorToken(token: Token) {
+  return [
+    TokenTag.OR,
+    TokenTag.AND
+  ].includes(token.tag);
+}
+
+export function isAdditiveOperatorToken(token: Token) {
+  return [
+    TokenTag.ADD,
+    TokenTag.SUB,
+  ].includes(token.tag);
+}
+
+export function isMultiplicativeOperatorToken(token: Token) {
+  return [
+    TokenTag.MULT
+  ].includes(token.tag);
+}

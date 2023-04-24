@@ -5,9 +5,7 @@ import {
   IdentifierNode,
   IntegerNode,
   LogicalNode,
-  NegativeOperationNode,
   ParserNode,
-  RelativeOperationNode,
 } from "../v3/parser/node";
 
 export default class Evaluator {
@@ -16,23 +14,6 @@ export default class Evaluator {
 
     for (const stmt of block) {
       if (stmt instanceof IdentifierNode) {
-        continue;
-      }
-
-      if (stmt instanceof RelativeOperationNode) {
-        out.push(`${Evaluator.relative(stmt)}`);
-        continue;
-      }
-
-      if (stmt instanceof NegativeOperationNode) {
-        const { expr } = stmt;
-
-        if (expr instanceof LogicalNode) {
-          out.push(`${!expr.value}`);
-          continue;
-        }
-
-        out.push(`${!Evaluator.relative(expr)}`);
         continue;
       }
 
@@ -47,41 +28,32 @@ export default class Evaluator {
     return out;
   }
 
-  static relative(tree: RelativeOperationNode): boolean {
-    const {comparator, left, right} = tree;
-
-    const a = left instanceof LogicalNode ? left.value : Evaluator.evaluate(left);
-    const b = right instanceof LogicalNode ? right.value : Evaluator.evaluate(right);
-
-    switch (comparator.tag) {
-      case TokenTag.EQUAL:
-        return a === b;
-
-      case TokenTag.GREATER_THAN:
-        return a > b;
-
-      case TokenTag.LESS_THAN:
-        return a < b;
-    }
-
-    throw new SyntaxError(
-      `It was not possible evaluate relative op:
-            Comparator: ${comparator}
-            Left: ${left}
-            Right: ${right}
-        `
-    );
-  }
-
-  static evaluate(tree: ParserNode): number {
-    if (tree instanceof IntegerNode) {
+  static evaluate(tree: ParserNode): any {
+    if (tree instanceof IntegerNode)
       return tree.value;
-    }
+
+    if (tree instanceof LogicalNode)
+      return tree.value;
 
     if (tree instanceof BinaryOperationNode) {
       const {operator, left, right} = tree;
 
       switch (operator.tag) {
+        case TokenTag.AND:
+          return this.evaluate(left) && this.evaluate(right);
+
+        case TokenTag.OR:
+          return this.evaluate(left) || this.evaluate(right);
+
+        case TokenTag.EQUAL:
+          return this.evaluate(left) === this.evaluate(right);
+
+        case TokenTag.GREATER_THAN:
+          return this.evaluate(left) > this.evaluate(right);
+
+        case TokenTag.LESS_THAN:
+          return this.evaluate(left) < this.evaluate(right);
+
         case TokenTag.ADD:
           return this.evaluate(left) + this.evaluate(right);
 

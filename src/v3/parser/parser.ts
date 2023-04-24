@@ -7,10 +7,12 @@ import {
   TokenNumber, 
   Environment,
   TokenLogical,
-  TokenIdentifier
+  TokenIdentifier,
+  isLogicalOperatorToken,
+  isRelativeOperatorToken,
+  isAdditiveOperatorToken,
+  isMultiplicativeOperatorToken
 } from "../../v1";
-import {isLogicalOperatorToken, isRelativeOperatorToken} from "../../v1/tokens";
-import {isAdditiveOperatorToken, isMultiplicativeOperatorToken} from "../../v1/tokens/token";
 
 import {
   BinaryOperationNode, 
@@ -36,13 +38,11 @@ export default class Parser {
 
     if (token?.tag === TokenTag.EOT)
       throw new SyntaxError(
-        `Unexpected end of token, expected token: ${tokenTag.toString()}`
+        `Unexpected end of token, expected token: ${tokenTag}`
       );
 
     if (tokenTag !== token?.tag)
-      throw new SyntaxError(
-        `Unexpected token: ${token?.toString()}`
-      );
+      throw new SyntaxError(`Unexpected token: ${token}`);
 
     this._lookahead = this._lexer.getNextToken();
     return token;
@@ -103,6 +103,14 @@ export default class Parser {
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const mult = this._mult();
 
+    if (
+      fact.returnType !== ParserNodeReturnType.Integer
+      || mult.returnType !== ParserNodeReturnType.Integer
+    )
+      throw new SyntaxError(
+        `It's not possible use ${operator} operator with non-integer parameters`
+      );
+
     return new BinaryOperationNode(
       fact, mult, operator, ParserNodeReturnType.Integer
     );
@@ -122,6 +130,14 @@ export default class Parser {
     
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const add = this._add();
+
+    if (
+      mult.returnType !== ParserNodeReturnType.Integer
+      || add.returnType !== ParserNodeReturnType.Integer
+    )
+      throw new SyntaxError(
+        `It's not possible use ${operator} operator with non-integer parameters`
+      );
 
     return new BinaryOperationNode(
       mult, add, operator, ParserNodeReturnType.Integer

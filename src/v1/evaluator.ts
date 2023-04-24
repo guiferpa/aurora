@@ -65,6 +65,6 @@ export default class Evaluator {
       }
     }
 
-    return NaN;
+    throw new Error(`Unsupported evalute expression`);
   }
 }

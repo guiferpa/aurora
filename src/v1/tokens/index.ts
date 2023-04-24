@@ -5,5 +5,7 @@ export {
   TokenNumber, 
   Token,
   isLogicalOperatorToken,
-  isRelativeOperatorToken
+  isRelativeOperatorToken,
+  isAdditiveOperatorToken,
+  isMultiplicativeOperatorToken
 } from "./token";

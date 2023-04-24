@@ -1,6 +1,8 @@
 export { default as Lexer } from "./lexer";
 export { 
-  Token, TokenTag, TokenNumber, TokenLogical, TokenIdentifier 
+  Token, TokenTag, TokenNumber, TokenLogical, TokenIdentifier,
+  isLogicalOperatorToken, isRelativeOperatorToken,
+  isAdditiveOperatorToken, isMultiplicativeOperatorToken
 } from "./tokens";
 export { default as Evaluator } from "./evaluator";
 export { default as Environment } from "./environment";

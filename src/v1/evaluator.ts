@@ -6,6 +6,7 @@ import {
   IntegerNode,
   LogicalNode,
   ParserNode,
+  UnaryOperationNode,
 } from "../v3/parser/node";
 
 export default class Evaluator {
@@ -34,6 +35,15 @@ export default class Evaluator {
 
     if (tree instanceof LogicalNode)
       return tree.value;
+
+    if (tree instanceof UnaryOperationNode) {
+      const { operator, expr } = tree;
+
+      switch (operator.tag) {
+        case TokenTag.OPP:
+          return !this.evaluate(expr);
+      }
+    }
 
     if (tree instanceof BinaryOperationNode) {
       const {operator, left, right} = tree;

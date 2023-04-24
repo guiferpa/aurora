@@ -22,6 +22,7 @@ import {
   LogicalNode, 
   ParserNode,
   ParserNodeReturnType,
+  UnaryOperationNode,
 } from "./node";
 
 export default class Parser {
@@ -194,7 +195,28 @@ export default class Parser {
   }
 
   /**
-   * blckStmt =>
+   * opp =>
+   *  | !log
+   *  | log
+   */
+  private _opp(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.OPP) {
+      const operator = this._eat(TokenTag.OPP);
+      const log = this._log();
+
+      if (log.returnType !== ParserNodeReturnType.Logical)
+        throw new SyntaxError(
+          `It's not possible use ${operator} operator with non-boolean parameters`
+        );
+
+      return new UnaryOperationNode(log, operator, ParserNodeReturnType.Logical);
+    }
+
+    return this._log();
+  }
+
+  /**
+   * block =>
    *  | BLOCK_BEGIN stmts BLOCK_END
    */
   private _block(): ParserNode {
@@ -215,17 +237,17 @@ export default class Parser {
   /**
    * stmt =>
    *  | block
-   *  | log SEMI
+   *  | opp SEMI
    */
   private _stmt(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
       return this._block();
     }
 
-    const log = this._log();
+    const opp = this._opp();
     this._eat(TokenTag.SEMI);
 
-    return log;
+    return opp;
   }
 
   private _stmts(et?: TokenTag): ParserNode[] {

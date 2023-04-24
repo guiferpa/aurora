@@ -11,8 +11,9 @@ export enum ParserNodeTag {
   Logical = "Logical",
   Identifier = "Identifier",
   BinaryOperation = "BinaryOperation",
+  UnaryOperation = "UnaryOperation",
   BlockStatment = "BlockStatment"
-};
+}
 
 export class ParserNode {
   public readonly tag: ParserNodeTag;
@@ -53,6 +54,23 @@ export class BinaryOperationNode extends ParserNode {
     this.right = right;
     this.operator = operator;
   }
+}
+
+export class UnaryOperationNode extends ParserNode {
+  public readonly expr: ParserNode;
+  public readonly operator: Token;
+
+  constructor (
+    expr: ParserNode,
+    operator: Token,
+    returnType: ParserNodeReturnType
+  ) {
+    super(ParserNodeTag.UnaryOperation, returnType);
+
+    this.expr = expr;
+    this.operator = operator;
+  }
+
 }
 
 export class IdentifierNode extends ParserNode {

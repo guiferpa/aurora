@@ -9,10 +9,10 @@ export default class Interpreter {
     this._buffer = buffer;
   }
 
-  public run(): string[] {
+  public run(debug?: boolean): string[] {
     const lexer = new Lexer(this._buffer); // Tokenizer
     const parser = new Parser(lexer);
-    const tree = parser.parse();
+    const tree = parser.parse(debug);
     return Evaluator.compose(tree.block);
   }
 }

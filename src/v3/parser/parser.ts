@@ -1,10 +1,10 @@
 import colorize from "json-colorizer";
 
 import {
-  Lexer, 
-  Token, 
-  TokenTag, 
-  TokenNumber, 
+  Lexer,
+  Token,
+  TokenTag,
+  TokenNumber,
   Environment,
   TokenLogical,
   TokenIdentifier,
@@ -15,11 +15,12 @@ import {
 } from "../../v1";
 
 import {
-  BinaryOperationNode, 
-  BlockStatmentNode, 
-  IdentifierNode, 
-  IntegerNode, 
-  LogicalNode, 
+  BinaryOperationNode,
+  BlockStatmentNode,
+  IdentifierNode,
+  IfStatmentNode,
+  IntegerNode,
+  LogicalNode,
   ParserNode,
   ParserNodeReturnType,
   UnaryOperationNode,
@@ -100,7 +101,7 @@ export default class Parser {
 
     if (!isMultiplicativeOperatorToken(this._lookahead as Token))
       return fact;
-    
+
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const mult = this._mult();
 
@@ -128,7 +129,7 @@ export default class Parser {
 
     if (!isAdditiveOperatorToken(this._lookahead as Token))
       return mult;
-    
+
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const add = this._add();
 
@@ -216,13 +217,34 @@ export default class Parser {
   }
 
   /**
+   * if =>
+   *  | IF PAREN_BEGIN opp PAREN_END block
+   */
+  private _if(): ParserNode {
+    const tif = this._eat(TokenTag.IF);
+    this._eat(TokenTag.PAREN_BEGIN);
+    const opp = this._opp();
+    this._eat(TokenTag.PAREN_END);
+
+    if (opp.returnType !== ParserNodeReturnType.Logical)
+      throw new SyntaxError(
+        `It's not possible use ${opp.tag} no-boolean expression as if-condition`
+      );
+
+    const { block } = this._block();
+    const id = `${tif}-${Date.now()}`;
+
+    return new IfStatmentNode(id, opp, block);
+  }
+
+  /**
    * block =>
    *  | BLOCK_BEGIN stmts BLOCK_END
    */
-  private _block(): ParserNode {
+  private _block(): BlockStatmentNode {
     this._eat(TokenTag.BLOCK_BEGIN);
 
-    const id = `${Date.now()}`;
+    const id = `${Date.now()} `;
     this._environ = new Environment(id, this._environ);
     const stmts = this._stmts(TokenTag.BLOCK_END);
     const stmt = new BlockStatmentNode(this._environ.id, stmts);
@@ -242,6 +264,10 @@ export default class Parser {
   private _stmt(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
       return this._block();
+    }
+
+    if (this._lookahead?.tag === TokenTag.IF) {
+      return this._if();
     }
 
     const opp = this._opp();

@@ -12,7 +12,8 @@ export enum ParserNodeTag {
   Identifier = "Identifier",
   BinaryOperation = "BinaryOperation",
   UnaryOperation = "UnaryOperation",
-  BlockStatment = "BlockStatment"
+  BlockStatment = "BlockStatment",
+  IfStatment = "IfStatment"
 }
 
 export class ParserNode {
@@ -26,13 +27,27 @@ export class ParserNode {
 }
 
 export class BlockStatmentNode extends ParserNode {
-  public id: string;
-  public block: ParserNode[];
+  public readonly id: string;
+  public readonly block: ParserNode[];
 
-  constructor(id: string, block: ParserNode[]) {
+  constructor (id: string, block: ParserNode[]) {
     super(ParserNodeTag.BlockStatment, ParserNodeReturnType.Void);
 
     this.id = id;
+    this.block = block;
+  }
+}
+
+export class IfStatmentNode extends ParserNode {
+  public readonly id: string;
+  public readonly test: ParserNode;
+  public readonly block: ParserNode[];
+
+  constructor (id: string, test: ParserNode, block: ParserNode[]) {
+    super(ParserNodeTag.IfStatment, ParserNodeReturnType.Void);
+
+    this.id = id;
+    this.test = test;
     this.block = block;
   }
 }
@@ -70,7 +85,6 @@ export class UnaryOperationNode extends ParserNode {
     this.expr = expr;
     this.operator = operator;
   }
-
 }
 
 export class IdentifierNode extends ParserNode {

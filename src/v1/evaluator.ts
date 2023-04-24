@@ -3,6 +3,7 @@ import {
   BinaryOperationNode,
   BlockStatmentNode,
   IdentifierNode,
+  IfStatmentNode,
   IntegerNode,
   LogicalNode,
   ParserNode,
@@ -15,6 +16,12 @@ export default class Evaluator {
 
     for (const stmt of block) {
       if (stmt instanceof IdentifierNode) {
+        continue;
+      }
+
+      if (stmt instanceof IfStatmentNode) {
+        Evaluator.evaluate(stmt.test) 
+          && out.push(Evaluator.compose(stmt.block).join(','));
         continue;
       }
 

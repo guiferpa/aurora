@@ -1,6 +1,7 @@
 var result = 10 * 10;
 
-if (1) {
-  10;
+if (true) {
+  print(10);
+  print(result);
 }
 

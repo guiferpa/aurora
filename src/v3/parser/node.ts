@@ -13,7 +13,8 @@ export enum ParserNodeTag {
   BinaryOperation = "BinaryOperation",
   UnaryOperation = "UnaryOperation",
   BlockStatment = "BlockStatment",
-  IfStatment = "IfStatment"
+  IfStatment = "IfStatment",
+  PrintCallStatment = "PrintCallStatment"
 }
 
 export class ParserNode {
@@ -49,6 +50,16 @@ export class IfStatmentNode extends ParserNode {
     this.id = id;
     this.test = test;
     this.block = block;
+  }
+}
+
+export class PrintCallStatmentNode extends ParserNode {
+  public readonly param: ParserNode;
+
+  constructor (param: ParserNode) {
+    super(ParserNodeTag.PrintCallStatment, ParserNodeReturnType.Void);
+
+    this.param = param;
   }
 }
 

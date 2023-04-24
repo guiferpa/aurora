@@ -23,6 +23,7 @@ import {
   LogicalNode,
   ParserNode,
   ParserNodeReturnType,
+  PrintCallStatmentNode,
   UnaryOperationNode,
 } from "./node";
 
@@ -257,8 +258,23 @@ export default class Parser {
   }
 
   /**
+   * call =>
+   *  | IDENT PAREN_BEGIN opp PAREN_END
+   */
+  private _print(): ParserNode {
+    this._eat(TokenTag.CALL_PRINT);
+    this._eat(TokenTag.PAREN_BEGIN);
+    const opp = this._opp();
+    this._eat(TokenTag.PAREN_END);
+
+    return new PrintCallStatmentNode(opp);
+  }
+
+  /**
    * stmt =>
    *  | block
+   *  | if
+   *  | print SEMI
    *  | opp SEMI
    */
   private _stmt(): ParserNode {
@@ -268,6 +284,13 @@ export default class Parser {
 
     if (this._lookahead?.tag === TokenTag.IF) {
       return this._if();
+    }
+
+    if (this._lookahead?.tag === TokenTag.CALL_PRINT) {
+      const print = this._print();
+      this._eat(TokenTag.SEMI);
+
+      return print;
     }
 
     const opp = this._opp();

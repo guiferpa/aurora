@@ -7,6 +7,7 @@ import {
   IntegerNode,
   LogicalNode,
   ParserNode,
+  PrintCallStatmentNode,
   UnaryOperationNode,
 } from "../v3/parser/node";
 
@@ -22,6 +23,11 @@ export default class Evaluator {
       if (stmt instanceof IfStatmentNode) {
         Evaluator.evaluate(stmt.test) 
           && out.push(Evaluator.compose(stmt.block).join(','));
+        continue;
+      }
+
+      if (stmt instanceof PrintCallStatmentNode) {
+        console.log(Evaluator.evaluate(stmt.param));
         continue;
       }
 

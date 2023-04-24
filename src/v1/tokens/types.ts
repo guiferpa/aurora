@@ -7,7 +7,7 @@ export enum TokenTag {
   ADD = "ADD", SUB = "SUB", MULT = "MULT", LOGICAL = "LOGICAL",
   EQUAL = "EQUAL", GREATER_THAN = "GREATER_THAN", LESS_THAN = "LESS_THAN",
   OPP = "OPP", AND = "AND", OR = "OR",
-  IF = "IF"
+  IF = "IF", CALL_PRINT = "CALL_PRINT"
 }
 
 export const TokenProduct: [RegExp, TokenTag][] = [
@@ -21,6 +21,7 @@ export const TokenProduct: [RegExp, TokenTag][] = [
   [new RegExp(/^==/), TokenTag.EQUAL],
   [new RegExp(/^>/), TokenTag.GREATER_THAN],
   [new RegExp(/^</), TokenTag.LESS_THAN],
+  [new RegExp(/^print/), TokenTag.CALL_PRINT],
   [new RegExp(/^[a-z_]+/), TokenTag.IDENT],
   [new RegExp(/^\s+/), TokenTag.WHITESPACE],
   [new RegExp(/^=/), TokenTag.ASSIGN],

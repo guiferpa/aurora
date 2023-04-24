@@ -85,3 +85,4 @@ export function isMultiplicativeOperatorToken(token: Token) {
     TokenTag.MULT
   ].includes(token.tag);
 }
+

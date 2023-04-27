@@ -17,9 +17,10 @@ function run() {
       const options = program.opts();
 
       const r = repl();
+      const interpreter = new Interpreter();
 
       r.on('line', function (chunk) {
-        const interpreter = new Interpreter(Buffer.from(chunk));
+        interpreter.write(Buffer.from(chunk));
         console.log(`= ${interpreter.run(options.debug as boolean)}`);
         r.prompt(true);
       });
@@ -40,7 +41,6 @@ function run() {
       const buffer = await read(arg);
       const interpreter = new Interpreter(buffer);
       console.log(`= ${interpreter.run(options.debug as boolean)}`);
-      return
     });
 
   program.parse(process.argv);

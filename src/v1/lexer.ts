@@ -9,10 +9,17 @@ import {
 
 export default class Lexer {
   public _cursor = 0;
-  public readonly _buffer: Buffer;
+  public _buffer: Buffer;
 
-  constructor(buffer: Buffer) {
+  constructor(buffer: Buffer = Buffer.from("")) {
     this._buffer = buffer;
+  }
+
+  public write(buffer: Buffer) {
+    this._buffer = Buffer.concat([
+      this._buffer,
+      buffer
+    ]);
   }
 
   public hasMoreTokens(): boolean {

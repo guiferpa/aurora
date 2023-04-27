@@ -3,16 +3,20 @@ import Evaluator from "./evaluator";
 import Lexer from "./lexer";
 
 export default class Interpreter {
-  private readonly _buffer: Buffer;
+  private _lexer: Lexer;
+  private _parser: Parser;
 
-  constructor (buffer: Buffer) {
-    this._buffer = buffer;
+  constructor (buffer: Buffer = Buffer.from("")) {
+    this._lexer = new Lexer(buffer);
+    this._parser = new Parser(this._lexer /*Tokenizer*/);
+  }
+
+  public write(buffer: Buffer) {
+    this._lexer.write(buffer);
   }
 
   public run(debug?: boolean): string[] {
-    const lexer = new Lexer(this._buffer); // Tokenizer
-    const parser = new Parser(lexer);
-    const tree = parser.parse(debug);
+    const tree = this._parser.parse(debug);
     return Evaluator.compose(tree.block);
   }
 }

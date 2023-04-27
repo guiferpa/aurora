@@ -1,6 +1,6 @@
 import {TokenTag} from "./types"
 
-describe('v1.Token test suite', () => {
+describe('Token test suite', () => {
   test('Given EOT expected "EOT"', () => {
     expect(TokenTag.EOT).toBe("EOT");
   });

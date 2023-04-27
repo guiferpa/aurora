@@ -1,6 +1,6 @@
 import colorize from "json-colorizer";
 
-import {Environment} from "@/environment";
+import Environment from "./environment";
 
 import {Lexer} from "@/lexer";
 import {
@@ -31,7 +31,7 @@ import {
 export default class Parser {
   private readonly _lexer: Lexer;
   private _lookahead: Token | null = null;
-  private _environ: Environment | null = null;
+  public _environ: Environment | null = null;
 
   constructor(lexer: Lexer) {
     this._lexer = lexer;

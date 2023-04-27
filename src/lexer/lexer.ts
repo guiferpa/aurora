@@ -53,7 +53,7 @@ export default class Lexer {
       }
 
       if (tag === TokenTag.STR)
-        return new TokenString(`${value}`);
+        return new TokenString(value.replace(/"/g, ""));
 
       if (tag === TokenTag.IDENT)
         return new TokenIdentifier(value);

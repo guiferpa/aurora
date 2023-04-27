@@ -12,6 +12,7 @@ import {
   TokenIdentifier, 
   TokenLogical, 
   TokenNumber, 
+  TokenString,
   TokenTag
 } from "@/tokens";
 
@@ -28,7 +29,6 @@ import {
   StringNode,
   UnaryOperationNode,
 } from "./node";
-import {TokenString} from "@/tokens/token";
 
 export default class Parser {
   private readonly _lexer: Lexer;

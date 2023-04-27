@@ -1,10 +1,10 @@
 export enum TokenTag {
   EOT = "EOT", EOF = "EOF", WHITESPACE = "WHITESPACE",
   DEF = "DEF", IDENT = "IDENT", ASSIGN = "ASSIGN",
-  SEMI = "SEMI", NUM = "NUM", 
+  SEMI = "SEMI", NUM = "NUM", STR = "STR", LOGICAL = "LOGICAL",
   PAREN_BEGIN = "PAREN_BEGIN", PAREN_END = "PAREN_END",
   BLOCK_BEGIN = "BLOCK_BEGIN", BLOCK_END = "BLOCK_END",
-  ADD = "ADD", SUB = "SUB", MULT = "MULT", LOGICAL = "LOGICAL",
+  ADD = "ADD", SUB = "SUB", MULT = "MULT", 
   EQUAL = "EQUAL", GREATER_THAN = "GREATER_THAN", LESS_THAN = "LESS_THAN",
   OPP = "OPP", AND = "AND", OR = "OR",
   IF = "IF", CALL_PRINT = "CALL_PRINT"
@@ -22,6 +22,7 @@ export const TokenProduct: [RegExp, TokenTag][] = [
   [new RegExp(/^>/), TokenTag.GREATER_THAN],
   [new RegExp(/^</), TokenTag.LESS_THAN],
   [new RegExp(/^print/), TokenTag.CALL_PRINT],
+  [new RegExp(/^".+"/), TokenTag.STR],
   [new RegExp(/^[a-z_]+/), TokenTag.IDENT],
   [new RegExp(/^\s+/), TokenTag.WHITESPACE],
   [new RegExp(/^=/), TokenTag.ASSIGN],

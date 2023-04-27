@@ -58,6 +58,20 @@ export class TokenLogical extends Token {
   }
 }
 
+export class TokenString extends Token {
+  public readonly value: string;
+
+  constructor(value: string) {
+    super(TokenTag.STR);
+    
+    this.value = value;
+  }
+
+  public toString(): string {
+    return `<${this.tag}, ${this.value}>`
+  }
+}
+
 export function isRelativeOperatorToken(token: Token) {
   return [
     TokenTag.EQUAL,

@@ -1,6 +1,7 @@
 import {
   Token, 
   TokenIdentifier, 
+  TokenString,
   TokenNumber, 
   TokenLogical,
   TokenProduct, 
@@ -50,6 +51,9 @@ export default class Lexer {
         const logical = value === "true";
         return new TokenLogical(logical);
       }
+
+      if (tag === TokenTag.STR)
+        return new TokenString(`${value}`);
 
       if (tag === TokenTag.IDENT)
         return new TokenIdentifier(value);

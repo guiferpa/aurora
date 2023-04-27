@@ -10,6 +10,7 @@ import {
   PrintCallStatmentNode,
   UnaryOperationNode,
 } from "@/parser";
+import {StringNode} from "@/parser/node";
 
 export default class Evaluator {
   static compose(block: ParserNode[]): string[] {
@@ -47,6 +48,9 @@ export default class Evaluator {
       return tree.value;
 
     if (tree instanceof LogicalNode)
+      return tree.value;
+
+    if (tree instanceof StringNode)
       return tree.value;
 
     if (tree instanceof UnaryOperationNode) {

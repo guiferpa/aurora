@@ -25,8 +25,10 @@ import {
   ParserNode,
   ParserNodeReturnType,
   PrintCallStatmentNode,
+  StringNode,
   UnaryOperationNode,
 } from "./node";
+import {TokenString} from "@/tokens/token";
 
 export default class Parser {
   private readonly _lexer: Lexer;
@@ -57,6 +59,7 @@ export default class Parser {
    *  | NUM
    *  | LOGICAL
    *  | IDENT
+   *  | STR
    *  | DEF IDENT ASSIGN expr
    *  | PAREN_BEGIN expr PAREN_END
    */
@@ -69,6 +72,11 @@ export default class Parser {
     if (this._lookahead?.tag === TokenTag.LOGICAL) {
       const logical = this._eat(TokenTag.LOGICAL);
       return new LogicalNode((logical as TokenLogical).value);
+    }
+
+    if (this._lookahead?.tag === TokenTag.STR) {
+      const str = this._eat(TokenTag.STR);
+      return new StringNode((str as TokenString).value);
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {

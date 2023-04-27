@@ -3,13 +3,15 @@ import {Token} from "@/tokens";
 export enum ParserNodeReturnType {
   Void = "Void",
   Integer = "Integer",
-  Logical = "Logical"
+  Logical = "Logical",
+  Str = "String"
 }
 
 export enum ParserNodeTag {
   Integer = "Integer",
   Logical = "Logical",
   Identifier = "Identifier",
+  Str = "String",
   BinaryOperation = "BinaryOperation",
   UnaryOperation = "UnaryOperation",
   BlockStatment = "BlockStatment",
@@ -128,3 +130,12 @@ export class LogicalNode extends ParserNode {
   }
 }
 
+export class StringNode extends ParserNode {
+  public value: string;
+
+  constructor (value: string) {
+    super(ParserNodeTag.Str, ParserNodeReturnType.Str);
+
+    this.value = value;
+  }
+}

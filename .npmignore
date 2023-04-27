@@ -1,3 +1,4 @@
 docs/
-src/
-*config.ts
+jest.config.ts
+.editorconfig
+**/*.test.ts

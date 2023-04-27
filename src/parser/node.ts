@@ -1,4 +1,4 @@
-import {Token} from "../../v1";
+import {Token} from "@/tokens";
 
 export enum ParserNodeReturnType {
   Void = "Void",

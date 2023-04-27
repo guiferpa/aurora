@@ -1,7 +1,10 @@
 import {Command} from "commander";
 
 import pkg from "../package.json";
-import {Interpreter, repl, read} from "./v1";
+
+import {Interpreter} from "@/interpreter";
+import {read} from "@/fsutil";
+import {repl} from "@/repl";
 
 function run() {
   const program = new Command();

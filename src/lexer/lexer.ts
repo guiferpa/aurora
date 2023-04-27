@@ -5,7 +5,7 @@ import {
   TokenLogical,
   TokenProduct, 
   TokenTag
-} from "./tokens";
+} from "@/tokens";
 
 export default class Lexer {
   public _cursor = 0;

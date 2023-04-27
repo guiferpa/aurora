@@ -1,4 +1,4 @@
-import {TokenTag} from "./tokens";
+import {TokenTag} from "@/tokens";
 import {
   BinaryOperationNode,
   BlockStatmentNode,
@@ -9,7 +9,7 @@ import {
   ParserNode,
   PrintCallStatmentNode,
   UnaryOperationNode,
-} from "../v3/parser/node";
+} from "@/parser";
 
 export default class Evaluator {
   static compose(block: ParserNode[]): string[] {

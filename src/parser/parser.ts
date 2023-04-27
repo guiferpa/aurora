@@ -1,18 +1,19 @@
 import colorize from "json-colorizer";
 
+import {Environment} from "@/environment";
+
+import {Lexer} from "@/lexer";
 import {
-  Lexer,
-  Token,
-  TokenTag,
-  TokenNumber,
-  Environment,
-  TokenLogical,
-  TokenIdentifier,
-  isLogicalOperatorToken,
-  isRelativeOperatorToken,
   isAdditiveOperatorToken,
-  isMultiplicativeOperatorToken
-} from "../../v1";
+  isLogicalOperatorToken,
+  isMultiplicativeOperatorToken, 
+  isRelativeOperatorToken, 
+  Token, 
+  TokenIdentifier, 
+  TokenLogical, 
+  TokenNumber, 
+  TokenTag
+} from "@/tokens";
 
 import {
   BinaryOperationNode,

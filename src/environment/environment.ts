@@ -1,4 +1,4 @@
-import {ParserNode} from "../v3/parser/node";
+import {ParserNode} from "@/parser";
 
 export default class Environment {
   public readonly id: string;

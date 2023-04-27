@@ -1,6 +1,6 @@
-import {Parser} from "../v3";
-import Evaluator from "./evaluator";
-import Lexer from "./lexer";
+import {Evaluator} from "@/evaluator";
+import {Lexer} from "@/lexer";
+import {Parser} from "@/parser";
 
 export default class Interpreter {
   private _lexer: Lexer;

@@ -6,8 +6,7 @@
   "author": "Guilherme Paixão <guiferpa@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "dev": "ts-node ./src/index.ts",
-    "build": "rimraf ./dist && tsc -p ./tsconfig.json",
+    "build": "rimraf ./dist && tsc -p ./tsconfig.json && tsc-alias",
     "test": "jest"
   },
   "devDependencies": {
@@ -19,6 +18,7 @@
     "rimraf": "^3.0.2",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.6",
     "typescript": "^4.8.4"
   },
   "bin": {

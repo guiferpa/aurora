@@ -3,6 +3,7 @@ import {Command} from "commander";
 import pkg from "../package.json";
 
 import {Interpreter} from "@/interpreter";
+import {Compiler} from "@/compiler";
 import {read} from "@/fsutil";
 import {repl} from "@/repl";
 
@@ -15,7 +16,7 @@ function run() {
     .version(pkg.version);
 
   program
-    .option('-d, --debug', 'debug flag to show AST', false)
+    .option('-t, --tree', 'tree flag to show AST', false)
     .action(function () {
       const options = program.opts();
 
@@ -24,7 +25,7 @@ function run() {
 
       r.on('line', function (chunk) {
         interpreter.write(Buffer.from(chunk));
-        console.log(`= ${interpreter.run(options.debug as boolean)}`);
+        console.log(`= ${interpreter.run(options.tree as boolean)}`);
         r.prompt(true);
       });
 
@@ -37,13 +38,25 @@ function run() {
   program
     .command('run')
     .argument('<filename>', 'filename to run interpreter')
-    .option('-d, --debug', 'debug flag to show AST', false)
+    .option('-t, --tree', 'tree flag to show AST', false)
     .action(async function (arg) {
       const options = program.opts();
 
       const buffer = await read(arg);
       const interpreter = new Interpreter(buffer);
-      console.log(`= ${interpreter.run(options.debug as boolean)}`);
+      console.log(`= ${interpreter.run(options.tree as boolean)}`);
+    });
+
+  program
+    .command('build')
+    .argument('<filename>', 'entrypoint to build source code')
+    .option('-t, --tree', 'tree flag to show AST', false)
+    .action(async function (arg) {
+      const options = program.opts();
+
+      const buffer = await read(arg);
+      const compiler = new Compiler(buffer);
+      console.log(`= ${compiler.compile(options.tree as boolean)}`);
     });
 
   program.parse(process.argv);

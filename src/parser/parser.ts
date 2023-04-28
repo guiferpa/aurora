@@ -326,15 +326,11 @@ export default class Parser {
     return this._stmts(TokenTag.EOT);
   }
 
-  public parse(debug?: boolean): ParserNode {
+  public parse(): ParserNode {
     this._lookahead = this._lexer.getNextToken();
 
     const id = "root";
     this._environ = new Environment(id, this._environ);
-    const tree = new BlockStatmentNode(this._environ.id, this._program());
-
-    debug && console.log(colorize(JSON.stringify(tree, null, 2)));
-
-    return tree;
+    return new BlockStatmentNode(this._environ.id, this._program());
   }
 }

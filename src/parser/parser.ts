@@ -326,7 +326,7 @@ export default class Parser {
     return this._stmts(TokenTag.EOT);
   }
 
-  public parse(debug?: boolean): BlockStatmentNode {
+  public parse(debug?: boolean): ParserNode {
     this._lookahead = this._lexer.getNextToken();
 
     const id = "root";

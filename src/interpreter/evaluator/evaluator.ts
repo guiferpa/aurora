@@ -44,6 +44,9 @@ export default class Evaluator {
   }
 
   static evaluate(tree: ParserNode): any {
+    if (tree instanceof BlockStatmentNode)
+      return Evaluator.compose(tree.block);
+
     if (tree instanceof IntegerNode)
       return tree.value;
 

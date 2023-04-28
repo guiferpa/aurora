@@ -1,4 +1,4 @@
-import {Evaluator} from "@/evaluator";
+import {Evaluator} from "./evaluator";
 import {Lexer} from "@/lexer";
 import {Parser} from "@/parser";
 
@@ -17,6 +17,6 @@ export default class Interpreter {
 
   public run(debug?: boolean): string[] {
     const tree = this._parser.parse(debug);
-    return Evaluator.compose(tree.block);
+    return Evaluator.evaluate(tree);
   }
 }

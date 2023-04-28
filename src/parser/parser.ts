@@ -91,7 +91,7 @@ export default class Parser {
       const log = this._log();
       this._environ?.set(ident.name, log);
 
-      return new IdentifierNode(ident.name);
+      return new IdentifierNode(ident.name, log);
     }
 
     this._eat(TokenTag.PAREN_BEGIN);

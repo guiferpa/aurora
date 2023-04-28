@@ -19,3 +19,14 @@ export async function read(arg: string): Promise<Buffer> {
     });
   });
 }
+
+export async function write(filename: string, content: string[]) {
+  const writer = fs.createWriteStream(filename, {
+    flags: 'w'
+  });
+
+  for (const inst of content)
+    writer.write(Buffer.concat([Buffer.from(inst), Buffer.from('\n')]));
+
+  writer.close();
+}

@@ -32,6 +32,34 @@ describe('Evaluator test suite', () => {
     expect(got).toStrictEqual(expected);
   });
 
+  test('Program 2 that calc precedence expression', () => {
+    const program = `
+    10 - 2 * 5;
+    `;
+
+    const expected = ["0"];
+
+    const lexer = new Lexer(Buffer.from(program));
+    const parser = new Parser(lexer);
+    const got = Evaluator.evaluate(parser.parse());
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test('Program 3 that calc precedence expression', () => {
+    const program = `
+    10 * 2 - 5;
+    `;
+
+    const expected = ["15"];
+
+    const lexer = new Lexer(Buffer.from(program));
+    const parser = new Parser(lexer);
+    const got = Evaluator.evaluate(parser.parse());
+
+    expect(got).toStrictEqual(expected);
+  });
+
   test('Program that set a vairbale then sum it with another number', () => {
     const program = `
     var value = 10;

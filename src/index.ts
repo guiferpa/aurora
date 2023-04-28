@@ -4,7 +4,7 @@ import pkg from "../package.json";
 
 import {Interpreter} from "@/interpreter";
 import {Compiler} from "@/compiler";
-import {read} from "@/fsutil";
+import {read, write} from "@/fsutil";
 import {repl} from "@/repl";
 
 function run() {
@@ -56,7 +56,8 @@ function run() {
 
       const buffer = await read(arg);
       const compiler = new Compiler(buffer);
-      console.log(`= ${compiler.compile(options.tree as boolean)}`);
+      const content = compiler.compile(options.tree as boolean);
+      await write("out", content);
     });
 
   program.parse(process.argv);

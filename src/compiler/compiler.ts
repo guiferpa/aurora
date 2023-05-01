@@ -5,6 +5,7 @@ import {
   BinaryOperationNode, 
   BlockStatmentNode, 
   IdentifierNode, 
+  IfStatmentNode, 
   IntegerNode, 
   Parser, 
   ParserNode
@@ -26,17 +27,27 @@ export default class Compiler {
       return `${stmt.value}`;
 
     if (stmt instanceof IdentifierNode) {
-      if (stmt.value instanceof BinaryOperationNode)
-        this._registers.push(`${stmt.name} = ${this._build(stmt.value)}`);
+      const inst = `${stmt.name} = ${this._build(stmt.value)}`;
+      this._registers.push(`${this._registers.length}: ${inst}`);
     }
 
     if (stmt instanceof BinaryOperationNode) {
       const reg = `t${this._counter}`;
-      this._registers.push(`${reg} = ${this._build(stmt.left)} ${stmt.operator.tag} ${this._build(stmt.right)}`);
+      const inst = `${reg} = ${this._build(stmt.left)} ${stmt.operator.tag} ${this._build(stmt.right)}`;
+      this._registers.push(`${this._registers.length}: ${inst}`);
       this._counter++;
 
       return reg;
     }
+
+    if (stmt instanceof IfStatmentNode) {
+      const test = this._build(stmt.test);
+      const inst = `if-false ${test} goto ${this._registers.length + stmt.block.length + 1}`;
+      this._registers.push(`${this._registers.length}: ${inst}`);
+      for (const s of stmt.block) {
+        this._build(s);
+      }
+    } 
 
     if (stmt instanceof BlockStatmentNode) {
       for (const s of stmt.block) {

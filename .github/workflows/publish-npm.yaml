@@ -4,6 +4,7 @@ on:
     types: [created]
 jobs:
   build:
+    name: Build release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

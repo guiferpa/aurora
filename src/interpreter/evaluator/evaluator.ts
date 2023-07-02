@@ -1,29 +1,33 @@
-import {TokenTag} from "@/tokens";
+import { TokenTag } from "@/tokens";
 import {
   BinaryOperationNode,
   BlockStatmentNode,
-  IdentifierNode,
+  DefStatmentNode,
   IfStatmentNode,
   IntegerNode,
   LogicalNode,
   ParserNode,
   PrintCallStatmentNode,
   UnaryOperationNode,
+  DefFunctionStatmentNode,
+  StringNode,
 } from "@/parser";
-import {StringNode} from "@/parser/node";
 
 export default class Evaluator {
   static compose(block: ParserNode[]): string[] {
     const out = [];
 
     for (const stmt of block) {
-      if (stmt instanceof IdentifierNode) {
+      if (
+        stmt instanceof DefStatmentNode ||
+        stmt instanceof DefFunctionStatmentNode
+      ) {
         continue;
       }
 
       if (stmt instanceof IfStatmentNode) {
-        Evaluator.evaluate(stmt.test) 
-          && out.push(Evaluator.compose(stmt.block).join(','));
+        Evaluator.evaluate(stmt.test) &&
+          out.push(Evaluator.compose(stmt.block).join(","));
         continue;
       }
 
@@ -33,7 +37,7 @@ export default class Evaluator {
       }
 
       if (stmt instanceof BlockStatmentNode) {
-        out.push(Evaluator.compose(stmt.block).join(','));
+        out.push(Evaluator.compose(stmt.block).join(","));
         continue;
       }
 
@@ -44,17 +48,13 @@ export default class Evaluator {
   }
 
   static evaluate(tree: ParserNode): any {
-    if (tree instanceof BlockStatmentNode)
-      return Evaluator.compose(tree.block);
+    if (tree instanceof BlockStatmentNode) return Evaluator.compose(tree.block);
 
-    if (tree instanceof IntegerNode)
-      return tree.value;
+    if (tree instanceof IntegerNode) return tree.value;
 
-    if (tree instanceof LogicalNode)
-      return tree.value;
+    if (tree instanceof LogicalNode) return tree.value;
 
-    if (tree instanceof StringNode)
-      return tree.value;
+    if (tree instanceof StringNode) return tree.value;
 
     if (tree instanceof UnaryOperationNode) {
       const { operator, expr } = tree;
@@ -66,7 +66,7 @@ export default class Evaluator {
     }
 
     if (tree instanceof BinaryOperationNode) {
-      const {operator, left, right} = tree;
+      const { operator, left, right } = tree;
 
       switch (operator.tag) {
         case TokenTag.AND:
@@ -95,6 +95,6 @@ export default class Evaluator {
       }
     }
 
-    throw new Error(`Unsupported evalute expression`);
+    throw new Error(`Unsupported evaluate expression`);
   }
 }

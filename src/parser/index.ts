@@ -5,10 +5,12 @@ export {
   ParserNode,
   BlockStatmentNode,
   IfStatmentNode,
+  DefStatmentNode,
   PrintCallStatmentNode,
   BinaryOperationNode,
   UnaryOperationNode,
-  IdentifierNode,
   IntegerNode,
-  LogicalNode
+  LogicalNode,
+  DefFunctionStatmentNode,
+  StringNode,
 } from "./node";

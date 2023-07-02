@@ -1,25 +1,30 @@
 import colorize from "json-colorizer";
 
-import Environment from "./environment";
+import Environment, { FuncParameterType } from "./environment";
 
-import {Lexer} from "@/lexer";
+import { Lexer } from "@/lexer";
 import {
   isAdditiveOperatorToken,
   isLogicalOperatorToken,
-  isMultiplicativeOperatorToken, 
-  isRelativeOperatorToken, 
-  Token, 
-  TokenIdentifier, 
-  TokenLogical, 
-  TokenNumber, 
+  isMultiplicativeOperatorToken,
+  isRelativeOperatorToken,
+  Token,
+  TokenArity,
+  TokenDef,
+  TokenDefFunction,
+  TokenIdentifier,
+  TokenLogical,
+  TokenNumber,
   TokenString,
-  TokenTag
+  TokenTag,
 } from "@/tokens";
 
 import {
+  ArityNode,
   BinaryOperationNode,
   BlockStatmentNode,
-  IdentifierNode,
+  DefStatmentNode,
+  DefFunctionStatmentNode,
   IfStatmentNode,
   IntegerNode,
   LogicalNode,
@@ -60,7 +65,7 @@ export default class Parser {
    *  | LOGICAL
    *  | IDENT
    *  | STR
-   *  | DEF IDENT ASSIGN expr
+   *  | DEF ASSIGN expr
    *  | PAREN_BEGIN expr PAREN_END
    */
   private _fact(): ParserNode {
@@ -80,18 +85,17 @@ export default class Parser {
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
-      const ident = (this._eat(TokenTag.IDENT) as TokenIdentifier);
-      return (this._environ as Environment).query(ident.name);
+      const ident = this._eat(TokenTag.IDENT) as TokenIdentifier;
+      return this._environ?.query(ident.name) as ParserNode;
     }
 
     if (this._lookahead?.tag === TokenTag.DEF) {
-      this._eat(TokenTag.DEF);
-      const ident = (this._eat(TokenTag.IDENT) as TokenIdentifier);
+      const tdef = this._eat(TokenTag.DEF) as TokenDef;
       this._eat(TokenTag.ASSIGN);
       const log = this._log();
-      this._environ?.set(ident.name, log);
+      this._environ?.set(tdef.name, log);
 
-      return new IdentifierNode(ident.name, log);
+      return new DefStatmentNode(tdef.name, log);
     }
 
     this._eat(TokenTag.PAREN_BEGIN);
@@ -109,22 +113,24 @@ export default class Parser {
   private _mult(): ParserNode {
     const fact = this._fact();
 
-    if (!isMultiplicativeOperatorToken(this._lookahead as Token))
-      return fact;
+    if (!isMultiplicativeOperatorToken(this._lookahead as Token)) return fact;
 
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const mult = this._mult();
 
     if (
-      fact.returnType !== ParserNodeReturnType.Integer
-      || mult.returnType !== ParserNodeReturnType.Integer
+      fact.returnType !== ParserNodeReturnType.Integer ||
+      mult.returnType !== ParserNodeReturnType.Integer
     )
       throw new SyntaxError(
         `It's not possible use ${operator} operator with non-integer parameters`
       );
 
     return new BinaryOperationNode(
-      fact, mult, operator, ParserNodeReturnType.Integer
+      fact,
+      mult,
+      operator,
+      ParserNodeReturnType.Integer
     );
   }
 
@@ -137,22 +143,24 @@ export default class Parser {
   private _add(): ParserNode {
     const mult = this._mult();
 
-    if (!isAdditiveOperatorToken(this._lookahead as Token))
-      return mult;
+    if (!isAdditiveOperatorToken(this._lookahead as Token)) return mult;
 
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const add = this._add();
 
     if (
-      mult.returnType !== ParserNodeReturnType.Integer
-      || add.returnType !== ParserNodeReturnType.Integer
+      mult.returnType !== ParserNodeReturnType.Integer ||
+      add.returnType !== ParserNodeReturnType.Integer
     )
       throw new SyntaxError(
         `It's not possible use ${operator} operator with non-integer parameters`
       );
 
     return new BinaryOperationNode(
-      mult, add, operator, ParserNodeReturnType.Integer
+      mult,
+      add,
+      operator,
+      ParserNodeReturnType.Integer
     );
   }
 
@@ -166,14 +174,16 @@ export default class Parser {
   private _rel(): ParserNode {
     const add = this._add();
 
-    if (!isRelativeOperatorToken(this._lookahead as Token))
-      return add;
+    if (!isRelativeOperatorToken(this._lookahead as Token)) return add;
 
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const rel = this._rel();
 
     return new BinaryOperationNode(
-      add, rel, operator, ParserNodeReturnType.Logical
+      add,
+      rel,
+      operator,
+      ParserNodeReturnType.Logical
     );
   }
 
@@ -186,22 +196,24 @@ export default class Parser {
   private _log(): ParserNode {
     const rel = this._rel();
 
-    if (!isLogicalOperatorToken(this._lookahead as Token))
-      return rel;
+    if (!isLogicalOperatorToken(this._lookahead as Token)) return rel;
 
     const operator = this._eat(this._lookahead?.tag as TokenTag);
     const log = this._log();
 
     if (
-      rel.returnType !== ParserNodeReturnType.Logical
-      || log.returnType !== ParserNodeReturnType.Logical
+      rel.returnType !== ParserNodeReturnType.Logical ||
+      log.returnType !== ParserNodeReturnType.Logical
     )
       throw new SyntaxError(
         `It's not possible use ${operator} operator with non-boolean parameters`
       );
 
     return new BinaryOperationNode(
-      rel, log, operator, ParserNodeReturnType.Logical
+      rel,
+      log,
+      operator,
+      ParserNodeReturnType.Logical
     );
   }
 
@@ -220,7 +232,11 @@ export default class Parser {
           `It's not possible use ${operator} operator with non-boolean parameters`
         );
 
-      return new UnaryOperationNode(log, operator, ParserNodeReturnType.Logical);
+      return new UnaryOperationNode(
+        log,
+        operator,
+        ParserNodeReturnType.Logical
+      );
     }
 
     return this._log();
@@ -267,6 +283,42 @@ export default class Parser {
   }
 
   /**
+   * func =>
+   *  | FUNC IDENT arity BLOCK_BEGIN stmts BLOCK_END
+   */
+  private _defFunc(): DefFunctionStatmentNode {
+    const tdfunc = this._eat(TokenTag.DEF_FUNC) as TokenDefFunction;
+
+    this._eat(TokenTag.BLOCK_BEGIN);
+
+    const id = `${Date.now()} `;
+    this._environ = new Environment(id, this._environ);
+
+    const arity = new ArityNode(tdfunc.arity.params);
+
+    arity.params.forEach((param, index) => {
+      this._environ?.set(param, `${FuncParameterType}${index}`);
+    });
+
+    const stmts = this._stmts(TokenTag.BLOCK_END);
+
+    const fn = new DefFunctionStatmentNode(
+      this._environ.id,
+      tdfunc.name,
+      arity,
+      stmts
+    );
+
+    this._eat(TokenTag.BLOCK_END);
+
+    this._environ = this._environ.prev;
+
+    this._environ?.set(fn.name, fn);
+
+    return fn;
+  }
+
+  /**
    * call =>
    *  | IDENT PAREN_BEGIN opp PAREN_END
    */
@@ -283,12 +335,17 @@ export default class Parser {
    * stmt =>
    *  | block
    *  | if
+   *  | func SEMI
    *  | print SEMI
    *  | opp SEMI
    */
   private _stmt(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
       return this._block();
+    }
+
+    if (this._lookahead?.tag === TokenTag.DEF_FUNC) {
+      return this._defFunc();
     }
 
     if (this._lookahead?.tag === TokenTag.IF) {
@@ -310,7 +367,7 @@ export default class Parser {
 
   private _stmts(et?: TokenTag): ParserNode[] {
     const list = [];
-  
+
     while (this._lookahead?.tag !== et) {
       list.push(this._stmt());
     }

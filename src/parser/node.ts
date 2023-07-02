@@ -1,39 +1,41 @@
-import {Token} from "@/tokens";
+import { Token } from "@/tokens";
 
 export enum ParserNodeReturnType {
   Void = "Void",
   Integer = "Integer",
   Logical = "Logical",
-  Str = "String"
+  Str = "String",
 }
 
 export enum ParserNodeTag {
   Integer = "Integer",
   Logical = "Logical",
-  Identifier = "Identifier",
+  Arity = "Arity",
   Str = "String",
   BinaryOperation = "BinaryOperation",
   UnaryOperation = "UnaryOperation",
   BlockStatment = "BlockStatment",
   IfStatment = "IfStatment",
-  PrintCallStatment = "PrintCallStatment"
+  PrintCallStatment = "PrintCallStatment",
+  FunctionStatment = "FunctionStatment",
+  DefStatment = "DefStatment",
 }
 
 export class ParserNode {
   public readonly tag: ParserNodeTag;
   public readonly returnType: ParserNodeReturnType;
 
-  constructor (tag: ParserNodeTag, returnType: ParserNodeReturnType) {
+  constructor(tag: ParserNodeTag, returnType: ParserNodeReturnType) {
     this.tag = tag;
     this.returnType = returnType;
-  } 
+  }
 }
 
 export class BlockStatmentNode extends ParserNode {
   public readonly id: string;
   public readonly block: ParserNode[];
 
-  constructor (id: string, block: ParserNode[]) {
+  constructor(id: string, block: ParserNode[]) {
     super(ParserNodeTag.BlockStatment, ParserNodeReturnType.Void);
 
     this.id = id;
@@ -46,7 +48,7 @@ export class IfStatmentNode extends ParserNode {
   public readonly test: ParserNode;
   public readonly block: ParserNode[];
 
-  constructor (id: string, test: ParserNode, block: ParserNode[]) {
+  constructor(id: string, test: ParserNode, block: ParserNode[]) {
     super(ParserNodeTag.IfStatment, ParserNodeReturnType.Void);
 
     this.id = id;
@@ -55,10 +57,36 @@ export class IfStatmentNode extends ParserNode {
   }
 }
 
+export class DefFunctionStatmentNode extends ParserNode {
+  public readonly name: string;
+  public readonly arity: ArityNode;
+  public readonly body: ParserNode[];
+
+  constructor(id: string, name: string, arity: ArityNode, body: ParserNode[]) {
+    super(ParserNodeTag.FunctionStatment, ParserNodeReturnType.Void);
+
+    this.name = name;
+    this.arity = arity;
+    this.body = body;
+  }
+}
+
+export class DefStatmentNode extends ParserNode {
+  public name: string;
+  public value: ParserNode;
+
+  constructor(name: string, value: ParserNode) {
+    super(ParserNodeTag.DefStatment, ParserNodeReturnType.Void);
+
+    this.name = name;
+    this.value = value;
+  }
+}
+
 export class PrintCallStatmentNode extends ParserNode {
   public readonly param: ParserNode;
 
-  constructor (param: ParserNode) {
+  constructor(param: ParserNode) {
     super(ParserNodeTag.PrintCallStatment, ParserNodeReturnType.Void);
 
     this.param = param;
@@ -70,9 +98,9 @@ export class BinaryOperationNode extends ParserNode {
   public right: ParserNode;
   public operator: Token;
 
-  constructor (
-    left: ParserNode, 
-    right: ParserNode, 
+  constructor(
+    left: ParserNode,
+    right: ParserNode,
     operator: Token,
     returnType: ParserNodeReturnType
   ) {
@@ -88,7 +116,7 @@ export class UnaryOperationNode extends ParserNode {
   public readonly expr: ParserNode;
   public readonly operator: Token;
 
-  constructor (
+  constructor(
     expr: ParserNode,
     operator: Token,
     returnType: ParserNodeReturnType
@@ -100,22 +128,20 @@ export class UnaryOperationNode extends ParserNode {
   }
 }
 
-export class IdentifierNode extends ParserNode {
-  public name: string;
-  public value: ParserNode;
+export class ArityNode extends ParserNode {
+  public params: string[];
 
-  constructor (name: string, value: ParserNode) {
-    super(ParserNodeTag.Identifier, ParserNodeReturnType.Void);
+  constructor(params: string[]) {
+    super(ParserNodeTag.Arity, ParserNodeReturnType.Void);
 
-    this.name = name;
-    this.value = value; 
+    this.params = params;
   }
 }
 
 export class IntegerNode extends ParserNode {
   public value: number;
 
-  constructor (value: number) {
+  constructor(value: number) {
     super(ParserNodeTag.Integer, ParserNodeReturnType.Integer);
 
     this.value = value;
@@ -125,7 +151,7 @@ export class IntegerNode extends ParserNode {
 export class LogicalNode extends ParserNode {
   public value: boolean;
 
-  constructor (value: boolean) {
+  constructor(value: boolean) {
     super(ParserNodeTag.Logical, ParserNodeReturnType.Logical);
 
     this.value = value;
@@ -135,7 +161,7 @@ export class LogicalNode extends ParserNode {
 export class StringNode extends ParserNode {
   public value: string;
 
-  constructor (value: string) {
+  constructor(value: string) {
     super(ParserNodeTag.Str, ParserNodeReturnType.Str);
 
     this.value = value;

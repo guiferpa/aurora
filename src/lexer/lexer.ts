@@ -1,12 +1,13 @@
 import {
-  Token, 
-  TokenIdentifier, 
+  Token,
+  TokenIdentifier,
   TokenString,
-  TokenNumber, 
+  TokenNumber,
   TokenLogical,
-  TokenProduct, 
-  TokenTag
+  TokenProduct,
+  TokenTag,
 } from "@/tokens";
+import { TokenArity, TokenDef, TokenDefFunction } from "@/tokens/token";
 
 export default class Lexer {
   public _cursor = 0;
@@ -17,10 +18,7 @@ export default class Lexer {
   }
 
   public write(buffer: Buffer) {
-    this._buffer = Buffer.concat([
-      this._buffer,
-      buffer
-    ]);
+    this._buffer = Buffer.concat([this._buffer, buffer]);
   }
 
   public hasMoreTokens(): boolean {
@@ -28,19 +26,16 @@ export default class Lexer {
   }
 
   public getNextToken(): Token {
-    if (!this.hasMoreTokens()) 
-      return new Token(TokenTag.EOT)
+    if (!this.hasMoreTokens()) return new Token(TokenTag.EOT);
 
-    const str = this._buffer.toString('utf-8', this._cursor);
+    const str = this._buffer.toString("utf-8", this._cursor);
 
     for (const [regex, tag] of TokenProduct) {
       const value = this._match(regex, str);
 
-      if (value === null) 
-        continue;
+      if (value === null) continue;
 
-      if (tag === TokenTag.WHITESPACE)
-        return this.getNextToken();
+      if (tag === TokenTag.WHITESPACE) return this.getNextToken();
 
       if (tag === TokenTag.NUM) {
         const num = Number.parseInt(value);
@@ -52,11 +47,22 @@ export default class Lexer {
         return new TokenLogical(logical);
       }
 
-      if (tag === TokenTag.STR)
-        return new TokenString(value.replace(/"/g, ""));
+      if (tag === TokenTag.STR) return new TokenString(value.replace(/"/g, ""));
 
-      if (tag === TokenTag.IDENT)
-        return new TokenIdentifier(value);
+      if (tag === TokenTag.IDENT) return new TokenIdentifier(value);
+
+      if (tag === TokenTag.DEF) return new TokenDef(value.split(" ")[1]);
+
+      if (tag === TokenTag.DEF_FUNC) {
+        const [name, params] = value
+          .replace(/^(func)\s/, "")
+          .replace(/\)/, "")
+          .replace(/\(/, "-")
+          .split("-");
+
+        const arity = new TokenArity(params.split(","));
+        return new TokenDefFunction(name, arity);
+      }
 
       return new Token(tag);
     }
@@ -66,11 +72,10 @@ export default class Lexer {
 
   private _match(product: RegExp, str: string) {
     const matched = product.exec(str);
-    if (matched === null) return null
+    if (matched === null) return null;
 
     const value = matched[0];
     this._cursor += value.length;
     return value;
   }
 }
-

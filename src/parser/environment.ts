@@ -1,21 +1,23 @@
-import {ParserNode} from "@/parser";
+import { ParserNode } from "@/parser";
+
+export const FuncParameterType = "__FUNC_PARAM__";
 
 export default class Environment {
   public readonly id: string;
-  private _table: Map<string, ParserNode>; 
+  private _table: Map<string, ParserNode | string>;
   public readonly prev: Environment | null;
 
-  constructor (id: string, prev: Environment | null = null) {
+  constructor(id: string, prev: Environment | null = null) {
     this.id = id;
     this._table = new Map();
     this.prev = prev;
   }
 
-  public set(key: string, payload: ParserNode) {
+  public set(key: string, payload: ParserNode | string) {
     this._table.set(key, payload);
   }
 
-  public query(key: string): ParserNode {
+  public query(key: string): ParserNode | string {
     let environ: Environment | null = this;
 
     while (environ !== null) {

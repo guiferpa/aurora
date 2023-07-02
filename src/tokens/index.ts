@@ -1,12 +1,15 @@
-export {TokenTag, TokenProduct} from "./types";
+export { TokenTag, TokenProduct } from "./types";
 export {
-  TokenIdentifier, 
+  TokenIdentifier,
   TokenString,
-  TokenLogical, 
-  TokenNumber, 
+  TokenLogical,
+  TokenNumber,
   Token,
+  TokenArity,
+  TokenDef,
+  TokenDefFunction,
   isLogicalOperatorToken,
   isRelativeOperatorToken,
   isAdditiveOperatorToken,
-  isMultiplicativeOperatorToken
+  isMultiplicativeOperatorToken,
 } from "./token";

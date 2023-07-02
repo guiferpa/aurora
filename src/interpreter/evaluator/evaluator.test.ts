@@ -1,10 +1,10 @@
-import {Lexer} from "@/lexer";
-import {Parser} from "@/parser";
+import { Lexer } from "@/lexer";
+import { Parser } from "@/parser";
 
 import Evaluator from "./evaluator";
 
-describe('Evaluator test suite', () => {
-  test('Program that sum two numbers', () => {
+describe("Evaluator test suite", () => {
+  test("Program that sum two numbers", () => {
     const program = `
     1 + 1;
     `;
@@ -18,7 +18,7 @@ describe('Evaluator test suite', () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test('Program that calc precedence expression', () => {
+  test("Program that calc precedence expression", () => {
     const program = `
     10 + 20 - 3 * 20;
     `;
@@ -32,7 +32,7 @@ describe('Evaluator test suite', () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test('Program 2 that calc precedence expression', () => {
+  test("Program 2 that calc precedence expression", () => {
     const program = `
     10 - 2 * 5;
     `;
@@ -46,7 +46,7 @@ describe('Evaluator test suite', () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test('Program 3 that calc precedence expression', () => {
+  test("Program 3 that calc precedence expression", () => {
     const program = `
     10 * 2 - 5;
     `;
@@ -60,7 +60,7 @@ describe('Evaluator test suite', () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test('Program that set a vairbale then sum it with another number', () => {
+  test("Program that set a variable then sum it with another number", () => {
     const program = `
     var value = 10;
     value + 20;
@@ -85,7 +85,7 @@ describe('Evaluator test suite', () => {
     }
 
     10;
-    `
+    `;
 
     const expected = ["10"];
 
@@ -106,7 +106,7 @@ describe('Evaluator test suite', () => {
     }
 
     10;
-    `
+    `;
 
     const expected = ["20", "10"];
 

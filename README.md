@@ -26,12 +26,12 @@ $ aurora
 ```
 
 ```sh
->> var result = 10 * 20;
+>> var result = 1_000 * 2;
 =
 >> result + 1;
-= 201
+= 2001
 >> print(result);
-200
+2000
 =
 ```
 
@@ -60,9 +60,9 @@ $ aurora run ./<file>.ar
 
 ### Debug flag
 
-All commands support debug mode
+All commands support tree (AST) mode
 
-`$ aurora --debug`
-`$ aurora --debug run ...`
+`$ aurora --tree`
+`$ aurora --tree run ...`
 
-Setting **debug mode** the CLI show up the [AST (Abstract syntax tree)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) from source code 
+Setting **tree mode** the CLI show up the [AST (Abstract syntax tree)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) from source code 

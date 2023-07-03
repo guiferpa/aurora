@@ -8,6 +8,7 @@ export {
   TokenArity,
   TokenDef,
   TokenDefFunction,
+  TokenTyping,
   isLogicalOperatorToken,
   isRelativeOperatorToken,
   isAdditiveOperatorToken,

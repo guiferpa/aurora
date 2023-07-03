@@ -16,6 +16,20 @@ export class Token implements IToken {
   }
 }
 
+export class TokenTyping extends Token {
+  public readonly value: string;
+
+  constructor(value: string) {
+    super(TokenTag.TYPING);
+
+    this.value = value;
+  }
+
+  public toString(): string {
+    return `<${this.tag}, ${this.value}>`;
+  }
+}
+
 export class TokenArity extends Token {
   public readonly params: string[];
 

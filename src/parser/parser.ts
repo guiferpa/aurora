@@ -9,7 +9,6 @@ import {
   isMultiplicativeOperatorToken,
   isRelativeOperatorToken,
   Token,
-  TokenArity,
   TokenDef,
   TokenDefFunction,
   TokenIdentifier,
@@ -17,6 +16,7 @@ import {
   TokenNumber,
   TokenString,
   TokenTag,
+  TokenTyping,
 } from "@/tokens";
 
 import {
@@ -33,7 +33,15 @@ import {
   PrintCallStatmentNode,
   StringNode,
   UnaryOperationNode,
+  ParserNodeTag,
 } from "./node";
+
+const types: Map<string, ParserNodeReturnType> = new Map([
+  ["void", ParserNodeReturnType.Void],
+  ["bool", ParserNodeReturnType.Logical],
+  ["int", ParserNodeReturnType.Integer],
+  ["str", ParserNodeReturnType.Str],
+]);
 
 export default class Parser {
   private readonly _lexer: Lexer;
@@ -282,12 +290,22 @@ export default class Parser {
     return stmt;
   }
 
+  private _typing(): ParserNodeReturnType {
+    const token = this._eat(TokenTag.TYPING) as TokenTyping;
+    const t = types.get(token.value);
+    if (t === undefined)
+      throw new SyntaxError(`Invalid type named ${token.value}`);
+    return t;
+  }
+
   /**
    * func =>
    *  | FUNC IDENT arity BLOCK_BEGIN stmts BLOCK_END
    */
   private _defFunc(): DefFunctionStatmentNode {
     const tdfunc = this._eat(TokenTag.DEF_FUNC) as TokenDefFunction;
+
+    const rtype = this._typing();
 
     this._eat(TokenTag.BLOCK_BEGIN);
 
@@ -306,7 +324,8 @@ export default class Parser {
       this._environ.id,
       tdfunc.name,
       arity,
-      stmts
+      stmts,
+      rtype
     );
 
     this._eat(TokenTag.BLOCK_END);

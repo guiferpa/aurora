@@ -6,8 +6,11 @@ import {
   TokenLogical,
   TokenProduct,
   TokenTag,
+  TokenArity,
+  TokenDef,
+  TokenDefFunction,
+  TokenTyping,
 } from "@/tokens";
-import { TokenArity, TokenDef, TokenDefFunction } from "@/tokens/token";
 
 export default class Lexer {
   public _cursor = 0;
@@ -48,6 +51,13 @@ export default class Lexer {
       }
 
       if (tag === TokenTag.STR) return new TokenString(value.replace(/"/g, ""));
+
+      // TODO: def func typing
+      //
+      if (tag === TokenTag.TYPING) {
+        console.log(tag, value);
+        return new TokenTyping(value.replace(/:/, "").trim());
+      }
 
       if (tag === TokenTag.IDENT) return new TokenIdentifier(value);
 

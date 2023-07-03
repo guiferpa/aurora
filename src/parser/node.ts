@@ -62,8 +62,14 @@ export class DefFunctionStatmentNode extends ParserNode {
   public readonly arity: ArityNode;
   public readonly body: ParserNode[];
 
-  constructor(id: string, name: string, arity: ArityNode, body: ParserNode[]) {
-    super(ParserNodeTag.FunctionStatment, ParserNodeReturnType.Void);
+  constructor(
+    id: string,
+    name: string,
+    arity: ArityNode,
+    body: ParserNode[],
+    returnType: ParserNodeReturnType
+  ) {
+    super(ParserNodeTag.FunctionStatment, returnType);
 
     this.name = name;
     this.arity = arity;

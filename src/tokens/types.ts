@@ -27,6 +27,7 @@ export enum TokenTag {
   DEF_FUNC = "DEF_FUNC",
   ARITY = "ARITY",
   COMMA = "COMMA",
+  TYPING = "TYPING",
 }
 
 export const TokenProduct: [RegExp, TokenTag][] = [
@@ -43,6 +44,7 @@ export const TokenProduct: [RegExp, TokenTag][] = [
   [new RegExp(/^print/), TokenTag.CALL_PRINT],
   [new RegExp(/^".+"/), TokenTag.STR],
   [new RegExp(/^(func)\s([a-z_]+)\((.*?)\)/), TokenTag.DEF_FUNC],
+  [new RegExp(/^:\s([a-z])+/), TokenTag.TYPING],
   [new RegExp(/^[a-z_]+/), TokenTag.IDENT],
   [new RegExp(/^\s+/), TokenTag.WHITESPACE],
   [new RegExp(/^=/), TokenTag.ASSIGN],

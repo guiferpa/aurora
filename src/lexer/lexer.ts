@@ -41,7 +41,7 @@ export default class Lexer {
       if (tag === TokenTag.WHITESPACE) return this.getNextToken();
 
       if (tag === TokenTag.NUM) {
-        const num = Number.parseInt(value);
+        const num = Number.parseInt(value.replace(/_/g, ""));
         return new TokenNumber(num);
       }
 

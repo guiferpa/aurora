@@ -31,7 +31,7 @@ export enum TokenTag {
 }
 
 export const TokenProduct: [RegExp, TokenTag][] = [
-  [new RegExp(/^\d+/), TokenTag.NUM],
+  [new RegExp(/^[0-9_]+/), TokenTag.NUM],
   [new RegExp(/^(true|false)/), TokenTag.LOGICAL],
   [new RegExp(/^if/), TokenTag.IF],
   [new RegExp(/^not/), TokenTag.OPP], // opposite

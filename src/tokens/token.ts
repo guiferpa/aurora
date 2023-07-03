@@ -30,6 +30,16 @@ export class TokenTyping extends Token {
   }
 }
 
+export class TokenReturn extends Token {
+  constructor() {
+    super(TokenTag.RETURN);
+  }
+
+  public toString(): string {
+    return `<${this.tag}>`;
+  }
+}
+
 export class TokenArity extends Token {
   public readonly params: string[];
 

@@ -13,4 +13,5 @@ export {
   LogicalNode,
   DefFunctionStatmentNode,
   StringNode,
+  ReturnStatmentNode,
 } from "./node";

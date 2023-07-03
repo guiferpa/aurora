@@ -34,7 +34,9 @@ import {
   StringNode,
   UnaryOperationNode,
   ParserNodeTag,
+  ReturnStatmentNode,
 } from "./node";
+import { TokenReturn } from "@/tokens/token";
 
 const types: Map<string, ParserNodeReturnType> = new Map([
   ["void", ParserNodeReturnType.Void],
@@ -290,6 +292,13 @@ export default class Parser {
     return stmt;
   }
 
+  private _rtrn(): ReturnStatmentNode {
+    this._eat(TokenTag.RETURN);
+    const stmt = this._stmt();
+
+    return new ReturnStatmentNode(stmt);
+  }
+
   private _typing(): ParserNodeReturnType {
     const token = this._eat(TokenTag.TYPING) as TokenTyping;
     const t = types.get(token.value);
@@ -330,6 +339,8 @@ export default class Parser {
 
     this._eat(TokenTag.BLOCK_END);
 
+    fn.isValid();
+
     this._environ = this._environ.prev;
 
     this._environ?.set(fn.name, fn);
@@ -357,8 +368,13 @@ export default class Parser {
    *  | func SEMI
    *  | print SEMI
    *  | opp SEMI
+   *  | rtrn SEMI
    */
   private _stmt(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.RETURN) {
+      return this._rtrn();
+    }
+
     if (this._lookahead?.tag === TokenTag.BLOCK_BEGIN) {
       return this._block();
     }

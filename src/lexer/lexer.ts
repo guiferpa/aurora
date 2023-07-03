@@ -45,19 +45,12 @@ export default class Lexer {
         return new TokenNumber(num);
       }
 
-      if (tag === TokenTag.LOGICAL) {
-        const logical = value === "true";
-        return new TokenLogical(logical);
-      }
+      if (tag === TokenTag.LOGICAL) return new TokenLogical(value === "true");
 
       if (tag === TokenTag.STR) return new TokenString(value.replace(/"/g, ""));
 
-      // TODO: def func typing
-      //
-      if (tag === TokenTag.TYPING) {
-        console.log(tag, value);
+      if (tag === TokenTag.TYPING)
         return new TokenTyping(value.replace(/:/, "").trim());
-      }
 
       if (tag === TokenTag.IDENT) return new TokenIdentifier(value);
 

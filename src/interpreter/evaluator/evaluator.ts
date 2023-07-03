@@ -2,15 +2,16 @@ import { TokenTag } from "@/tokens";
 import {
   BinaryOperationNode,
   BlockStatmentNode,
-  DefStatmentNode,
   IfStatmentNode,
   IntegerNode,
   LogicalNode,
   ParserNode,
   PrintCallStatmentNode,
   UnaryOperationNode,
-  DefFunctionStatmentNode,
   StringNode,
+  ReturnStatmentNode,
+  DefStatmentNode,
+  DefFunctionStatmentNode,
 } from "@/parser";
 
 export default class Evaluator {
@@ -20,7 +21,8 @@ export default class Evaluator {
     for (const stmt of block) {
       if (
         stmt instanceof DefStatmentNode ||
-        stmt instanceof DefFunctionStatmentNode
+        stmt instanceof DefFunctionStatmentNode ||
+        stmt instanceof ReturnStatmentNode
       ) {
         continue;
       }

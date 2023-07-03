@@ -19,6 +19,7 @@ export enum ParserNodeTag {
   PrintCallStatment = "PrintCallStatment",
   FunctionStatment = "FunctionStatment",
   DefStatment = "DefStatment",
+  ReturnStatment = "ReturnStatment",
 }
 
 export class ParserNode {
@@ -28,6 +29,16 @@ export class ParserNode {
   constructor(tag: ParserNodeTag, returnType: ParserNodeReturnType) {
     this.tag = tag;
     this.returnType = returnType;
+  }
+}
+
+export class ReturnStatmentNode extends ParserNode {
+  public readonly stmt: ParserNode;
+
+  constructor(stmt: ParserNode) {
+    super(ParserNodeTag.ReturnStatment, stmt.returnType);
+
+    this.stmt = stmt;
   }
 }
 
@@ -58,6 +69,7 @@ export class IfStatmentNode extends ParserNode {
 }
 
 export class DefFunctionStatmentNode extends ParserNode {
+  public readonly id: string;
   public readonly name: string;
   public readonly arity: ArityNode;
   public readonly body: ParserNode[];
@@ -71,9 +83,24 @@ export class DefFunctionStatmentNode extends ParserNode {
   ) {
     super(ParserNodeTag.FunctionStatment, returnType);
 
+    this.id = id;
     this.name = name;
     this.arity = arity;
     this.body = body;
+  }
+
+  public isValid() {
+    if (this.body.length === 0) throw new Error("Def function can't be empty");
+
+    const rtrns = this.body.filter(
+      (curr) => curr.tag === ParserNodeTag.ReturnStatment
+    );
+
+    rtrns.forEach((curr) => {
+      if (curr.returnType !== this.returnType) {
+        throw new Error("Invalid def function return");
+      }
+    });
   }
 }
 

@@ -45,7 +45,7 @@ export const TokenProduct: [RegExp, TokenTag][] = [
   [new RegExp(/^</), TokenTag.LESS_THAN],
   [new RegExp(/^print/), TokenTag.CALL_PRINT],
   [new RegExp(/^".+"/), TokenTag.STR],
-  [new RegExp(/^(func)\s([a-z_]+)\((.*?)\)/), TokenTag.DEF_FUNC],
+  [new RegExp(/^(func)\s([a-z_]+)\((.*?)\)(\s+){/), TokenTag.DEF_FUNC],
   [new RegExp(/^:\s([a-z])+/), TokenTag.TYPING],
   [new RegExp(/^(return)/), TokenTag.RETURN],
   [new RegExp(/^[a-z_]+/), TokenTag.IDENT],

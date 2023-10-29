@@ -94,6 +94,7 @@ export default class Parser {
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
       const ident = this._eat(TokenTag.IDENT) as TokenIdentifier;
+      console.log(this._environ?.query(ident.name));
       return this._environ?.query(ident.name) as ParserNode;
     }
 
@@ -312,20 +313,20 @@ export default class Parser {
   private _defFunc(): DefFunctionStatmentNode {
     const tdfunc = this._eat(TokenTag.DEF_FUNC) as TokenDefFunction;
 
-    const rtype = this._typing();
+    const rtype = ParserNodeReturnType.Void;
 
-    this._eat(TokenTag.BLOCK_BEGIN);
-
-    const id = `${Date.now()} `;
+    const id = `${Date.now()}`;
     this._environ = new Environment(id, this._environ);
+
+    const stmts = this._stmts(TokenTag.BLOCK_END);
+
+    this._eat(TokenTag.BLOCK_END);
 
     const arity = new ArityNode(tdfunc.arity.params);
 
     arity.params.forEach((param, index) => {
       this._environ?.set(param, `${FuncParameterType}${index}`);
     });
-
-    const stmts = this._stmts(TokenTag.BLOCK_END);
 
     const fn = new DefFunctionStatmentNode(
       this._environ.id,
@@ -334,8 +335,6 @@ export default class Parser {
       stmts,
       rtype
     );
-
-    this._eat(TokenTag.BLOCK_END);
 
     fn.isValid();
 

@@ -81,6 +81,8 @@ export default class Lexer {
       if (tag === TokenTag.DEF_FUNC) {
         const [name, params] = value
           .replace(/^(func)\s/, "")
+          .replace(/{/, "")
+          .trim()
           .replace(/\)/, "")
           .replace(/\(/, "-")
           .split("-");

@@ -1,7 +1,6 @@
-var a = 1;
+var t = 1;
+var a = t;
 
-func hello_world() {
-  print("Hello world");
+func hello_world(t) {
+  var a = t;
 }
-
-hello_world();

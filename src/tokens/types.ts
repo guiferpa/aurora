@@ -29,6 +29,7 @@ export enum TokenTag {
   COMMA = "COMMA",
   TYPING = "TYPING",
   RETURN = "RETURN",
+  BREAK_LINE = "BREAK_LINE",
 }
 
 export const TokenProduct: [RegExp, TokenTag][] = [

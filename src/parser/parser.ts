@@ -33,10 +33,8 @@ import {
   PrintCallStatmentNode,
   StringNode,
   UnaryOperationNode,
-  ParserNodeTag,
   ReturnStatmentNode,
 } from "./node";
-import { TokenReturn } from "@/tokens/token";
 
 const types: Map<string, ParserNodeReturnType> = new Map([
   ["void", ParserNodeReturnType.Void],
@@ -63,7 +61,7 @@ export default class Parser {
       );
 
     if (tokenTag !== token?.tag)
-      throw new SyntaxError(`Unexpected token: ${token}`);
+      throw new SyntaxError(`Unexpected token: ${token} at [line: ${token?.line}, column: ${token?.column}, cursor: ${token?.cursor}]`);
 
     this._lookahead = this._lexer.getNextToken();
     return token;

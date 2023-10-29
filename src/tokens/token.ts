@@ -6,9 +6,15 @@ interface IToken {
 
 export class Token implements IToken {
   public readonly tag: TokenTag;
+  public readonly cursor: number;
+  public readonly line: number;
+  public readonly column: number;
 
-  constructor(tag: TokenTag) {
+  constructor(tag: TokenTag, cursor: number, line: number, column: number) {
     this.tag = tag;
+    this.cursor = cursor;
+    this.line = line;
+    this.column = column;
   }
 
   public toString(): string {
@@ -19,8 +25,8 @@ export class Token implements IToken {
 export class TokenTyping extends Token {
   public readonly value: string;
 
-  constructor(value: string) {
-    super(TokenTag.TYPING);
+  constructor(value: string, cursor: number, line: number, column: number) {
+    super(TokenTag.TYPING, cursor, line, column);
 
     this.value = value;
   }
@@ -31,8 +37,8 @@ export class TokenTyping extends Token {
 }
 
 export class TokenReturn extends Token {
-  constructor() {
-    super(TokenTag.RETURN);
+  constructor(cursor: number, line: number, column: number) {
+    super(TokenTag.RETURN, cursor, line, column);
   }
 
   public toString(): string {
@@ -43,8 +49,8 @@ export class TokenReturn extends Token {
 export class TokenArity extends Token {
   public readonly params: string[];
 
-  constructor(params: string[]) {
-    super(TokenTag.ARITY);
+  constructor(params: string[], cursor: number, line: number, column: number) {
+    super(TokenTag.ARITY, cursor, line, column);
 
     this.params = params;
   }
@@ -58,8 +64,8 @@ export class TokenDefFunction extends Token {
   public readonly name: string;
   public readonly arity: TokenArity;
 
-  constructor(name: string, arity: TokenArity) {
-    super(TokenTag.DEF_FUNC);
+  constructor(name: string, arity: TokenArity, cursor: number, line: number, column: number) {
+    super(TokenTag.DEF_FUNC, cursor, line, column);
 
     this.name = name;
     this.arity = arity;
@@ -73,8 +79,8 @@ export class TokenDefFunction extends Token {
 export class TokenDef extends Token {
   public readonly name: string;
 
-  constructor(name: string) {
-    super(TokenTag.DEF);
+  constructor(name: string, cursor: number, line: number, column: number) {
+    super(TokenTag.DEF, cursor, line, column);
 
     this.name = name;
   }
@@ -87,8 +93,8 @@ export class TokenDef extends Token {
 export class TokenIdentifier extends Token {
   public readonly name: string;
 
-  constructor(name: string) {
-    super(TokenTag.IDENT);
+  constructor(name: string, cursor: number, line: number, column: number) {
+    super(TokenTag.IDENT, cursor, line, column);
 
     this.name = name;
   }
@@ -101,8 +107,8 @@ export class TokenIdentifier extends Token {
 export class TokenNumber extends Token {
   public readonly value: number;
 
-  constructor(value: number) {
-    super(TokenTag.NUM);
+  constructor(value: number, cursor: number, line: number, column: number) {
+    super(TokenTag.NUM, cursor, line, column);
 
     this.value = value;
   }
@@ -115,8 +121,8 @@ export class TokenNumber extends Token {
 export class TokenLogical extends Token {
   public readonly value: boolean;
 
-  constructor(value: boolean) {
-    super(TokenTag.LOGICAL);
+  constructor(value: boolean, cursor: number, line: number, column: number) {
+    super(TokenTag.LOGICAL, cursor, line, column);
 
     this.value = value;
   }
@@ -129,8 +135,8 @@ export class TokenLogical extends Token {
 export class TokenString extends Token {
   public readonly value: string;
 
-  constructor(value: string) {
-    super(TokenTag.STR);
+  constructor(value: string, cursor: number, line: number, column: number) {
+    super(TokenTag.STR, cursor, line, column);
 
     this.value = value;
   }

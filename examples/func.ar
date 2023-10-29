@@ -1,0 +1,7 @@
+var a = 1;
+
+func hello_world() {
+  print("Hello world");
+}
+
+hello_world();

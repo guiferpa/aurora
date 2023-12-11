@@ -5,7 +5,7 @@
 
 - [Linguagens formal](https://pt.wikipedia.org/wiki/Linguagem_formal#:~:text=Entende%2Dse%20por%20linguagem%20formal,%2C%20caracter%C3%ADsticas%20e%20inter%2Drelacionamentos%20.)
 - [Hierarquia de Chomsky](https://pt.wikipedia.org/wiki/Hierarquia_de_Chomsky)
-- [Teoria dos autômatos](https://pt.wikipedia.org/wiki/Teoria_dos_aut%C3%B4matos)
+- [Autômatos](#autômatos)
 - Linguagem livre de contexto
 - Gramática livre de contexto
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
@@ -16,6 +16,34 @@
 - Árvore sintática abstrata _(AST)_
 - Análise semântica
 - Otimização do código
+
+## Autômatos
+
+Um autômato é como uma máquina abstrata, imaginada para entender ou reconhecer padrões em sequências de símbolos. Você pode pensar nele como um modelo matemático simples que segue regras específicas para processar entradas.
+
+Imagine um autômato como um dispositivo que recebe uma sequência de símbolos, como letras ou números, e, seguindo um conjunto de instruções simples, ele pode decidir se essa sequência está de acordo com um padrão específico ou pertence a uma linguagem.
+
+Por exemplo, imagine um autômato que reconhece palavras que terminam com `ar`. Ele receberia uma palavra como "computar" e, seguindo suas regras, diria "sim, essa palavra termina com `ar`". Porém, se a palavra fosse `abacaxi`, ele diria "não, essa palavra não termina com 'ar'".
+
+Assim, um autômato é uma maneira de representar, de forma simplificada, máquinas ou processos que podem reconhecer ou processar padrões em sequências de símbolos, sendo uma ferramenta fundamental no estudo de linguagens formais e na construção de compiladores.
+
+Existem diferentes tipos de autômatos, sendo os principais:
+
+- **Autômato Finito Determinístico (AFD):** É um modelo simples com um conjunto finito de estados, uma entrada (alfabeto) e uma função de transição determinística. Reconhece linguagens regulares.
+
+- **Autômato Finito Não-determinístico (AFN):** Similar ao AFD, mas com transições não-determinísticas, permitindo múltiplos estados de destino para uma mesma entrada em um estado particular.
+
+- **Autômato de Pilha (AP):** Utiliza uma pilha para armazenar informações. Reconhece linguagens livres de contexto e é mais poderoso que os autômatos finitos.
+
+- **Máquina de Turing:** É um autômato mais abstrato e poderoso, com uma fita infinita e um conjunto de regras que especificam como a máquina muda de estado dependendo do símbolo lido na fita. Pode resolver problemas decidíveis e reconhecer linguagens recursivamente enumeráveis.
+
+Na construção de um compilador para uma linguagem de programação, diferentes tipos de autômatos são usados em etapas específicas do processo de compilação:
+
+- **Análise Léxica (Scanner):** Geralmente é implementada usando autômatos finitos, especialmente autômatos finitos determinísticos (AFDs) ou autômatos finitos não-determinísticos (AFNs), para reconhecer tokens (como palavras-chave, identificadores, números) a partir do código fonte.
+
+- **Análise Sintática (Parser):** Aqui, autômatos de pilha são frequentemente usados, como autômatos de pilha determinísticos (APDs), para verificar a estrutura gramatical do código fonte e criar uma árvore de análise sintática.
+
+Os autômatos são fundamentais na compreensão da estrutura e do reconhecimento de padrões em linguagens formais, sendo essenciais na construção de compiladores para traduzir código-fonte em linguagens de programação para código executável. Cada etapa do compilador pode envolver diferentes tipos de autômatos para realizar análises específicas no processo de compilação.
 
 ## Gramática com ambiguidade
 

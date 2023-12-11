@@ -10,8 +10,8 @@
 - Gramática livre de contexto
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
 - [Lexemas](#lexemas)
-- Análise léxica _(Scanning)_
-- Token _(Chave<Tipo> : Valor)_
+- [Tokens](#tokens)
+- [Análise léxica]()
 - Análise sintática
 - Árvore sintática abstrata _(AST)_
 - Análise semântica
@@ -100,6 +100,24 @@ Por exemplo:
 - Em uma expressão matemática como `a = b + 3`, os lexemas são `a`, `=`, `b`, `+` e `3`.
 - Em uma declaração de controle de fluxo como `if (x < 10) { ... }`, os lexemas são `if`, `(` , `x`, `<`, `10`, `)` e `{`.
 
+## Tokens
+
+Um token é uma estrutura de dados que representa um lexema reconhecido durante a análise léxica de um programa de computador. Ele é uma unidade fundamental na construção de um compilador.
+
+Quando o analisador léxico identifica um lexema (uma sequência de caracteres com significado dentro da linguagem de programação), ele gera um token correspondente. Esse token contém informações sobre o lexema, como seu tipo e possivelmente seu valor.
+
+Por exemplo, em uma expressão matemática simples como `a = b + 3`, os lexemas são `a`, `=`, `b`, `+` e `3`. Cada um desses lexemas seria transformado em um token durante a análise léxica. O token para "a" poderia ser do tipo identificador, o token para "=" seria do tipo operador de atribuição e assim por diante.
+
+Os tokens são então utilizados nas fases subsequentes da compilação, como a análise sintática e a geração de código, para entender a estrutura do programa e criar representações intermediárias ou traduzir o código-fonte para outra forma, como código de máquina.
+
+### Lexemas e Tokens são a mesma coisa?
+
+Na verdade, lexemas e tokens são conceitos relacionados, mas não são exatamente a mesma coisa. Um lexema é a sequência de caracteres em um código-fonte que é reconhecida como uma instância de uma classe de palavras-chave, identificadores, operadores ou símbolos especiais. Por exemplo, em uma linguagem de programação, a palavra-chave `if` ou um identificador como `counter` são lexemas.
+
+Já um token é uma estrutura de dados que contém informações sobre um lexema específico, incluindo seu tipo e valor. Durante a análise léxica, os lexemas são identificados e agrupados em tokens. Um token pode conter informações como o tipo do lexema (por exemplo, palavra-chave, identificador, número, etc.) e seu valor (por exemplo, o valor numérico de um número, ou o texto exato de um identificador).
+
+Portanto, um lexema é a sequência de caracteres reconhecida como uma unidade léxica, enquanto um token é a estrutura de dados que representa esse lexema, associando-o a um tipo e, possivelmente, a um valor específico.
+
 ## Análise léxica
 
 Uma análise léxica é onde o compilador escaneia todos os tokens que fazem sentido existir na gramática e passa a dar sentido a eles, os tokens. Indo para prática e considerando uma gramática simples.
@@ -133,14 +151,14 @@ Vamos analisar léxicamente o seguinte código:
 (1 + 2) * 10
 ```
 
-#### Análise léxica (Tokens)
+#### Análise léxica (Geração de tokens)
 
-| Padrão     | Tipo                   | Símbolos |
-|------------|------------------------|----------|
-| `(`        | Parênteses             | `PAREN`  |
-| `1`        | Números                | `NUMBER` |
-| `+`        | Operações aritiméticas | `OP_ARI` |
-| `2`        | Números                | `NUMBER` |
-| `)`        | Parênteses             | `PAREN`  |
-| `*`        | Operações aritiméticas | `OP_ARI` |
-| `10`       | Números                | `NUMBER` |
+| Padrão     | Tipo                   | Símbolos  | Valor |
+|------------|------------------------|-----------|-------|
+| `(`        | Parênteses             | `PAREN_O` | (     |
+| `1`        | Números                | `NUM`     | 1     |
+| `+`        | Operações aritiméticas | `OP_ARIT` | +     |
+| `2`        | Números                | `NUM`     | 2     |
+| `)`        | Parênteses             | `PAREN_C` | )     |
+| `*`        | Operações aritiméticas | `OP_ARIT` | *     |
+| `10`       | Números                | `NUM`     | 10    |

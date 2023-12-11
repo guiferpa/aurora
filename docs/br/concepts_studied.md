@@ -118,7 +118,7 @@ id + id * id -> expr
               | term * fact
 ```
 
-No terceiro passo a derivação já não consegue ser prosseguir, isso porque o não-terminal `term` não tem nenhum produto que tenha o sinal de `+`.
+No terceiro passo a derivação já não consegue ter continuidade, isso porque o não-terminal `term` não tem nenhum produto que tenha o sinal de `+`.
 
 Boa, tiramos a ambiguidade da nossa gramática, conseguimos derivar com o método de derivação a direita 🎆
 

@@ -54,6 +54,8 @@ Neste caso, dado como exemplo acima, nós poderíamos tratar a precedência dess
 
 ### Gramática coma precedência nas operações
 
+#### Gramática
+
 ```
 expr -> expr + term
       | term

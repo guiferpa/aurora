@@ -9,7 +9,7 @@
 - Linguagem livre de contexto
 - Gramática livre de contexto
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
-- Lexemas
+- [Lexemas](#lexemas)
 - Análise léxica _(Scanning)_
 - Token _(Chave<Tipo> : Valor)_
 - Análise sintática
@@ -89,6 +89,17 @@ Boa, tiramos a ambiguidade da nossa gramática, conseguimos derivar com o métod
 
 🎈 Um ponto essencial de entender é que toda ambiguidade só é possível ser retirada de uma gramática devido a um comportamento esperado/regra estabelecida. No do nosso exemplo acima a regra imposta foi que a operação matemática de multiplicação deveria sempre ser considerada como prioridade na sua derivação, ou seja, ter um peso de precedência maior que a outra operação.
 
+## Lexemas
+
+Um lexema é uma sequência de caracteres que representa uma unidade básica de significado em um programa de computador. Em linguagens de programação, um lexema pode ser uma palavra-chave (como `if` ou `else` em muitas linguagens), um identificador (nome de variável ou função), um número, um operador ou um símbolo especial.
+
+O reconhecimento de lexemas é uma etapa fundamental na análise léxica de um compilador. Durante essa análise, o código-fonte é dividido em lexemas, identificando palavras-chave, variáveis, constantes, operadores e outros elementos básicos da linguagem de programação. Cada lexema representa uma unidade indivisível que possui um significado específico dentro da gramática da linguagem.
+
+Por exemplo:
+
+- Em uma expressão matemática como `a = b + 3`, os lexemas são `a`, `=`, `b`, `+` e `3`.
+- Em uma declaração de controle de fluxo como `if (x < 10) { ... }`, os lexemas são `if`, `(` , `x`, `<`, `10`, `)` e `{`.
+
 ## Análise léxica
 
 Uma análise léxica é onde o compilador escaneia todos os tokens que fazem sentido existir na gramática e passa a dar sentido a eles, os tokens. Indo para prática e considerando uma gramática simples.
@@ -108,11 +119,11 @@ fact -> (expr)
 
 #### Lexemas
 
-| Padrão (RegEx)    | Tipo                   | Símbolos |
-|-------------------|------------------------|----------|
-| `(`, `)`          | Parênteses             | `PAREN`  |
-| `+`, `*`          | Operações aritiméticas | `OP_ARI` |
-| `[0-9]+`          | Números                | `NUMBER` |
+| Padrão (RegEx)    | Tipo                   |
+|-------------------|------------------------|
+| `(`, `)`          | Parênteses             |
+| `+`, `*`          | Operações aritiméticas |
+| `[0-9]+`          | Números                |
 
 Vamos analisar léxicamente o seguinte código:
 
@@ -122,7 +133,7 @@ Vamos analisar léxicamente o seguinte código:
 (1 + 2) * 10
 ```
 
-#### Análise léxica
+#### Análise léxica (Tokens)
 
 | Padrão     | Tipo                   | Símbolos |
 |------------|------------------------|----------|

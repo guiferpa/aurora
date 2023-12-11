@@ -8,6 +8,8 @@
 - [Autômatos](#autômatos)
 - Gramática livre de contexto
 - Gramática sensível ao contexto
+- [Associatividade]()
+- Precedência de Operadores
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
 - [Lexemas](#lexemas)
 - [Tokens](#tokens)
@@ -46,6 +48,48 @@ Na construção de um compilador para uma linguagem de programação, diferentes
 - **Análise Sintática (Parser):** Aqui, autômatos de pilha são frequentemente usados, como autômatos de pilha determinísticos (APDs), para verificar a estrutura gramatical do código fonte e criar uma árvore de análise sintática.
 
 Os autômatos são fundamentais na compreensão da estrutura e do reconhecimento de padrões em linguagens formais, sendo essenciais na construção de compiladores para traduzir código-fonte em linguagens de programação para código executável. Cada etapa do compilador pode envolver diferentes tipos de autômatos para realizar análises específicas no processo de compilação.
+
+## Associatividade
+
+A associatividade em uma gramática se dá justamente pela escrita da mesma. Dado um código ou uma cadeia de terminais `id = id = 3` onde podemos assumir que é uma construção válida como poderíamos construir uma gramática?
+
+### Gramática
+
+```
+expr -> expr = fact
+      | fact
+
+fact -> id
+      | dig
+
+dig -> [0-9]
+```
+
+### Criando uma árvore de derivação
+
+<img width="420" alt="Screenshot 2023-12-11 at 07 36 32" src="https://github.com/guiferpa/aurora/assets/9096630/023ffc44-c1e1-4baa-9fac-aa3ef60b7ed8">
+
+Da forma que essa gramática foi criada a gente consegue chegar em um resultado e verficar que a mesma é valida, porem é importante lembrar que um código fonte como esse, que acabamos de criar sua árvore de derivação, espera que o extremo lado direito se resolva primeiro para só assim conseguir ser um código válido semânticamente. Na execução desse código eu teria um erro semântico dado que é impossível atribuir algo da esquerda para a direita. Entende-se isso dado que o dígito 3 por si só não recebe nenhuma atribuição, logo, isso é um comando inválido.
+
+### Nova gramática
+
+```
+expr -> fact = expr
+      | fact
+
+fact -> id
+      | dig
+
+dig -> [0-9]
+```
+
+Básicamente oque foi feito é colocar o não-terminal (`expr`) para o lado direito entendendo que o mesmo é quem vai ditar a recursividade da nossa árvore de derivação
+
+### Criando uma árvore de derivação para nova gramática
+
+<img width="420" alt="Screenshot 2023-12-11 at 07 50 58" src="https://github.com/guiferpa/aurora/assets/9096630/ecf5c878-faf9-4b38-a19f-5c7c6c546a3a">
+
+Agora a gramática está correta. Pode observar na árvore que o dígito 3 é o primeiro a ser resolvido, podendo agora ser atribuido aos demais `id`s.
 
 ## Gramática com ambiguidade
 

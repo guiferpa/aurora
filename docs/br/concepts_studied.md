@@ -14,7 +14,7 @@
 - [Lexemas](#lexemas)
 - [Tokens](#tokens)
 - [Análise léxica](#análise-léxica)
-- Análise sintática
+- [Análise sintática](#análise-sintática)
 - Análise descendente
 - Análise ascendente
 - Árvore sintática abstrata _(AST)_
@@ -241,3 +241,19 @@ Vamos analisar léxicamente o seguinte código:
 | `)`        | Parênteses             | `PAREN_C` | )     |
 | `*`        | Operações aritiméticas | `OP_ARIT` | *     |
 | `10`       | Números                | `NUM`     | 10    |
+
+## Análise sintática
+
+A análise sintática é uma etapa crucial no processo de compilação, onde o código-fonte de um programa é analisado para determinar se está escrito de acordo com a estrutura gramatical da linguagem de programação. É como verificar se as frases em um idioma seguem a sintaxe correta desse idioma.
+
+Imagine que você está aprendendo uma nova língua e precisa formar frases corretas. A análise sintática faz algo semelhante: verifica se as instruções ou expressões no código estão corretas em relação às regras de sintaxe da linguagem de programação.
+
+Essa análise é realizada por um analisador sintático, também chamado de parser. O parser utiliza uma gramática (conjunto de regras) para identificar a estrutura hierárquica do código, criando uma representação chamada de "árvore sintática" ou "árvore de análise".
+
+Essa árvore mostra como as diferentes partes do código estão organizadas e como se relacionam entre si. Assim como uma árvore de uma língua mostra a estrutura das palavras em uma frase, a árvore sintática mostra a estrutura das expressões e comandos no código.
+
+Por exemplo, em linguagens como C, Java ou Python, a análise sintática verifica se as instruções estão corretamente organizadas com as palavras-chave, operadores e estruturas de controle conforme definido pela gramática da linguagem.
+
+Se o código estiver bem estruturado e seguir a gramática definida, o analisador sintático cria a árvore sintática corretamente. Caso contrário, ele identifica erros de sintaxe e geralmente gera mensagens de erro para ajudar o programador a corrigir esses problemas.
+
+Em resumo, a análise sintática é como a verificação da estrutura gramatical de um texto para garantir que está de acordo com as regras da linguagem de programação. É uma etapa crucial no processo de compilação para garantir que o código seja compreensível e possa ser traduzido para código de máquina de forma adequada.

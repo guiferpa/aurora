@@ -8,7 +8,7 @@
 - [Autômatos](#autômatos)
 - Gramática livre de contexto
 - Gramática sensível ao contexto
-- [Associatividade]()
+- [Associatividade](#associatividade)
 - Precedência de Operadores
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
 - [Lexemas](#lexemas)

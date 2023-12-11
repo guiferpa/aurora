@@ -23,7 +23,7 @@ Um autômato é como uma máquina abstrata, imaginada para entender ou reconhece
 
 Imagine um autômato como um dispositivo que recebe uma sequência de símbolos, como letras ou números, e, seguindo um conjunto de instruções simples, ele pode decidir se essa sequência está de acordo com um padrão específico ou pertence a uma linguagem.
 
-Por exemplo, imagine um autômato que reconhece palavras que terminam com `ar`. Ele receberia uma palavra como "computar" e, seguindo suas regras, diria "sim, essa palavra termina com `ar`". Porém, se a palavra fosse `abacaxi`, ele diria "não, essa palavra não termina com 'ar'".
+Por exemplo, imagine um autômato que reconhece palavras que terminam com `ar`. Ele receberia uma palavra como "computar" e, seguindo suas regras, diria _Sim_, essa palavra termina com `ar`". Porém, se a palavra fosse `abacaxi`, ele diria _Não_, essa palavra não termina com `ar`".
 
 Assim, um autômato é uma maneira de representar, de forma simplificada, máquinas ou processos que podem reconhecer ou processar padrões em sequências de símbolos, sendo uma ferramenta fundamental no estudo de linguagens formais e na construção de compiladores.
 

@@ -49,7 +49,7 @@ id + id * id -> id + expr
 
 Como ambas as derivações podem ser concluidas nós entendemos que essa gramática possui ambiguidade.
 
-### Como elaborar a gramática para remover sua ambiguidade?
+### Como reescrever a gramática para remover sua ambiguidade?
 
 Neste caso, dado como exemplo acima, nós poderíamos tratar a precedência dessa gramática. Neste caso vamos dar um peso maior para a operação de multiplicação e diferencia a precedência entre ambas, multiplicação e adição. A gramática reformulada ficaria assim:
 

@@ -9,9 +9,10 @@
 - Linguagem livre de contexto
 - Gramática livre de contexto
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
-- Análise Léxica _(Scanning)_
 - Lexemas
+- Análise léxica _(Scanning)_
 - Token _(Chave<Tipo> : Valor)_
+- Análise sintática
 - Árvore sintática abstrata _(AST)_
 - Análise semântica
 - Otimização do código
@@ -50,7 +51,7 @@ Como ambas as derivações podem ser concluidas nós entendemos que essa gramát
 
 ### Como elaborar a gramática para remover sua ambiguidade?
 
-Neste caso, dado como exemplo acima, nós poderíamos tratar a precedência dessa gramática. Neste caso vamos dar um peso maior para a operação de multiplicação e diferencia a precedência entre ambas, multiplicação e aritimetica. A gramática reformulada ficaria assim:
+Neste caso, dado como exemplo acima, nós poderíamos tratar a precedência dessa gramática. Neste caso vamos dar um peso maior para a operação de multiplicação e diferencia a precedência entre ambas, multiplicação e adição. A gramática reformulada ficaria assim:
 
 ### Gramática coma precedência nas operações
 
@@ -87,3 +88,48 @@ id + id * id -> id + term * fact
 Boa, tiramos a ambiguidade da nossa gramática, conseguimos derivar com o método de derivação a direita 🎆
 
 🎈 Um ponto essencial de entender é que toda ambiguidade só é possível ser retirada de uma gramática devido a um comportamento esperado/regra estabelecida. No do nosso exemplo acima a regra imposta foi que a operação matemática de multiplicação deveria sempre ser considerada como prioridade na sua derivação, ou seja, ter um peso de precedência maior que a outra operação.
+
+## Análise léxica
+
+Uma análise léxica é onde o compilador escaneia todos os tokens que fazem sentido existir na gramática e passa a dar sentido a eles, os tokens. Indo para prática e considerando uma gramática simples.
+
+#### Gramática
+
+```
+expr -> expr + term
+      | term
+
+term -> term * fact
+      | fact
+
+fact -> (expr)
+      | id
+```
+
+#### Lexemas
+
+| Padrão (RegEx)    | Tipo                   | Símbolos |
+|-------------------|------------------------|----------|
+| `(`, `)`          | Parênteses             | `PAREN`  |
+| `+`, `*`          | Operações aritiméticas | `OP_ARI` |
+| `[0-9]+`          | Números                | `NUMBER` |
+
+Vamos analisar léxicamente o seguinte código:
+
+#### Código
+
+```
+(1 + 2) * 10
+```
+
+#### Análise léxica
+
+| Padrão     | Tipo                   | Símbolos |
+|------------|------------------------|----------|
+| `(`        | Parênteses             | `PAREN`  |
+| `1`        | Números                | `NUMBER` |
+| `+`        | Operações aritiméticas | `OP_ARI` |
+| `2`        | Números                | `NUMBER` |
+| `)`        | Parênteses             | `PAREN`  |
+| `*`        | Operações aritiméticas | `OP_ARI` |
+| `10`       | Números                | `NUMBER` |

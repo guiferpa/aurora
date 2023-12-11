@@ -11,7 +11,7 @@
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
 - [Lexemas](#lexemas)
 - [Tokens](#tokens)
-- [Análise léxica]()
+- [Análise léxica](#análise-léxica)
 - Análise sintática
 - Árvore sintática abstrata _(AST)_
 - Análise semântica

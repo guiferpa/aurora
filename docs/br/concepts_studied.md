@@ -6,13 +6,15 @@
 - [Linguagens formal](https://pt.wikipedia.org/wiki/Linguagem_formal#:~:text=Entende%2Dse%20por%20linguagem%20formal,%2C%20caracter%C3%ADsticas%20e%20inter%2Drelacionamentos%20.)
 - [Hierarquia de Chomsky](https://pt.wikipedia.org/wiki/Hierarquia_de_Chomsky)
 - [Autômatos](#autômatos)
-- Linguagem livre de contexto
 - Gramática livre de contexto
+- Gramática sensível ao contexto
 - [Gramática com ambiguidade](#gramática-com-ambiguidade)
 - [Lexemas](#lexemas)
 - [Tokens](#tokens)
 - [Análise léxica](#análise-léxica)
 - Análise sintática
+- Análise descendente
+- Análise ascendente
 - Árvore sintática abstrata _(AST)_
 - Análise semântica
 - Otimização do código
@@ -62,20 +64,20 @@ expr -> expr + expr
 #### Método de derivação a esquerda
 
 ```
-id + id * id -> expr * id
-              | expr * expr
+id + id * id -> expr + expr
+              | expr + expr * expr
               | expr
 ```
 
 #### Método de derivação a direita
 
 ```
-id + id * id -> id + expr
-              | expr + expr
+id + id * id -> expr * expr
+              | expr + expr * expr
               | expr
 ```
 
-Como ambas as derivações podem ser concluidas nós entendemos que essa gramática possui ambiguidade.
+Como ambas as derivações podem ser concluidas nós entendemos que essa gramática possui ambiguidade. Isso porque existe mais de uma forma de derivar essa cadeia de terminais _(Código fonte)_
 
 ### Como reescrever a gramática para remover sua ambiguidade?
 
@@ -101,17 +103,22 @@ Agora vamos aplicar os métodos de derivação
 #### Método de derivação a esquerda
 
 ```
-id + id * id -> expr + term * id
-              | expr * id (A partir desta etapa não é possivel prosseguir com a derivação)
+id + id * id -> expr + term
+              | expr + term * fact
+              | term + fact * id
+              | fact + id * id
+              | id + id * id
 ```
 
 #### Método de derivação a direita
 
 ```
-id + id * id -> id + term * fact
-              | expr + term
-              | expr
+id + id * id -> expr
+              | term
+              | term * fact
 ```
+
+No terceiro passo a derivação já não consegue ser prosseguir, isso porque o não-terminal `term` não tem nenhum produto que tenha o sinal de `+`.
 
 Boa, tiramos a ambiguidade da nossa gramática, conseguimos derivar com o método de derivação a direita 🎆
 

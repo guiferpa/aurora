@@ -8,7 +8,7 @@
 - [Hierarquia de Chomsky](https://pt.wikipedia.org/wiki/Hierarquia_de_Chomsky)
 - Linguagem livre de contexto
 - Gramática livre de contexto
-- [Gramática com ambiguidade]()
+- [Gramática com ambiguidade](#gramática-com-ambiguidade)
 - Análise Léxica _(Scanning)_
 - Lexemas
 - Token _(Chave<Tipo> : Valor)_
@@ -22,7 +22,7 @@ Toda gramática ela pode ter ambiguidade ou não, para verificar se uma gramáti
 
 Seguindo o exemplo da gramática abaixo podemos atestar que ela possui ambiguidade com a seguinte derivação
 
-#### Gramática com ambiguidade
+#### Gramática
 ```
 expr -> expr + expr
       | expr * expr

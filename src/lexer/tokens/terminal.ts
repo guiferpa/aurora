@@ -10,4 +10,6 @@ export const Terminals: [RegExp, TokenTag][] = [
   [new RegExp(/^\//), TokenTag.OP_DIV],
   [new RegExp(/^\(/), TokenTag.PAREN_O],
   [new RegExp(/^\)/), TokenTag.PAREN_C],
+  [new RegExp(/^\{/), TokenTag.BRACK_O],
+  [new RegExp(/^\}/), TokenTag.BRACK_C],
 ];

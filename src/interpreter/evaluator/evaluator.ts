@@ -7,6 +7,7 @@ import {
   NumericNode,
   StatementNode,
   ProgramNode,
+  BlockStatement,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -23,7 +24,9 @@ export default class Evaluator {
   static evaluate(tree: ParserNode): any {
     if (tree instanceof ProgramNode) return Evaluator.compose(tree.children);
 
-    if (tree instanceof DeclNode || tree instanceof IdentNode) return undefined;
+    if (tree instanceof BlockStatement) return Evaluator.compose(tree.children);
+
+    if (tree instanceof DeclNode || tree instanceof IdentNode) return "";
 
     if (tree instanceof StatementNode) {
       return Evaluator.evaluate(tree.value);

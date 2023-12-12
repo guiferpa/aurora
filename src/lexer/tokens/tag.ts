@@ -8,4 +8,7 @@ export enum TokenTag {
   OP_DIV = "__OP_DIV__",
   PAREN_O = "__PAREN_O__",
   PAREN_C = "__PAREN_C__",
+  BRACK_O = "__BRACK_O__",
+  BRACK_C = "__BRACK_C__",
+  EOF = "__EOF__",
 }

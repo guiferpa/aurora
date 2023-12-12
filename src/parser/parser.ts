@@ -8,30 +8,33 @@ import {
   ParserNode,
   StatementNode,
   ProgramNode,
+  BlockStatement,
 } from "./node";
+
+import Environment from "@/environ";
 
 interface Lexer {
   getNextToken(): Token | null;
 }
 
 export default class Parser {
-  private readonly _lexer: Lexer;
   private _lookahead: Token | null = null;
 
-  constructor(lexer: Lexer) {
-    this._lexer = lexer;
-  }
+  constructor(
+    private readonly _lexer: Lexer,
+    private readonly _environ: Environment
+  ) {}
 
   private _eat(tokenTag: TokenTag): Token {
     const token = this._lookahead;
 
-    if (token === null)
+    if (token?.tag === TokenTag.EOF)
       throw new SyntaxError(
         `Unexpected end of token, expected token: ${tokenTag}`
       );
 
     if (tokenTag !== token?.tag)
-      throw new SyntaxError(`Unexpected token: ${token}`);
+      throw new SyntaxError(`Unexpected token: ${this._lookahead?.value}`);
 
     this._lookahead = this._lexer.getNextToken();
     return token;
@@ -118,21 +121,36 @@ export default class Parser {
   }
 
   /**
-   * _statment -> _decl
-   *            | _expr
+   * _block -> __BRACK_O__ _statements __BRACK_C__
+   *         | _expr
    * **/
-  private _statement(): StatementNode {
+  private _block(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.BRACK_O) {
+      this._eat(TokenTag.BRACK_O);
+      const statements = this._statements(TokenTag.BRACK_C);
+      this._eat(TokenTag.BRACK_C);
+      return new BlockStatement(statements);
+    }
+
+    return this._expr();
+  }
+
+  /**
+   * _statment -> _block
+   *            | _decl
+   * **/
+  private _statement(): ParserNode {
     if (this._lookahead?.tag === TokenTag.DECL) {
       return new StatementNode(this._decl());
     }
 
-    return new StatementNode(this._expr());
+    return this._block();
   }
 
-  private _statements(): StatementNode[] {
+  private _statements(eot: TokenTag): ParserNode[] {
     const list = [];
 
-    while (this._lookahead !== null) {
+    while (this._lookahead?.tag !== eot) {
       list.push(this._statement());
     }
 
@@ -140,7 +158,7 @@ export default class Parser {
   }
 
   private _program(): ProgramNode {
-    return new ProgramNode(this._statements());
+    return new ProgramNode(this._statements(TokenTag.EOF));
   }
 
   public parse(): ProgramNode {

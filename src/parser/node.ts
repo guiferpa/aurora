@@ -39,8 +39,14 @@ export class StatementNode extends ParserNode {
   }
 }
 
+export class BlockStatement extends ParserNode {
+  constructor(public readonly children: ParserNode[]) {
+    super(ParserNodeTag.BLOCK_STATEMENT);
+  }
+}
+
 export class ProgramNode extends ParserNode {
-  constructor(public readonly children: StatementNode[]) {
+  constructor(public readonly children: ParserNode[]) {
     super(ParserNodeTag.PROGRAM);
   }
 }

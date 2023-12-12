@@ -18,8 +18,8 @@ export default class Lexer {
     return this._cursor < this._buffer.length;
   }
 
-  public getNextToken(): Token | null {
-    if (!this.hasMoreTokens()) return null;
+  public getNextToken(): Token {
+    if (!this.hasMoreTokens()) return new Token(TokenTag.EOF, "EOF");
 
     const str = this._buffer.toString("ascii", this._cursor);
 

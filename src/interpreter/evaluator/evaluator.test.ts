@@ -2,6 +2,7 @@ import Lexer from "@/lexer/lexer";
 import { Parser } from "@/parser";
 
 import Evaluator from "./evaluator";
+import Environment from "@/environ/environ";
 
 describe("Evaluator test suite", () => {
   test("Program that sum two numbers", () => {
@@ -9,10 +10,11 @@ describe("Evaluator test suite", () => {
     1 + 1
     `;
 
-    const expected = 2;
+    const expected = ["2"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
@@ -23,10 +25,11 @@ describe("Evaluator test suite", () => {
     10 + 20 - 3 * 20
     `;
 
-    const expected = -30;
+    const expected = ["-30"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
@@ -37,10 +40,11 @@ describe("Evaluator test suite", () => {
     10 - 2 * 5
     `;
 
-    const expected = 0;
+    const expected = ["0"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
@@ -51,10 +55,11 @@ describe("Evaluator test suite", () => {
     10 * 2 - 5
     `;
 
-    const expected = 15;
+    const expected = ["15"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
@@ -69,7 +74,8 @@ describe("Evaluator test suite", () => {
     const expected = ["30"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
@@ -90,7 +96,8 @@ describe("Evaluator test suite", () => {
     const expected = ["10"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
@@ -111,7 +118,8 @@ describe("Evaluator test suite", () => {
     const expected = ["20", "10"];
 
     const lexer = new Lexer(Buffer.from(program));
-    const parser = new Parser(lexer);
+    const environ = new Environment("root");
+    const parser = new Parser(lexer, environ);
     const got = Evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);

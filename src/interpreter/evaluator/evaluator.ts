@@ -1,102 +1,56 @@
-import { TokenTag } from "@/tokens";
+import { TokenTag } from "@/lexer/tokens/tag";
+import { ParserNode } from "@/parser";
 import {
-  BinaryOperationNode,
-  BlockStatmentNode,
-  IfStatmentNode,
-  IntegerNode,
-  LogicalNode,
-  ParserNode,
-  PrintCallStatmentNode,
-  UnaryOperationNode,
-  StringNode,
-  ReturnStatmentNode,
-  DefStatmentNode,
-  DefFunctionStatmentNode,
-} from "@/parser";
+  BinaryOpNode,
+  DeclNode,
+  IdentNode,
+  NumericNode,
+  StatementNode,
+  ProgramNode,
+} from "@/parser/node";
 
 export default class Evaluator {
-  static compose(block: ParserNode[]): string[] {
+  static compose(nodes: ParserNode[]): string[] {
     const out = [];
 
-    for (const stmt of block) {
-      if (
-        stmt instanceof DefStatmentNode ||
-        stmt instanceof DefFunctionStatmentNode ||
-        stmt instanceof ReturnStatmentNode
-      ) {
-        continue;
-      }
-
-      if (stmt instanceof IfStatmentNode) {
-        Evaluator.evaluate(stmt.test) &&
-          out.push(Evaluator.compose(stmt.block).join(","));
-        continue;
-      }
-
-      if (stmt instanceof PrintCallStatmentNode) {
-        console.log(Evaluator.evaluate(stmt.param));
-        continue;
-      }
-
-      if (stmt instanceof BlockStatmentNode) {
-        out.push(Evaluator.compose(stmt.block).join(","));
-        continue;
-      }
-
-      out.push(`${Evaluator.evaluate(stmt)}`);
+    for (const n of nodes) {
+      out.push(`${Evaluator.evaluate(n)}`);
     }
 
     return out;
   }
 
   static evaluate(tree: ParserNode): any {
-    if (tree instanceof BlockStatmentNode) return Evaluator.compose(tree.block);
+    if (tree instanceof ProgramNode) return Evaluator.compose(tree.children);
 
-    if (tree instanceof IntegerNode) return tree.value;
+    if (tree instanceof DeclNode || tree instanceof IdentNode) return undefined;
 
-    if (tree instanceof LogicalNode) return tree.value;
-
-    if (tree instanceof StringNode) return tree.value;
-
-    if (tree instanceof UnaryOperationNode) {
-      const { operator, expr } = tree;
-
-      switch (operator.tag) {
-        case TokenTag.OPP:
-          return !this.evaluate(expr);
-      }
+    if (tree instanceof StatementNode) {
+      return Evaluator.evaluate(tree.value);
     }
 
-    if (tree instanceof BinaryOperationNode) {
-      const { operator, left, right } = tree;
+    if (tree instanceof NumericNode) return tree.value;
 
-      switch (operator.tag) {
-        case TokenTag.AND:
-          return this.evaluate(left) && this.evaluate(right);
+    if (tree instanceof BinaryOpNode) {
+      const { op, left, right } = tree;
 
-        case TokenTag.OR:
-          return this.evaluate(left) || this.evaluate(right);
-
-        case TokenTag.EQUAL:
-          return this.evaluate(left) === this.evaluate(right);
-
-        case TokenTag.GREATER_THAN:
-          return this.evaluate(left) > this.evaluate(right);
-
-        case TokenTag.LESS_THAN:
-          return this.evaluate(left) < this.evaluate(right);
-
-        case TokenTag.ADD:
+      switch (op.tag) {
+        case TokenTag.OP_ADD:
           return this.evaluate(left) + this.evaluate(right);
 
-        case TokenTag.SUB:
+        case TokenTag.OP_SUB:
           return this.evaluate(left) - this.evaluate(right);
 
-        case TokenTag.MULT:
+        case TokenTag.OP_DIV:
+          return this.evaluate(left) / this.evaluate(right);
+
+        case TokenTag.OP_MUL:
           return this.evaluate(left) * this.evaluate(right);
       }
     }
 
-    throw new Error(`Unsupported evaluate expression`);
+    throw new Error(
+      `Unsupported evaluate expression for [${JSON.stringify(tree)}]`
+    );
   }
 }

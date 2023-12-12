@@ -1,6 +1,0 @@
-var t = 1;
-var a = t;
-
-func hello_world(t) {
-  var a = t;
-}

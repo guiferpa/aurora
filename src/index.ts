@@ -3,8 +3,7 @@ import { Command } from "commander";
 import pkg from "../package.json";
 
 import { Interpreter } from "@/interpreter";
-import { Compiler } from "@/compiler";
-import { read, write } from "@/fsutil";
+import { read } from "@/fsutil";
 import { repl } from "@/repl";
 
 function run() {
@@ -51,19 +50,6 @@ function run() {
         console.log((err as Error).message);
         process.exit(1);
       }
-    });
-
-  program
-    .command("build")
-    .argument("<filename>", "entrypoint to build source code")
-    .option("-t, --tree", "tree flag to show AST", false)
-    .action(async function (arg) {
-      const options = program.opts();
-
-      const buffer = await read(arg);
-      const compiler = new Compiler(buffer);
-      const content = compiler.compile(options.tree as boolean);
-      await write("out", content);
     });
 
   program.parse(process.argv);

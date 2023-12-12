@@ -1,1 +1,1 @@
-export {read, write} from "./fsutil";
+export { read, write } from "./fsutil";

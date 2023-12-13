@@ -1,3 +1,4 @@
+import Environment from "@/environ/environ";
 import { TokenTag } from "@/lexer/tokens/tag";
 import { ParserNode } from "@/parser";
 import {
@@ -11,25 +12,27 @@ import {
 } from "@/parser/node";
 
 export default class Evaluator {
-  static compose(nodes: ParserNode[]): string[] {
+  constructor(private readonly _environ: Environment) {}
+
+  private compose(nodes: ParserNode[]): string[] {
     const out = [];
 
     for (const n of nodes) {
-      out.push(`${Evaluator.evaluate(n)}`);
+      out.push(`${this.evaluate(n)}`);
     }
 
     return out;
   }
 
-  static evaluate(tree: ParserNode): any {
-    if (tree instanceof ProgramNode) return Evaluator.compose(tree.children);
+  public evaluate(tree: ParserNode): any {
+    if (tree instanceof ProgramNode) return this.compose(tree.children);
 
-    if (tree instanceof BlockStatement) return Evaluator.compose(tree.children);
+    if (tree instanceof BlockStatement) return this.compose(tree.children);
 
     if (tree instanceof DeclNode || tree instanceof IdentNode) return "";
 
     if (tree instanceof StatementNode) {
-      return Evaluator.evaluate(tree.value);
+      return this.evaluate(tree.value);
     }
 
     if (tree instanceof NumericNode) return tree.value;
@@ -50,6 +53,12 @@ export default class Evaluator {
         case TokenTag.OP_MUL:
           return this.evaluate(left) * this.evaluate(right);
       }
+    }
+
+    if (tree instanceof IdentNode) {
+      const node = this._environ.query(tree.name);
+      if (typeof node === "string") return node;
+      return this.evaluate(node);
     }
 
     throw new Error(

@@ -11,7 +11,7 @@ import {
   BlockStatement,
 } from "./node";
 
-import Environment from "@/environ";
+import SymTable from "@/symtable";
 
 interface Lexer {
   getNextToken(): Token | null;
@@ -22,7 +22,7 @@ export default class Parser {
 
   constructor(
     private readonly _lexer: Lexer,
-    private readonly _environ: Environment
+    private _symtable: SymTable | null
   ) {}
 
   private _eat(tokenTag: TokenTag): Token {
@@ -55,6 +55,7 @@ export default class Parser {
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
       const ident = this._eat(TokenTag.IDENT);
+      this._symtable?.has(ident.value);
       return new IdentNode(ident.value);
     }
 
@@ -114,6 +115,7 @@ export default class Parser {
     if (this._lookahead?.tag === TokenTag.DECL) {
       const decl = this._eat(TokenTag.DECL);
       const expr = this._expr();
+      this._symtable?.set(decl.value, expr);
       return new DeclNode(decl.value, expr);
     }
 
@@ -126,9 +128,16 @@ export default class Parser {
    * **/
   private _block(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BRACK_O) {
+      const envId = `BLOCK-${Date.now()}`;
+      this._symtable = new SymTable(envId, this._symtable);
+
       this._eat(TokenTag.BRACK_O);
       const statements = this._statements(TokenTag.BRACK_C);
       this._eat(TokenTag.BRACK_C);
+
+      this._symtable.previous?.mergeRefs(this._symtable);
+      this._symtable = this._symtable.previous;
+
       return new BlockStatement(statements);
     }
 
@@ -158,7 +167,12 @@ export default class Parser {
   }
 
   private _program(): ProgramNode {
-    return new ProgramNode(this._statements(TokenTag.EOF));
+    const program = new ProgramNode(this._statements(TokenTag.EOF));
+
+    // Check if there are some declaration not referenced
+    this._symtable?.hasAnyRef();
+
+    return program;
   }
 
   public parse(): ProgramNode {

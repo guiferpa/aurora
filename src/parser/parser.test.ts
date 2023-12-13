@@ -1,13 +1,13 @@
 import Lexer from "@/lexer/lexer";
 import Parser from "./parser";
-import Environment from "@/environ/environ";
+import SymTable from "@/symtable";
 
 describe("Parser test suite", () => {
   test("Parse expression with __OP_ADD__ token", () => {
     const program = `1 + 1_000`;
     const lexer = new Lexer(Buffer.from(program, "utf-8"));
-    const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     parser.parse();
   });
 
@@ -17,8 +17,8 @@ describe("Parser test suite", () => {
     func hello() {}
     `;
     const lexer = new Lexer(Buffer.from(program, "utf-8"));
-    const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     parser.parse();
   });
 
@@ -28,8 +28,8 @@ describe("Parser test suite", () => {
     func hello(world) {}
     `;
     const lexer = new Lexer(Buffer.from(program, "utf-8"));
-    const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     parser.parse();
   });
 
@@ -41,8 +41,8 @@ describe("Parser test suite", () => {
     }
     `;
     const lexer = new Lexer(Buffer.from(program, "utf-8"));
-    const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     parser.parse();
   });
 
@@ -55,8 +55,8 @@ describe("Parser test suite", () => {
     }
     `;
     const lexer = new Lexer(Buffer.from(program, "utf-8"));
-    const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     parser.parse();
   });
 });

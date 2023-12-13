@@ -2,7 +2,8 @@ import Lexer from "@/lexer/lexer";
 import { Parser } from "@/parser";
 
 import Evaluator from "./evaluator";
-import Environment from "@/environ/environ";
+import SymTable from "@/symtable";
+import Environment from "@/environ";
 
 describe("Evaluator test suite", () => {
   test("Program that sum two numbers", () => {
@@ -13,9 +14,11 @@ describe("Evaluator test suite", () => {
     const expected = ["2"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });
@@ -28,9 +31,11 @@ describe("Evaluator test suite", () => {
     const expected = ["-30"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });
@@ -43,9 +48,11 @@ describe("Evaluator test suite", () => {
     const expected = ["0"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });
@@ -58,9 +65,11 @@ describe("Evaluator test suite", () => {
     const expected = ["15"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });
@@ -74,9 +83,11 @@ describe("Evaluator test suite", () => {
     const expected = ["30"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });
@@ -96,9 +107,11 @@ describe("Evaluator test suite", () => {
     const expected = ["10"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });
@@ -118,9 +131,11 @@ describe("Evaluator test suite", () => {
     const expected = ["20", "10"];
 
     const lexer = new Lexer(Buffer.from(program));
+    const symtable = new SymTable("root");
+    const parser = new Parser(lexer, symtable);
     const environ = new Environment("root");
-    const parser = new Parser(lexer, environ);
-    const got = Evaluator.evaluate(parser.parse());
+    const evaluator = new Evaluator(environ);
+    const got = evaluator.evaluate(parser.parse());
 
     expect(got).toStrictEqual(expected);
   });

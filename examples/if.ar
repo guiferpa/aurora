@@ -1,0 +1,4 @@
+if 2 greater 3 {
+  var d = 1
+}
+var d = 1 + 1_00

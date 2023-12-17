@@ -13,6 +13,7 @@ import {
   RelativeExprNode,
   LogicExprNode,
   UnaryOpNode,
+  IfStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -193,6 +194,20 @@ export default class Parser {
   }
 
   /**
+   * _if -> __IF__ _log _block
+   *         | _log
+   * **/
+  private _if(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.IF) {
+      this._eat(TokenTag.IF);
+      const log = this._log();
+      const block = this._block();
+      return new IfStmtNode(log, block);
+    }
+    return this._log();
+  }
+
+  /**
    * _ass -> __ASS__ _log
    *        | _log
    * **/
@@ -231,11 +246,16 @@ export default class Parser {
 
   /**
    * _statment -> _block
+   *            | _if
    *            | _ass
    * **/
   private _statement(): ParserNode {
     if (this._lookahead?.tag === TokenTag.ASSIGN) {
       return this._ass();
+    }
+
+    if (this._lookahead?.tag === TokenTag.IF) {
+      return this._if();
     }
 
     return this._block();

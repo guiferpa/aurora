@@ -5,36 +5,6 @@ export class ParserNode {
   constructor(public readonly tag: ParserNodeTag) {}
 }
 
-export class Expression {
-  public static lvalue(n: ParserNode): string {
-    if (n instanceof IdentNode) {
-      return n.name;
-    }
-
-    throw SyntaxError();
-  }
-
-  public static rvalue(n: ParserNode): string {
-    let value = "";
-
-    if (n instanceof NumericalNode) {
-      value = n.value.toString();
-    }
-
-    if (n instanceof LogicalNode) {
-      value = n.value.toString();
-    }
-
-    return `t = ${value}`;
-
-    throw SyntaxError();
-  }
-}
-
-export interface StatementNode {
-  generate(): void;
-}
-
 export class IdentNode extends ParserNode {
   constructor(public readonly name: string) {
     super(ParserNodeTag.IDENT);
@@ -95,15 +65,18 @@ export class LogicExprNode extends ParserNode {
   }
 }
 
-export class AssignStmtNode extends ParserNode implements StatementNode {
+export class IfStmtNode extends ParserNode {
+  constructor(
+    public readonly test: ParserNode,
+    public readonly body: ParserNode
+  ) {
+    super(ParserNodeTag.IF_STMT);
+  }
+}
+
+export class AssignStmtNode extends ParserNode {
   constructor(public readonly name: string, public readonly value: ParserNode) {
     super(ParserNodeTag.ASSIGN_STMT);
-  }
-
-  generate(): void {
-    const ident = new IdentNode(this.name);
-    const expr = this.value;
-    console.log(`${Expression.lvalue(ident)} = ${Expression.rvalue(expr)}`);
   }
 }
 

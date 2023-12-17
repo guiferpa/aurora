@@ -7,6 +7,7 @@ export enum ParserNodeTag {
   LOGIC_EXPR = "LogicExpression",
   BINARY_OP = "BinaryOperation",
   UNARY_OP = "UnaryOperation",
+  IF_STMT = "IfStatement",
   ASSIGN_STMT = "AssignStatement",
   BLOCK_STMT = "BlockStatement",
   PROGRAM = "Program",

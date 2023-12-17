@@ -13,7 +13,7 @@ import {
   RelativeExprNode,
   LogicExprNode,
   UnaryOpNode,
-  StatementNode,
+  IfStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -29,7 +29,7 @@ export default class Evaluator {
     return out;
   }
 
-  public evaluate(tree: ParserNode | StatementNode): any {
+  public evaluate(tree: ParserNode): any {
     if (tree instanceof ProgramNode) return this.compose(tree.children);
 
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);
@@ -106,6 +106,12 @@ export default class Evaluator {
       const node = this._environ.query(tree.name);
       if (typeof node === "string") return node;
       return this.evaluate(node);
+    }
+
+    if (tree instanceof IfStmtNode) {
+      if (tree.test) {
+        return this.evaluate(tree.body);
+      }
     }
 
     throw new Error(

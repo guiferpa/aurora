@@ -26,11 +26,11 @@ $ aurora
 ```
 
 ```sh
->> var result = 1_000 * 2;
+>> var result = 1_000 * 2
 =
->> result + 1;
+>> result + 1
 = 2001
->> print(result);
+>> print(result)
 2000
 =
 ```
@@ -40,7 +40,7 @@ $ aurora
 #### Create aurora source code file
 
 ```js
-var result = 10 * 20;
+var result = 10 * 20
 print(result + 1);
 ```
 

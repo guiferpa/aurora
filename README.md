@@ -41,7 +41,7 @@ $ aurora
 
 ```js
 var result = 10 * 20
-print(result + 1);
+print(result + 1)
 ```
 
 #### Execute file

@@ -5,6 +5,10 @@ import pkg from "../package.json";
 import { Interpreter } from "@/interpreter";
 import { read } from "@/fsutil";
 import { repl } from "@/repl";
+import { Builder } from "./builder";
+import { Lexer } from "./lexer";
+import { Parser } from "./parser";
+import SymTable from "./symtable/symtable";
 
 function run() {
   const program = new Command();
@@ -42,6 +46,30 @@ function run() {
         const buffer = await read(arg);
         const interpreter = new Interpreter(buffer);
         interpreter.run(options.tree as boolean);
+      } catch (err) {
+        if (err instanceof SyntaxError) {
+          console.log(err.message);
+          process.exit(2);
+        }
+        console.log((err as Error).message);
+        process.exit(1);
+      }
+    });
+
+  program
+    .command("build")
+    .argument("<filename>", "filename to run interpreter")
+    .option("-t, --tree", "tree flag to show AST", false)
+    .action(async function (arg) {
+      try {
+        const options = program.opts();
+
+        const buffer = await read(arg);
+        const builder = new Builder(buffer);
+        const ops = builder.run(options.tree as boolean);
+        ops.forEach((op, idx) => {
+          console.log(`${idx}: ${op}`);
+        });
       } catch (err) {
         if (err instanceof SyntaxError) {
           console.log(err.message);

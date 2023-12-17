@@ -3,12 +3,17 @@ import { TokenTag } from "@/lexer/tokens/tag";
 import { ParserNode } from "@/parser";
 import {
   BinaryOpNode,
-  DeclNode,
+  AssignStmtNode,
   IdentNode,
-  NumericNode,
-  StatementNode,
+  NumericalNode,
   ProgramNode,
-  BlockStatement,
+  BlockStmtNode,
+  LogicalNode,
+  NegativeExprNode,
+  RelativeExprNode,
+  LogicExprNode,
+  UnaryOpNode,
+  StatementNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -24,18 +29,30 @@ export default class Evaluator {
     return out;
   }
 
-  public evaluate(tree: ParserNode): any {
+  public evaluate(tree: ParserNode | StatementNode): any {
     if (tree instanceof ProgramNode) return this.compose(tree.children);
 
-    if (tree instanceof BlockStatement) return this.compose(tree.children);
+    if (tree instanceof BlockStmtNode) return this.compose(tree.children);
 
-    if (tree instanceof DeclNode || tree instanceof IdentNode) return "";
+    if (tree instanceof AssignStmtNode || tree instanceof IdentNode) return "";
 
-    if (tree instanceof StatementNode) {
-      return this.evaluate(tree.value);
+    if (tree instanceof NegativeExprNode) return !this.evaluate(tree.expr);
+
+    if (tree instanceof NumericalNode) return tree.value;
+
+    if (tree instanceof LogicalNode) return tree.value;
+
+    if (tree instanceof UnaryOpNode) {
+      const { op, right } = tree;
+
+      switch (op.tag) {
+        case TokenTag.OP_ADD:
+          return +this.evaluate(right);
+
+        case TokenTag.OP_SUB:
+          return -this.evaluate(right);
+      }
     }
-
-    if (tree instanceof NumericNode) return tree.value;
 
     if (tree instanceof BinaryOpNode) {
       const { op, left, right } = tree;
@@ -52,6 +69,36 @@ export default class Evaluator {
 
         case TokenTag.OP_MUL:
           return this.evaluate(left) * this.evaluate(right);
+      }
+    }
+
+    if (tree instanceof RelativeExprNode) {
+      const { op, left, right } = tree;
+
+      switch (op.tag) {
+        case TokenTag.REL_GT:
+          return this.evaluate(left) > this.evaluate(right);
+
+        case TokenTag.REL_LT:
+          return this.evaluate(left) < this.evaluate(right);
+
+        case TokenTag.REL_EQ:
+          return this.evaluate(left) === this.evaluate(right);
+
+        case TokenTag.REL_DIF:
+          return this.evaluate(left) !== this.evaluate(right);
+      }
+    }
+
+    if (tree instanceof LogicExprNode) {
+      const { op, left, right } = tree;
+
+      switch (op.tag) {
+        case TokenTag.LOG_AND:
+          return this.evaluate(left) && this.evaluate(right);
+
+        case TokenTag.LOG_OR:
+          return this.evaluate(left) || this.evaluate(right);
       }
     }
 

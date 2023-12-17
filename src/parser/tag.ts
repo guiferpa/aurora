@@ -1,9 +1,13 @@
 export enum ParserNodeTag {
   IDENT = "Ident",
-  DECL = "Decl",
-  NUMERIC = "Numeric",
+  NUMERICAL = "Numerical",
+  LOGICAL = "Logical",
+  NEG_EXPR = "NegativeExpression",
+  RELATIVE_EXPR = "RelativeExpression",
+  LOGIC_EXPR = "LogicExpression",
   BINARY_OP = "BinaryOperation",
-  STATEMENT = "Statement",
-  BLOCK_STATEMENT = "BlockStatement",
+  UNARY_OP = "UnaryOperation",
+  ASSIGN_STMT = "AssignStatement",
+  BLOCK_STMT = "BlockStatement",
   PROGRAM = "Program",
 }

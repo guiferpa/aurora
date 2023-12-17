@@ -1,3 +1,3 @@
 export { default as Parser } from "./parser";
-export { ParserNode, BinaryOpNode, NumericNode } from "./node";
+export { ParserNode, BinaryOpNode, NumericalNode } from "./node";
 export { ParserNodeTag } from "./tag";

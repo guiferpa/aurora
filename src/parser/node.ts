@@ -5,21 +5,51 @@ export class ParserNode {
   constructor(public readonly tag: ParserNodeTag) {}
 }
 
+export class Expression {
+  public static lvalue(n: ParserNode): string {
+    if (n instanceof IdentNode) {
+      return n.name;
+    }
+
+    throw SyntaxError();
+  }
+
+  public static rvalue(n: ParserNode): string {
+    let value = "";
+
+    if (n instanceof NumericalNode) {
+      value = n.value.toString();
+    }
+
+    if (n instanceof LogicalNode) {
+      value = n.value.toString();
+    }
+
+    return `t = ${value}`;
+
+    throw SyntaxError();
+  }
+}
+
+export interface StatementNode {
+  generate(): void;
+}
+
 export class IdentNode extends ParserNode {
   constructor(public readonly name: string) {
     super(ParserNodeTag.IDENT);
   }
 }
 
-export class DeclNode extends ParserNode {
-  constructor(public readonly name: string, public readonly value: ParserNode) {
-    super(ParserNodeTag.DECL);
+export class NumericalNode extends ParserNode {
+  constructor(public readonly value: number) {
+    super(ParserNodeTag.NUMERICAL);
   }
 }
 
-export class NumericNode extends ParserNode {
-  constructor(public readonly value: number) {
-    super(ParserNodeTag.NUMERIC);
+export class LogicalNode extends ParserNode {
+  constructor(public readonly value: boolean) {
+    super(ParserNodeTag.LOGICAL);
   }
 }
 
@@ -33,15 +63,53 @@ export class BinaryOpNode extends ParserNode {
   }
 }
 
-export class StatementNode extends ParserNode {
-  constructor(public readonly value: ParserNode) {
-    super(ParserNodeTag.STATEMENT);
+export class UnaryOpNode extends ParserNode {
+  constructor(public readonly right: ParserNode, public readonly op: Token) {
+    super(ParserNodeTag.UNARY_OP);
   }
 }
 
-export class BlockStatement extends ParserNode {
+export class NegativeExprNode extends ParserNode {
+  constructor(public readonly expr: ParserNode) {
+    super(ParserNodeTag.NEG_EXPR);
+  }
+}
+
+export class RelativeExprNode extends ParserNode {
+  constructor(
+    public readonly left: ParserNode,
+    public readonly right: ParserNode,
+    public readonly op: Token
+  ) {
+    super(ParserNodeTag.RELATIVE_EXPR);
+  }
+}
+
+export class LogicExprNode extends ParserNode {
+  constructor(
+    public readonly left: ParserNode,
+    public readonly right: ParserNode,
+    public readonly op: Token
+  ) {
+    super(ParserNodeTag.LOGIC_EXPR);
+  }
+}
+
+export class AssignStmtNode extends ParserNode implements StatementNode {
+  constructor(public readonly name: string, public readonly value: ParserNode) {
+    super(ParserNodeTag.ASSIGN_STMT);
+  }
+
+  generate(): void {
+    const ident = new IdentNode(this.name);
+    const expr = this.value;
+    console.log(`${Expression.lvalue(ident)} = ${Expression.rvalue(expr)}`);
+  }
+}
+
+export class BlockStmtNode extends ParserNode {
   constructor(public readonly children: ParserNode[]) {
-    super(ParserNodeTag.BLOCK_STATEMENT);
+    super(ParserNodeTag.BLOCK_STMT);
   }
 }
 

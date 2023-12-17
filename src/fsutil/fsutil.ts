@@ -6,15 +6,15 @@ export async function read(arg: string): Promise<Buffer> {
 
     const reader = fs.createReadStream(arg);
 
-    reader.on('data', (chunk: Buffer) => {
+    reader.on("data", (chunk: Buffer) => {
       buffer = Buffer.concat([buffer, chunk]);
     });
 
-    reader.on('error', (err) => {
+    reader.on("error", (err) => {
       reject(err);
     });
 
-    reader.on('close', () => {
+    reader.on("close", () => {
       resolve(buffer);
     });
   });
@@ -22,11 +22,11 @@ export async function read(arg: string): Promise<Buffer> {
 
 export async function write(filename: string, content: string[]) {
   const writer = fs.createWriteStream(filename, {
-    flags: 'w'
+    flags: "w",
   });
 
   for (const inst of content)
-    writer.write(Buffer.concat([Buffer.from(inst), Buffer.from('\n')]));
+    writer.write(Buffer.concat([Buffer.from(inst), Buffer.from("\n")]));
 
   writer.close();
 }

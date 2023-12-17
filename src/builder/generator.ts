@@ -2,6 +2,7 @@ import {
   AssignStmtNode,
   BinaryOpNode,
   BlockStmtNode,
+  CallPrintStmtNode,
   IdentNode,
   IfStmtNode,
   NumericalNode,
@@ -79,7 +80,17 @@ export default class Generator {
         this._if(n);
         continue;
       }
+
+      if (n instanceof CallPrintStmtNode) {
+        this._print(n);
+        continue;
+      }
     }
+  }
+
+  private static _print(n: CallPrintStmtNode): void {
+    const op = `call print ${this._rvalue(n.param)}`;
+    this._ops.push(op);
   }
 
   private static _block(n: BlockStmtNode): void {

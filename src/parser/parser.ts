@@ -14,6 +14,10 @@ import {
   LogicExprNode,
   UnaryOpNode,
   IfStmtNode,
+  DeclFuncStmtNode,
+  ArityStmtNode,
+  ParamNode,
+  CallPrintStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -194,32 +198,33 @@ export default class Parser {
   }
 
   /**
-   * _if -> __IF__ _log _block
-   *         | _log
+   * _param -> __IDENT__
+   *         | NULL
    * **/
-  private _if(): ParserNode {
-    if (this._lookahead?.tag === TokenTag.IF) {
-      this._eat(TokenTag.IF);
-      const log = this._log();
-      const block = this._block();
-      return new IfStmtNode(log, block);
-    }
-    return this._log();
+  private _param(): ParserNode {
+    const id = this._eat(TokenTag.IDENT);
+    return new ParamNode(id.value);
   }
 
   /**
-   * _ass -> __ASS__ _log
-   *        | _log
+   * _arity -> (_param __COMMA__ _param)*
+   *         | _param
+   *         | NULL
    * **/
-  private _ass(): ParserNode {
-    if (this._lookahead?.tag === TokenTag.ASSIGN) {
-      const ass = this._eat(TokenTag.ASSIGN);
-      const expr = this._log();
-      this._symtable?.set(ass.value, expr);
-      return new AssignStmtNode(ass.value, expr);
+  private _arity(): ParserNode {
+    if (this._lookahead?.tag !== TokenTag.IDENT) {
+      return new ArityStmtNode([]);
     }
 
-    return this._log();
+    const params: ParserNode[] = [this._param()];
+
+    // @ts-ignore
+    while (this._lookahead?.tag === TokenTag.COMMA) {
+      this._eat(TokenTag.COMMA);
+      params.push(this._param());
+    }
+
+    return new ArityStmtNode(params);
   }
 
   /**
@@ -245,11 +250,72 @@ export default class Parser {
   }
 
   /**
+   * _if -> __IF__ _log _block
+   * **/
+  private _if(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.IF) {
+      this._eat(TokenTag.IF);
+      const log = this._log();
+      const block = this._block();
+      return new IfStmtNode(log, block);
+    }
+    return this._log();
+  }
+
+  /**
+   * _ass -> __ASS__ _log
+   * **/
+  private _ass(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.ASSIGN) {
+      const ass = this._eat(TokenTag.ASSIGN);
+      const expr = this._log();
+      this._symtable?.set(ass.value, expr);
+      return new AssignStmtNode(ass.value, expr);
+    }
+
+    return this._log();
+  }
+
+  /**
+   * _declfunc -> __DECL_FN__ _arity _block
+   * **/
+  private _declfunc(): ParserNode {
+    const func = this._eat(TokenTag.DECL_FN);
+    this._eat(TokenTag.PAREN_O);
+    const arity = this._arity();
+    this._eat(TokenTag.PAREN_C);
+    const block = this._block();
+    this._symtable?.set(func.value, arity);
+    return new DeclFuncStmtNode(func.value, arity, block);
+  }
+
+  /**
+   * _print -> __CALL_PRINT__ __PAREN_O__ _log __PAREN_C__
+   * **/
+  private _print(): ParserNode {
+    this._eat(TokenTag.CALL_PRINT);
+    this._eat(TokenTag.PAREN_O);
+    const log = this._log();
+    this._eat(TokenTag.PAREN_C);
+    return new CallPrintStmtNode(log);
+  }
+
+  /**
    * _statment -> _block
    *            | _if
    *            | _ass
+   *            | _declfunc
+   *            | _print
    * **/
   private _statement(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.CALL_PRINT) {
+      return this._print();
+    }
+
+    if (this._lookahead?.tag === TokenTag.DECL_FN) {
+      return this._declfunc();
+    }
+
     if (this._lookahead?.tag === TokenTag.ASSIGN) {
       return this._ass();
     }

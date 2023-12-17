@@ -1,5 +1,6 @@
 export enum ParserNodeTag {
   IDENT = "Ident",
+  PARAM = "Parameter",
   NUMERICAL = "Numerical",
   LOGICAL = "Logical",
   NEG_EXPR = "NegativeExpression",
@@ -9,6 +10,9 @@ export enum ParserNodeTag {
   UNARY_OP = "UnaryOperation",
   IF_STMT = "IfStatement",
   ASSIGN_STMT = "AssignStatement",
+  ARITY_STMT = "ArityStatement",
+  DECL_FUNC_STMT = "DeclFuncStatement",
   BLOCK_STMT = "BlockStatement",
+  CALL_PRINT_STMT = "CallPrintStmt",
   PROGRAM = "Program",
 }

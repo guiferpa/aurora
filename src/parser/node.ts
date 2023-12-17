@@ -5,6 +5,12 @@ export class ParserNode {
   constructor(public readonly tag: ParserNodeTag) {}
 }
 
+export class ParamNode extends ParserNode {
+  constructor(public readonly name: string) {
+    super(ParserNodeTag.PARAM);
+  }
+}
+
 export class IdentNode extends ParserNode {
   constructor(public readonly name: string) {
     super(ParserNodeTag.IDENT);
@@ -80,9 +86,31 @@ export class AssignStmtNode extends ParserNode {
   }
 }
 
+export class ArityStmtNode extends ParserNode {
+  constructor(public readonly params: ParserNode[]) {
+    super(ParserNodeTag.ARITY_STMT);
+  }
+}
+
+export class DeclFuncStmtNode extends ParserNode {
+  constructor(
+    public readonly name: string,
+    public readonly arity: ParserNode,
+    public readonly body: ParserNode
+  ) {
+    super(ParserNodeTag.DECL_FUNC_STMT);
+  }
+}
+
 export class BlockStmtNode extends ParserNode {
   constructor(public readonly children: ParserNode[]) {
     super(ParserNodeTag.BLOCK_STMT);
+  }
+}
+
+export class CallPrintStmtNode extends ParserNode {
+  constructor(public readonly param: ParserNode) {
+    super(ParserNodeTag.CALL_PRINT_STMT);
   }
 }
 

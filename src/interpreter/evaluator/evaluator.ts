@@ -4,6 +4,7 @@ import { ParserNode } from "@/parser";
 import {
   BinaryOpNode,
   AssignStmtNode,
+  DeclFuncStmtNode,
   IdentNode,
   NumericalNode,
   ProgramNode,
@@ -14,6 +15,7 @@ import {
   LogicExprNode,
   UnaryOpNode,
   IfStmtNode,
+  CallPrintStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -34,7 +36,16 @@ export default class Evaluator {
 
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);
 
-    if (tree instanceof AssignStmtNode || tree instanceof IdentNode) return "";
+    if (
+      tree instanceof AssignStmtNode ||
+      tree instanceof IdentNode ||
+      tree instanceof DeclFuncStmtNode
+    )
+      return "";
+
+    if (tree instanceof CallPrintStmtNode) {
+      return console.log(this.evaluate(tree.param));
+    }
 
     if (tree instanceof NegativeExprNode) return !this.evaluate(tree.expr);
 
@@ -109,9 +120,13 @@ export default class Evaluator {
     }
 
     if (tree instanceof IfStmtNode) {
-      if (tree.test) {
+      const tested = this.evaluate(tree.test);
+
+      if (tested) {
         return this.evaluate(tree.body);
       }
+
+      return;
     }
 
     throw new Error(

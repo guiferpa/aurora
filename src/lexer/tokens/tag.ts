@@ -1,6 +1,7 @@
 export enum TokenTag {
   NUM = "__NUM__",
   IDENT = "__IDENT__",
+  DECL_FN = "__DECL_FN__",
   ASSIGN = "__ASSIGN__",
   OP_ADD = "__OP_ADD__",
   OP_SUB = "__OP_SUB__",
@@ -18,6 +19,8 @@ export enum TokenTag {
   PAREN_C = "__PAREN_C__",
   BRACK_O = "__BRACK_O__",
   BRACK_C = "__BRACK_C__",
+  COMMA = "__COMMA__",
   IF = "__IF__",
+  CALL_PRINT = "__CALL_PRINT__",
   EOF = "__EOF__",
 }

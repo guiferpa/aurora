@@ -1,0 +1,3 @@
+func hello_world(a) {
+  var d = 1
+}

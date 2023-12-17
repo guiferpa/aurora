@@ -9,12 +9,14 @@ import SymTable from "@/symtable";
 export default class Interpreter {
   private _lexer: Lexer;
   private _parser: Parser;
+  private _symtable: SymTable;
   private _environ: Environment;
 
   constructor(buffer: Buffer = Buffer.from("")) {
     this._environ = new Environment("root", null);
+    this._symtable = new SymTable("global");
     this._lexer = new Lexer(buffer);
-    this._parser = new Parser(this._lexer, new SymTable("root"));
+    this._parser = new Parser(this._lexer, this._symtable);
   }
 
   public write(buffer: Buffer) {

@@ -38,6 +38,10 @@ export default class Lexer {
         return new Token(tag, value.split(" ")[1]);
       }
 
+      if (tag === TokenTag.DECL_FN) {
+        return new Token(tag, value.split(" ")[1]);
+      }
+
       if (tag === TokenTag.NUM) {
         return new Token(tag, value.replace(/_/g, ""));
       }

@@ -13,7 +13,7 @@ export default class Interpreter {
   private _environ: Environment;
 
   constructor(buffer: Buffer = Buffer.from("")) {
-    this._environ = new Environment("root", null);
+    this._environ = new Environment("global");
     this._symtable = new SymTable("global");
     this._lexer = new Lexer(buffer);
     this._parser = new Parser(this._lexer, this._symtable);

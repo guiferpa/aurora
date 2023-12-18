@@ -6,9 +6,6 @@ import { Interpreter } from "@/interpreter";
 import { read } from "@/fsutil";
 import { repl } from "@/repl";
 import { Builder } from "./builder";
-import { Lexer } from "./lexer";
-import { Parser } from "./parser";
-import SymTable from "./symtable/symtable";
 
 function run() {
   const program = new Command();

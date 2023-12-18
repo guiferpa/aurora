@@ -36,12 +36,22 @@ export default class Evaluator {
 
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);
 
-    if (
-      tree instanceof AssignStmtNode ||
-      tree instanceof IdentNode ||
-      tree instanceof DeclFuncStmtNode
-    )
-      return "";
+    if (tree instanceof AssignStmtNode) {
+      this._environ.set(tree.name, tree.value);
+      return;
+    }
+
+    if (tree instanceof DeclFuncStmtNode) {
+      const n = this._environ.query(tree.name);
+      if (n instanceof ParserNode) return this.evaluate(n);
+      return n;
+    }
+
+    if (tree instanceof IdentNode) {
+      const n = this._environ.query(tree.name);
+      if (n instanceof ParserNode) return this.evaluate(n);
+      return n;
+    }
 
     if (tree instanceof CallPrintStmtNode) {
       return console.log(this.evaluate(tree.param));

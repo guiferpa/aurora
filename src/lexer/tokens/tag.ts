@@ -22,5 +22,6 @@ export enum TokenTag {
   COMMA = "__COMMA__",
   IF = "__IF__",
   CALL_PRINT = "__CALL_PRINT__",
+  CALL_FUNC = "__CALL_FUNC__",
   EOF = "__EOF__",
 }

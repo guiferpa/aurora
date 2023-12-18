@@ -108,6 +108,15 @@ export class BlockStmtNode extends ParserNode {
   }
 }
 
+export class CallFuncStmtNode extends ParserNode {
+  constructor(
+    public readonly name: string,
+    public readonly params: ParserNode[]
+  ) {
+    super(ParserNodeTag.CALL_FUNC_STMT);
+  }
+}
+
 export class CallPrintStmtNode extends ParserNode {
   constructor(public readonly param: ParserNode) {
     super(ParserNodeTag.CALL_PRINT_STMT);

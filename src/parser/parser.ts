@@ -18,6 +18,7 @@ import {
   ArityStmtNode,
   ParamNode,
   CallPrintStmtNode,
+  CallFuncStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -198,6 +199,38 @@ export default class Parser {
   }
 
   /**
+   * _callfn -> __IDENT__ __PAREN_O__ _log (__COMMA__ _log)* __PAREN_C__
+   *         | __IDENT__ __PAREN_O__ __PAREN_C__
+   *         | _log
+   * **/
+  private _callfn(): ParserNode {
+    if (this._lookahead?.tag !== TokenTag.IDENT) {
+      return this._log();
+    }
+
+    const id = this._eat(TokenTag.IDENT);
+    this._eat(TokenTag.PAREN_O);
+
+    // @ts-ignore
+    if (this._lookahead.tag === TokenTag.PAREN_C) {
+      this._eat(TokenTag.PAREN_C);
+      return new CallFuncStmtNode(id.value, []);
+    }
+
+    const params: ParserNode[] = [this._log()];
+
+    // @ts-ignore
+    while (this._lookahead.tag === TokenTag.COMMA) {
+      this._eat(TokenTag.COMMA);
+      params.push(this._log());
+    }
+
+    this._eat(TokenTag.PAREN_C);
+
+    return new CallFuncStmtNode(id.value, params);
+  }
+
+  /**
    * _param -> __IDENT__
    *         | NULL
    * **/
@@ -229,7 +262,7 @@ export default class Parser {
 
   /**
    * _block -> __BRACK_O__ _statements __BRACK_C__
-   *         | _log
+   *         | _callfn
    * **/
   private _block(): ParserNode {
     if (this._lookahead?.tag === TokenTag.BRACK_O) {
@@ -246,38 +279,35 @@ export default class Parser {
       return new BlockStmtNode(statements);
     }
 
-    return this._log();
+    return this._callfn();
   }
 
   /**
-   * _if -> __IF__ _log _block
+   * _if -> __IF__ _callfn _block
    * **/
   private _if(): ParserNode {
-    if (this._lookahead?.tag === TokenTag.IF) {
-      this._eat(TokenTag.IF);
-      const log = this._log();
-      const block = this._block();
-      return new IfStmtNode(log, block);
-    }
-    return this._log();
+    this._eat(TokenTag.IF);
+    const callfn = this._callfn();
+    const block = this._block();
+    return new IfStmtNode(callfn, block);
   }
 
   /**
-   * _ass -> __ASS__ _log
+   * _ass -> __ASS__ _callfn
    * **/
   private _ass(): ParserNode {
     if (this._lookahead?.tag === TokenTag.ASSIGN) {
       const ass = this._eat(TokenTag.ASSIGN);
-      const expr = this._log();
-      this._symtable?.set(ass.value, expr);
-      return new AssignStmtNode(ass.value, expr);
+      const callfn = this._callfn();
+      this._symtable?.set(ass.value, callfn);
+      return new AssignStmtNode(ass.value, callfn);
     }
 
     return this._log();
   }
 
   /**
-   * _declfunc -> __DECL_FN__ _arity _block
+   * _declfunc -> __DECL_FN__ __PAREN_O__ _arity __PAREN_C__ _block
    * **/
   private _declfunc(): ParserNode {
     const func = this._eat(TokenTag.DECL_FN);

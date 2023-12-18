@@ -13,6 +13,7 @@ export enum ParserNodeTag {
   ARITY_STMT = "ArityStatement",
   DECL_FUNC_STMT = "DeclFuncStatement",
   BLOCK_STMT = "BlockStatement",
-  CALL_PRINT_STMT = "CallPrintStmt",
+  CALL_PRINT_STMT = "CallPrintStatement",
+  CALL_FUNC_STMT = "CallFuncStatement",
   PROGRAM = "Program",
 }

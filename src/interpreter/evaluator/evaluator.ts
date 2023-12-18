@@ -16,6 +16,7 @@ import {
   UnaryOpNode,
   IfStmtNode,
   CallPrintStmtNode,
+  CallFuncStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -38,13 +39,12 @@ export default class Evaluator {
 
     if (tree instanceof AssignStmtNode) {
       this._environ.set(tree.name, tree.value);
-      return;
+      return "";
     }
 
     if (tree instanceof DeclFuncStmtNode) {
-      const n = this._environ.query(tree.name);
-      if (n instanceof ParserNode) return this.evaluate(n);
-      return n;
+      this._environ.set(tree.name, tree.body);
+      return "";
     }
 
     if (tree instanceof IdentNode) {
@@ -53,8 +53,15 @@ export default class Evaluator {
       return n;
     }
 
+    if (tree instanceof CallFuncStmtNode) {
+      const n = this._environ.query(tree.name);
+      if (n instanceof ParserNode) return this.evaluate(n);
+      return n;
+    }
+
     if (tree instanceof CallPrintStmtNode) {
-      return console.log(this.evaluate(tree.param));
+      console.log(this.evaluate(tree.param));
+      return "";
     }
 
     if (tree instanceof NegativeExprNode) return !this.evaluate(tree.expr);
@@ -123,12 +130,6 @@ export default class Evaluator {
       }
     }
 
-    if (tree instanceof IdentNode) {
-      const node = this._environ.query(tree.name);
-      if (typeof node === "string") return node;
-      return this.evaluate(node);
-    }
-
     if (tree instanceof IfStmtNode) {
       const tested = this.evaluate(tree.test);
 
@@ -136,7 +137,7 @@ export default class Evaluator {
         return this.evaluate(tree.body);
       }
 
-      return;
+      return "";
     }
 
     throw new Error(

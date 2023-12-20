@@ -35,7 +35,8 @@ export default class Lexer {
       this._cursor += value.length;
 
       if (tag === TokenTag.ASSIGN) {
-        return new Token(tag, value.split(" ")[1]);
+        const [d] = value.split("=");
+        return new Token(tag, d.replace(/^var/, "").trim());
       }
 
       if (tag === TokenTag.DECL_FN) {

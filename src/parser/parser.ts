@@ -19,6 +19,7 @@ import {
   ParamNode,
   CallPrintStmtNode,
   CallFuncStmtNode,
+  DescFuncStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -199,6 +200,20 @@ export default class Parser {
   }
 
   /**
+   * _descfn -> __DESC_FUNC__ __STR__
+   *         | NULL
+   * **/
+  private _descfn(): DescFuncStmtNode | null {
+    if (this._lookahead?.tag === TokenTag.DESC_FUNC) {
+      this._eat(TokenTag.DESC_FUNC);
+      const str = this._eat(TokenTag.STR);
+      return new DescFuncStmtNode(str.value);
+    }
+
+    return null;
+  }
+
+  /**
    * _callfn -> __IDENT__ __PAREN_O__ _log (__COMMA__ _log)* __PAREN_C__
    *         | __IDENT__ __PAREN_O__ __PAREN_C__
    *         | _log
@@ -314,9 +329,10 @@ export default class Parser {
     this._eat(TokenTag.PAREN_O);
     const arity = this._arity();
     this._eat(TokenTag.PAREN_C);
+    const desc = this._descfn();
     const block = this._block();
     this._symtable?.set(func.value, arity);
-    return new DeclFuncStmtNode(func.value, arity, block);
+    return new DeclFuncStmtNode(func.value, desc, arity, block);
   }
 
   /**

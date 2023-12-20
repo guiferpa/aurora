@@ -42,6 +42,10 @@ export default class Lexer {
         return new Token(tag, value.split(" ")[1]);
       }
 
+      if (tag === TokenTag.STR) {
+        return new Token(tag, value.replace(/\"/g, "").trim());
+      }
+
       if (tag === TokenTag.NUM) {
         return new Token(tag, value.replace(/_/g, ""));
       }

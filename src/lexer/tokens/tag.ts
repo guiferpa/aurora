@@ -23,5 +23,7 @@ export enum TokenTag {
   IF = "__IF__",
   CALL_PRINT = "__CALL_PRINT__",
   CALL_FUNC = "__CALL_FUNC__",
+  DESC_FUNC = "__DESC_FUNC__",
+  STR = "__STR__",
   EOF = "__EOF__",
 }

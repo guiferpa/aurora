@@ -92,9 +92,16 @@ export class ArityStmtNode extends ParserNode {
   }
 }
 
+export class DescFuncStmtNode extends ParserNode {
+  constructor(public readonly value: string) {
+    super(ParserNodeTag.DESC_FUNC_STMT);
+  }
+}
+
 export class DeclFuncStmtNode extends ParserNode {
   constructor(
     public readonly name: string,
+    public readonly desc: DescFuncStmtNode | null,
     public readonly arity: ParserNode,
     public readonly body: ParserNode
   ) {

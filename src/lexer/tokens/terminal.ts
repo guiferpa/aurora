@@ -2,6 +2,7 @@ import { TokenTag } from "./tag";
 
 export const Terminals: [RegExp, TokenTag][] = [
   [new RegExp(/^[0-9_]+/), TokenTag.NUM],
+  [new RegExp(/^\"(.*?)"/), TokenTag.STR],
   [new RegExp(/^print/), TokenTag.CALL_PRINT],
   [new RegExp(/^if/), TokenTag.IF],
   [new RegExp(/^not/), TokenTag.NEG],
@@ -22,7 +23,6 @@ export const Terminals: [RegExp, TokenTag][] = [
   [new RegExp(/^\//), TokenTag.OP_DIV],
   [new RegExp(/^\(/), TokenTag.PAREN_O],
   [new RegExp(/^\)/), TokenTag.PAREN_C],
-  [new RegExp(/\"(.*?)"/), TokenTag.STR],
   [new RegExp(/^\{/), TokenTag.BRACK_O],
   [new RegExp(/^\}/), TokenTag.BRACK_C],
   [new RegExp(/^\,/), TokenTag.BRACK_C],

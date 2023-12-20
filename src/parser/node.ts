@@ -29,6 +29,12 @@ export class LogicalNode extends ParserNode {
   }
 }
 
+export class StringNode extends ParserNode {
+  constructor(public readonly value: string) {
+    super(ParserNodeTag.STRING);
+  }
+}
+
 export class BinaryOpNode extends ParserNode {
   constructor(
     public readonly left: ParserNode,

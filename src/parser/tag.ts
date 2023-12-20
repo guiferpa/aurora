@@ -3,6 +3,7 @@ export enum ParserNodeTag {
   PARAM = "Parameter",
   NUMERICAL = "Numerical",
   LOGICAL = "Logical",
+  STRING = "String",
   NEG_EXPR = "NegativeExpression",
   RELATIVE_EXPR = "RelativeExpression",
   LOGIC_EXPR = "LogicExpression",

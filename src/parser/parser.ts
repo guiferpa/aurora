@@ -20,6 +20,7 @@ import {
   CallPrintStmtNode,
   CallFuncStmtNode,
   DescFuncStmtNode,
+  StringNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -56,6 +57,7 @@ export default class Parser {
    *        | __IDENT__
    *        | __LOG__
    *        | __NUM__
+   *        | __STR__
    * **/
   private _fact(): ParserNode {
     if (this._lookahead?.tag === TokenTag.PAREN_O) {
@@ -74,6 +76,11 @@ export default class Parser {
     if (this._lookahead?.tag === TokenTag.LOG) {
       const log = this._eat(TokenTag.LOG);
       return new LogicalNode(log.value === "true");
+    }
+
+    if (this._lookahead?.tag === TokenTag.STR) {
+      const str = this._eat(TokenTag.STR);
+      return new StringNode(str.value);
     }
 
     const { value } = this._eat(TokenTag.NUM);
@@ -224,6 +231,12 @@ export default class Parser {
     }
 
     const id = this._eat(TokenTag.IDENT);
+
+    // @ts-ignore
+    if (this._lookahead.tag !== TokenTag.PAREN_O) {
+      return new IdentNode(id.value);
+    }
+
     this._eat(TokenTag.PAREN_O);
 
     // @ts-ignore
@@ -385,9 +398,6 @@ export default class Parser {
 
   private _program(): ProgramNode {
     const program = new ProgramNode(this._statements(TokenTag.EOF));
-
-    // Check if there are some declaration not referenced
-    // this._symtable?.hasAnyRef();
 
     return program;
   }

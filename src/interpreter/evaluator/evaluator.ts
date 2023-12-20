@@ -17,6 +17,7 @@ import {
   IfStmtNode,
   CallPrintStmtNode,
   CallFuncStmtNode,
+  StringNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -69,6 +70,8 @@ export default class Evaluator {
     if (tree instanceof NumericalNode) return tree.value;
 
     if (tree instanceof LogicalNode) return tree.value;
+
+    if (tree instanceof StringNode) return tree.value;
 
     if (tree instanceof UnaryOpNode) {
       const { op, right } = tree;

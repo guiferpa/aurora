@@ -1,3 +1,6 @@
-func hello_world(a) {
+var d = 2
+func hello_world() {
   var d = 1
+  print(d)
 }
+print(d)

@@ -4,6 +4,8 @@ import { TokenTag } from "./tokens/tag";
 
 export default class Lexer {
   private _cursor = 0;
+  private _line = 1;
+  private _column = 1;
   private _buffer: Buffer;
 
   constructor(buffer: Buffer = Buffer.from("")) {
@@ -19,7 +21,8 @@ export default class Lexer {
   }
 
   public getNextToken(): Token {
-    if (!this.hasMoreTokens()) return new Token(TokenTag.EOF, "EOF");
+    if (!this.hasMoreTokens())
+      return new Token(this._line, this._column, TokenTag.EOF, "EOF");
 
     const str = this._buffer.toString("ascii", this._cursor);
 
@@ -33,25 +36,43 @@ export default class Lexer {
       if (value === null) continue;
 
       this._cursor += value.length;
+      this._column += value.length;
+
+      let token = new Token(this._line, this._column, tag, value);
 
       if (tag === TokenTag.ASSIGN) {
         const [d] = value.split("=");
-        return new Token(tag, d.replace(/^var/, "").trim());
+        token = new Token(
+          this._line,
+          this._column,
+          tag,
+          d.replace(/^var/, "").trim()
+        );
       }
 
       if (tag === TokenTag.DECL_FN) {
-        return new Token(tag, value.split(" ")[1]);
+        return new Token(this._line, this._column, tag, value.split(" ")[1]);
       }
 
       if (tag === TokenTag.STR) {
-        return new Token(tag, value.replace(/\"/g, "").trim());
+        token = new Token(
+          this._line,
+          this._column,
+          tag,
+          value.replace(/\"/g, "").trim()
+        );
       }
 
       if (tag === TokenTag.NUM) {
-        return new Token(tag, value.replace(/_/g, ""));
+        token = new Token(
+          this._line,
+          this._column,
+          tag,
+          value.replace(/_/g, "")
+        );
       }
 
-      return new Token(tag, value);
+      return token;
     }
 
     throw new SyntaxError(`Token doesn't exist: ${str}`);
@@ -61,6 +82,15 @@ export default class Lexer {
     const matched = /^\s+/.exec(str);
     if (matched === null) return false;
     this._cursor += matched[0].length;
+    const bs = Buffer.from(matched[0], "utf8");
+    for (const b of bs) {
+      if (b === 10) {
+        this._line++;
+        this._column = 1;
+      } else {
+        this._column += 1;
+      }
+    }
     return true;
   }
 

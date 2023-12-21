@@ -46,7 +46,9 @@ export default class Parser {
       );
 
     if (tokenTag !== token?.tag)
-      throw new SyntaxError(`Unexpected token: ${this._lookahead?.value}`);
+      throw new SyntaxError(
+        `Unexpected token at line: ${this._lookahead?.line}, column: ${this._lookahead?.column}, value: ${this._lookahead?.value}`
+      );
 
     this._lookahead = this._lexer.getNextToken();
     return token;

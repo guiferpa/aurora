@@ -18,6 +18,8 @@ import {
   CallPrintStmtNode,
   CallFuncStmtNode,
   StringNode,
+  ReturnStmtNode,
+  ReturnVoidStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -27,6 +29,14 @@ export default class Evaluator {
     const out = [];
 
     for (const n of nodes) {
+      if (n instanceof ReturnVoidStmtNode) {
+        return out;
+      }
+
+      if (n instanceof ReturnStmtNode) {
+        return [...out, this.evaluate(n.value)];
+      }
+
       out.push(`${this.evaluate(n)}`);
     }
 

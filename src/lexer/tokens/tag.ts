@@ -21,6 +21,8 @@ export enum TokenTag {
   BRACK_C = "__BRACK_C__",
   COMMA = "__COMMA__",
   IF = "__IF__",
+  RETURN = "__RETURN__",
+  RETURN_VOID = "__RETURN_VOID__",
   CALL_PRINT = "__CALL_PRINT__",
   CALL_FUNC = "__CALL_FUNC__",
   DESC_FUNC = "__DESC_FUNC__",

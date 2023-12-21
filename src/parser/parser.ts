@@ -16,11 +16,12 @@ import {
   IfStmtNode,
   DeclFuncStmtNode,
   ArityStmtNode,
-  ParamNode,
   CallPrintStmtNode,
   CallFuncStmtNode,
   DescFuncStmtNode,
   StringNode,
+  ReturnStmtNode,
+  ReturnVoidStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -369,13 +370,33 @@ export default class Parser {
   }
 
   /**
+   * _return -> __RETURN__ _log
+   * **/
+  private _return(): ParserNode {
+    this._eat(TokenTag.RETURN);
+    const log = this._log();
+    return new ReturnStmtNode(log);
+  }
+
+  /**
    * _statment -> _block
    *            | _if
    *            | _ass
    *            | _declfunc
    *            | _print
+   *            | _return
+   *            | __RETURN_VOID__
    * **/
   private _statement(): ParserNode {
+    if (this._lookahead?.tag === TokenTag.RETURN_VOID) {
+      this._eat(TokenTag.RETURN_VOID);
+      return new ReturnVoidStmtNode();
+    }
+
+    if (this._lookahead?.tag === TokenTag.RETURN) {
+      return this._return();
+    }
+
     if (this._lookahead?.tag === TokenTag.CALL_PRINT) {
       return this._print();
     }

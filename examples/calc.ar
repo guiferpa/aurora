@@ -1,8 +1,14 @@
 print(4 + 5 * 5)
 
-func sum(a, b) {
-  print(a * b)
-  sum(1, 2)
+return void
+
+func sum(a, b) 
+desc "It's a hello world sample" {
+  print(1)
+  return void
+  print(2)
 }
 
 sum(2, 0)
+
+print(3)

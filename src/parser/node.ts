@@ -115,6 +115,18 @@ export class DeclFuncStmtNode extends ParserNode {
   }
 }
 
+export class ReturnStmtNode extends ParserNode {
+  constructor(public readonly value: ParserNode) {
+    super(ParserNodeTag.RETURN_STMT);
+  }
+}
+
+export class ReturnVoidStmtNode extends ParserNode {
+  constructor() {
+    super(ParserNodeTag.RETURN_VOID_STMT);
+  }
+}
+
 export class BlockStmtNode extends ParserNode {
   constructor(public readonly children: ParserNode[]) {
     super(ParserNodeTag.BLOCK_STMT);

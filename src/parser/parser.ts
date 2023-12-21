@@ -225,6 +225,7 @@ export default class Parser {
   /**
    * _callfn -> __IDENT__ __PAREN_O__ _log (__COMMA__ _log)* __PAREN_C__
    *         | __IDENT__ __PAREN_O__ __PAREN_C__
+   *         | __IDENT__
    *         | _log
    * **/
   private _callfn(): ParserNode {
@@ -264,9 +265,9 @@ export default class Parser {
    * _param -> __IDENT__
    *         | NULL
    * **/
-  private _param(): ParserNode {
+  private _param(): string {
     const id = this._eat(TokenTag.IDENT);
-    return new ParamNode(id.value);
+    return id.value;
   }
 
   /**
@@ -274,12 +275,12 @@ export default class Parser {
    *         | _param
    *         | NULL
    * **/
-  private _arity(): ParserNode {
+  private _arity(): ArityStmtNode {
     if (this._lookahead?.tag !== TokenTag.IDENT) {
       return new ArityStmtNode([]);
     }
 
-    const params: ParserNode[] = [this._param()];
+    const params: string[] = [this._param()];
 
     // @ts-ignore
     while (this._lookahead?.tag === TokenTag.COMMA) {
@@ -329,7 +330,7 @@ export default class Parser {
     if (this._lookahead?.tag === TokenTag.ASSIGN) {
       const ass = this._eat(TokenTag.ASSIGN);
       const callfn = this._callfn();
-      this._symtable?.set(ass.value, callfn);
+      this._symtable?.set(ass.value);
       return new AssignStmtNode(ass.value, callfn);
     }
 
@@ -345,8 +346,14 @@ export default class Parser {
     const arity = this._arity();
     this._eat(TokenTag.PAREN_C);
     const desc = this._descfn();
+
+    const tid = `FUNC-${Date.now()}`;
+    this._symtable = new SymTable(tid, this._symtable);
+    arity.params.forEach((param) => {
+      this._symtable?.set(param);
+    });
     const block = this._block();
-    this._symtable?.set(func.value, arity);
+    this._symtable?.set(func.value);
     return new DeclFuncStmtNode(func.value, desc, arity, block);
   }
 

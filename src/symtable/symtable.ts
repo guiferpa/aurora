@@ -1,9 +1,5 @@
-import { ParserNode } from "@/parser";
-
-type SymTableData = ParserNode;
-
 export default class SymTable {
-  private _table: Map<string, SymTableData>;
+  private _table: Map<string, boolean>;
   public refs: Map<string, number>;
 
   constructor(
@@ -14,8 +10,8 @@ export default class SymTable {
     this.refs = new Map();
   }
 
-  public set(key: string, node: ParserNode) {
-    this._table.set(key, node);
+  public set(key: string) {
+    this._table.set(key, true);
     this.refs.set(key, 0);
   }
 

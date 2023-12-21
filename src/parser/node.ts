@@ -93,7 +93,7 @@ export class AssignStmtNode extends ParserNode {
 }
 
 export class ArityStmtNode extends ParserNode {
-  constructor(public readonly params: ParserNode[]) {
+  constructor(public readonly params: string[]) {
     super(ParserNodeTag.ARITY_STMT);
   }
 }
@@ -108,7 +108,7 @@ export class DeclFuncStmtNode extends ParserNode {
   constructor(
     public readonly name: string,
     public readonly desc: DescFuncStmtNode | null,
-    public readonly arity: ParserNode,
+    public readonly arity: ArityStmtNode,
     public readonly body: ParserNode
   ) {
     super(ParserNodeTag.DECL_FUNC_STMT);

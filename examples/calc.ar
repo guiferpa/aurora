@@ -1,1 +1,8 @@
 print(4 + 5 * 5)
+
+func sum(a, b) {
+  print(a * b)
+  sum(1, 2)
+}
+
+sum(2, 0)

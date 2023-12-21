@@ -1,4 +1,4 @@
-import Environment from "@/environ/environ";
+import Environment, { FunctionClaim, VariableClaim } from "@/environ/environ";
 import { TokenTag } from "@/lexer/tokens/tag";
 import { ParserNode } from "@/parser";
 import {
@@ -39,25 +39,49 @@ export default class Evaluator {
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);
 
     if (tree instanceof AssignStmtNode) {
-      this._environ.set(tree.name, tree.value);
+      const payload = new VariableClaim(tree.value);
+      this._environ.set(tree.name, payload);
       return "";
     }
 
     if (tree instanceof DeclFuncStmtNode) {
-      this._environ.set(tree.name, tree.body);
+      const payload = new FunctionClaim(tree.arity, tree.body);
+      this._environ.set(tree.name, payload);
       return "";
     }
 
     if (tree instanceof IdentNode) {
       const n = this._environ.query(tree.name);
-      if (n instanceof ParserNode) return this.evaluate(n);
-      return n;
+
+      if (n instanceof FunctionClaim)
+        throw new Error(`Invalid variable claim ${tree.name}`);
+
+      if (n instanceof VariableClaim) {
+        return this.evaluate(n.value);
+      }
+
+      return this.evaluate(n);
     }
 
     if (tree instanceof CallFuncStmtNode) {
       const n = this._environ.query(tree.name);
-      if (n instanceof ParserNode) return this.evaluate(n);
-      return n;
+
+      if (!(n instanceof FunctionClaim))
+        throw new Error(`Invalid calling for function ${tree.name}`);
+
+      if (n.arity.params.length !== tree.params.length) {
+        throw new Error(
+          `Wrong arity for calling symbol ${tree.name}, expected: ${n.arity.params.length} but got ${tree.params.length}`
+        );
+      }
+
+      // Allocating refs/values for evaluate AST with focus only in function scope
+      n.arity.params.forEach((param, index) => {
+        const payload = tree.params[index];
+        this._environ.set(param, payload);
+      });
+
+      return this.evaluate(n.body);
     }
 
     if (tree instanceof CallPrintStmtNode) {

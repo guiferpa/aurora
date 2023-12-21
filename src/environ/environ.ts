@@ -1,10 +1,24 @@
 import { ParserNode } from "@/parser";
+import { ArityStmtNode } from "@/parser/node";
 
 export const FuncParameterType = "__FUNC_PARAM__";
 
+export class VariableClaim {
+  constructor(public readonly value: ParserNode) {}
+}
+
+export class FunctionClaim {
+  constructor(
+    public readonly arity: ArityStmtNode,
+    public readonly body: ParserNode
+  ) {}
+}
+
+export type Payload = ParserNode | VariableClaim | FunctionClaim;
+
 export default class Environment {
   public readonly id: string;
-  private _table: Map<string, ParserNode | string>;
+  private _table: Map<string, Payload>;
   public readonly prev: Environment | null;
 
   constructor(id: string, prev: Environment | null = null) {
@@ -13,11 +27,11 @@ export default class Environment {
     this.prev = prev;
   }
 
-  public set(key: string, payload: ParserNode | string) {
+  public set(key: string, payload: Payload) {
     this._table.set(key, payload);
   }
 
-  public query(key: string): ParserNode | string {
+  public query(key: string): Payload {
     let environ: Environment | null = this;
 
     while (environ !== null) {

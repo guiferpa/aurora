@@ -73,6 +73,12 @@ export default class Parser {
     if (this._lookahead?.tag === TokenTag.IDENT) {
       const ident = this._eat(TokenTag.IDENT);
       this._symtable?.has(ident.value);
+
+      // @ts-ignore
+      if (this._lookahead.tag === TokenTag.PAREN_O) {
+        return this._callfn(ident);
+      }
+
       return new IdentNode(ident.value);
     }
 
@@ -229,18 +235,7 @@ export default class Parser {
    *         | __IDENT__
    *         | _log
    * **/
-  private _callfn(): ParserNode {
-    if (this._lookahead?.tag !== TokenTag.IDENT) {
-      return this._log();
-    }
-
-    const id = this._eat(TokenTag.IDENT);
-
-    // @ts-ignore
-    if (this._lookahead.tag !== TokenTag.PAREN_O) {
-      return new IdentNode(id.value);
-    }
-
+  private _callfn(id: Token): ParserNode {
     this._eat(TokenTag.PAREN_O);
 
     // @ts-ignore
@@ -311,7 +306,7 @@ export default class Parser {
       return new BlockStmtNode(statements);
     }
 
-    return this._callfn();
+    return this._log();
   }
 
   /**
@@ -319,9 +314,9 @@ export default class Parser {
    * **/
   private _if(): ParserNode {
     this._eat(TokenTag.IF);
-    const callfn = this._callfn();
+    const log = this._log();
     const block = this._block();
-    return new IfStmtNode(callfn, block);
+    return new IfStmtNode(log, block);
   }
 
   /**
@@ -330,7 +325,7 @@ export default class Parser {
   private _ass(): ParserNode {
     if (this._lookahead?.tag === TokenTag.ASSIGN) {
       const ass = this._eat(TokenTag.ASSIGN);
-      const callfn = this._callfn();
+      const callfn = this._log();
       this._symtable?.set(ass.value);
       return new AssignStmtNode(ass.value, callfn);
     }
@@ -348,13 +343,14 @@ export default class Parser {
     this._eat(TokenTag.PAREN_C);
     const desc = this._descfn();
 
+    this._symtable?.set(func.value);
+
     const tid = `FUNC-${Date.now()}`;
     this._symtable = new SymTable(tid, this._symtable);
     arity.params.forEach((param) => {
       this._symtable?.set(param);
     });
     const block = this._block();
-    this._symtable?.set(func.value);
     return new DeclFuncStmtNode(func.value, desc, arity, block);
   }
 

@@ -34,7 +34,7 @@ export default class Evaluator {
       }
 
       if (n instanceof ReturnStmtNode) {
-        return [...out, this.evaluate(n.value)];
+        return this.evaluate(n.value);
       }
 
       out.push(`${this.evaluate(n)}`);
@@ -90,6 +90,10 @@ export default class Evaluator {
         const payload = tree.params[index];
         this._environ.set(param, payload);
       });
+
+      if (n.body instanceof BlockStmtNode) {
+        return this.compose(n.body.children);
+      }
 
       return this.evaluate(n.body);
     }
@@ -169,6 +173,10 @@ export default class Evaluator {
 
     if (tree instanceof IfStmtNode) {
       const tested = this.evaluate(tree.test);
+
+      if (tested && tree.body instanceof BlockStmtNode) {
+        return this.compose(tree.body.children);
+      }
 
       if (tested) {
         return this.evaluate(tree.body);

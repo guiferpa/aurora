@@ -1,9 +1,13 @@
 var d = 2
 
-func hello_world() {
+func hello_world(message) {
+  print(message)
+}
+
+func another_func() {
   var d = 1
   print(d)
 }
 
-print(d)
-hello_world()
+another_func()
+hello_world("Hello world")

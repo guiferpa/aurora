@@ -7,6 +7,7 @@ export default class Lexer {
   private _line = 1;
   private _column = 1;
   private _buffer: Buffer;
+  private _isComment: boolean = false;
 
   constructor(buffer: Buffer = Buffer.from("")) {
     this._buffer = buffer;
@@ -37,6 +38,14 @@ export default class Lexer {
 
       this._cursor += value.length;
       this._column += value.length;
+
+      if (tag === TokenTag.COMMENT) {
+        this._isComment = true;
+      }
+
+      if (this._isComment) {
+        return this.getNextToken();
+      }
 
       let token = new Token(this._line, this._column, tag, value);
 
@@ -87,6 +96,7 @@ export default class Lexer {
       if (b === 10) {
         this._line++;
         this._column = 1;
+        this._isComment = false;
       } else {
         this._column += 1;
       }

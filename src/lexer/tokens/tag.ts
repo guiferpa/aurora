@@ -28,5 +28,6 @@ export enum TokenTag {
   CALL_FUNC = "__CALL_FUNC__",
   DESC_FUNC = "__DESC_FUNC__",
   STR = "__STR__",
+  COMMENT = "__COMMENT__",
   EOF = "__EOF__",
 }

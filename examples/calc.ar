@@ -1,14 +1,30 @@
-print(4 + 5 * 5)
+func calc(op, a, b) 
+desc "It's a sample of calculator" {
+  if op equal "+" {
+    return a + b
+  }
 
-return void
+  if op equal "-" {
+    return a - b
+  }
 
-func sum(a, b) 
-desc "It's a hello world sample" {
-  print(1)
-  return void
-  print(2)
+  if op equal "*" {
+    return a * b
+  }
+
+  if op equal "/" {
+    return a / b
+  }
 }
 
-sum(2, 0)
+var result = calc("+", 4, 4)
+print(result)
 
-print(3)
+var result = calc("-", 4, 4)
+print(result)
+
+var result = calc("/", 4, 4)
+print(result)
+
+var result = calc("*", 4, 4)
+print(result)

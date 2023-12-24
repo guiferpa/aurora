@@ -9,6 +9,7 @@ Aurora's just for studying programming language concepts
   - [Install CLI](#install-cli)
   - [Using REPL mode](#using-repl-mode)
   - [Execute from file](#execute-from-file)
+  - [Writing some code](#writing-some-code)
 - [Extra options](#extra-options)
   - [Debug flag](#debug-flag)
 
@@ -55,6 +56,9 @@ $ aurora run ./<file>.ar
 201
 =
 ```
+
+### Writing some code
+> 🎈 Unfortunately this project there's no contributor enough to turn this doc better but be my guest discovering how to write some code looking at [examples folder](/examples).
 
 ## Extra options
 

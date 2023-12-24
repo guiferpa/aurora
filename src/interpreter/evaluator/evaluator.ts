@@ -25,10 +25,36 @@ import {
 export default class Evaluator {
   constructor(private readonly _environ: Environment) {}
 
-  private compose(nodes: ParserNode[]): string[] {
+  private merge(nodes: ParserNode[]): ParserNode[] {
     const out = [];
 
     for (const n of nodes) {
+      if (n instanceof IfStmtNode) {
+        const tested = this.evaluate(n.test);
+
+        if (tested && n.body instanceof BlockStmtNode) {
+          out.push(...this.merge(n.body.children));
+          continue;
+        }
+
+        if (tested) {
+          out.push(n.body);
+          continue;
+        }
+
+        continue;
+      }
+
+      out.push(n);
+    }
+
+    return out;
+  }
+
+  private compose(nodes: ParserNode[]): string[] {
+    const out = [];
+
+    for (const n of this.merge(nodes)) {
       if (n instanceof ReturnVoidStmtNode) {
         return out;
       }
@@ -169,20 +195,6 @@ export default class Evaluator {
         case TokenTag.LOG_OR:
           return this.evaluate(left) || this.evaluate(right);
       }
-    }
-
-    if (tree instanceof IfStmtNode) {
-      const tested = this.evaluate(tree.test);
-
-      if (tested && tree.body instanceof BlockStmtNode) {
-        return this.compose(tree.body.children);
-      }
-
-      if (tested) {
-        return this.evaluate(tree.body);
-      }
-
-      return "";
     }
 
     throw new Error(

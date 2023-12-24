@@ -1,0 +1,10 @@
+func greeting(who) {
+  if who {
+    return who
+  }
+
+  return "World"
+}
+
+print("Hello")
+print(greeting(arg(0)))

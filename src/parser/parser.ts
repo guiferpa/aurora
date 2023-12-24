@@ -22,6 +22,7 @@ import {
   StringNode,
   ReturnStmtNode,
   ReturnVoidStmtNode,
+  CallArgStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -68,6 +69,10 @@ export default class Parser {
       const log = this._log();
       this._eat(TokenTag.PAREN_C);
       return log;
+    }
+
+    if (this._lookahead?.tag === TokenTag.CALL_ARG) {
+      return this._arg();
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
@@ -366,6 +371,17 @@ export default class Parser {
   }
 
   /**
+   * _arg -> __CALL_ARG__ __PAREN_O__ _log __PAREN_C__
+   * **/
+  private _arg(): ParserNode {
+    this._eat(TokenTag.CALL_ARG);
+    this._eat(TokenTag.PAREN_O);
+    const term = this._term();
+    this._eat(TokenTag.PAREN_C);
+    return new CallArgStmtNode(term);
+  }
+
+  /**
    * _return -> __RETURN__ _log
    * **/
   private _return(): ParserNode {
@@ -380,6 +396,7 @@ export default class Parser {
    *            | _ass
    *            | _declfunc
    *            | _print
+   *            | _arg
    *            | _return
    *            | __RETURN_VOID__
    * **/

@@ -23,10 +23,10 @@ export default class Interpreter {
     this._lexer.write(buffer);
   }
 
-  public run(debug?: boolean): string[] {
+  public run(debug?: boolean, args: string[] = []): string[] {
     const tree = this._parser.parse();
     debug && console.log(colorize(JSON.stringify(tree, null, 2)));
-    const evaluator = new Evaluator(this._environ);
+    const evaluator = new Evaluator(this._environ, args);
     return evaluator.evaluate(tree);
   }
 }

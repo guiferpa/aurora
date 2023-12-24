@@ -14,15 +14,18 @@ function run() {
 
   program
     .option("-t, --tree", "tree flag to show AST", false)
+    .option("-a, --args <string>", "pass arguments for runtime", "")
     .action(function () {
       const options = program.opts();
+
+      const optArgs = options.args.split(" ");
 
       const r = repl();
       const interpreter = new Interpreter();
 
       r.on("line", function (chunk) {
         interpreter.write(Buffer.from(chunk));
-        console.log(`= ${interpreter.run(options.tree as boolean)}`);
+        console.log(`= ${interpreter.run(options.tree as boolean, optArgs)}`);
         r.prompt(true);
       });
 
@@ -40,9 +43,11 @@ function run() {
       try {
         const options = program.opts();
 
+        const optArgs = options.args.split(" ");
+
         const buffer = await read(arg);
         const interpreter = new Interpreter(buffer);
-        interpreter.run(options.tree as boolean);
+        interpreter.run(options.tree as boolean, optArgs);
       } catch (err) {
         if (err instanceof SyntaxError) {
           console.log(err.message);

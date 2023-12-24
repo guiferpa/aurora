@@ -148,6 +148,12 @@ export class CallPrintStmtNode extends ParserNode {
   }
 }
 
+export class CallArgStmtNode extends ParserNode {
+  constructor(public readonly index: ParserNode) {
+    super(ParserNodeTag.CALL_PRINT_STMT);
+  }
+}
+
 export class ProgramNode extends ParserNode {
   constructor(public readonly children: ParserNode[]) {
     super(ParserNodeTag.PROGRAM);

@@ -20,10 +20,14 @@ import {
   StringNode,
   ReturnStmtNode,
   ReturnVoidStmtNode,
+  CallArgStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
-  constructor(private readonly _environ: Environment) {}
+  constructor(
+    private readonly _environ: Environment,
+    private readonly _args: string[] = []
+  ) {}
 
   private merge(nodes: ParserNode[]): ParserNode[] {
     const out = [];
@@ -122,6 +126,16 @@ export default class Evaluator {
       }
 
       return this.evaluate(n.body);
+    }
+
+    if (tree instanceof CallArgStmtNode) {
+      const index = this.evaluate(tree.index);
+
+      if (this._args.length > index) {
+        return this._args[index];
+      }
+
+      return null;
     }
 
     if (tree instanceof CallPrintStmtNode) {

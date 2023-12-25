@@ -4,7 +4,7 @@ import { ArityStmtNode } from "@/parser/node";
 export const FuncParameterType = "__FUNC_PARAM__";
 
 export class VariableClaim {
-  constructor(public readonly value: ParserNode) {}
+  constructor(public readonly value: any) {}
 }
 
 export class FunctionClaim {

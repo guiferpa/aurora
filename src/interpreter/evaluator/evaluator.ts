@@ -22,10 +22,11 @@ import {
   ReturnVoidStmtNode,
   CallArgStmtNode,
 } from "@/parser/node";
+import colorizeJson from "json-colorizer";
 
 export default class Evaluator {
   constructor(
-    private readonly _environ: Environment,
+    private _environ: Environment | null,
     private readonly _args: string[] = []
   ) {}
 
@@ -79,32 +80,36 @@ export default class Evaluator {
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);
 
     if (tree instanceof AssignStmtNode) {
-      const payload = new VariableClaim(tree.value);
-      this._environ.set(tree.name, payload);
+      const payload = new VariableClaim(this.evaluate(tree.value));
+      this._environ?.set(tree.name, payload);
       return "";
     }
 
     if (tree instanceof DeclFuncStmtNode) {
       const payload = new FunctionClaim(tree.arity, tree.body);
-      this._environ.set(tree.name, payload);
+      this._environ?.set(tree.name, payload);
       return "";
     }
 
     if (tree instanceof IdentNode) {
-      const n = this._environ.query(tree.name);
+      const n = this._environ?.query(tree.name);
+
+      if (typeof n === "undefined") {
+        return null;
+      }
 
       if (n instanceof FunctionClaim)
         throw new Error(`Invalid variable claim ${tree.name}`);
 
       if (n instanceof VariableClaim) {
-        return this.evaluate(n.value);
+        return n.value;
       }
 
       return this.evaluate(n);
     }
 
     if (tree instanceof CallFuncStmtNode) {
-      const n = this._environ.query(tree.name);
+      const n = this._environ?.query(tree.name);
 
       if (!(n instanceof FunctionClaim))
         throw new Error(`Invalid calling for function ${tree.name}`);
@@ -115,17 +120,19 @@ export default class Evaluator {
         );
       }
 
+      this._environ = new Environment(`FUNC-${Date.now()}`, this._environ);
+
       // Allocating refs/values for evaluate AST with focus only in function scope
       n.arity.params.forEach((param, index) => {
-        const payload = tree.params[index];
-        this._environ.set(param, payload);
+        const payload = new VariableClaim(this.evaluate(tree.params[index]));
+        this._environ?.set(param, payload);
       });
 
-      if (n.body instanceof BlockStmtNode) {
-        return this.compose(n.body.children);
-      }
+      const result = this.evaluate(n.body);
 
-      return this.evaluate(n.body);
+      this._environ = this._environ.prev;
+
+      return result;
     }
 
     if (tree instanceof CallArgStmtNode) {

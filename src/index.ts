@@ -50,10 +50,10 @@ function run() {
         interpreter.run(options.tree as boolean, optArgs);
       } catch (err) {
         if (err instanceof SyntaxError) {
-          console.log(err.message);
+          console.log(err);
           process.exit(2);
         }
-        console.log((err as Error).message);
+        console.log(err);
         process.exit(1);
       }
     });

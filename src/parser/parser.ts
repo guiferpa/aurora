@@ -23,6 +23,7 @@ import {
   ReturnStmtNode,
   ReturnVoidStmtNode,
   CallArgStmtNode,
+  CallConcatStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -73,6 +74,10 @@ export default class Parser {
 
     if (this._lookahead?.tag === TokenTag.CALL_ARG) {
       return this._arg();
+    }
+
+    if (this._lookahead?.tag === TokenTag.CALL_CONCAT) {
+      return this._concat();
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
@@ -379,6 +384,26 @@ export default class Parser {
     const term = this._term();
     this._eat(TokenTag.PAREN_C);
     return new CallArgStmtNode(term);
+  }
+
+  /**
+   * _arg -> __CALL_ARG__ __PAREN_O__ _log __PAREN_C__
+   * **/
+  private _concat(): ParserNode {
+    this._eat(TokenTag.CALL_CONCAT);
+    this._eat(TokenTag.PAREN_O);
+
+    const params: ParserNode[] = [this._term()];
+
+    // @ts-ignore
+    while (this._lookahead.tag === TokenTag.COMMA) {
+      this._eat(TokenTag.COMMA);
+      params.push(this._term());
+    }
+
+    this._eat(TokenTag.PAREN_C);
+
+    return new CallConcatStmtNode(params);
   }
 
   /**

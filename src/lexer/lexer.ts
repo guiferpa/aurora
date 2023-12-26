@@ -68,7 +68,7 @@ export default class Lexer {
           this._line,
           this._column,
           tag,
-          value.replace(/\"/g, "").trim()
+          value.trim().replace(/\"/g, "")
         );
       }
 

@@ -21,6 +21,7 @@ import {
   ReturnStmtNode,
   ReturnVoidStmtNode,
   CallArgStmtNode,
+  CallConcatStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -142,6 +143,14 @@ export default class Evaluator {
       }
 
       return;
+    }
+
+    if (tree instanceof CallConcatStmtNode) {
+      const strs: string[] = tree.values.map(
+        (item) => `${this.evaluate(item)}`
+      );
+
+      return strs.join("");
     }
 
     if (tree instanceof CallPrintStmtNode) {

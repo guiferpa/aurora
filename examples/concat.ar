@@ -1,0 +1,11 @@
+func greeting(name) {
+  if not name {
+    return "Hello world"
+  }
+
+  return concat("Hello, ", name)
+}
+
+var name = arg(0)
+
+print(greeting(name))

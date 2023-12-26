@@ -29,32 +29,6 @@ export default class Evaluator {
     private readonly _args: string[] = []
   ) {}
 
-  private merge(nodes: ParserNode[]): ParserNode[] {
-    const out = [];
-
-    for (const n of nodes) {
-      if (n instanceof IfStmtNode) {
-        const tested = this.evaluate(n.test);
-
-        if (tested && n.body instanceof BlockStmtNode) {
-          out.push(...this.merge(n.body.children));
-          continue;
-        }
-
-        if (tested) {
-          out.push(n.body);
-          continue;
-        }
-
-        continue;
-      }
-
-      out.push(n);
-    }
-
-    return out;
-  }
-
   private compose(nodes: ParserNode[]): any[] {
     const out = [];
 
@@ -103,7 +77,6 @@ export default class Evaluator {
           }
 
           this.evaluate(child);
-          return;
         }
 
         return;
@@ -149,17 +122,16 @@ export default class Evaluator {
         this._environ?.set(param, payload);
       });
 
-      const result = (this.evaluate(n.body) as any[]).filter(
-        (item) => typeof item !== "undefined"
-      );
-
-      if (result.length < 1) {
-        return;
+      for (const child of (n.body as BlockStmtNode).children) {
+        const result = this.evaluate(child);
+        if (typeof result !== "undefined") {
+          this._environ = this._environ.prev;
+          return result;
+        }
       }
 
       this._environ = this._environ.prev;
-
-      return result[0];
+      return;
     }
 
     if (tree instanceof CallArgStmtNode) {

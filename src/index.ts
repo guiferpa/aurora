@@ -18,7 +18,7 @@ function run() {
     .action(function () {
       const options = program.opts();
 
-      const optArgs = options.args.split(" ");
+      const optArgs = options.args.split(",");
 
       const r = repl();
       const interpreter = new Interpreter();
@@ -39,11 +39,12 @@ function run() {
     .command("run")
     .argument("<filename>", "filename to run interpreter")
     .option("-t, --tree", "tree flag to show AST", false)
+    .option("-a, --args <string>", "pass arguments for runtime", "")
     .action(async function (arg) {
       try {
         const options = program.opts();
 
-        const optArgs = options.args.split(" ");
+        const optArgs = options.args.split(",");
 
         const buffer = await read(arg);
         const interpreter = new Interpreter(buffer);

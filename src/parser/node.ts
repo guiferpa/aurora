@@ -150,7 +150,7 @@ export class CallPrintStmtNode extends ParserNode {
 
 export class CallArgStmtNode extends ParserNode {
   constructor(public readonly index: ParserNode) {
-    super(ParserNodeTag.CALL_PRINT_STMT);
+    super(ParserNodeTag.CALL_ARG_STMT);
   }
 }
 

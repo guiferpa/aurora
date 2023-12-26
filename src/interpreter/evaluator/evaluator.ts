@@ -22,7 +22,6 @@ import {
   ReturnVoidStmtNode,
   CallArgStmtNode,
 } from "@/parser/node";
-import colorizeJson from "json-colorizer";
 
 export default class Evaluator {
   constructor(
@@ -56,19 +55,11 @@ export default class Evaluator {
     return out;
   }
 
-  private compose(nodes: ParserNode[]): string[] {
+  private compose(nodes: ParserNode[]): any[] {
     const out = [];
 
-    for (const n of this.merge(nodes)) {
-      if (n instanceof ReturnVoidStmtNode) {
-        return out;
-      }
-
-      if (n instanceof ReturnStmtNode) {
-        return this.evaluate(n.value);
-      }
-
-      out.push(`${this.evaluate(n)}`);
+    for (const n of nodes) {
+      out.push(this.evaluate(n));
     }
 
     return out;
@@ -82,20 +73,50 @@ export default class Evaluator {
     if (tree instanceof AssignStmtNode) {
       const payload = new VariableClaim(this.evaluate(tree.value));
       this._environ?.set(tree.name, payload);
-      return "";
+      return;
     }
 
     if (tree instanceof DeclFuncStmtNode) {
       const payload = new FunctionClaim(tree.arity, tree.body);
       this._environ?.set(tree.name, payload);
-      return "";
+      return;
+    }
+
+    if (tree instanceof ReturnVoidStmtNode) {
+      return;
+    }
+
+    if (tree instanceof ReturnStmtNode) {
+      return this.evaluate(tree.value);
+    }
+
+    if (tree instanceof IfStmtNode) {
+      const tested = this.evaluate(tree.test);
+
+      if (tested && tree.body instanceof BlockStmtNode) {
+        for (const child of tree.body.children) {
+          if (
+            child instanceof ReturnVoidStmtNode ||
+            child instanceof ReturnStmtNode
+          ) {
+            return this.evaluate(child);
+          }
+
+          this.evaluate(child);
+          return;
+        }
+
+        return;
+      }
+
+      return;
     }
 
     if (tree instanceof IdentNode) {
       const n = this._environ?.query(tree.name);
 
       if (typeof n === "undefined") {
-        return null;
+        return;
       }
 
       if (n instanceof FunctionClaim)
@@ -128,11 +149,17 @@ export default class Evaluator {
         this._environ?.set(param, payload);
       });
 
-      const result = this.evaluate(n.body);
+      const result = (this.evaluate(n.body) as any[]).filter(
+        (item) => typeof item !== "undefined"
+      );
+
+      if (result.length < 1) {
+        return;
+      }
 
       this._environ = this._environ.prev;
 
-      return result;
+      return result[0];
     }
 
     if (tree instanceof CallArgStmtNode) {
@@ -142,12 +169,12 @@ export default class Evaluator {
         return this._args[index];
       }
 
-      return null;
+      return;
     }
 
     if (tree instanceof CallPrintStmtNode) {
       console.log(this.evaluate(tree.param));
-      return "";
+      return;
     }
 
     if (tree instanceof NegativeExprNode) return !this.evaluate(tree.expr);

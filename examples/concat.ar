@@ -1,11 +1,15 @@
+var name = arg(0)
+
+func no_name?(name) {
+  return not name
+}
+
 func greeting(name) {
-  if not name {
+  if no_name?(name) {
     return "Hello world"
   }
 
   return concat("Hello, ", name)
 }
-
-var name = arg(0)
 
 print(greeting(name))

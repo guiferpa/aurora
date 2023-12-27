@@ -1,8 +1,17 @@
-var arr = [2, 4, 8]
-print(arr)
+var arr_a = [2, 4, 8]
+print(arr_a)
 
 func mult(item) {
   return item * item
 }
 
-print(map(arr, mult))
+print(map(arr_a, mult))
+
+var arr_b = [1, "", 0]
+print(arr_b)
+
+func is_empty?(item) {
+  return item
+}
+
+print(filter(arr_b, is_empty?))

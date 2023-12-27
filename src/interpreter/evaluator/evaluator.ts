@@ -24,6 +24,7 @@ import {
   CallConcatStmtNode,
   ArrayNode,
   CallMapStmtNode,
+  CallFilterStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -181,6 +182,35 @@ export default class Evaluator {
       }
 
       return out;
+    }
+
+    if (tree instanceof CallFilterStmtNode) {
+      const arr = this.evaluate(tree.param);
+      if (!Array.isArray(arr))
+        throw new SyntaxError("Call filter param must be an array");
+
+      const handle = this.evaluate(tree.handle);
+
+      if (!(handle instanceof FunctionClaim)) return;
+
+      const out = [];
+
+      for (const item of arr) {
+        this._environ = new Environment(`FUNC-${Date.now()}`, this._environ);
+
+        handle.arity.params.forEach((param) => {
+          const payload = new VariableClaim(item);
+          this._environ?.set(param, payload);
+        });
+
+        for (const child of (handle.body as BlockStmtNode).children) {
+          out.push(this.evaluate(child));
+        }
+
+        this._environ = this._environ.prev;
+      }
+
+      return out.filter(Boolean);
     }
 
     if (tree instanceof CallPrintStmtNode) {

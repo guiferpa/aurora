@@ -30,6 +30,7 @@ export enum TokenTag {
   CALL_FUNC = "__CALL_FUNC__",
   CALL_CONCAT = "__CALL_CONCAT__",
   CALL_MAP = "__CALL_MAP__",
+  CALL_FILTER = "__CALL_FILTER__",
   DESC_FUNC = "__DESC_FUNC__",
   STR = "__STR__",
   COMMENT = "__COMMENT__",

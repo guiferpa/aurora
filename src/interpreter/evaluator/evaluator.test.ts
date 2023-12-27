@@ -11,7 +11,7 @@ describe("Evaluator test suite", () => {
     1 + 1
     `;
 
-    const expected = ["2"];
+    const expected = [2];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");
@@ -28,7 +28,7 @@ describe("Evaluator test suite", () => {
     10 + 20 - 3 * 20
     `;
 
-    const expected = ["-30"];
+    const expected = [-30];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");
@@ -45,7 +45,7 @@ describe("Evaluator test suite", () => {
     10 - 2 * 5
     `;
 
-    const expected = ["0"];
+    const expected = [0];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");
@@ -62,7 +62,7 @@ describe("Evaluator test suite", () => {
     10 * 2 - 5
     `;
 
-    const expected = ["15"];
+    const expected = [15];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");
@@ -74,13 +74,13 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test.skip("Program that set a variable then sum it with another number", () => {
+  test("Program that set a variable then sum it with another number", () => {
     const program = `
     var value = 10;
     value + 20;
     `;
 
-    const expected = ["30"];
+    const expected = [undefined, 30];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");
@@ -92,7 +92,7 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test.skip('Program that set an "if" then it has condition with "false" value', () => {
+  test('Program that set an "if" then it has condition with "false" value', () => {
     const program = `
     var compare = false;
 
@@ -104,7 +104,7 @@ describe("Evaluator test suite", () => {
     10;
     `;
 
-    const expected = ["10"];
+    const expected = [undefined, undefined, 10];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");
@@ -116,7 +116,7 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test.skip('Program that set an "if" then it has condition with "true" value', () => {
+  test('Program that set an "if" then it has condition with "true" value', () => {
     const program = `
     var compare = true;
 
@@ -128,7 +128,7 @@ describe("Evaluator test suite", () => {
     10;
     `;
 
-    const expected = ["20", "10"];
+    const expected = [undefined, undefined, 10];
 
     const lexer = new Lexer(Buffer.from(program));
     const symtable = new SymTable("root");

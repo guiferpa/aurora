@@ -11,7 +11,7 @@ describe("Parser test suite", () => {
     parser.parse();
   });
 
-  test.skip("Get function token", () => {
+  test("Get function token", () => {
     const program = `
     var i = 0;
     func hello() {}
@@ -22,7 +22,7 @@ describe("Parser test suite", () => {
     parser.parse();
   });
 
-  test.skip("Get function token using params", () => {
+  test("Get function token using params", () => {
     const program = `
     var i = 0;
     func hello(world) {}
@@ -33,7 +33,7 @@ describe("Parser test suite", () => {
     parser.parse();
   });
 
-  test.skip("Get function token using body", () => {
+  test("Get function token using body", () => {
     const program = `
     var i = 0;
     func hello(world) {
@@ -46,7 +46,7 @@ describe("Parser test suite", () => {
     parser.parse();
   });
 
-  test.skip("Get function token using body calling another func", () => {
+  test("Get function token using body calling another func", () => {
     const program = `
     var i = 0;
     func hello(world) {

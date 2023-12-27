@@ -166,6 +166,15 @@ export class CallConcatStmtNode extends ParserNode {
   }
 }
 
+export class CallMapStmtNode extends ParserNode {
+  constructor(
+    public readonly param: ParserNode,
+    public readonly handle: ParserNode
+  ) {
+    super(ParserNodeTag.CALL_MAP_STMT);
+  }
+}
+
 export class ProgramNode extends ParserNode {
   constructor(public readonly children: ParserNode[]) {
     super(ParserNodeTag.PROGRAM);

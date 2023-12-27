@@ -23,6 +23,7 @@ import {
   CallArgStmtNode,
   CallConcatStmtNode,
   ArrayNode,
+  CallMapStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -94,8 +95,7 @@ export default class Evaluator {
         return;
       }
 
-      if (n instanceof FunctionClaim)
-        throw new Error(`Invalid variable claim ${tree.name}`);
+      if (n instanceof FunctionClaim) return n;
 
       if (n instanceof VariableClaim) {
         return n.value;
@@ -152,6 +152,35 @@ export default class Evaluator {
       );
 
       return strs.join("");
+    }
+
+    if (tree instanceof CallMapStmtNode) {
+      const arr = this.evaluate(tree.param);
+      if (!Array.isArray(arr))
+        throw new SyntaxError("Call map param must be an array");
+
+      const handle = this.evaluate(tree.handle);
+
+      if (!(handle instanceof FunctionClaim)) return;
+
+      const out = [];
+
+      for (const item of arr) {
+        this._environ = new Environment(`FUNC-${Date.now()}`, this._environ);
+
+        handle.arity.params.forEach((param) => {
+          const payload = new VariableClaim(item);
+          this._environ?.set(param, payload);
+        });
+
+        for (const child of (handle.body as BlockStmtNode).children) {
+          out.push(this.evaluate(child));
+        }
+
+        this._environ = this._environ.prev;
+      }
+
+      return out;
     }
 
     if (tree instanceof CallPrintStmtNode) {

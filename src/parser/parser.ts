@@ -25,6 +25,7 @@ import {
   CallArgStmtNode,
   CallConcatStmtNode,
   ArrayNode,
+  CallMapStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -78,6 +79,10 @@ export default class Parser {
       return this._concat();
     }
 
+    if (this._lookahead?.tag === TokenTag.CALL_MAP) {
+      return this._map();
+    }
+
     if (this._lookahead?.tag === TokenTag.IDENT) {
       return this._call();
     }
@@ -101,6 +106,16 @@ export default class Parser {
     throw new Error(`Unknwon token ${JSON.stringify(this._lookahead)}`);
   }
 
+  private _map(): ParserNode {
+    this._eat(TokenTag.CALL_MAP);
+    this._eat(TokenTag.PAREN_O);
+    const param = this._fact();
+    this._eat(TokenTag.COMMA);
+    const fact = this._fact();
+    this._eat(TokenTag.PAREN_C);
+    return new CallMapStmtNode(param, fact);
+  }
+
   // __PAREN_O__ __PAREN_C__
   private _pre(): ParserNode {
     this._eat(TokenTag.PAREN_O);
@@ -110,7 +125,7 @@ export default class Parser {
   }
 
   // __S_BREAK_O__ __S_BREAK_C__
-  private _arr(): ParserNode {
+  private _arr(): ArrayNode {
     this._eat(TokenTag.S_BRACK_O);
     if (this._lookahead?.tag === TokenTag.S_BRACK_C) {
       this._eat(TokenTag.S_BRACK_C);

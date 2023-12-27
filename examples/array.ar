@@ -1,2 +1,8 @@
-var arr = [1, "Hello", false]
+var arr = [2, 4, 8]
 print(arr)
+
+func mult(item) {
+  return item * item
+}
+
+print(map(arr, mult))

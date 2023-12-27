@@ -24,6 +24,7 @@ import {
   ReturnVoidStmtNode,
   CallArgStmtNode,
   CallConcatStmtNode,
+  ArrayNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -66,10 +67,7 @@ export default class Parser {
    * **/
   private _fact(): ParserNode {
     if (this._lookahead?.tag === TokenTag.PAREN_O) {
-      this._eat(TokenTag.PAREN_O);
-      const log = this._log();
-      this._eat(TokenTag.PAREN_C);
-      return log;
+      return this._pre();
     }
 
     if (this._lookahead?.tag === TokenTag.CALL_ARG) {
@@ -81,31 +79,85 @@ export default class Parser {
     }
 
     if (this._lookahead?.tag === TokenTag.IDENT) {
-      const ident = this._eat(TokenTag.IDENT);
-      this._symtable?.has(ident.value);
-
-      // @ts-ignore
-      if (this._lookahead.tag === TokenTag.PAREN_O) {
-        return this._callfn(ident);
-      }
-
-      return new IdentNode(ident.value);
+      return this._call();
     }
 
     if (this._lookahead?.tag === TokenTag.LOG) {
-      const log = this._eat(TokenTag.LOG);
-      return new LogicalNode(log.value === "true");
+      return this._bool();
     }
 
     if (this._lookahead?.tag === TokenTag.STR) {
-      const str = this._eat(TokenTag.STR);
-      return new StringNode(str.value);
+      return this._str();
     }
 
+    if (this._lookahead?.tag === TokenTag.NUM) {
+      return this._num();
+    }
+
+    if (this._lookahead?.tag === TokenTag.S_BRACK_O) {
+      return this._arr();
+    }
+
+    throw new Error(`Unknwon token ${JSON.stringify(this._lookahead)}`);
+  }
+
+  // __PAREN_O__ __PAREN_C__
+  private _pre(): ParserNode {
+    this._eat(TokenTag.PAREN_O);
+    const log = this._log();
+    this._eat(TokenTag.PAREN_C);
+    return log;
+  }
+
+  // __S_BREAK_O__ __S_BREAK_C__
+  private _arr(): ParserNode {
+    this._eat(TokenTag.S_BRACK_O);
+    if (this._lookahead?.tag === TokenTag.S_BRACK_C) {
+      this._eat(TokenTag.S_BRACK_C);
+      return new ArrayNode([]);
+    }
+
+    const items = [this._log()];
+    while (this._lookahead?.tag === TokenTag.COMMA) {
+      this._eat(TokenTag.COMMA);
+      items.push(this._log());
+    }
+    this._eat(TokenTag.S_BRACK_C);
+
+    return new ArrayNode(items);
+  }
+
+  // __LOG__
+  private _bool(): ParserNode {
+    const log = this._eat(TokenTag.LOG);
+    return new LogicalNode(log.value === "true");
+  }
+
+  // __NUM__
+  private _num(): ParserNode {
     const { value } = this._eat(TokenTag.NUM);
     const num = Number.parseInt(value);
     if (Number.isNaN(num)) throw new Error(`Value ${value} is not a number`);
     return new NumericalNode(num);
+  }
+
+  // __STR__
+  private _str(): ParserNode {
+    const str = this._eat(TokenTag.STR);
+    return new StringNode(str.value);
+  }
+
+  // __IDENT__ or __CALL_FUNC__
+  private _call(): ParserNode {
+    const ident = this._eat(TokenTag.IDENT);
+    this._symtable?.has(ident.value);
+
+    // @ts-ignore
+    if (this._lookahead.tag === TokenTag.PAREN_O) {
+      return this._callfn(ident);
+    }
+
+    return new IdentNode(ident.value);
   }
 
   /**

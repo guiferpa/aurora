@@ -19,6 +19,8 @@ export enum TokenTag {
   PAREN_C = "__PAREN_C__",
   BRACK_O = "__BRACK_O__",
   BRACK_C = "__BRACK_C__",
+  S_BRACK_O = "__S_BREAK_O__",
+  S_BRACK_C = "__S_BREAK_C__",
   COMMA = "__COMMA__",
   IF = "__IF__",
   RETURN = "__RETURN__",

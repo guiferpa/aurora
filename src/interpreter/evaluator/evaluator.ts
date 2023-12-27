@@ -22,6 +22,7 @@ import {
   ReturnVoidStmtNode,
   CallArgStmtNode,
   CallConcatStmtNode,
+  ArrayNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -165,6 +166,9 @@ export default class Evaluator {
     if (tree instanceof LogicalNode) return tree.value;
 
     if (tree instanceof StringNode) return tree.value;
+
+    if (tree instanceof ArrayNode)
+      return tree.items.map((item) => this.evaluate(item));
 
     if (tree instanceof UnaryOpNode) {
       const { op, right } = tree;

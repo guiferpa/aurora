@@ -31,5 +31,7 @@ export const Terminals: [RegExp, TokenTag][] = [
   [new RegExp(/^\)/), TokenTag.PAREN_C],
   [new RegExp(/^\{/), TokenTag.BRACK_O],
   [new RegExp(/^\}/), TokenTag.BRACK_C],
+  [new RegExp(/^\[/), TokenTag.S_BRACK_O],
+  [new RegExp(/^\]/), TokenTag.S_BRACK_C],
   [new RegExp(/^\,/), TokenTag.COMMA],
 ];

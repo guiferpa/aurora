@@ -1,0 +1,2 @@
+var arr = [1, "Hello", false]
+print(arr)

@@ -4,6 +4,7 @@ export enum ParserNodeTag {
   NUMERICAL = "Numerical",
   LOGICAL = "Logical",
   STRING = "String",
+  ARRAY = "Array",
   NEG_EXPR = "NegativeExpression",
   RELATIVE_EXPR = "RelativeExpression",
   LOGIC_EXPR = "LogicExpression",

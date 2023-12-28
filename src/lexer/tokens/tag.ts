@@ -34,5 +34,7 @@ export enum TokenTag {
   DESC_FUNC = "__DESC_FUNC__",
   STR = "__STR__",
   COMMENT = "__COMMENT__",
+  FROM = "__FROM__",
+  AS = "__AS__",
   EOF = "__EOF__",
 }

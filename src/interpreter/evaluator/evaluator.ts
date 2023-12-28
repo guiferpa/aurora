@@ -204,13 +204,14 @@ export default class Evaluator {
         });
 
         for (const child of (handle.body as BlockStmtNode).children) {
-          out.push(this.evaluate(child));
+          const tested = this.evaluate(child);
+          if (tested) out.push(item);
         }
 
         this._environ = this._environ.prev;
       }
 
-      return out.filter(Boolean);
+      return out;
     }
 
     if (tree instanceof CallPrintStmtNode) {

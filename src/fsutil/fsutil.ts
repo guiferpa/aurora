@@ -1,10 +1,12 @@
 import fs from "fs";
 
-export async function read(arg: string): Promise<Buffer> {
+export async function read(raw: string): Promise<Buffer> {
+  const [filename] = noext(raw);
+
   return new Promise((resolve, reject) => {
     let buffer = Buffer.from("");
 
-    const reader = fs.createReadStream(arg);
+    const reader = fs.createReadStream(`${filename}.ar`);
 
     reader.on("data", (chunk: Buffer) => {
       buffer = Buffer.concat([buffer, chunk]);
@@ -29,4 +31,9 @@ export async function write(filename: string, content: string[]) {
     writer.write(Buffer.concat([Buffer.from(inst), Buffer.from("\n")]));
 
   writer.close();
+}
+
+export function noext(raw: string): [string, string] {
+  const [ext, ...splitted] = raw.split(".").reverse();
+  return splitted.length > 0 ? [splitted.reverse().join("."), ext] : [ext, ""];
 }

@@ -6,12 +6,13 @@ export default class Lexer {
   private _cursor = 0;
   private _line = 1;
   private _column = 1;
-  private _buffer: Buffer;
   private _isComment: boolean = false;
+  private _currentToken: Token | null = null;
 
-  constructor(buffer: Buffer = Buffer.from("")) {
-    this._buffer = buffer;
-  }
+  constructor(
+    private _buffer: Buffer = Buffer.from(""),
+    public readonly previous: Lexer | null = null
+  ) {}
 
   public write(buffer: Buffer) {
     this._buffer = Buffer.concat([this._buffer, buffer]);
@@ -19,6 +20,10 @@ export default class Lexer {
 
   public hasMoreTokens(): boolean {
     return this._cursor < this._buffer.length;
+  }
+
+  public getCurrentToken(): Token | null {
+    return this._currentToken;
   }
 
   public getNextToken(): Token {
@@ -80,6 +85,8 @@ export default class Lexer {
           value.replace(/_/g, "")
         );
       }
+
+      this._currentToken = token;
 
       return token;
     }

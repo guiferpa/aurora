@@ -162,7 +162,7 @@ export class CallArgStmtNode extends ParserNode {
 
 export class CallConcatStmtNode extends ParserNode {
   constructor(public readonly values: ParserNode[]) {
-    super(ParserNodeTag.CALL_ARG_STMT);
+    super(ParserNodeTag.CALL_CONCAT_STMT);
   }
 }
 
@@ -181,6 +181,28 @@ export class CallFilterStmtNode extends ParserNode {
     public readonly handle: ParserNode
   ) {
     super(ParserNodeTag.CALL_MAP_STMT);
+  }
+}
+
+export class FromStmtNode extends ParserNode {
+  constructor(public readonly id: string) {
+    super(ParserNodeTag.FROM_STMT);
+  }
+}
+
+export class AsStmtNode extends ParserNode {
+  constructor(public readonly alias: string) {
+    super(ParserNodeTag.AS_STMT);
+  }
+}
+
+export class ImportStmtNode extends ParserNode {
+  constructor(
+    public readonly id: ParserNode,
+    public readonly alias: ParserNode,
+    public readonly program: ProgramNode
+  ) {
+    super(ParserNodeTag.IMPORT_STMT);
   }
 }
 

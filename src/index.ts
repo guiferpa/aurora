@@ -6,6 +6,10 @@ import { Interpreter } from "@/interpreter";
 import { read } from "@/fsutil";
 import { repl } from "@/repl";
 import { Builder } from "./builder";
+import Environment from "./environ/environ";
+import { Parser } from "./parser";
+import SymTable from "./symtable/symtable";
+import { Lexer } from "./lexer";
 
 function run() {
   const program = new Command();
@@ -15,17 +19,28 @@ function run() {
   program
     .option("-t, --tree", "tree flag to show AST", false)
     .option("-a, --args <string>", "pass arguments for runtime", "")
-    .action(function () {
+    .action(async function () {
       const options = program.opts();
 
       const optArgs = options.args.split(",");
 
       const r = repl();
-      const interpreter = new Interpreter();
 
-      r.on("line", function (chunk) {
-        interpreter.write(Buffer.from(chunk));
-        console.log(`= ${interpreter.run(options.tree as boolean, optArgs)}`);
+      const environ = new Environment("global");
+      const interpreter = new Interpreter(environ);
+
+      r.on("line", async function (chunk) {
+        const buffer = Buffer.from(chunk);
+        const lexer = new Lexer(buffer);
+        const symtable = new SymTable("global");
+        const parser = new Parser({ read }, symtable);
+        const tree = await parser.parse(lexer);
+        const result = await interpreter.run(
+          tree,
+          options.tree as boolean,
+          optArgs
+        );
+        console.log(`= ${result}`);
         r.prompt(true);
       });
 
@@ -47,8 +62,13 @@ function run() {
         const optArgs = options.args.split(",");
 
         const buffer = await read(arg);
-        const interpreter = new Interpreter(buffer);
-        interpreter.run(options.tree as boolean, optArgs);
+        const lexer = new Lexer(buffer);
+        const symtable = new SymTable("global");
+        const parser = new Parser({ read }, symtable);
+        const tree = await parser.parse(lexer);
+        const environ = new Environment("global");
+        const interpreter = new Interpreter(environ);
+        await interpreter.run(tree, options.tree as boolean, optArgs);
       } catch (err) {
         if (err instanceof SyntaxError) {
           console.log(err);
@@ -69,7 +89,7 @@ function run() {
 
         const buffer = await read(arg);
         const builder = new Builder(buffer);
-        const ops = builder.run(options.tree as boolean);
+        const ops = await builder.run(options.tree as boolean);
         ops.forEach((op, idx) => {
           console.log(`${idx}: ${op}`);
         });

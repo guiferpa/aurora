@@ -1,0 +1,5 @@
+; Import another file to access greeting function
+from "examples/project/greeting"
+
+var name = arg(0)
+print(greeting(name))

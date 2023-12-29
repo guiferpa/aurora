@@ -1,0 +1,3 @@
+func greeting(name) {
+  return concat("Hello, ", name)
+}

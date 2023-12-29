@@ -25,8 +25,6 @@ import {
   ArrayNode,
   CallMapStmtNode,
   CallFilterStmtNode,
-  FromStmtNode,
-  AsStmtNode,
   ImportStmtNode,
 } from "@/parser/node";
 
@@ -49,11 +47,9 @@ export default class Evaluator {
   public evaluate(tree: ParserNode): any {
     if (tree instanceof ProgramNode) return this.compose(tree.children);
 
-    if (tree instanceof ImportStmtNode)
-      return this.compose(tree.program.children);
-
-    if (tree instanceof FromStmtNode || tree instanceof AsStmtNode) {
-      return undefined;
+    if (tree instanceof ImportStmtNode) {
+      this.compose(tree.program.children);
+      return;
     }
 
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);

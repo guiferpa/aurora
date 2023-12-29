@@ -27,8 +27,11 @@ export default class Lexer {
   }
 
   public getNextToken(): Token {
-    if (!this.hasMoreTokens())
-      return new Token(this._line, this._column, TokenTag.EOF, "EOF");
+    if (!this.hasMoreTokens()) {
+      const token = new Token(this._line, this._column, TokenTag.EOF, "EOF");
+      this._currentToken = token;
+      return token;
+    }
 
     const str = this._buffer.toString("ascii", this._cursor);
 

@@ -604,7 +604,7 @@ export default class Parser {
     const program = await this._program();
 
     this._lexer = lexer.previous;
-    if (!!this._lexer) {
+    if (this._lexer !== null) {
       this._lookahead = this._lexer.getCurrentToken();
     }
 

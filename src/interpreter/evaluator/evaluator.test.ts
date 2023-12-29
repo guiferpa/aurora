@@ -305,4 +305,21 @@ describe("Evaluator test suite", () => {
 
     expect(got).toStrictEqual(expected);
   });
+
+  test("Program that import other file", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `from "testing"
+
+        hello()`,
+      ],
+      ["testing", `func hello() {}`],
+    ]);
+
+    const expected = [undefined, undefined];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
 });

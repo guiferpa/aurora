@@ -322,4 +322,24 @@ describe("Evaluator test suite", () => {
 
     expect(got).toStrictEqual(expected);
   });
+
+  test("Program that parse string to number", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var a = arg(0)
+
+        func sum() {
+          return str->num(a) + 10
+        }
+
+        sum()`,
+      ],
+    ]);
+
+    const expected = [undefined, undefined, 11];
+    const got = await execEvaluator(bucket, ["1"]);
+
+    expect(got).toStrictEqual(expected);
+  });
 });

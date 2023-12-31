@@ -9,6 +9,7 @@ export const Terminals: [RegExp, TokenTag][] = [
   [new RegExp(/^print/), TokenTag.CALL_PRINT],
   [new RegExp(/^map/), TokenTag.CALL_MAP],
   [new RegExp(/^filter/), TokenTag.CALL_FILTER],
+  [new RegExp(/^str->num/), TokenTag.CALL_STR_TO_NUM],
   [new RegExp(/^if/), TokenTag.IF],
   [new RegExp(/^not/), TokenTag.NEG],
   [new RegExp(/^true/), TokenTag.LOG],

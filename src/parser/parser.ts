@@ -30,6 +30,7 @@ import {
   FromStmtNode,
   AsStmtNode,
   ImportStmtNode,
+  CallStrToNumStmtNode,
 } from "./node";
 
 import SymTable from "@/symtable";
@@ -97,6 +98,10 @@ export default class Parser {
       return this._filter();
     }
 
+    if (this._lookahead?.tag === TokenTag.CALL_STR_TO_NUM) {
+      return await this._call_str_to_num();
+    }
+
     if (this._lookahead?.tag === TokenTag.IDENT) {
       return this._call();
     }
@@ -122,6 +127,14 @@ export default class Parser {
     }
 
     throw new Error(`Unknwon token ${JSON.stringify(this._lookahead)}`);
+  }
+
+  private async _call_str_to_num() {
+    this._eat(TokenTag.CALL_STR_TO_NUM);
+    this._eat(TokenTag.PAREN_O);
+    const str = await this._fact();
+    this._eat(TokenTag.PAREN_C);
+    return new CallStrToNumStmtNode(str);
   }
 
   private _from(): ParserNode {

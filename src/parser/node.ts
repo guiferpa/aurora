@@ -184,6 +184,12 @@ export class CallFilterStmtNode extends ParserNode {
   }
 }
 
+export class CallStrToNumStmtNode extends ParserNode {
+  constructor(public readonly param: ParserNode) {
+    super(ParserNodeTag.CALL_STR_TO_NUM);
+  }
+}
+
 export class FromStmtNode extends ParserNode {
   constructor(public readonly id: string) {
     super(ParserNodeTag.FROM_STMT);

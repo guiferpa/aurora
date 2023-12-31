@@ -7,8 +7,10 @@ import {
   AssignStmtNode,
   BinaryOpNode,
   BlockStmtNode,
+  CallArgStmtNode,
   CallFuncStmtNode,
   CallPrintStmtNode,
+  CallStrToNumStmtNode,
   DeclFuncStmtNode,
   FromStmtNode,
   IdentNode,
@@ -205,6 +207,38 @@ describe("Parser test suite", () => {
         ])
       ),
       new CallPrintStmtNode(new CallFuncStmtNode("hello", [])),
+    ]);
+
+    const got = await execParser(bucket);
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that parse function that parse string to number", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var a = str->num(arg(0))
+        var b = str->num(arg(1))
+
+        print(a + b)`,
+      ],
+    ]);
+    const expected = new ProgramNode([
+      new AssignStmtNode(
+        "a",
+        new CallStrToNumStmtNode(new CallArgStmtNode(new NumericalNode(0)))
+      ),
+      new AssignStmtNode(
+        "b",
+        new CallStrToNumStmtNode(new CallArgStmtNode(new NumericalNode(1)))
+      ),
+      new CallPrintStmtNode(
+        new BinaryOpNode(
+          new IdentNode("a"),
+          new IdentNode("b"),
+          new Token(4, 18, TokenTag.OP_ADD, "+")
+        )
+      ),
     ]);
 
     const got = await execParser(bucket);

@@ -26,6 +26,7 @@ import {
   CallMapStmtNode,
   CallFilterStmtNode,
   ImportStmtNode,
+  CallStrToNumStmtNode,
 } from "@/parser/node";
 
 export default class Evaluator {
@@ -223,6 +224,14 @@ export default class Evaluator {
     if (tree instanceof CallPrintStmtNode) {
       console.log(this.evaluate(tree.param));
       return;
+    }
+
+    if (tree instanceof CallStrToNumStmtNode) {
+      const param = this.evaluate(tree.param);
+      const num = Number.parseInt(this.evaluate(tree.param));
+      if (Number.isNaN(num))
+        throw new Error(`Unexpected error for parse ${param} to number`);
+      return num;
     }
 
     if (tree instanceof NegativeExprNode) return !this.evaluate(tree.expr);

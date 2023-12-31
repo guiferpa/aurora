@@ -2,15 +2,43 @@ import { Command } from "commander";
 
 import pkg from "../package.json";
 
-import Lexer from "@/lexer";
-import SymTable from "@/symtable";
-import Parser from "@/parser";
-import Environment from "@/environ";
-import Interpreter from "@/interpreter";
+import Lexer, { LexerError } from "@/lexer";
+import SymTable, { SymtableError } from "@/symtable";
+import Parser, { ParserError } from "@/parser";
+import Environment, { EnvironError } from "@/environ";
+import Interpreter, { InterpreterError, EvaluateError } from "@/interpreter";
 import Builder from "@/builder";
 
 import * as utils from "@/utils";
 import { repl } from "@/repl";
+
+function handleError(err: Error) {
+  if (err instanceof LexerError) {
+    console.log(`![LexerError]: ${err.message}`);
+    return;
+  }
+  if (err instanceof SymtableError) {
+    console.log(`![SymtableError]: ${err.message}`);
+    return;
+  }
+  if (err instanceof ParserError) {
+    console.log(`![ParserError]: ${err.message}`);
+    return;
+  }
+  if (err instanceof EnvironError) {
+    console.log(`![EnvironError]: ${err.message}`);
+    return;
+  }
+  if (err instanceof InterpreterError) {
+    console.log(`![InterpreterError]: ${err.message}`);
+    return;
+  }
+  if (err instanceof EvaluateError) {
+    console.log(`![EvaluateError]: ${err.message}`);
+    return;
+  }
+  console.log(`![Error]: ${err.message}`);
+}
 
 function run() {
   const program = new Command();
@@ -35,14 +63,21 @@ function run() {
         const lexer = new Lexer(buffer);
         const symtable = new SymTable("global");
         const parser = new Parser({ read: utils.fs.read }, symtable);
-        const tree = await parser.parse(lexer);
-        const result = await interpreter.run(
-          tree,
-          options.tree as boolean,
-          optArgs
-        );
-        console.log(`= ${result}`);
-        r.prompt(true);
+        try {
+          const tree = await parser.parse(lexer);
+          const result = await interpreter.run(
+            tree,
+            options.tree as boolean,
+            optArgs
+          );
+          console.log(`= ${result}`);
+        } catch (err) {
+          if (err instanceof Error) {
+            handleError(err);
+          }
+        } finally {
+          r.prompt(true);
+        }
       });
 
       r.once("close", () => {

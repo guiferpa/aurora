@@ -1,6 +1,7 @@
 import { Token } from "./tokens/token";
 import { Terminals } from "./tokens/terminal";
 import { TokenTag } from "./tokens/tag";
+import { LexerError } from "./errors";
 
 export default class Lexer {
   private _cursor = 0;
@@ -94,7 +95,7 @@ export default class Lexer {
       return token;
     }
 
-    throw new SyntaxError(`Token doesn't exist: ${str}`);
+    throw new LexerError(`Token doesn't exist: ${str}`);
   }
 
   private _isSpace(str: string): boolean {

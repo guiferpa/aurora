@@ -1,5 +1,5 @@
 import Environment, { FunctionClaim, VariableClaim } from "@/environ";
-import { TokenTag } from "@/lexer/tokens/tag";
+import { TokenTag } from "@/lexer";
 import {
   ParserNode,
   BinaryOpNode,
@@ -28,6 +28,7 @@ import {
   ImportStmtNode,
   CallStrToNumStmtNode,
 } from "@/parser";
+import { EvaluateError } from "../errors";
 
 export default class Evaluator {
   constructor(
@@ -116,10 +117,10 @@ export default class Evaluator {
       const n = this._environ?.query(tree.name);
 
       if (!(n instanceof FunctionClaim))
-        throw new Error(`Invalid calling for function ${tree.name}`);
+        throw new EvaluateError(`Invalid calling for function ${tree.name}`);
 
       if (n.arity.params.length !== tree.params.length) {
-        throw new Error(
+        throw new EvaluateError(
           `Wrong arity for calling symbol ${tree.name}, expected: ${n.arity.params.length} but got ${tree.params.length}`
         );
       }
@@ -165,7 +166,7 @@ export default class Evaluator {
     if (tree instanceof CallMapStmtNode) {
       const arr = this.evaluate(tree.param);
       if (!Array.isArray(arr))
-        throw new SyntaxError("Call map param must be an array");
+        throw new EvaluateError("Call map param must be an array");
 
       const handle = this.evaluate(tree.handle);
 
@@ -194,7 +195,7 @@ export default class Evaluator {
     if (tree instanceof CallFilterStmtNode) {
       const arr = this.evaluate(tree.param);
       if (!Array.isArray(arr))
-        throw new SyntaxError("Call filter param must be an array");
+        throw new EvaluateError("Call filter param must be an array");
 
       const handle = this.evaluate(tree.handle);
 
@@ -230,7 +231,9 @@ export default class Evaluator {
       const param = this.evaluate(tree.param);
       const num = Number.parseInt(this.evaluate(tree.param));
       if (Number.isNaN(num))
-        throw new Error(`Unexpected error for parse ${param} to number`);
+        throw new EvaluateError(
+          `Unexpected error for parse ${param} to number`
+        );
       return num;
     }
 
@@ -305,7 +308,7 @@ export default class Evaluator {
       }
     }
 
-    throw new Error(
+    throw new EvaluateError(
       `Unsupported evaluate expression for [${JSON.stringify(tree)}]`
     );
   }

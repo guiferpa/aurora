@@ -1,4 +1,5 @@
 import { ParserNode, ArityStmtNode } from "@/parser";
+import { EnvironError } from "./errors";
 
 export const FuncParameterType = "__FUNC_PARAM__";
 
@@ -40,7 +41,7 @@ export default class Environment {
       environ = environ.prev;
     }
 
-    throw new SyntaxError(`Definition "${key}" not found`);
+    throw new EnvironError(`Definition "${key}" not found`);
   }
 
   public describe() {

@@ -2,6 +2,7 @@ import SymTable from "@/symtable";
 import Lexer, { Token, TokenTag } from "@/lexer";
 
 import * as node from "./node";
+import { ParserError } from "./errors";
 
 export interface Reader {
   read(entry: string): Promise<Buffer>;
@@ -18,18 +19,18 @@ export default class Parser {
 
   private _eat(tokenTag: TokenTag): Token {
     if (this._lexer === null) {
-      throw new Error("None source code at Lexer buffer");
+      throw new ParserError("None source code at Lexer buffer");
     }
 
     const token = this._lookahead;
 
     if (token?.tag === TokenTag.EOF)
-      throw new SyntaxError(
+      throw new ParserError(
         `Unexpected end of token, expected token: ${tokenTag}`
       );
 
     if (tokenTag !== token?.tag)
-      throw new SyntaxError(
+      throw new ParserError(
         `Unexpected token at line: ${this._lookahead?.line}, column: ${this._lookahead?.column}, value: ${this._lookahead?.value}`
       );
 
@@ -93,7 +94,7 @@ export default class Parser {
       return await this._import();
     }
 
-    throw new Error(`Unknwon token ${JSON.stringify(this._lookahead)}`);
+    throw new ParserError(`Unknwon token ${JSON.stringify(this._lookahead)}`);
   }
 
   private async _call_str_to_num() {
@@ -121,7 +122,7 @@ export default class Parser {
     const alias = new node.AsStmtNode("");
 
     if (!(from instanceof node.FromStmtNode)) {
-      throw new SyntaxError(`Unsupported identifier type for import`);
+      throw new ParserError(`Unsupported identifier type for import`);
     }
 
     const buffer = await this._reader.read(from.id);
@@ -189,7 +190,8 @@ export default class Parser {
   private _num(): node.ParserNode {
     const { value } = this._eat(TokenTag.NUM);
     const num = Number.parseInt(value);
-    if (Number.isNaN(num)) throw new Error(`Value ${value} is not a number`);
+    if (Number.isNaN(num))
+      throw new ParserError(`Value ${value} is not a number`);
     return new node.NumericalNode(num);
   }
 

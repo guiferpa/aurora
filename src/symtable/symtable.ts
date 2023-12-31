@@ -1,3 +1,5 @@
+import { SymtableError } from "./errors";
+
 export default class SymTable {
   private _table: Map<string, boolean>;
   public refs: Map<string, number>;
@@ -34,7 +36,7 @@ export default class SymTable {
       environ = environ.previous;
     }
 
-    throw new SyntaxError(`Symbol "${key}" not found`);
+    throw new SymtableError(`Symbol "${key}" not found`);
   }
 
   public hasAnyRef() {
@@ -56,7 +58,7 @@ export default class SymTable {
 
     if (noRefs.length > 0) {
       const [name] = noRefs;
-      throw new SyntaxError(`"${name}" was declared but not referenced`);
+      throw new SymtableError(`"${name}" was declared but not referenced`);
     }
   }
 }

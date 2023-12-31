@@ -1,6 +1,6 @@
-import { noext } from "./fsutil";
+import { noext } from "./fs";
 
-describe("fsutil test suite", () => {
+describe("utils/fs test suite", () => {
   test("Should return filename and empty extension", async () => {
     const raw = "greeting";
     const expected = ["greeting", ""];

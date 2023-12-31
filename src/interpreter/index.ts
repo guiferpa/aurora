@@ -1,1 +1,1 @@
-export { default as Interpreter } from "./interpreter";
+export { default } from "./interpreter";

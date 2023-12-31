@@ -1,1 +1,4 @@
-export { default as Lexer } from "./lexer";
+export { default } from "./lexer";
+export * from "./tokens/tag";
+export * from "./tokens/terminal";
+export * from "./tokens/token";

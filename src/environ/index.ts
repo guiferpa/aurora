@@ -1,1 +1,1 @@
-export { default } from "./environ";
+export { default, FunctionClaim, VariableClaim } from "./environ";

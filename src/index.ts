@@ -2,14 +2,15 @@ import { Command } from "commander";
 
 import pkg from "../package.json";
 
-import { Interpreter } from "@/interpreter";
-import { read } from "@/fsutil";
+import Lexer from "@/lexer";
+import SymTable from "@/symtable";
+import Parser from "@/parser";
+import Environment from "@/environ";
+import Interpreter from "@/interpreter";
+import Builder from "@/builder";
+
+import * as utils from "@/utils";
 import { repl } from "@/repl";
-import { Builder } from "./builder";
-import Environment from "./environ/environ";
-import { Parser } from "./parser";
-import SymTable from "./symtable/symtable";
-import { Lexer } from "./lexer";
 
 function run() {
   const program = new Command();
@@ -33,7 +34,7 @@ function run() {
         const buffer = Buffer.from(chunk);
         const lexer = new Lexer(buffer);
         const symtable = new SymTable("global");
-        const parser = new Parser({ read }, symtable);
+        const parser = new Parser({ read: utils.fs.read }, symtable);
         const tree = await parser.parse(lexer);
         const result = await interpreter.run(
           tree,
@@ -61,10 +62,10 @@ function run() {
 
         const optArgs = options.args.split(",");
 
-        const buffer = await read(arg);
+        const buffer = await utils.fs.read(arg);
         const lexer = new Lexer(buffer);
         const symtable = new SymTable("global");
-        const parser = new Parser({ read }, symtable);
+        const parser = new Parser({ read: utils.fs.read }, symtable);
         const tree = await parser.parse(lexer);
         const environ = new Environment("global");
         const interpreter = new Interpreter(environ);
@@ -87,7 +88,7 @@ function run() {
       try {
         const options = program.opts();
 
-        const buffer = await read(arg);
+        const buffer = await utils.fs.read(arg);
         const builder = new Builder(buffer);
         const ops = await builder.run(options.tree as boolean);
         ops.forEach((op, idx) => {

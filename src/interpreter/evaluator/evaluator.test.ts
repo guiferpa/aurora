@@ -1,9 +1,9 @@
 import Lexer from "@/lexer/lexer";
-import { Parser } from "@/parser";
+import SymTable from "@/symtable";
+import Parser from "@/parser";
+import Environment from "@/environ";
 
 import Evaluator from "./evaluator";
-import SymTable from "@/symtable";
-import Environment from "@/environ";
 
 const execEvaluator = async (
   bucket: Map<string, string>,

@@ -1,5 +1,4 @@
-import { ParserNode } from "@/parser";
-import { ArityStmtNode } from "@/parser/node";
+import { ParserNode, ArityStmtNode } from "@/parser";
 
 export const FuncParameterType = "__FUNC_PARAM__";
 

@@ -1,40 +1,7 @@
-import { TokenTag } from "@/lexer/tokens/tag";
-import { Token } from "@/lexer/tokens/token";
-import {
-  BinaryOpNode,
-  AssignStmtNode,
-  IdentNode,
-  NumericalNode,
-  ParserNode,
-  ProgramNode,
-  BlockStmtNode,
-  LogicalNode,
-  NegativeExprNode,
-  RelativeExprNode,
-  LogicExprNode,
-  UnaryOpNode,
-  IfStmtNode,
-  DeclFuncStmtNode,
-  ArityStmtNode,
-  CallPrintStmtNode,
-  CallFuncStmtNode,
-  DescFuncStmtNode,
-  StringNode,
-  ReturnStmtNode,
-  ReturnVoidStmtNode,
-  CallArgStmtNode,
-  CallConcatStmtNode,
-  ArrayNode,
-  CallMapStmtNode,
-  CallFilterStmtNode,
-  FromStmtNode,
-  AsStmtNode,
-  ImportStmtNode,
-  CallStrToNumStmtNode,
-} from "./node";
-
 import SymTable from "@/symtable";
-import { Lexer } from "@/lexer";
+import Lexer, { Token, TokenTag } from "@/lexer";
+
+import * as node from "./node";
 
 export interface Reader {
   read(entry: string): Promise<Buffer>;
@@ -77,7 +44,7 @@ export default class Parser {
    *        | __NUM__
    *        | __STR__
    * **/
-  private async _fact(): Promise<ParserNode> {
+  private async _fact(): Promise<node.ParserNode> {
     if (this._lookahead?.tag === TokenTag.PAREN_O) {
       return this._pre();
     }
@@ -134,26 +101,26 @@ export default class Parser {
     this._eat(TokenTag.PAREN_O);
     const str = await this._fact();
     this._eat(TokenTag.PAREN_C);
-    return new CallStrToNumStmtNode(str);
+    return new node.CallStrToNumStmtNode(str);
   }
 
-  private _from(): ParserNode {
+  private _from(): node.ParserNode {
     this._eat(TokenTag.FROM);
     const id = this._str();
-    return new FromStmtNode(id.value);
+    return new node.FromStmtNode(id.value);
   }
 
-  private _as(): ParserNode {
+  private _as(): node.ParserNode {
     this._eat(TokenTag.AS);
     const id = this._eat(TokenTag.IDENT);
-    return new AsStmtNode(id.value);
+    return new node.AsStmtNode(id.value);
   }
 
-  private async _import(): Promise<ParserNode> {
+  private async _import(): Promise<node.ParserNode> {
     const from = this._from();
-    const alias = new AsStmtNode("");
+    const alias = new node.AsStmtNode("");
 
-    if (!(from instanceof FromStmtNode)) {
+    if (!(from instanceof node.FromStmtNode)) {
       throw new SyntaxError(`Unsupported identifier type for import`);
     }
 
@@ -161,33 +128,33 @@ export default class Parser {
     const lexer = new Lexer(buffer, this._lexer);
     const program = await this.parse(lexer);
 
-    return new ImportStmtNode(from, alias, program);
+    return new node.ImportStmtNode(from, alias, program);
   }
 
   // __CALL_MAP__
-  private async _map(): Promise<ParserNode> {
+  private async _map(): Promise<node.ParserNode> {
     this._eat(TokenTag.CALL_MAP);
     this._eat(TokenTag.PAREN_O);
     const param = await this._fact();
     this._eat(TokenTag.COMMA);
     const fact = await this._fact();
     this._eat(TokenTag.PAREN_C);
-    return new CallMapStmtNode(param, fact);
+    return new node.CallMapStmtNode(param, fact);
   }
 
   // __CALL_FILTER__
-  private async _filter(): Promise<ParserNode> {
+  private async _filter(): Promise<node.ParserNode> {
     this._eat(TokenTag.CALL_FILTER);
     this._eat(TokenTag.PAREN_O);
     const param = await this._fact();
     this._eat(TokenTag.COMMA);
     const fact = await this._fact();
     this._eat(TokenTag.PAREN_C);
-    return new CallFilterStmtNode(param, fact);
+    return new node.CallFilterStmtNode(param, fact);
   }
 
   // __PAREN_O__ __PAREN_C__
-  private async _pre(): Promise<ParserNode> {
+  private async _pre(): Promise<node.ParserNode> {
     this._eat(TokenTag.PAREN_O);
     const log = await this._log();
     this._eat(TokenTag.PAREN_C);
@@ -195,11 +162,11 @@ export default class Parser {
   }
 
   // __S_BREAK_O__ __S_BREAK_C__
-  private async _arr(): Promise<ArrayNode> {
+  private async _arr(): Promise<node.ArrayNode> {
     this._eat(TokenTag.S_BRACK_O);
     if (this._lookahead?.tag === TokenTag.S_BRACK_C) {
       this._eat(TokenTag.S_BRACK_C);
-      return new ArrayNode([]);
+      return new node.ArrayNode([]);
     }
 
     const items = [await this._log()];
@@ -209,31 +176,31 @@ export default class Parser {
     }
     this._eat(TokenTag.S_BRACK_C);
 
-    return new ArrayNode(items);
+    return new node.ArrayNode(items);
   }
 
   // __LOG__
-  private _bool(): ParserNode {
+  private _bool(): node.ParserNode {
     const log = this._eat(TokenTag.LOG);
-    return new LogicalNode(log.value === "true");
+    return new node.LogicalNode(log.value === "true");
   }
 
   // __NUM__
-  private _num(): ParserNode {
+  private _num(): node.ParserNode {
     const { value } = this._eat(TokenTag.NUM);
     const num = Number.parseInt(value);
     if (Number.isNaN(num)) throw new Error(`Value ${value} is not a number`);
-    return new NumericalNode(num);
+    return new node.NumericalNode(num);
   }
 
   // __STR__
-  private _str(): StringNode {
+  private _str(): node.StringNode {
     const str = this._eat(TokenTag.STR);
-    return new StringNode(str.value);
+    return new node.StringNode(str.value);
   }
 
   // __IDENT__ or __CALL_FUNC__
-  private async _call(): Promise<ParserNode> {
+  private async _call(): Promise<node.ParserNode> {
     const ident = this._eat(TokenTag.IDENT);
 
     // @ts-ignore
@@ -241,7 +208,7 @@ export default class Parser {
       return await this._callfn(ident);
     }
 
-    return new IdentNode(ident.value);
+    return new node.IdentNode(ident.value);
   }
 
   /**
@@ -249,14 +216,14 @@ export default class Parser {
    *        | __OP_SUB__ _uny
    *        | _fact
    * **/
-  private async _uny(): Promise<ParserNode> {
+  private async _uny(): Promise<node.ParserNode> {
     if (
       this._lookahead?.tag === TokenTag.OP_ADD ||
       this._lookahead?.tag === TokenTag.OP_SUB
     ) {
       const op = this._eat(this._lookahead.tag);
       const uny = await this._uny();
-      return new UnaryOpNode(uny, op);
+      return new node.UnaryOpNode(uny, op);
     }
 
     return await this._fact();
@@ -267,19 +234,19 @@ export default class Parser {
    *        | _uny __OP_DIV__ _term
    *        | _uny
    * **/
-  private async _term(): Promise<ParserNode> {
+  private async _term(): Promise<node.ParserNode> {
     const uny = await this._uny();
 
     if (this._lookahead?.tag === TokenTag.OP_MUL) {
       const op = this._eat(TokenTag.OP_MUL);
       const term = await this._term();
-      return new BinaryOpNode(uny, term, op);
+      return new node.BinaryOpNode(uny, term, op);
     }
 
     if (this._lookahead?.tag === TokenTag.OP_DIV) {
       const op = this._eat(TokenTag.OP_DIV);
       const term = await this._term();
-      return new BinaryOpNode(uny, term, op);
+      return new node.BinaryOpNode(uny, term, op);
     }
 
     return uny;
@@ -290,19 +257,19 @@ export default class Parser {
    *        | _term __OP_SUB__ _expr
    *        | _term
    * **/
-  private async _expr(): Promise<ParserNode> {
+  private async _expr(): Promise<node.ParserNode> {
     const term = await this._term();
 
     if (this._lookahead?.tag === TokenTag.OP_ADD) {
       const op = this._eat(TokenTag.OP_ADD);
       const expr = await this._expr();
-      return new BinaryOpNode(term, expr, op);
+      return new node.BinaryOpNode(term, expr, op);
     }
 
     if (this._lookahead?.tag === TokenTag.OP_SUB) {
       const op = this._eat(TokenTag.OP_SUB);
       const expr = await this._expr();
-      return new BinaryOpNode(term, expr, op);
+      return new node.BinaryOpNode(term, expr, op);
     }
 
     return term;
@@ -315,7 +282,7 @@ export default class Parser {
    *        | _expr __REL_DIF__ _rel
    *        | _expr
    * **/
-  private async _rel(): Promise<ParserNode> {
+  private async _rel(): Promise<node.ParserNode> {
     const expr = await this._expr();
 
     if (
@@ -326,7 +293,7 @@ export default class Parser {
     ) {
       const op = this._eat(this._lookahead.tag);
       const rel = await this._rel();
-      return new RelativeExprNode(expr, rel, op);
+      return new node.RelativeExprNode(expr, rel, op);
     }
 
     return expr;
@@ -336,11 +303,11 @@ export default class Parser {
    * _neg -> __NEG__ _rel
    *        | _rel
    * **/
-  private async _neg(): Promise<ParserNode> {
+  private async _neg(): Promise<node.ParserNode> {
     if (this._lookahead?.tag === TokenTag.NEG) {
       this._eat(TokenTag.NEG);
       const rel = await this._rel();
-      return new NegativeExprNode(rel);
+      return new node.NegativeExprNode(rel);
     }
 
     return await this._rel();
@@ -351,7 +318,7 @@ export default class Parser {
    *         | _neg __LOG_OR__ _log
    *         | _neg
    * **/
-  private async _log(): Promise<ParserNode> {
+  private async _log(): Promise<node.ParserNode> {
     const neg = await this._neg();
 
     if (
@@ -360,7 +327,7 @@ export default class Parser {
     ) {
       const op = this._eat(this._lookahead.tag);
       const log = await this._log();
-      return new LogicExprNode(neg, log, op);
+      return new node.LogicExprNode(neg, log, op);
     }
 
     return neg;
@@ -370,11 +337,11 @@ export default class Parser {
    * _descfn -> __DESC_FUNC__ __STR__
    *         | NULL
    * **/
-  private _descfn(): DescFuncStmtNode | null {
+  private _descfn(): node.DescFuncStmtNode | null {
     if (this._lookahead?.tag === TokenTag.DESC_FUNC) {
       this._eat(TokenTag.DESC_FUNC);
       const str = this._eat(TokenTag.STR);
-      return new DescFuncStmtNode(str.value);
+      return new node.DescFuncStmtNode(str.value);
     }
 
     return null;
@@ -386,16 +353,16 @@ export default class Parser {
    *         | __IDENT__
    *         | _log
    * **/
-  private async _callfn(id: Token): Promise<ParserNode> {
+  private async _callfn(id: Token): Promise<node.ParserNode> {
     this._eat(TokenTag.PAREN_O);
 
     // @ts-ignore
     if (this._lookahead.tag === TokenTag.PAREN_C) {
       this._eat(TokenTag.PAREN_C);
-      return new CallFuncStmtNode(id.value, []);
+      return new node.CallFuncStmtNode(id.value, []);
     }
 
-    const params: ParserNode[] = [await this._log()];
+    const params: node.ParserNode[] = [await this._log()];
 
     // @ts-ignore
     while (this._lookahead.tag === TokenTag.COMMA) {
@@ -405,7 +372,7 @@ export default class Parser {
 
     this._eat(TokenTag.PAREN_C);
 
-    return new CallFuncStmtNode(id.value, params);
+    return new node.CallFuncStmtNode(id.value, params);
   }
 
   /**
@@ -422,9 +389,9 @@ export default class Parser {
    *         | _param
    *         | NULL
    * **/
-  private _arity(): ArityStmtNode {
+  private _arity(): node.ArityStmtNode {
     if (this._lookahead?.tag !== TokenTag.IDENT) {
-      return new ArityStmtNode([]);
+      return new node.ArityStmtNode([]);
     }
 
     const params: string[] = [this._param()];
@@ -435,14 +402,14 @@ export default class Parser {
       params.push(this._param());
     }
 
-    return new ArityStmtNode(params);
+    return new node.ArityStmtNode(params);
   }
 
   /**
    * _block -> __BRACK_O__ _statements __BRACK_C__
    *         | _callfn
    * **/
-  private async _block(): Promise<ParserNode> {
+  private async _block(): Promise<node.ParserNode> {
     if (this._lookahead?.tag === TokenTag.BRACK_O) {
       const envId = `BLOCK-${Date.now()}`;
       this._symtable = new SymTable(envId, this._symtable);
@@ -454,7 +421,7 @@ export default class Parser {
       this._symtable.previous?.mergeRefs(this._symtable);
       this._symtable = this._symtable.previous;
 
-      return new BlockStmtNode(statements);
+      return new node.BlockStmtNode(statements);
     }
 
     return await this._log();
@@ -463,22 +430,22 @@ export default class Parser {
   /**
    * _if -> __IF__ _callfn _block
    * **/
-  private async _if(): Promise<ParserNode> {
+  private async _if(): Promise<node.ParserNode> {
     this._eat(TokenTag.IF);
     const log = await this._log();
     const block = await this._block();
-    return new IfStmtNode(log, block);
+    return new node.IfStmtNode(log, block);
   }
 
   /**
    * _ass -> __ASS__ _callfn
    * **/
-  private async _ass(): Promise<ParserNode> {
+  private async _ass(): Promise<node.ParserNode> {
     if (this._lookahead?.tag === TokenTag.ASSIGN) {
       const ass = this._eat(TokenTag.ASSIGN);
       const callfn = await this._log();
       this._symtable?.set(ass.value);
-      return new AssignStmtNode(ass.value, callfn);
+      return new node.AssignStmtNode(ass.value, callfn);
     }
 
     return this._log();
@@ -487,7 +454,7 @@ export default class Parser {
   /**
    * _declfunc -> __DECL_FN__ __PAREN_O__ _arity __PAREN_C__ _block
    * **/
-  private async _declfunc(): Promise<ParserNode> {
+  private async _declfunc(): Promise<node.ParserNode> {
     const func = this._eat(TokenTag.DECL_FN);
     this._eat(TokenTag.PAREN_O);
     const arity = this._arity();
@@ -502,39 +469,39 @@ export default class Parser {
       this._symtable?.set(param);
     });
     const block = await this._block();
-    return new DeclFuncStmtNode(func.value, desc, arity, block);
+    return new node.DeclFuncStmtNode(func.value, desc, arity, block);
   }
 
   /**
    * _print -> __CALL_PRINT__ __PAREN_O__ _log __PAREN_C__
    * **/
-  private async _print(): Promise<ParserNode> {
+  private async _print(): Promise<node.ParserNode> {
     this._eat(TokenTag.CALL_PRINT);
     this._eat(TokenTag.PAREN_O);
     const log = await this._log();
     this._eat(TokenTag.PAREN_C);
-    return new CallPrintStmtNode(log);
+    return new node.CallPrintStmtNode(log);
   }
 
   /**
    * _arg -> __CALL_ARG__ __PAREN_O__ _log __PAREN_C__
    * **/
-  private async _arg(): Promise<ParserNode> {
+  private async _arg(): Promise<node.ParserNode> {
     this._eat(TokenTag.CALL_ARG);
     this._eat(TokenTag.PAREN_O);
     const term = await this._term();
     this._eat(TokenTag.PAREN_C);
-    return new CallArgStmtNode(term);
+    return new node.CallArgStmtNode(term);
   }
 
   /**
    * _arg -> __CALL_ARG__ __PAREN_O__ _log __PAREN_C__
    * **/
-  private async _concat(): Promise<ParserNode> {
+  private async _concat(): Promise<node.ParserNode> {
     this._eat(TokenTag.CALL_CONCAT);
     this._eat(TokenTag.PAREN_O);
 
-    const params: ParserNode[] = [await this._term()];
+    const params: node.ParserNode[] = [await this._term()];
 
     // @ts-ignore
     while (this._lookahead.tag === TokenTag.COMMA) {
@@ -544,16 +511,16 @@ export default class Parser {
 
     this._eat(TokenTag.PAREN_C);
 
-    return new CallConcatStmtNode(params);
+    return new node.CallConcatStmtNode(params);
   }
 
   /**
    * _return -> __RETURN__ _log
    * **/
-  private async _return(): Promise<ParserNode> {
+  private async _return(): Promise<node.ParserNode> {
     this._eat(TokenTag.RETURN);
     const log = await this._log();
-    return new ReturnStmtNode(log);
+    return new node.ReturnStmtNode(log);
   }
 
   /**
@@ -566,10 +533,10 @@ export default class Parser {
    *            | _return
    *            | __RETURN_VOID__
    * **/
-  private async _statement(): Promise<ParserNode> {
+  private async _statement(): Promise<node.ParserNode> {
     if (this._lookahead?.tag === TokenTag.RETURN_VOID) {
       this._eat(TokenTag.RETURN_VOID);
-      return new ReturnVoidStmtNode();
+      return new node.ReturnVoidStmtNode();
     }
 
     if (this._lookahead?.tag === TokenTag.RETURN) {
@@ -595,7 +562,7 @@ export default class Parser {
     return this._block();
   }
 
-  private async _statements(eot: TokenTag): Promise<ParserNode[]> {
+  private async _statements(eot: TokenTag): Promise<node.ParserNode[]> {
     const list = [];
 
     while (this._lookahead?.tag !== eot) {
@@ -605,12 +572,12 @@ export default class Parser {
     return list;
   }
 
-  private async _program(): Promise<ProgramNode> {
-    const program = new ProgramNode(await this._statements(TokenTag.EOF));
+  private async _program(): Promise<node.ProgramNode> {
+    const program = new node.ProgramNode(await this._statements(TokenTag.EOF));
     return program;
   }
 
-  public async parse(lexer: Lexer): Promise<ProgramNode> {
+  public async parse(lexer: Lexer): Promise<node.ProgramNode> {
     this._lexer = lexer;
     this._lookahead = this._lexer.getNextToken();
 

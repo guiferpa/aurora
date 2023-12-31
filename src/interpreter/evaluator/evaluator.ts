@@ -1,7 +1,7 @@
-import Environment, { FunctionClaim, VariableClaim } from "@/environ/environ";
+import Environment, { FunctionClaim, VariableClaim } from "@/environ";
 import { TokenTag } from "@/lexer/tokens/tag";
-import { ParserNode } from "@/parser";
 import {
+  ParserNode,
   BinaryOpNode,
   AssignStmtNode,
   DeclFuncStmtNode,
@@ -27,7 +27,7 @@ import {
   CallFilterStmtNode,
   ImportStmtNode,
   CallStrToNumStmtNode,
-} from "@/parser/node";
+} from "@/parser";
 
 export default class Evaluator {
   constructor(

@@ -29,10 +29,12 @@ import {
   CallStrToNumStmtNode,
 } from "@/parser";
 import { EvaluateError } from "../errors";
+import { ImportClaim } from "@/importer/importer";
 
 export default class Evaluator {
   constructor(
     private _environ: Environment | null,
+    private _imports: Map<string, ImportClaim>,
     private readonly _args: string[] = []
   ) {}
 
@@ -50,7 +52,9 @@ export default class Evaluator {
     if (tree instanceof ProgramNode) return this.compose(tree.children);
 
     if (tree instanceof ImportStmtNode) {
-      // TODO: Build environment
+      const importing = this._imports.get(tree.id.value);
+      if (typeof importing === "undefined") return;
+      this.compose(importing.program.children);
       return;
     }
 

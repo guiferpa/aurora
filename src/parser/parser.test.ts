@@ -10,6 +10,7 @@ import {
   BinaryOpNode,
   BlockStmtNode,
   CallArgStmtNode,
+  CallConcatStmtNode,
   CallFuncStmtNode,
   CallPrintStmtNode,
   CallStrToNumStmtNode,
@@ -208,6 +209,31 @@ describe("Parser test suite", () => {
     const expected = new ProgramNode([
       new ImportStmtNode(new FromStmtNode("testing"), new AsStmtNode("t")),
       new CallPrintStmtNode(new CallFuncStmtNode("hello", [])),
+    ]);
+
+    const got = await execParser(bucket);
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that parse function that concat strings", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var a = arg(0)
+
+        print(concat("a", a, "b", "c"))`,
+      ],
+    ]);
+    const expected = new ProgramNode([
+      new AssignStmtNode("a", new CallArgStmtNode(new NumericalNode(0))),
+      new CallPrintStmtNode(
+        new CallConcatStmtNode([
+          new StringNode("a"),
+          new IdentNode("a"),
+          new StringNode("b"),
+          new StringNode("c"),
+        ])
+      ),
     ]);
 
     const got = await execParser(bucket);

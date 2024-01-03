@@ -19,6 +19,10 @@ export default class Lexer {
     return this._cursor < this._buffer.length;
   }
 
+  public copy(): Lexer {
+    return new Lexer(Buffer.from(this._buffer));
+  }
+
   public getNextToken(): Token {
     if (!this.hasMoreTokens()) {
       const token = new Token(this._line, this._column, TokenTag.EOF, "EOF");

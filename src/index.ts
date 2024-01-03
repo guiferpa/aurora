@@ -11,6 +11,8 @@ import Builder from "@/builder";
 
 import * as utils from "@/utils";
 import { repl } from "@/repl";
+import Eater from "./eater/eater";
+import Importer from "./importer/importer";
 
 function handleError(err: Error) {
   if (err instanceof LexerError) {
@@ -62,11 +64,18 @@ function run() {
         const buffer = Buffer.from(chunk);
         const lexer = new Lexer(buffer);
         const symtable = new SymTable("global");
-        const parser = new Parser({ read: utils.fs.read }, symtable);
+        const eater = new Eater(lexer.copy());
+        const parser = new Parser(eater, symtable);
+        const importer = new Importer(new Eater(lexer.copy()), {
+          read: utils.fs.read,
+        });
+
         try {
-          const tree = await parser.parse(lexer);
+          const imports = await importer.imports();
+          const tree = await parser.parse();
           const result = await interpreter.run(
             tree,
+            imports,
             options.tree as boolean,
             optArgs
           );
@@ -99,12 +108,20 @@ function run() {
 
         const buffer = await utils.fs.read(arg);
         const lexer = new Lexer(buffer);
+
+        const importer = new Importer(new Eater(lexer.copy()), {
+          read: utils.fs.read,
+        });
+
+        const imports = await importer.imports();
+
         const symtable = new SymTable("global");
-        const parser = new Parser({ read: utils.fs.read }, symtable);
-        const tree = await parser.parse(lexer);
+        const parser = new Parser(new Eater(lexer), symtable);
+        const tree = await parser.parse();
+
         const environ = new Environment("global");
         const interpreter = new Interpreter(environ);
-        await interpreter.run(tree, options.tree as boolean, optArgs);
+        await interpreter.run(tree, imports, options.tree as boolean, optArgs);
       } catch (err) {
         if (err instanceof SyntaxError) {
           console.log(err);

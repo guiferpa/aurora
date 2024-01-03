@@ -5,6 +5,7 @@ import Environment from "@/environ";
 
 import Evaluator from "./evaluator";
 import Eater from "@/eater/eater";
+import Importer from "@/importer/importer";
 
 const execEvaluator = async (
   bucket: Map<string, string>,
@@ -15,10 +16,15 @@ const execEvaluator = async (
   const program = bucket.get(pname) as string;
   const lexer = new Lexer(Buffer.from(program, "utf-8"));
   const symtable = new SymTable("global");
-  const eater = new Eater(lexer);
+  const eater = new Eater(lexer.copy());
+  const reader = {
+    read: async (entry: string) => Buffer.from(bucket.get(entry) as string),
+  };
+  const importer = new Importer(new Eater(lexer.copy()), reader);
+  const imports = await importer.imports();
   const parser = new Parser(eater, symtable);
   const tree = await parser.parse();
-  const evaluator = new Evaluator(environ, args);
+  const evaluator = new Evaluator(environ, imports, args);
   return evaluator.evaluate(tree);
 };
 
@@ -304,7 +310,7 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test.skip("Program that import other file", async () => {
+  test("Program that import other file", async () => {
     const bucket = new Map<string, string>([
       [
         "main",

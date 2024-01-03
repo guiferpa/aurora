@@ -502,9 +502,7 @@ export default class Parser {
 
     const params: node.ParserNode[] = [await this._term()];
 
-    const lookahead = this._eater.lookahead();
-
-    while (lookahead.tag === TokenTag.COMMA) {
+    while (this._eater.lookahead().tag === TokenTag.COMMA) {
       this._eater.eat(TokenTag.COMMA);
       params.push(await this._term());
     }

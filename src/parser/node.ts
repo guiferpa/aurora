@@ -17,6 +17,15 @@ export class IdentNode extends ParserNode {
   }
 }
 
+export class AccessContextStatementNode extends ParamNode {
+  constructor(
+    public readonly context: string,
+    public readonly prop: ParserNode
+  ) {
+    super(ParserNodeTag.ACC_CTX_STMT);
+  }
+}
+
 export class NumericalNode extends ParserNode {
   constructor(public readonly value: number) {
     super(ParserNodeTag.NUMERICAL);

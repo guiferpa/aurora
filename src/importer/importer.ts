@@ -85,8 +85,11 @@ export default class Importer {
     return result;
   }
 
-  public async imports(): Promise<Map<string, ImportClaim>> {
+  public async imports(): Promise<
+    [Map<string, ImportClaim>, Map<string, string>]
+  > {
     const mapping = await this.mapping();
+    const translate = new Map<string, string>();
 
     const imports = await Promise.all(
       mapping.map(async (item): Promise<[string, ImportClaim]> => {
@@ -94,10 +97,13 @@ export default class Importer {
         const buffer = await this._reader.read(item.id);
         const lexer = new Lexer(buffer);
         const parser = new Parser(new Eater(lexer), symtable);
+        if (item.alias !== "") {
+          translate.set(item.alias, item.id);
+        }
         return [item.id, { mapping: item, program: await parser.parse() }];
       })
     );
 
-    return new Map(imports);
+    return [new Map(imports), translate];
   }
 }

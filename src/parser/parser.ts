@@ -185,6 +185,12 @@ export default class Parser {
 
     const lookahead = this._eater.lookahead();
 
+    if (lookahead.tag === TokenTag.DOT) {
+      this._eater.eat(TokenTag.DOT);
+      const prop = await this._call();
+      return new node.AccessContextStatementNode(ident.value, prop);
+    }
+
     if (lookahead.tag === TokenTag.PAREN_O) {
       return await this._callfn(ident);
     }
@@ -360,7 +366,7 @@ export default class Parser {
 
     const params: node.ParserNode[] = [await this._log()];
 
-    while (lookahead.tag === TokenTag.COMMA) {
+    while (this._eater.lookahead().tag === TokenTag.COMMA) {
       this._eater.eat(TokenTag.COMMA);
       params.push(await this._log());
     }

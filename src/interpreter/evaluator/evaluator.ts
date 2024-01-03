@@ -27,6 +27,7 @@ import {
   CallFilterStmtNode,
   ImportStmtNode,
   CallStrToNumStmtNode,
+  AccessContextStatementNode,
 } from "@/parser";
 import { EvaluateError } from "../errors";
 import { ImportClaim } from "@/importer/importer";
@@ -35,6 +36,7 @@ export default class Evaluator {
   constructor(
     private _environ: Environment | null,
     private _imports: Map<string, ImportClaim>,
+    private _alias: Map<string, string>,
     private readonly _args: string[] = []
   ) {}
 
@@ -54,8 +56,29 @@ export default class Evaluator {
     if (tree instanceof ImportStmtNode) {
       const importing = this._imports.get(tree.id.value);
       if (typeof importing === "undefined") return;
+      const tempctx = this._environ?.context() as string;
+      if (importing.mapping.alias !== "") {
+        this._environ?.setContext(importing.mapping.id);
+      }
       this.compose(importing.program.children);
+      this._environ?.setContext(tempctx);
       return;
+    }
+
+    if (tree instanceof AccessContextStatementNode) {
+      const tempctx = this._environ?.context() as string;
+
+      const context = this._alias.get(tree.context);
+      if (typeof context === "undefined")
+        throw new EvaluateError(`Context for alias ${tree.context} not found`);
+
+      this._environ?.setContext(context);
+
+      const result = this.evaluate(tree.prop);
+
+      this._environ?.setContext(tempctx);
+
+      return result;
     }
 
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);

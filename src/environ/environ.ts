@@ -21,27 +21,41 @@ export default class Environment {
   private _table: Map<string, Payload>;
   public readonly prev: Environment | null;
 
-  constructor(id: string, prev: Environment | null = null) {
+  constructor(
+    id: string,
+    prev: Environment | null = null,
+    private _ctx: string = "main"
+  ) {
     this.id = id;
     this._table = new Map();
     this.prev = prev;
   }
 
+  public setContext(ctx: string) {
+    this._ctx = ctx;
+  }
+
+  public context(): string {
+    return this._ctx;
+  }
+
   public set(key: string, payload: Payload) {
-    this._table.set(key, payload);
+    this._table.set(`${this._ctx}#${key}`, payload);
   }
 
   public query(key: string): Payload {
     let environ: Environment | null = this;
 
     while (environ !== null) {
-      const payload = environ._table.get(key);
+      const payload = environ._table.get(`${this._ctx}#${key}`);
       if (payload !== undefined) return payload;
 
       environ = environ.prev;
     }
 
-    throw new EnvironError(`Definition "${key}" not found`);
+    throw new EnvironError(
+      `Definition "${key}" not found at ${this._ctx} context`
+    );
   }
 
   public describe() {

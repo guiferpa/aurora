@@ -11,11 +11,12 @@ export default class Interpreter {
   public async run(
     tree: ParserNode,
     imports: Map<string, ImportClaim>,
+    alias: Map<string, string>,
     debug?: boolean,
     args: string[] = []
   ): Promise<string[]> {
     debug && console.log(colorize(JSON.stringify(tree, null, 2)));
-    const evaluator = new Evaluator(this._environ, imports, args);
+    const evaluator = new Evaluator(this._environ, imports, alias, args);
     return evaluator.evaluate(tree);
   }
 }

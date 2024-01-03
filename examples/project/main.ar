@@ -1,5 +1,9 @@
 ; Import another file to access greeting function
 from "examples/project/greeting"
 
+; Import another file adding alias m
+from "examples/project/math" as m
+
 var name = arg(0)
 print(greeting(name))
+print(m.add(1, 2))

@@ -71,11 +71,12 @@ function run() {
         });
 
         try {
-          const imports = await importer.imports();
+          const [imports, alias] = await importer.imports();
           const tree = await parser.parse();
           const result = await interpreter.run(
             tree,
             imports,
+            alias,
             options.tree as boolean,
             optArgs
           );
@@ -112,8 +113,7 @@ function run() {
         const importer = new Importer(new Eater(lexer.copy()), {
           read: utils.fs.read,
         });
-
-        const imports = await importer.imports();
+        const [imports, alias] = await importer.imports();
 
         const symtable = new SymTable("global");
         const parser = new Parser(new Eater(lexer), symtable);
@@ -121,7 +121,13 @@ function run() {
 
         const environ = new Environment("global");
         const interpreter = new Interpreter(environ);
-        await interpreter.run(tree, imports, options.tree as boolean, optArgs);
+        await interpreter.run(
+          tree,
+          imports,
+          alias,
+          options.tree as boolean,
+          optArgs
+        );
       } catch (err) {
         if (err instanceof SyntaxError) {
           console.log(err);

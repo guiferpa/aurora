@@ -21,10 +21,10 @@ const execEvaluator = async (
     read: async (entry: string) => Buffer.from(bucket.get(entry) as string),
   };
   const importer = new Importer(new Eater(lexer.copy()), reader);
-  const imports = await importer.imports();
+  const [imports, alias] = await importer.imports();
   const parser = new Parser(eater, symtable);
   const tree = await parser.parse();
-  const evaluator = new Evaluator(environ, imports, args);
+  const evaluator = new Evaluator(environ, imports, alias, args);
   return evaluator.evaluate(tree);
 };
 
@@ -322,6 +322,28 @@ describe("Evaluator test suite", () => {
     ]);
 
     const expected = [undefined, undefined];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that import other file with alias", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `from "testing" as t
+
+        t.hello()`,
+      ],
+      [
+        "testing",
+        `func hello() {
+          return 10
+        }`,
+      ],
+    ]);
+
+    const expected = [undefined, 10];
     const got = await execEvaluator(bucket);
 
     expect(got).toStrictEqual(expected);

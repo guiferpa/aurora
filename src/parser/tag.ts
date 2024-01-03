@@ -28,5 +28,6 @@ export enum ParserNodeTag {
   AS_STMT = "AsStatement",
   IMPORT_STMT = "ImportStatement",
   DESC_FUNC_STMT = "DescFuncStatement",
+  ACC_CTX_STMT = "AccessContextStatement",
   PROGRAM = "Program",
 }

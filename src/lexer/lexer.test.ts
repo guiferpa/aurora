@@ -1,12 +1,13 @@
 import { TokenTag } from "./tokens/tag";
 import Lexer from "./lexer";
+import { LexerError } from "./errors";
 
 describe("Lexer test suite", () => {
   test("Testing unexpected token using @@a as input", () => {
     const input = Buffer.from("@@a");
     const lexer = new Lexer(input);
 
-    expect(() => lexer.getNextToken()).toThrow(SyntaxError);
+    expect(() => lexer.getNextToken()).toThrow(LexerError);
   });
 
   test("Testing __NUM__ token using 127 as input", () => {

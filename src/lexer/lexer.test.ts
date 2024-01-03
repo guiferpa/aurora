@@ -10,6 +10,17 @@ describe("Lexer test suite", () => {
     expect(() => lexer.getNextToken()).toThrow(LexerError);
   });
 
+  test("Testing unexpected token using a#b as input", () => {
+    const input = Buffer.from("a#b");
+    const lexer = new Lexer(input);
+
+    const token = lexer.getNextToken();
+    expect(token).not.toBeNull();
+    expect(token?.tag).toBe(TokenTag.IDENT);
+
+    expect(() => lexer.getNextToken()).toThrow(LexerError);
+  });
+
   test("Testing __NUM__ token using 127 as input", () => {
     const input = Buffer.from("127");
     const lexer = new Lexer(input);

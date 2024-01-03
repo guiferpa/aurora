@@ -1,6 +1,8 @@
-import Lexer from "@/lexer/lexer";
-import Parser from "./parser";
+import Lexer, { Token, TokenTag } from "@/lexer";
+import Eater from "@/eater";
 import SymTable from "@/symtable";
+
+import Parser from "./parser";
 import {
   ArityStmtNode,
   AsStmtNode,
@@ -19,21 +21,19 @@ import {
   LogicalNode,
   NumericalNode,
   ProgramNode,
-  ReturnStmtNode,
   StringNode,
 } from "./node";
-import { Token } from "@/lexer/tokens/token";
-import { TokenTag } from "@/lexer/tokens/tag";
 
-const execParser = async (bucket: Map<string, string>) => {
-  const program = bucket.get("main") as string;
+const execParser = async (
+  bucket: Map<string, string>,
+  pname: string = "main"
+) => {
+  const program = bucket.get(pname) as string;
   const lexer = new Lexer(Buffer.from(program, "utf-8"));
+  const eater = new Eater(lexer);
   const symtable = new SymTable("global");
-  const reader = {
-    read: async (entry: string) => Buffer.from(bucket.get(entry) as string),
-  };
-  const parser = new Parser(reader, symtable);
-  return await parser.parse(lexer);
+  const parser = new Parser(eater, symtable);
+  return await parser.parse();
 };
 
 describe("Parser test suite", () => {
@@ -186,26 +186,27 @@ describe("Parser test suite", () => {
 
         print(hello())`,
       ],
+    ]);
+    const expected = new ProgramNode([
+      new ImportStmtNode(new FromStmtNode("testing"), new AsStmtNode("")),
+      new CallPrintStmtNode(new CallFuncStmtNode("hello", [])),
+    ]);
+
+    const got = await execParser(bucket);
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that parse import syntax with alias", async () => {
+    const bucket = new Map<string, string>([
       [
-        "testing",
-        `func hello() {
-          return 10
-        }`,
+        "main",
+        `from "testing" as t
+
+        print(hello())`,
       ],
     ]);
     const expected = new ProgramNode([
-      new ImportStmtNode(
-        new FromStmtNode("testing"),
-        new AsStmtNode(""),
-        new ProgramNode([
-          new DeclFuncStmtNode(
-            "hello",
-            null,
-            new ArityStmtNode([]),
-            new BlockStmtNode([new ReturnStmtNode(new NumericalNode(10))])
-          ),
-        ])
-      ),
+      new ImportStmtNode(new FromStmtNode("testing"), new AsStmtNode("t")),
       new CallPrintStmtNode(new CallFuncStmtNode("hello", [])),
     ]);
 

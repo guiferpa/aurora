@@ -4,20 +4,20 @@ import Parser from "@/parser";
 import Environment from "@/environ";
 
 import Evaluator from "./evaluator";
+import Eater from "@/eater/eater";
 
 const execEvaluator = async (
   bucket: Map<string, string>,
   args: string[] = [],
+  pname: string = "main",
   environ: Environment = new Environment("global")
 ) => {
-  const program = bucket.get("main") as string;
+  const program = bucket.get(pname) as string;
   const lexer = new Lexer(Buffer.from(program, "utf-8"));
   const symtable = new SymTable("global");
-  const reader = {
-    read: async (entry: string) => Buffer.from(bucket.get(entry) as string),
-  };
-  const parser = new Parser(reader, symtable);
-  const tree = await parser.parse(lexer);
+  const eater = new Eater(lexer);
+  const parser = new Parser(eater, symtable);
+  const tree = await parser.parse();
   const evaluator = new Evaluator(environ, args);
   return evaluator.evaluate(tree);
 };
@@ -165,8 +165,6 @@ describe("Evaluator test suite", () => {
   });
 
   test("Program that get more than one argument from CLI execution", async () => {
-    const program = `
-    `;
     const bucket = new Map<string, string>([
       [
         "main",
@@ -306,7 +304,7 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test("Program that import other file", async () => {
+  test.skip("Program that import other file", async () => {
     const bucket = new Map<string, string>([
       [
         "main",

@@ -50,7 +50,7 @@ export default class Evaluator {
     if (tree instanceof ProgramNode) return this.compose(tree.children);
 
     if (tree instanceof ImportStmtNode) {
-      this.compose(tree.program.children);
+      // TODO: Build environment
       return;
     }
 

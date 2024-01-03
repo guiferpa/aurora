@@ -8,12 +8,8 @@ export default class Lexer {
   private _line = 1;
   private _column = 1;
   private _isComment: boolean = false;
-  private _currentToken: Token | null = null;
 
-  constructor(
-    private _buffer: Buffer = Buffer.from(""),
-    public readonly previous: Lexer | null = null
-  ) {}
+  constructor(private _buffer: Buffer = Buffer.from("")) {}
 
   public write(buffer: Buffer) {
     this._buffer = Buffer.concat([this._buffer, buffer]);
@@ -23,18 +19,13 @@ export default class Lexer {
     return this._cursor < this._buffer.length;
   }
 
-  public getCurrentToken(): Token | null {
-    return this._currentToken;
-  }
-
   public getNextToken(): Token {
     if (!this.hasMoreTokens()) {
       const token = new Token(this._line, this._column, TokenTag.EOF, "EOF");
-      this._currentToken = token;
       return token;
     }
 
-    const str = this._buffer.toString("ascii", this._cursor);
+    const str = this._buffer.toString("utf-8", this._cursor);
 
     if (this._isSpace(str)) {
       return this.getNextToken();
@@ -89,8 +80,6 @@ export default class Lexer {
           value.replace(/_/g, "")
         );
       }
-
-      this._currentToken = token;
 
       return token;
     }

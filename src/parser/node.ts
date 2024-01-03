@@ -191,22 +191,21 @@ export class CallStrToNumStmtNode extends ParserNode {
 }
 
 export class FromStmtNode extends ParserNode {
-  constructor(public readonly id: string) {
+  constructor(public readonly value: string) {
     super(ParserNodeTag.FROM_STMT);
   }
 }
 
 export class AsStmtNode extends ParserNode {
-  constructor(public readonly alias: string) {
+  constructor(public readonly value: string) {
     super(ParserNodeTag.AS_STMT);
   }
 }
 
 export class ImportStmtNode extends ParserNode {
   constructor(
-    public readonly id: ParserNode,
-    public readonly alias: ParserNode,
-    public readonly program: ProgramNode
+    public readonly id: FromStmtNode,
+    public readonly alias: AsStmtNode
   ) {
     super(ParserNodeTag.IMPORT_STMT);
   }

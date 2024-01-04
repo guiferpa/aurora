@@ -349,6 +349,56 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
+  test("Program that import others files with alias", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `from "testing" as t
+
+        t.hello()`,
+      ],
+      [
+        "testing",
+        `from "a" as alpha
+
+        func hello() {
+          return alpha.num
+        }`,
+      ],
+      ["a", `var num = 11`],
+    ]);
+
+    const expected = [undefined, 11];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test.skip("Program that import others files with the same alias", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `from "testing" as t
+
+        t.hello()`,
+      ],
+      [
+        "testing",
+        `from "a" as t
+
+        func hello() {
+          return t.num
+        }`,
+      ],
+      ["a", `var num = 11`],
+    ]);
+
+    const expected = [undefined, 11];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
+
   test("Program that parse string to number", async () => {
     const bucket = new Map<string, string>([
       [

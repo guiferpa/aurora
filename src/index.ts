@@ -1,59 +1,36 @@
+import colorize from "json-colorizer";
 import { Command } from "commander";
 
 import pkg from "../package.json";
 
-import Lexer, { LexerError } from "@/lexer";
-import SymTable, { SymtableError } from "@/symtable";
-import Parser, { ParserError } from "@/parser";
-import Environment, { EnvironError } from "@/environ";
-import Interpreter, { InterpreterError, EvaluateError } from "@/interpreter";
+import Lexer from "@/lexer";
+import Eater from "@/eater";
+import SymTable from "@/symtable";
+import Parser from "@/parser";
+import Environment from "@/environ";
+import Importer from "@/importer";
+import Interpreter from "@/interpreter";
 import Builder from "@/builder";
 
 import * as utils from "@/utils";
 import { repl } from "@/repl";
-import Eater from "./eater/eater";
-import Importer from "./importer/importer";
 
-function handleError(err: Error) {
-  if (err instanceof LexerError) {
-    console.log(`![LexerError]: ${err.message}`);
-    return;
-  }
-  if (err instanceof SymtableError) {
-    console.log(`![SymtableError]: ${err.message}`);
-    return;
-  }
-  if (err instanceof ParserError) {
-    console.log(`![ParserError]: ${err.message}`);
-    return;
-  }
-  if (err instanceof EnvironError) {
-    console.log(`![EnvironError]: ${err.message}`);
-    return;
-  }
-  if (err instanceof InterpreterError) {
-    console.log(`![InterpreterError]: ${err.message}`);
-    return;
-  }
-  if (err instanceof EvaluateError) {
-    console.log(`![EvaluateError]: ${err.message}`);
-    return;
-  }
-  console.log(`![Error]: ${err.message}`);
-}
+import * as errors from "./errors";
 
 function run() {
+  const reader = { read: utils.fs.read };
+
   const program = new Command();
 
   program.name(pkg.name).description(pkg.repository).version(pkg.version);
 
   program
     .option("-t, --tree", "tree flag to show AST", false)
-    .option("-a, --args <string>", "pass arguments for runtime", "")
+    .option("-a, --args <string>", "program's arguments", "")
     .action(async function () {
       const options = program.opts();
 
-      const optArgs = options.args.split(",");
+      const args = options.args.split(",");
 
       const r = repl();
 
@@ -63,28 +40,21 @@ function run() {
       r.on("line", async function (chunk) {
         const buffer = Buffer.from(chunk);
         const lexer = new Lexer(buffer);
+
         const symtable = new SymTable("global");
         const eater = new Eater(lexer.copy());
         const parser = new Parser(eater, symtable);
-        const importer = new Importer(new Eater(lexer.copy()), {
-          read: utils.fs.read,
-        });
 
+        const importer = new Importer(new Eater(lexer.copy()), reader);
         try {
           const [imports, alias] = await importer.imports();
           const tree = await parser.parse();
-          const result = await interpreter.run(
-            tree,
-            imports,
-            alias,
-            options.tree as boolean,
-            optArgs
-          );
+          if (options.tree as boolean)
+            console.log(colorize(JSON.stringify(tree, null, 2)));
+          const result = await interpreter.run(tree, imports, alias, args);
           console.log(`= ${result}`);
         } catch (err) {
-          if (err instanceof Error) {
-            handleError(err);
-          }
+          errors.handle(err as Error);
         } finally {
           r.prompt(true);
         }
@@ -99,41 +69,29 @@ function run() {
   program
     .command("run")
     .argument("<filename>", "filename to run interpreter")
+    .argument("[args...]", "program's arguments")
     .option("-t, --tree", "tree flag to show AST", false)
-    .option("-a, --args <string>", "pass arguments for runtime", "")
-    .action(async function (arg) {
+    .action(async function (filename, args) {
       try {
         const options = program.opts();
 
-        const optArgs = options.args.split(",");
-
-        const buffer = await utils.fs.read(arg);
+        const buffer = await utils.fs.read(filename);
         const lexer = new Lexer(buffer);
 
-        const importer = new Importer(new Eater(lexer.copy()), {
-          read: utils.fs.read,
-        });
+        const importer = new Importer(new Eater(lexer.copy()), reader);
         const [imports, alias] = await importer.imports();
 
         const symtable = new SymTable("global");
         const parser = new Parser(new Eater(lexer), symtable);
         const tree = await parser.parse();
+        if (options.tree as boolean)
+          console.log(colorize(JSON.stringify(tree, null, 2)));
 
         const environ = new Environment("global");
         const interpreter = new Interpreter(environ);
-        await interpreter.run(
-          tree,
-          imports,
-          alias,
-          options.tree as boolean,
-          optArgs
-        );
+        await interpreter.run(tree, imports, alias, args);
       } catch (err) {
-        if (err instanceof SyntaxError) {
-          console.log(err);
-          process.exit(2);
-        }
-        console.log(err);
+        errors.handle(err as Error);
         process.exit(1);
       }
     });

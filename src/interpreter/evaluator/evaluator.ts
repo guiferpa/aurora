@@ -1,5 +1,6 @@
 import { FunctionClaim, Pool, VariableClaim } from "@/environ";
 import { TokenTag } from "@/lexer";
+import { ImportClaim } from "@/importer";
 import {
   ParserNode,
   BinaryOpNode,
@@ -31,8 +32,8 @@ import {
   FromStmtNode,
   AsStmtNode,
 } from "@/parser";
+
 import { EvaluateError } from "../errors";
-import { ImportClaim } from "@/importer/importer";
 
 export default class Evaluator {
   constructor(

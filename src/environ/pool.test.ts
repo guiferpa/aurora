@@ -3,8 +3,7 @@ import Pool from "./pool";
 
 describe("Pool test suite", () => {
   test("Test environ query running with previous scopes", async () => {
-    const pool = new Pool();
-    pool.add("a");
+    const pool = new Pool("a");
     pool.environ().set("k", new VariableClaim("value-k"));
 
     pool.ahead("b", pool.environ());
@@ -20,8 +19,7 @@ describe("Pool test suite", () => {
   });
 
   test("Test environ query running with contexts scopes", async () => {
-    const pool = new Pool();
-    pool.add("a");
+    const pool = new Pool("a");
     pool.environ().set("k", new VariableClaim("value-k"));
 
     pool.add("b");

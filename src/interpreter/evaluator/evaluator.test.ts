@@ -28,9 +28,7 @@ const execEvaluator = async (
   const parser = new Parser(new Eater(context, lexer.copy()), symtable);
   const tree = await parser.parse();
 
-  const pool = new Pool();
-  pool.add(context);
-
+  const pool = new Pool(context);
   const evaluator = new Evaluator(pool, imports, alias, args);
   return evaluator.evaluate(tree);
 };

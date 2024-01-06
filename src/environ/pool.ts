@@ -5,9 +5,10 @@ export type EnvironContextType = string;
 export default class Pool {
   private readonly _environs: Map<EnvironContextType, Environment> = new Map();
   private readonly _history: EnvironContextType[] = [];
-  private _ctx: EnvironContextType = "";
 
-  constructor() {}
+  constructor(private _ctx: EnvironContextType) {
+    this.add(_ctx);
+  }
 
   public add(context: EnvironContextType) {
     const environ = new Environment(`CONTEXT[${context}]-${Date.now()}`);

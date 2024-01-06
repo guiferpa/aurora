@@ -4,18 +4,15 @@ import { ImportClaim } from "@/importer/importer";
 import { Pool } from "@/environ";
 
 export default class Interpreter {
-  constructor() {}
+  constructor(private readonly _pool: Pool) {}
 
   public async run(
-    context: string,
     tree: ParserNode,
     imports: Map<string, ImportClaim>,
     alias: Map<string, Map<string, string>>,
     args: string[] = []
   ): Promise<string[]> {
-    const pool = new Pool();
-    pool.add(context);
-    const evaluator = new Evaluator(pool, imports, alias, args);
+    const evaluator = new Evaluator(this._pool, imports, alias, args);
     return evaluator.evaluate(tree);
   }
 }

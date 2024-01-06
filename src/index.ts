@@ -8,6 +8,7 @@ import Eater from "@/eater";
 import SymTable from "@/symtable";
 import Parser from "@/parser";
 import Importer, { ImportClaim } from "@/importer";
+import { Pool } from "@/environ";
 import Interpreter from "@/interpreter";
 import Builder from "@/builder";
 
@@ -35,35 +36,29 @@ function run() {
 
       const r = repl();
 
-      const interpreter = new Interpreter();
+      const pool = new Pool("repl");
+      const interpreter = new Interpreter(pool);
 
       r.on("line", async function (chunk) {
         const buffer = Buffer.from(chunk);
         const lexer = new Lexer(buffer);
 
-        const symtable = new SymTable("global");
-        const eater = new Eater(context, lexer.copy());
-        const parser = new Parser(eater, symtable);
-
         const importer = new Importer(reader);
-        try {
-          const claims = await importer.imports(eater);
-          const alias = importer.alias(claims);
-          const imports = new Map<string, ImportClaim>(
-            claims.map((claim) => [claim.context, claim])
-          );
+        const claims = await importer.imports(new Eater(context, lexer.copy()));
+        const alias = importer.alias(claims);
+        const imports = new Map<string, ImportClaim>(
+          claims.map((claim) => [claim.context, claim])
+        );
 
+        const symtable = new SymTable("global");
+        const parser = new Parser(new Eater(context, lexer.copy()), symtable);
+
+        try {
           const tree = await parser.parse();
           if (options.tree as boolean)
             console.log(colorize(JSON.stringify(tree, null, 2)));
 
-          const result = await interpreter.run(
-            context,
-            tree,
-            imports,
-            alias,
-            args
-          );
+          const result = await interpreter.run(tree, imports, alias, args);
           console.log(`= ${result}`);
         } catch (err) {
           errors.handle(err as Error);
@@ -104,8 +99,9 @@ function run() {
         if (options.tree as boolean)
           console.log(colorize(JSON.stringify(tree, null, 2)));
 
-        const interpreter = new Interpreter();
-        await interpreter.run(filename, tree, imports, alias, args);
+        const pool = new Pool(filename);
+        const interpreter = new Interpreter(pool);
+        await interpreter.run(tree, imports, alias, args);
       } catch (err) {
         errors.handle(err as Error);
         process.exit(1);

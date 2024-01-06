@@ -1,0 +1,3 @@
+from "examples/fibonacci"
+
+print(fib(2))

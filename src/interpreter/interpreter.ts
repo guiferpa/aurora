@@ -1,20 +1,20 @@
 import { Evaluator } from "./evaluator";
 import { ParserNode } from "@/parser";
-import Environment from "@/environ/environ";
 import { ImportClaim } from "@/importer/importer";
 import { Pool } from "@/environ";
 
 export default class Interpreter {
-  constructor(private _environ: Environment) {}
+  constructor() {}
 
   public async run(
+    context: string,
     tree: ParserNode,
     imports: Map<string, ImportClaim>,
     alias: Map<string, Map<string, string>>,
     args: string[] = []
   ): Promise<string[]> {
     const pool = new Pool();
-    pool.add("main");
+    pool.add(context);
     const evaluator = new Evaluator(pool, imports, alias, args);
     return evaluator.evaluate(tree);
   }

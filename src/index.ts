@@ -7,8 +7,7 @@ import Lexer from "@/lexer";
 import Eater from "@/eater";
 import SymTable from "@/symtable";
 import Parser from "@/parser";
-import Environment from "@/environ";
-import Importer from "@/importer";
+import Importer, { ImportClaim } from "@/importer";
 import Interpreter from "@/interpreter";
 import Builder from "@/builder";
 
@@ -32,26 +31,39 @@ function run() {
 
       const args = options.args.split(",");
 
+      const context = "repl";
+
       const r = repl();
 
-      const environ = new Environment("global");
-      const interpreter = new Interpreter(environ);
+      const interpreter = new Interpreter();
 
       r.on("line", async function (chunk) {
         const buffer = Buffer.from(chunk);
         const lexer = new Lexer(buffer);
 
         const symtable = new SymTable("global");
-        const eater = new Eater(lexer.copy());
+        const eater = new Eater(context, lexer.copy());
         const parser = new Parser(eater, symtable);
 
-        const importer = new Importer(new Eater(lexer.copy()), reader);
+        const importer = new Importer(reader);
         try {
-          const [imports, alias] = await importer.imports();
+          const claims = await importer.imports(eater);
+          const alias = importer.alias(claims);
+          const imports = new Map<string, ImportClaim>(
+            claims.map((claim) => [claim.context, claim])
+          );
+
           const tree = await parser.parse();
           if (options.tree as boolean)
             console.log(colorize(JSON.stringify(tree, null, 2)));
-          const result = await interpreter.run(tree, imports, alias, args);
+
+          const result = await interpreter.run(
+            context,
+            tree,
+            imports,
+            alias,
+            args
+          );
           console.log(`= ${result}`);
         } catch (err) {
           errors.handle(err as Error);
@@ -77,19 +89,23 @@ function run() {
 
         const buffer = await utils.fs.read(filename);
         const lexer = new Lexer(buffer);
+        const eater = new Eater(filename, lexer.copy());
 
-        const importer = new Importer(new Eater(lexer.copy()), reader);
-        const [imports, alias] = await importer.imports();
+        const importer = new Importer(reader);
+        const claims = await importer.imports(eater);
+        const alias = importer.alias(claims);
+        const imports = new Map<string, ImportClaim>(
+          claims.map((claim) => [claim.context, claim])
+        );
 
         const symtable = new SymTable("global");
-        const parser = new Parser(new Eater(lexer), symtable);
+        const parser = new Parser(new Eater(filename, lexer.copy()), symtable);
         const tree = await parser.parse();
         if (options.tree as boolean)
           console.log(colorize(JSON.stringify(tree, null, 2)));
 
-        const environ = new Environment("global");
-        const interpreter = new Interpreter(environ);
-        await interpreter.run(tree, imports, alias, args);
+        const interpreter = new Interpreter();
+        await interpreter.run(filename, tree, imports, alias, args);
       } catch (err) {
         errors.handle(err as Error);
         process.exit(1);

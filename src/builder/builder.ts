@@ -12,7 +12,7 @@ export default class Builder {
 
   public async run(debug?: boolean): Promise<string[]> {
     const lexer = new Lexer(this._buffer);
-    const eater = new Eater(lexer.copy());
+    const eater = new Eater("main", lexer.copy());
     const parser = new Parser(eater, new SymTable("global"));
     const tree = await parser.parse();
     debug && console.log(colorize(JSON.stringify(tree, null, 2)));

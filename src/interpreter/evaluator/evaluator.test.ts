@@ -1,30 +1,37 @@
+import Eater from "@/eater/eater";
 import Lexer from "@/lexer/lexer";
 import SymTable from "@/symtable";
 import Parser from "@/parser";
-import Environment from "@/environ";
+import Importer, { ImportClaim } from "@/importer";
+import { EnvironError, Pool } from "@/environ";
 
 import Evaluator from "./evaluator";
-import Eater from "@/eater/eater";
-import Importer from "@/importer/importer";
 
 const execEvaluator = async (
   bucket: Map<string, string>,
   args: string[] = [],
-  pname: string = "main",
-  environ: Environment = new Environment("global")
+  context: string = "main"
 ) => {
-  const program = bucket.get(pname) as string;
+  const program = bucket.get(context) as string;
   const lexer = new Lexer(Buffer.from(program, "utf-8"));
   const symtable = new SymTable("global");
-  const eater = new Eater(lexer.copy());
   const reader = {
     read: async (entry: string) => Buffer.from(bucket.get(entry) as string),
   };
-  const importer = new Importer(new Eater(lexer.copy()), reader);
-  const [imports, alias] = await importer.imports();
-  const parser = new Parser(eater, symtable);
+  const importer = new Importer(reader);
+  const claims = await importer.imports(new Eater(context, lexer.copy()));
+  const alias = importer.alias(claims);
+  const imports = new Map<string, ImportClaim>(
+    claims.map((claim) => [claim.context, claim])
+  );
+
+  const parser = new Parser(new Eater(context, lexer.copy()), symtable);
   const tree = await parser.parse();
-  const evaluator = new Evaluator(environ, imports, alias, args);
+
+  const pool = new Pool();
+  pool.add(context);
+
+  const evaluator = new Evaluator(pool, imports, alias, args);
   return evaluator.evaluate(tree);
 };
 
@@ -374,7 +381,7 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test.skip("Program that import others files with the same alias", async () => {
+  test("Program that import others files with the same alias", async () => {
     const bucket = new Map<string, string>([
       [
         "main",
@@ -397,6 +404,21 @@ describe("Evaluator test suite", () => {
     const got = await execEvaluator(bucket);
 
     expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that import others files with the deep declaration", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `from "a"
+
+        num`,
+      ],
+      ["a", `from "b"`],
+      ["b", `var num = 20`],
+    ]);
+
+    expect(execEvaluator(bucket)).rejects.toThrow(EnvironError);
   });
 
   test("Program that parse string to number", async () => {

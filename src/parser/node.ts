@@ -18,10 +18,7 @@ export class IdentNode extends ParserNode {
 }
 
 export class AccessContextStatementNode extends ParamNode {
-  constructor(
-    public readonly context: string,
-    public readonly prop: ParserNode
-  ) {
+  constructor(public readonly alias: string, public readonly prop: ParserNode) {
     super(ParserNodeTag.ACC_CTX_STMT);
   }
 }

@@ -27,11 +27,11 @@ import {
 
 const execParser = async (
   bucket: Map<string, string>,
-  pname: string = "main"
+  context: string = "main"
 ) => {
-  const program = bucket.get(pname) as string;
+  const program = bucket.get(context) as string;
   const lexer = new Lexer(Buffer.from(program, "utf-8"));
-  const eater = new Eater(lexer);
+  const eater = new Eater(context, lexer);
   const symtable = new SymTable("global");
   const parser = new Parser(eater, symtable);
   return await parser.parse();

@@ -1,19 +1,12 @@
+import Lexer, { TokenTag } from "@/lexer";
 import Eater from "@/eater";
-import { TokenTag } from "@/lexer";
-import Lexer from "@/lexer/lexer";
-import {
-  AsStmtNode,
-  FromStmtNode,
-  IdentNode,
-  ProgramNode,
-  StringNode,
-} from "@/parser";
-import Parser from "@/parser/parser";
-import SymTable from "@/symtable/symtable";
+import Parser, { ProgramNode } from "@/parser";
 
 export interface Reader {
   read(entry: string): Promise<Buffer>;
 }
+
+export type AliasClaim = Map<string, Map<string, string>>;
 
 export interface MappingClaim {
   id: string;
@@ -21,89 +14,72 @@ export interface MappingClaim {
 }
 
 export interface ImportClaim {
-  mapping: MappingClaim;
+  context: string;
+  alias: Map<string, string>;
+  mapping: MappingClaim[];
   program: ProgramNode;
 }
 
 export default class Importer {
-  constructor(private _eater: Eater, private _reader: Reader) {}
+  private readonly _imported: string[] = [];
 
-  private _str(): StringNode {
-    const str = this._eater.eat(TokenTag.STR);
-    return new StringNode(str.value);
-  }
+  constructor(private _reader: Reader) {}
 
-  private _from(): FromStmtNode {
-    this._eater.eat(TokenTag.FROM);
-    const str = this._str();
-    return new FromStmtNode(str.value);
-  }
+  public async imports(eater: Eater): Promise<ImportClaim[]> {
+    if (this._imported.includes(eater.context)) return [];
 
-  private _ident(): IdentNode {
-    const ident = this._eater.eat(TokenTag.IDENT);
-    return new IdentNode(ident.value);
-  }
+    const mapping: ImportClaim["mapping"] = [];
+    const alias: Map<string, string> = new Map([]);
 
-  private _as(): AsStmtNode {
-    this._eater.eat(TokenTag.AS);
-    const ident = this._ident();
-    return new AsStmtNode(ident.name);
-  }
+    while (eater.lookahead().tag === TokenTag.FROM) {
+      eater.eat(TokenTag.FROM);
+      const id = eater.eat(TokenTag.STR).value;
 
-  private _map(): MappingClaim {
-    const from = this._from();
+      let als = "";
+      if (eater.lookahead().tag === TokenTag.AS) {
+        eater.eat(TokenTag.AS);
+        als = eater.eat(TokenTag.IDENT).value;
+      }
 
-    let alias = new AsStmtNode("");
-    if (this._eater.lookahead().tag === TokenTag.AS) {
-      alias = this._as();
+      alias.set(als, id);
+      mapping.push({ id, alias: als });
     }
 
-    return {
-      id: from.value,
-      alias: alias.value,
+    const parser = new Parser(eater);
+
+    const claim = {
+      context: eater.context,
+      mapping,
+      alias,
+      program: await parser.parse(),
     };
-  }
 
-  public async mapping(): Promise<MappingClaim[]> {
-    const result: MappingClaim[] = [];
+    this._imported.push(eater.context);
 
-    while (this._eater.lookahead().tag === TokenTag.FROM) {
-      const n = this._map();
+    if (mapping.length === 0) return [claim];
 
-      const buffer = await this._reader.read(n.id);
+    const imports: ImportClaim[] = [];
+
+    const promises = mapping.flatMap(async (item): Promise<void> => {
+      const buffer = await this._reader.read(item.id);
       const lexer = new Lexer(buffer);
-      const eatertemp = this._eater;
-      this._eater = new Eater(lexer);
+      const eater = new Eater(item.id, lexer);
+      const result = await this.imports(eater);
+      imports.push(...result);
+    });
 
-      const ns = await this.mapping();
+    await Promise.all(promises);
 
-      result.push(...[n, ...ns]);
-
-      this._eater = eatertemp;
-    }
-
-    return result;
+    return [claim, ...imports];
   }
 
-  public async imports(): Promise<
-    [Map<string, ImportClaim>, Map<string, string>]
-  > {
-    const mapping = await this.mapping();
-    const translate = new Map<string, string>();
+  public alias(claims: ImportClaim[]): AliasClaim {
+    const alias: AliasClaim = new Map();
 
-    const imports = await Promise.all(
-      mapping.map(async (item): Promise<[string, ImportClaim]> => {
-        const symtable = new SymTable("global");
-        const buffer = await this._reader.read(item.id);
-        const lexer = new Lexer(buffer);
-        const parser = new Parser(new Eater(lexer), symtable);
-        if (item.alias !== "") {
-          translate.set(item.alias, item.id);
-        }
-        return [item.id, { mapping: item, program: await parser.parse() }];
-      })
-    );
+    claims.forEach((claim) => {
+      alias.set(claim.context, claim.alias);
+    });
 
-    return [new Map(imports), translate];
+    return alias;
   }
 }

@@ -1,4 +1,4 @@
-import Environment, { FunctionClaim, VariableClaim } from "@/environ";
+import { FunctionClaim, Pool, VariableClaim } from "@/environ";
 import { TokenTag } from "@/lexer";
 import {
   ParserNode,
@@ -28,17 +28,36 @@ import {
   ImportStmtNode,
   CallStrToNumStmtNode,
   AccessContextStatementNode,
+  FromStmtNode,
+  AsStmtNode,
 } from "@/parser";
 import { EvaluateError } from "../errors";
 import { ImportClaim } from "@/importer/importer";
 
 export default class Evaluator {
   constructor(
-    private _environ: Environment | null,
+    private _pool: Pool,
     private _imports: Map<string, ImportClaim>,
-    private _alias: Map<string, string>,
+    private _alias: Map<string, Map<string, string>>,
     private readonly _args: string[] = []
   ) {}
+
+  private translate(alias: string): string {
+    const table = this._alias.get(this._pool.context());
+
+    if (typeof table === "undefined")
+      throw new EvaluateError(
+        `No translate table for context ${this._pool.context()}`
+      );
+
+    const result = table.get(alias);
+    if (typeof result === "undefined")
+      throw new EvaluateError(
+        `Alias ${alias} not resolved at context ${this._pool.context()}`
+      );
+
+    return result;
+  }
 
   private compose(nodes: ParserNode[]): any[] {
     const out = [];
@@ -56,27 +75,36 @@ export default class Evaluator {
     if (tree instanceof ImportStmtNode) {
       const importing = this._imports.get(tree.id.value);
       if (typeof importing === "undefined") return;
-      const tempctx = this._environ?.context() as string;
-      if (importing.mapping.alias !== "") {
-        this._environ?.setContext(importing.mapping.id);
+
+      if (tree.alias.value !== "") {
+        this._pool.push(tree.id.value);
+
+        // Just import another files
+        this.compose(
+          importing.mapping.map((node) => {
+            return new ImportStmtNode(
+              new FromStmtNode(node.id),
+              new AsStmtNode(node.alias)
+            );
+          })
+        );
+
+        this.compose(importing.program.children);
+        this._pool.pop();
+        return;
       }
+
       this.compose(importing.program.children);
-      this._environ?.setContext(tempctx);
       return;
     }
 
     if (tree instanceof AccessContextStatementNode) {
-      const tempctx = this._environ?.context() as string;
-
-      const context = this._alias.get(tree.context);
-      if (typeof context === "undefined")
-        throw new EvaluateError(`Context for alias ${tree.context} not found`);
-
-      this._environ?.setContext(context);
+      const context = this.translate(tree.alias);
+      this._pool.push(context);
 
       const result = this.evaluate(tree.prop);
 
-      this._environ?.setContext(tempctx);
+      this._pool.pop();
 
       return result;
     }
@@ -85,13 +113,13 @@ export default class Evaluator {
 
     if (tree instanceof AssignStmtNode) {
       const payload = new VariableClaim(this.evaluate(tree.value));
-      this._environ?.set(tree.name, payload);
+      this._pool.environ().set(tree.name, payload);
       return;
     }
 
     if (tree instanceof DeclFuncStmtNode) {
       const payload = new FunctionClaim(tree.arity, tree.body);
-      this._environ?.set(tree.name, payload);
+      this._pool.environ().set(tree.name, payload);
       return;
     }
 
@@ -125,26 +153,13 @@ export default class Evaluator {
     }
 
     if (tree instanceof IdentNode) {
-      const n = this._environ?.query(tree.name);
-
-      if (typeof n === "undefined") {
-        return;
-      }
-
-      if (n instanceof FunctionClaim) return n;
-
-      if (n instanceof VariableClaim) {
-        return n.value;
-      }
-
-      return this.evaluate(n);
+      const n = this._pool.environ().getvar(tree.name);
+      return n === null ? null : n;
     }
 
     if (tree instanceof CallFuncStmtNode) {
-      const n = this._environ?.query(tree.name);
-
-      if (!(n instanceof FunctionClaim))
-        throw new EvaluateError(`Invalid calling for function ${tree.name}`);
+      const n = this._pool.environ().getfunc(tree.name);
+      if (n === null) return;
 
       if (n.arity.params.length !== tree.params.length) {
         throw new EvaluateError(
@@ -152,23 +167,24 @@ export default class Evaluator {
         );
       }
 
-      this._environ = new Environment(`FUNC-${Date.now()}`, this._environ);
+      const scope = `${tree.tag}-${Date.now()}`;
+      this._pool.ahead(scope, this._pool.environ());
 
       // Allocating refs/values for evaluate AST with focus only in function scope
       n.arity.params.forEach((param, index) => {
         const payload = new VariableClaim(this.evaluate(tree.params[index]));
-        this._environ?.set(param, payload);
+        this._pool.environ().set(param, payload);
       });
 
       for (const child of (n.body as BlockStmtNode).children) {
         const result = this.evaluate(child);
         if (typeof result !== "undefined") {
-          this._environ = this._environ.prev;
+          this._pool.back();
           return result;
         }
       }
 
-      this._environ = this._environ.prev;
+      this._pool.back();
       return;
     }
 
@@ -197,23 +213,27 @@ export default class Evaluator {
 
       const handle = this.evaluate(tree.handle);
 
-      if (!(handle instanceof FunctionClaim)) return;
+      if (!(handle instanceof FunctionClaim))
+        throw new EvaluateError(
+          `It wasn't possible call function with no callback parameter`
+        );
 
       const out = [];
 
       for (const item of arr) {
-        this._environ = new Environment(`FUNC-${Date.now()}`, this._environ);
+        const scope = `${tree.tag}-${Date.now()}`;
+        this._pool.ahead(scope, this._pool.environ());
 
         handle.arity.params.forEach((param) => {
-          const payload = new VariableClaim(item);
-          this._environ?.set(param, payload);
+          const claim = new VariableClaim(item);
+          this._pool.environ().set(param, claim);
         });
 
         for (const child of (handle.body as BlockStmtNode).children) {
           out.push(this.evaluate(child));
         }
 
-        this._environ = this._environ.prev;
+        this._pool.back();
       }
 
       return out;
@@ -231,11 +251,12 @@ export default class Evaluator {
       const out = [];
 
       for (const item of arr) {
-        this._environ = new Environment(`FUNC-${Date.now()}`, this._environ);
+        const scope = `${tree.tag}-${Date.now()}`;
+        this._pool.ahead(scope, this._pool.environ());
 
         handle.arity.params.forEach((param) => {
-          const payload = new VariableClaim(item);
-          this._environ?.set(param, payload);
+          const claim = new VariableClaim(item);
+          this._pool.environ().set(param, claim);
         });
 
         for (const child of (handle.body as BlockStmtNode).children) {
@@ -243,7 +264,7 @@ export default class Evaluator {
           if (tested) out.push(item);
         }
 
-        this._environ = this._environ.prev;
+        this._pool.back();
       }
 
       return out;
@@ -336,7 +357,7 @@ export default class Evaluator {
     }
 
     throw new EvaluateError(
-      `Unsupported evaluate expression for [${JSON.stringify(tree)}]`
+      `Unsupported evaluate expression for ${JSON.stringify(tree)}`
     );
   }
 }

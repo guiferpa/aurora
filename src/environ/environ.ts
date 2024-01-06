@@ -14,56 +14,48 @@ export class FunctionClaim {
   ) {}
 }
 
-export type Payload = ParserNode | VariableClaim | FunctionClaim;
+export type NodeClaim = ParserNode;
+
+export type EnvironClaim = NodeClaim | VariableClaim | FunctionClaim;
+
+export type EnvironScopeType = string;
 
 export default class Environment {
-  public readonly id: string;
-  private _table: Map<string, Payload>;
-  public readonly prev: Environment | null;
+  private _table: Map<EnvironScopeType, EnvironClaim> = new Map([]);
 
   constructor(
-    id: string,
-    prev: Environment | null = null,
-    private _ctx: string = "main"
-  ) {
-    this.id = id;
-    this._table = new Map();
-    this.prev = prev;
+    public readonly scope: EnvironScopeType,
+    public previous: Environment | null = null
+  ) {}
+
+  public set(key: string, claim: EnvironClaim) {
+    this._table.set(key, claim);
   }
 
-  public setContext(ctx: string) {
-    this._ctx = ctx;
-  }
-
-  public context(): string {
-    return this._ctx;
-  }
-
-  public set(key: string, payload: Payload) {
-    this._table.set(`${this._ctx}#${key}`, payload);
-  }
-
-  public query(key: string): Payload {
+  public query(key: string): EnvironClaim {
     let environ: Environment | null = this;
 
     while (environ !== null) {
-      const payload = environ._table.get(`${this._ctx}#${key}`);
-      if (payload !== undefined) return payload;
+      const payload = environ._table.get(key);
+      if (typeof payload !== "undefined") return payload;
 
-      environ = environ.prev;
+      environ = environ.previous;
     }
 
     throw new EnvironError(
-      `Definition "${key}" not found at ${this._ctx} context`
+      `Definition "${key}" not found at ${this.scope} scope`
     );
   }
 
-  public describe() {
-    let stmt: Environment | null = this;
+  public getvar(key: string): VariableClaim | FunctionClaim | null {
+    const claim = this.query(key);
+    if (claim instanceof VariableClaim) return claim.value;
+    if (claim instanceof FunctionClaim) return claim;
+    return null;
+  }
 
-    while (stmt !== null) {
-      console.log(stmt);
-      stmt = stmt.prev;
-    }
+  public getfunc(key: string): FunctionClaim | null {
+    const claim = this.query(key);
+    return claim instanceof FunctionClaim ? claim : null;
   }
 }

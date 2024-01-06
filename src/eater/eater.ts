@@ -9,7 +9,7 @@ export class EaterError extends Error {
 export default class Eater {
   private _lookahead: Token | null = null;
 
-  constructor(private _lexer: Lexer) {
+  constructor(public readonly context: string, private _lexer: Lexer) {
     this._lookahead = this._lexer.getNextToken();
   }
 

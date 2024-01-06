@@ -1,1 +1,1 @@
-export { default } from "./importer";
+export { default, ImportClaim } from "./importer";

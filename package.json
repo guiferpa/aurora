@@ -1,6 +1,6 @@
 {
   "name": "@guiferpa/aurora",
-  "version": "0.10.2",
+  "version": "0.10.3",
   "main": "src/index.js",
   "repository": "git@github.com:guiferpa/aurora.git",
   "author": "Guilherme Paixão <guiferpa@gmail.com>",

@@ -69,10 +69,6 @@ export default class Parser {
       return this._arr();
     }
 
-    if (lookahead.tag === TokenTag.FROM) {
-      return this._import();
-    }
-
     throw new ParserError(`Unknown token ${lookahead.value}`);
   }
 
@@ -523,6 +519,24 @@ export default class Parser {
     return new node.ReturnStmtNode(log);
   }
 
+  private async _let(): Promise<node.ParserNode> {
+    this._eater.eat(TokenTag.LET);
+    const receiver = await this._arr();
+    this._eater.eat(TokenTag.SETTER);
+    const setter = await this._fact();
+
+    const values = receiver.items.map((item): node.IdentNode => {
+      if (item instanceof node.IdentNode) {
+        return item;
+      }
+
+      throw new ParserError(`Unexpected values as setter in let statement`);
+    });
+
+    const body = await this._block();
+    return new node.LetStmtNode(values, setter, body);
+  }
+
   /**
    * _statment -> _block
    *            | _if
@@ -559,6 +573,14 @@ export default class Parser {
 
     if (lookahead.tag === TokenTag.IF) {
       return this._if();
+    }
+
+    if (lookahead.tag === TokenTag.LET) {
+      return this._let();
+    }
+
+    if (lookahead.tag === TokenTag.FROM) {
+      return this._import();
     }
 
     return this._block();

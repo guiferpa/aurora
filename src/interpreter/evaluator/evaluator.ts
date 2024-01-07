@@ -29,6 +29,7 @@ import {
   ImportStmtNode,
   CallStrToNumStmtNode,
   AccessContextStatementNode,
+  LetStmtNode,
 } from "@/parser";
 
 import { EvaluateError } from "../errors";
@@ -106,7 +107,6 @@ export default class Evaluator {
     }
 
     if (tree instanceof DeclFuncStmtNode) {
-      const context = this._pool.context();
       const payload = new FunctionClaim(tree.arity, tree.body);
       this._pool.environ().set(tree.name, payload);
       return;
@@ -118,6 +118,39 @@ export default class Evaluator {
 
     if (tree instanceof ReturnStmtNode) {
       return this.evaluate(tree.value);
+    }
+
+    if (tree instanceof LetStmtNode) {
+      const arr = this.evaluate(tree.arr);
+
+      if (!Array.isArray(arr))
+        throw new EvaluateError("Invalid attribuition value for let statement");
+
+      this._pool.ahead(`${tree.tag}-${Date.now()}`, this._pool.environ());
+
+      tree.values.forEach((item, index) => {
+        const value = arr[index];
+        const claim = new VariableClaim(value);
+        this._pool.environ().set(item.name, claim);
+      });
+
+      if (tree.body instanceof BlockStmtNode) {
+        for (const child of tree.body.children) {
+          if (
+            child instanceof ReturnVoidStmtNode ||
+            child instanceof ReturnStmtNode
+          ) {
+            const result = this.evaluate(child);
+            this._pool.back();
+            return result;
+          }
+
+          this.evaluate(child);
+        }
+
+        this._pool.back();
+        return;
+      }
     }
 
     if (tree instanceof IfStmtNode) {

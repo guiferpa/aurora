@@ -139,6 +139,16 @@ export class ReturnVoidStmtNode extends ParserNode {
   }
 }
 
+export class LetStmtNode extends ParserNode {
+  constructor(
+    public readonly values: IdentNode[],
+    public readonly arr: ParserNode,
+    public readonly body: ParserNode
+  ) {
+    super(ParserNodeTag.LET_STMT);
+  }
+}
+
 export class BlockStmtNode extends ParserNode {
   constructor(public readonly children: ParserNode[]) {
     super(ParserNodeTag.BLOCK_STMT);

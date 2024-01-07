@@ -38,5 +38,7 @@ export enum TokenTag {
   FROM = "__FROM__",
   AS = "__AS__",
   DOT = "__DOT__",
+  LET = "__LET__",
+  SETTER = "__SETTER__",
   EOF = "__EOF__",
 }

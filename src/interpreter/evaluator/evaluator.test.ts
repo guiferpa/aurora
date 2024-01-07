@@ -467,4 +467,43 @@ describe("Evaluator test suite", () => {
 
     expect(got).toStrictEqual(expected);
   });
+
+  test("Program that create at scope for let statement", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var c = "A"
+        var arr = ["B", "C", "D"]
+
+        let [b, c] = arr {
+          print(c)
+        }
+
+        print(c)`,
+      ],
+    ]);
+
+    const expected = [undefined, undefined, undefined, undefined];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that create return at scope for let statement", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var arr = [1, 2, 3]
+
+        let [a, b] = arr {
+          return b
+        }`,
+      ],
+    ]);
+
+    const expected = [undefined, 2];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
 });

@@ -25,6 +25,8 @@ export const Terminals: [RegExp, TokenTag][] = [
   [new RegExp(/^return/), TokenTag.RETURN],
   [new RegExp(/^from/), TokenTag.FROM],
   [new RegExp(/^as/), TokenTag.AS],
+  [new RegExp(/^let/), TokenTag.LET],
+  [new RegExp(/^=/), TokenTag.SETTER],
   [new RegExp(/^var [a-zA-Z_]+(\s?)=/), TokenTag.ASSIGN],
   [new RegExp(/^func [a-zA-Z_><\-!?]+/), TokenTag.DECL_FN],
   [new RegExp(/^\+/), TokenTag.OP_ADD],

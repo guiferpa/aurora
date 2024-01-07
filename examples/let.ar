@@ -1,0 +1,10 @@
+var c = "A"
+
+var arr = ["B", "C", "D"]
+
+let [b, c] = arr {
+  print(c)
+}
+
+print(c)
+

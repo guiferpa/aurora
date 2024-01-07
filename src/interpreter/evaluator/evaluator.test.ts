@@ -506,4 +506,45 @@ describe("Evaluator test suite", () => {
 
     expect(got).toStrictEqual(expected);
   });
+
+  test("Program that get nth item from an array", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var arr = [1, 2, 3]
+
+        return nth(arr, 2)`,
+      ],
+    ]);
+
+    const expected = [undefined, 3];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that get nth item from an array with invalid index", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `var arr = [1, 2, 3]
+
+        return nth(arr, "A")`,
+      ],
+    ]);
+
+    const expected = [undefined, undefined];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that get nth item from an invalid value", async () => {
+    const bucket = new Map<string, string>([["main", `return nth(true, 1)`]]);
+
+    const expected = [undefined];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
+  });
 });

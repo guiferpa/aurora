@@ -17,9 +17,18 @@ export class IdentNode extends ParserNode {
   }
 }
 
-export class AccessContextStatementNode extends ParamNode {
+export class AccessContextStatementNode extends ParserNode {
   constructor(public readonly alias: string, public readonly prop: ParserNode) {
     super(ParserNodeTag.ACC_CTX_STMT);
+  }
+}
+
+export class CallNthStatementNode extends ParserNode {
+  constructor(
+    public readonly arr: ParserNode,
+    public readonly index: ParserNode
+  ) {
+    super(ParserNodeTag.CALL_NTH_STMT);
   }
 }
 

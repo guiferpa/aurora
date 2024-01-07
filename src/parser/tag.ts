@@ -24,6 +24,7 @@ export enum ParserNodeTag {
   CALL_FILTER_STMT = "CallFilterStatement",
   CALL_STR_TO_NUM = "CallStrToNumStatement",
   CALL_FUNC_STMT = "CallFuncStatement",
+  CALL_NTH_STMT = "CallNthStatement",
   FROM_STMT = "FromStatement",
   AS_STMT = "AsStatement",
   IMPORT_STMT = "ImportStatement",

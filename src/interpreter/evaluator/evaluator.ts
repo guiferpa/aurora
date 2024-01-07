@@ -30,6 +30,7 @@ import {
   CallStrToNumStmtNode,
   AccessContextStatementNode,
   LetStmtNode,
+  CallNthStatementNode,
 } from "@/parser";
 
 import { EvaluateError } from "../errors";
@@ -96,6 +97,11 @@ export default class Evaluator {
       this._pool.pop();
 
       return result;
+    }
+
+    if (tree instanceof CallNthStatementNode) {
+      const arr = this.evaluate(tree.arr);
+      return (arr as Array<any>)[this.evaluate(tree.index)];
     }
 
     if (tree instanceof BlockStmtNode) return this.compose(tree.children);

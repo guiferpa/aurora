@@ -45,6 +45,10 @@ export default class Parser {
       return this._filter();
     }
 
+    if (lookahead.tag === TokenTag.CALL_NTH) {
+      return this._nth();
+    }
+
     if (lookahead.tag === TokenTag.CALL_STR_TO_NUM) {
       return await this._call_str_to_num();
     }
@@ -478,6 +482,22 @@ export default class Parser {
     const log = await this._log();
     this._eater.eat(TokenTag.PAREN_C);
     return new node.CallPrintStmtNode(log);
+  }
+
+  /**
+   * _nth -> __CALL_NTH__ __PAREN_O__ _log __PAREN_C__
+   * **/
+  private async _nth(): Promise<node.ParserNode> {
+    this._eater.eat(TokenTag.CALL_NTH);
+    this._eater.eat(TokenTag.PAREN_O);
+
+    const fact = await this._fact();
+    this._eater.eat(TokenTag.COMMA);
+    const term = await this._term();
+
+    this._eater.eat(TokenTag.PAREN_C);
+
+    return new node.CallNthStatementNode(fact, term);
   }
 
   /**

@@ -5,11 +5,14 @@ import Importer from "./importer";
 import {
   AccessContextStatementNode,
   ArityStmtNode,
+  AsStmtNode,
   AssignStmtNode,
   BlockStmtNode,
   CallFuncStmtNode,
   DeclFuncStmtNode,
+  FromStmtNode,
   IdentNode,
+  ImportStmtNode,
   NumericalNode,
   ProgramNode,
   ReturnStmtNode,
@@ -62,6 +65,8 @@ describe("Importer mapping test suite", () => {
           ["tt", "b"],
         ]),
         program: new ProgramNode([
+          new ImportStmtNode(new FromStmtNode("a"), new AsStmtNode("t")),
+          new ImportStmtNode(new FromStmtNode("b"), new AsStmtNode("tt")),
           new AssignStmtNode("a", new NumericalNode(1)),
         ]),
       },
@@ -69,13 +74,17 @@ describe("Importer mapping test suite", () => {
         context: "a",
         mapping: [{ alias: "t", id: "b" }],
         alias: new Map([["t", "b"]]),
-        program: new ProgramNode([]),
+        program: new ProgramNode([
+          new ImportStmtNode(new FromStmtNode("b"), new AsStmtNode("t")),
+        ]),
       },
       {
         context: "b",
         mapping: [{ alias: "t", id: "c" }],
         alias: new Map([["t", "c"]]),
-        program: new ProgramNode([]),
+        program: new ProgramNode([
+          new ImportStmtNode(new FromStmtNode("c"), new AsStmtNode("t")),
+        ]),
       },
       {
         context: "c",
@@ -117,9 +126,10 @@ describe("Importer mapping test suite", () => {
         mapping: [{ alias: "t", id: "testing" }],
         alias: new Map([["t", "testing"]]),
         program: new ProgramNode([
+          new ImportStmtNode(new FromStmtNode("testing"), new AsStmtNode("t")),
           new AccessContextStatementNode(
             "t",
-            new CallFuncStmtNode("hello", [])
+            new CallFuncStmtNode("hello", [], "main")
           ),
         ]),
       },
@@ -128,13 +138,17 @@ describe("Importer mapping test suite", () => {
         mapping: [{ alias: "alpha", id: "a" }],
         alias: new Map([["alpha", "a"]]),
         program: new ProgramNode([
+          new ImportStmtNode(new FromStmtNode("a"), new AsStmtNode("alpha")),
           new DeclFuncStmtNode(
             "hello",
             null,
             new ArityStmtNode([]),
             new BlockStmtNode([
               new ReturnStmtNode(
-                new AccessContextStatementNode("alpha", new IdentNode("num"))
+                new AccessContextStatementNode(
+                  "alpha",
+                  new IdentNode("num", "testing")
+                )
               ),
             ])
           ),

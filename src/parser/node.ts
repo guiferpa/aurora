@@ -12,7 +12,7 @@ export class ParamNode extends ParserNode {
 }
 
 export class IdentNode extends ParserNode {
-  constructor(public readonly name: string) {
+  constructor(public readonly name: string, public readonly callee: string) {
     super(ParserNodeTag.IDENT);
   }
 }
@@ -148,7 +148,8 @@ export class BlockStmtNode extends ParserNode {
 export class CallFuncStmtNode extends ParserNode {
   constructor(
     public readonly name: string,
-    public readonly params: ParserNode[]
+    public readonly params: ParserNode[],
+    public readonly callee: string
   ) {
     super(ParserNodeTag.CALL_FUNC_STMT);
   }

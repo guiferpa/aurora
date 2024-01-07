@@ -90,11 +90,7 @@ export default class Parser {
 
   private _import(): node.ImportStmtNode {
     const from = this._from();
-
-    let alias = new node.AsStmtNode("");
-    if (this._eater.lookahead().tag === TokenTag.AS) {
-      alias = this._as();
-    }
+    const alias = this._as();
 
     return new node.ImportStmtNode(from, alias);
   }
@@ -195,7 +191,7 @@ export default class Parser {
       return await this._callfn(ident);
     }
 
-    return new node.IdentNode(ident.value);
+    return new node.IdentNode(ident.value, this._eater.context);
   }
 
   /**
@@ -361,7 +357,7 @@ export default class Parser {
 
     if (lookahead.tag === TokenTag.PAREN_C) {
       this._eater.eat(TokenTag.PAREN_C);
-      return new node.CallFuncStmtNode(id.value, []);
+      return new node.CallFuncStmtNode(id.value, [], this._eater.context);
     }
 
     const params: node.ParserNode[] = [await this._log()];
@@ -373,7 +369,7 @@ export default class Parser {
 
     this._eater.eat(TokenTag.PAREN_C);
 
-    return new node.CallFuncStmtNode(id.value, params);
+    return new node.CallFuncStmtNode(id.value, params, this._eater.context);
   }
 
   /**

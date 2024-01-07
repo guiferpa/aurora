@@ -1,1 +1,1 @@
-export { default } from "./eater";
+export { default, EaterError } from "./eater";

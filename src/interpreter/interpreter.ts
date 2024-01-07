@@ -1,7 +1,8 @@
-import { Evaluator } from "./evaluator";
 import { ParserNode } from "@/parser";
 import { ImportClaim } from "@/importer/importer";
 import { Pool } from "@/environ";
+
+import { Evaluator } from "./evaluator";
 
 export default class Interpreter {
   constructor(private readonly _pool: Pool) {}

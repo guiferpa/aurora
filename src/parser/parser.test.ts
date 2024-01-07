@@ -1,5 +1,5 @@
 import Lexer, { Token, TokenTag } from "@/lexer";
-import Eater from "@/eater";
+import Eater, { EaterError } from "@/eater";
 import SymTable from "@/symtable";
 
 import Parser from "./parser";
@@ -140,7 +140,7 @@ describe("Parser test suite", () => {
         new ArityStmtNode(["world"]),
         new BlockStmtNode([
           new AssignStmtNode("a", new NumericalNode(25)),
-          new CallPrintStmtNode(new IdentNode("world")),
+          new CallPrintStmtNode(new IdentNode("world", "main")),
         ])
       ),
     ]);
@@ -166,7 +166,7 @@ describe("Parser test suite", () => {
     const expected = new ProgramNode([
       new AssignStmtNode("compare", new LogicalNode(true)),
       new IfStmtNode(
-        new IdentNode("compare"),
+        new IdentNode("compare", "main"),
         new BlockStmtNode([
           new CallPrintStmtNode(new StringNode("Testing")),
           new NumericalNode(20),
@@ -188,13 +188,8 @@ describe("Parser test suite", () => {
         print(hello())`,
       ],
     ]);
-    const expected = new ProgramNode([
-      new ImportStmtNode(new FromStmtNode("testing"), new AsStmtNode("")),
-      new CallPrintStmtNode(new CallFuncStmtNode("hello", [])),
-    ]);
 
-    const got = await execParser(bucket);
-    expect(got).toStrictEqual(expected);
+    expect(execParser(bucket)).rejects.toThrow(EaterError);
   });
 
   test("Program that parse import syntax with alias", async () => {
@@ -208,7 +203,7 @@ describe("Parser test suite", () => {
     ]);
     const expected = new ProgramNode([
       new ImportStmtNode(new FromStmtNode("testing"), new AsStmtNode("t")),
-      new CallPrintStmtNode(new CallFuncStmtNode("hello", [])),
+      new CallPrintStmtNode(new CallFuncStmtNode("hello", [], "main")),
     ]);
 
     const got = await execParser(bucket);
@@ -229,7 +224,7 @@ describe("Parser test suite", () => {
       new CallPrintStmtNode(
         new CallConcatStmtNode([
           new StringNode("a"),
-          new IdentNode("a"),
+          new IdentNode("a", "main"),
           new StringNode("b"),
           new StringNode("c"),
         ])
@@ -261,8 +256,8 @@ describe("Parser test suite", () => {
       ),
       new CallPrintStmtNode(
         new BinaryOpNode(
-          new IdentNode("a"),
-          new IdentNode("b"),
+          new IdentNode("a", "main"),
+          new IdentNode("b", "main"),
           new Token(4, 18, TokenTag.OP_ADD, "+")
         )
       ),

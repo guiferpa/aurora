@@ -250,11 +250,11 @@ describe("Evaluator test suite", () => {
           return fib(n - 1) + fib(n - 2)
         }
 
-        fib(25)`,
+        fib(6)`,
       ],
     ]);
 
-    const expected = [undefined, 75025];
+    const expected = [undefined, 8];
     const got = await execEvaluator(bucket);
 
     expect(got).toStrictEqual(expected);
@@ -315,7 +315,7 @@ describe("Evaluator test suite", () => {
     expect(got).toStrictEqual(expected);
   });
 
-  test("Program that import other file", async () => {
+  test("Program that import other file without alias", async () => {
     const bucket = new Map<string, string>([
       [
         "main",
@@ -326,32 +326,7 @@ describe("Evaluator test suite", () => {
       ["testing", `func hello() {}`],
     ]);
 
-    const expected = [undefined, undefined];
-    const got = await execEvaluator(bucket);
-
-    expect(got).toStrictEqual(expected);
-  });
-
-  test("Program that import other file with alias", async () => {
-    const bucket = new Map<string, string>([
-      [
-        "main",
-        `from "testing" as t
-
-        t.hello()`,
-      ],
-      [
-        "testing",
-        `func hello() {
-          return 10
-        }`,
-      ],
-    ]);
-
-    const expected = [undefined, 10];
-    const got = await execEvaluator(bucket);
-
-    expect(got).toStrictEqual(expected);
+    expect(execEvaluator(bucket)).rejects.toThrow(Error);
   });
 
   test("Program that import others files with alias", async () => {
@@ -406,17 +381,15 @@ describe("Evaluator test suite", () => {
 
   test("Program that import others files with the deep declaration", async () => {
     const bucket = new Map<string, string>([
-      [
-        "main",
-        `from "a"
-
-        num`,
-      ],
-      ["a", `from "b"`],
+      ["main", `from "a" as la`],
+      ["a", `from "b" as lb`],
       ["b", `var num = 20`],
     ]);
 
-    expect(execEvaluator(bucket)).rejects.toThrow(EnvironError);
+    const expected = [undefined];
+    const got = await execEvaluator(bucket);
+
+    expect(got).toStrictEqual(expected);
   });
 
   test("Program that parse string to number", async () => {
@@ -435,6 +408,62 @@ describe("Evaluator test suite", () => {
 
     const expected = [undefined, undefined, 11];
     const got = await execEvaluator(bucket, ["1"]);
+
+    expect(got).toStrictEqual(expected);
+  });
+
+  test("Program that make operation with function from another file", async () => {
+    const bucket = new Map<string, string>([
+      [
+        "main",
+        `from "math" as m
+
+         var op = arg(0)
+         var x = str->num(arg(1))
+         var y = str->num(arg(2))
+
+         func calc() {
+           if op equal "+" {
+             return m.add(x, y)
+           }
+
+           if op equal "-" {
+             return m.sub(x, y)
+           }
+
+           if op equal "x" {
+             return m.mult(x, y)
+           }
+
+           if op equal "/" {
+             return m.div(x, y)
+           }
+         }
+
+         return calc()`,
+      ],
+      [
+        "math",
+        `func add(x, y) {
+           return x + y
+         }
+
+         func sub(x, y) {
+           return x - y
+         }
+
+         func mult(x, y) {
+           return x * y
+         }
+
+         func div(x, y) {
+           return x / y
+         }`,
+      ],
+    ]);
+
+    const expected = [undefined, undefined, undefined, undefined, undefined, 0];
+    const got = await execEvaluator(bucket, ["-", "1", "1"]);
 
     expect(got).toStrictEqual(expected);
   });

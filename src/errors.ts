@@ -1,6 +1,7 @@
+import { LexerError } from "@/lexer";
+import { EaterError } from "@/eater";
 import { EnvironError } from "@/environ";
 import { EvaluateError, InterpreterError } from "@/interpreter";
-import { LexerError } from "@/lexer";
 import { ParserError } from "@/parser";
 import { SymtableError } from "@/symtable";
 
@@ -27,6 +28,10 @@ export function handle(err: Error) {
   }
   if (err instanceof EvaluateError) {
     console.log(`![EvaluateError]: ${err.message}`);
+    return;
+  }
+  if (err instanceof EaterError) {
+    console.log(`![EaterError]: ${err.message}`);
     return;
   }
   console.log(`![Error]: ${err.message}`);

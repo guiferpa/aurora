@@ -16,6 +16,7 @@ import * as utils from "@/utils";
 import { repl } from "@/repl";
 
 import * as errors from "./errors";
+import { AliasClaim } from "./importer/importer";
 
 function run() {
   const reader = { read: utils.fs.read };
@@ -39,21 +40,31 @@ function run() {
       const pool = new Pool("repl");
       const interpreter = new Interpreter(pool);
 
+      let alias: AliasClaim = new Map();
+      let imports: Map<string, ImportClaim> = new Map();
+
       r.on("line", async function (chunk) {
-        const buffer = Buffer.from(chunk);
-        const lexer = new Lexer(buffer);
-
-        const importer = new Importer(reader);
-        const claims = await importer.imports(new Eater(context, lexer.copy()));
-        const alias = importer.alias(claims);
-        const imports = new Map<string, ImportClaim>(
-          claims.map((claim) => [claim.context, claim])
-        );
-
-        const symtable = new SymTable("global");
-        const parser = new Parser(new Eater(context, lexer.copy()), symtable);
-
         try {
+          const buffer = Buffer.from(chunk);
+          const lexer = new Lexer(buffer);
+
+          const importer = new Importer(reader);
+          const claims = await importer.imports(
+            new Eater(context, lexer.copy())
+          );
+          if (claims.length > 0) {
+            const newalias = importer.alias(claims);
+            alias = new Map([...newalias, ...alias]);
+
+            const newimports = new Map<string, ImportClaim>(
+              claims.map((claim) => [claim.context, claim])
+            );
+            imports = new Map<string, ImportClaim>([...newimports, ...imports]);
+          }
+
+          const symtable = new SymTable("global");
+          const parser = new Parser(new Eater(context, lexer.copy()), symtable);
+
           const tree = await parser.parse();
           if (options.tree as boolean)
             console.log(colorize(JSON.stringify(tree, null, 2)));

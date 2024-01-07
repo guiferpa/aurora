@@ -1,6 +1,11 @@
 import Lexer, { TokenTag } from "@/lexer";
 import Eater from "@/eater";
-import Parser, { ProgramNode } from "@/parser";
+import Parser, {
+  AsStmtNode,
+  FromStmtNode,
+  ImportStmtNode,
+  ProgramNode,
+} from "@/parser";
 
 export interface Reader {
   read(entry: string): Promise<Buffer>;
@@ -35,11 +40,8 @@ export default class Importer {
       eater.eat(TokenTag.FROM);
       const id = eater.eat(TokenTag.STR).value;
 
-      let als = "";
-      if (eater.lookahead().tag === TokenTag.AS) {
-        eater.eat(TokenTag.AS);
-        als = eater.eat(TokenTag.IDENT).value;
-      }
+      eater.eat(TokenTag.AS);
+      const als = eater.eat(TokenTag.IDENT).value;
 
       alias.set(als, id);
       mapping.push({ id, alias: als });
@@ -47,11 +49,19 @@ export default class Importer {
 
     const parser = new Parser(eater);
 
+    const program = await parser.parse();
+
     const claim = {
       context: eater.context,
       mapping,
       alias,
-      program: await parser.parse(),
+      program: new ProgramNode([
+        ...mapping.map(
+          ({ id, alias }) =>
+            new ImportStmtNode(new FromStmtNode(id), new AsStmtNode(alias))
+        ),
+        ...program.children,
+      ]),
     };
 
     this._imported.push(eater.context);

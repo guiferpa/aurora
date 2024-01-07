@@ -29,8 +29,6 @@ import {
   ImportStmtNode,
   CallStrToNumStmtNode,
   AccessContextStatementNode,
-  FromStmtNode,
-  AsStmtNode,
 } from "@/parser";
 
 import { EvaluateError } from "../errors";
@@ -79,17 +77,6 @@ export default class Evaluator {
 
       if (tree.alias.value !== "") {
         this._pool.push(tree.id.value);
-
-        // Just import another files
-        this.compose(
-          importing.mapping.map((node) => {
-            return new ImportStmtNode(
-              new FromStmtNode(node.id),
-              new AsStmtNode(node.alias)
-            );
-          })
-        );
-
         this.compose(importing.program.children);
         this._pool.pop();
         return;
@@ -119,6 +106,7 @@ export default class Evaluator {
     }
 
     if (tree instanceof DeclFuncStmtNode) {
+      const context = this._pool.context();
       const payload = new FunctionClaim(tree.arity, tree.body);
       this._pool.environ().set(tree.name, payload);
       return;
@@ -155,7 +143,7 @@ export default class Evaluator {
 
     if (tree instanceof IdentNode) {
       const n = this._pool.environ().getvar(tree.name);
-      return n === null ? null : n;
+      return n;
     }
 
     if (tree instanceof CallFuncStmtNode) {
@@ -168,13 +156,21 @@ export default class Evaluator {
         );
       }
 
-      const scope = `${tree.tag}-${Date.now()}`;
+      this._pool.push(tree.callee);
+      const params = n.arity.params.map(
+        (param, index): [string, VariableClaim] => {
+          return [param, new VariableClaim(this.evaluate(tree.params[index]))];
+        }
+      );
+      this._pool.pop();
+
+      const scope = `${tree.tag}[${tree.name}]-${Date.now()}`;
       this._pool.ahead(scope, this._pool.environ());
 
       // Allocating refs/values for evaluate AST with focus only in function scope
-      n.arity.params.forEach((param, index) => {
-        const payload = new VariableClaim(this.evaluate(tree.params[index]));
-        this._pool.environ().set(param, payload);
+
+      params.forEach(([name, claim]) => {
+        this._pool.environ().set(name, claim);
       });
 
       for (const child of (n.body as BlockStmtNode).children) {

@@ -1,3 +1,25 @@
+# Grammar elements
+
+### Number - [0-9]+ (Dyamic, depends on the value)
+
+### Logical - true / false (1 bit)
+
+### Character - '' (8 byte)
+```
+ref a = 'a';
+```
+
+### List - [Character || Number]+ (A list with only Character can be represented by String)
+```
+ref a = ['a', 'b', 'c', 4];
+
+-- or
+
+ref a = ['H', 'e', 'l', 'l', 'o'];
+-- it's the same that
+ref a = "Hello";
+```
+
 # Keywords
 
 ### {} - Block of instructions
@@ -14,12 +36,12 @@
     -- 1
 
     ref b = a;
-  }
+  };
 
   -- It doesn't work
   a + b;
   -- Throw panic error or compiler crash
-}
+};
 ``` 
 
 ### -- - It's a keyword for comment
@@ -51,7 +73,7 @@ ref get_user_id = () {}
 ref get_user_id
 desc "This ref saving user id returned from another server" = () {
   -- ...
-}
+};
 
 -- ... or
 
@@ -94,3 +116,34 @@ filter(list, is_even?);
 -- [2, 4]
 ```
 
+### `sum` - Function to sum two numbers
+```
+ref a = 1;
+ref b = 2;
+sum(a, b);
+-- 3
+```
+
+### `sub` - Function to sum two numbers
+```
+ref a = 1;
+ref b = 2;
+sub(a, b);
+-- -1
+```
+
+### `div` - Function to div two numbers
+```
+ref a = 2;
+ref b = 2;
+div(a, b);
+-- 1
+```
+
+### `mult` - Function to mult two numbers
+```
+ref a = 2;
+ref b = 2;
+mult(a, b);
+-- 4
+```

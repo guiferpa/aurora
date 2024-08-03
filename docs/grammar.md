@@ -78,12 +78,12 @@ _params -> _id COMMA _param
 
 ### Block of statement
 ```
-_bst -> C_PAREN O_BRK _stmts C_BRK
+_bst -> O_BRK _stmts C_BRK
 ```
 
 ### Block of statement parametrized
 ```
-_bstp -> O_PAREN _params 
+_bstp -> O_PAREN _params C_PAREN _bst
 ```
 
 ### Identification
@@ -98,21 +98,33 @@ _hmapi -> _id COLON _expr
        | _id COLON _bstp
 ```
 
+#### Examples
+`name: () {}`, `name: 10 + 90`
+
 ### Hashmap items
 ```
 _hmapis -> _hmapi COMMA _hmapis
       -> _hmapi COMMA
 ```
+#### Examples
+`name: 20,`, `name: 10 + 90, second_name: () {},`
+
 
 ### Declare hashmap
 ```
 _hmap -> HMAP _id O_BRK _hmapis C_BRK
 ```
 
+#### Examples
+`{ name: 20, }`, `{ name: 10 + 90, second_name: () {}, }`
+
 ### Condition
 ```
 _if -> IF _boole _bst
 ```
+
+#### Examples
+`if a equals b {}`
 
 ### Statement
 ```

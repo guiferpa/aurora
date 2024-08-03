@@ -1,6 +1,6 @@
 # Grammar elements
 
-### Number - [0-9]+ (Dyamic, depends on the value)
+### Number - [0-9]+ (Dynamic, depends on the value)
 
 ### Logical - true / false (1 bit)
 

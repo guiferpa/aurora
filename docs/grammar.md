@@ -2,7 +2,8 @@
 
 ## Demand list
 
-- [ ] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions
+- [x] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions
+- [ ] Doesn't forget to define built-in functions to works with `hashmap` and `list` data structures
 
 ## Tokens
 
@@ -21,6 +22,11 @@
 | Comment | **COMMENT** | `--` |
 | Open bracket | **O_BRK** | `{` |
 | Close bracket | **O_BRK** | `}` |
+| Comma | **COMMA** | `,` |
+| If | **IF** | `if` |
+| Colon | **COLON** | `:` |
+| Semicolon | **SEMICOLON** | `;` |
+| Hashmap | **HMAP** | `hashmap` |
 
 ## Terminals
 
@@ -64,7 +70,63 @@ _expr -> _adde
       | _boole
 ```
 
+### Parameters
+```
+_params -> _id COMMA _param
+       | _id
+```
+
+### Block of statement
+```
+_bst -> C_PAREN O_BRK _stmts C_BRK
+```
+
+### Block of statement parametrized
+```
+_bstp -> O_PAREN _params 
+```
+
 ### Identification
 ```
 _ident -> IDENT _id ASSIGN _expr
+       | IDENT _id ASSIGN _bstp (It works like a function)
+```
+
+### Hashmap item
+```
+_hmapi -> _id COLON _expr
+       | _id COLON _bstp
+```
+
+### Hashmap items
+```
+_hmapis -> _hmapi COMMA _hmapis
+      -> _hmapi COMMA
+```
+
+### Declare hashmap
+```
+_hmap -> HMAP _id O_BRK _hmapis C_BRK
+```
+
+### Condition
+```
+_if -> IF _boole _bst
+```
+
+### Statement
+```
+_stmt -> _expr
+      | _ident
+```
+
+### Statements
+```
+_stmts -> _stmt SEMICOLON _stmts
+       | _stmt SEMICOLON
+```
+
+### Program
+```
+_program -> _stmts
 ```

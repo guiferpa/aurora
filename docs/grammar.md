@@ -26,7 +26,6 @@
 | If | **IF** | `if` |
 | Colon | **COLON** | `:` |
 | Semicolon | **SEMICOLON** | `;` |
-| Hashmap | **HMAP** | `hashmap` |
 
 ## Terminals
 
@@ -92,17 +91,6 @@ _bstp -> O_PAREN _params C_PAREN _bst
 #### Examples
 `() {}`, `(a) {}`, `(a, b, c) {}`
 
-
-### Identification
-```
-_ident -> IDENT _id ASSIGN _expr
-       | IDENT _id ASSIGN _bstp (It works like a function)
-```
-
-#### Examples
-`ident a = 1 + 1`, `ident a = () {}`
-
-
 ### Hashmap item
 ```
 _hmapi -> _id COLON _expr
@@ -117,17 +105,27 @@ _hmapi -> _id COLON _expr
 _hmapis -> _hmapi COMMA _hmapis
       -> _hmapi COMMA
 ```
+
 #### Examples
 `name: 20,`, `name: 10 + 90, second_name: () {},`
 
-
-### Declare hashmap
+### Hashmap
 ```
-_hmap -> HMAP _id O_BRK _hmapis C_BRK
+_hmap -> O_BRK _hmapis C_BRK
 ```
 
 #### Examples
 `{ name: 20, }`, `{ name: 10 + 90, second_name: () {}, }`
+
+### Identification
+```
+_ident -> IDENT _id ASSIGN _expr
+       | IDENT _id ASSIGN _bstp (It works like a function)
+       | IDENT _id ASSIGN _hmap
+```
+
+#### Examples
+`ident a = 1 + 1`, `ident a = () {}`, `ident a = { b: 1, }`
 
 ### Condition
 ```

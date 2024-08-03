@@ -14,6 +14,9 @@
 | Smaller than | **SMALLER** | `smaller` |
 | Sum | **SUM** | `+` |
 | Substract | **SUB** | `-` |
+| Comment | **COMMENT** | `--` |
+| Open bracket | **O_BRK** | `{` |
+| Close bracket | **O_BRK** | `}` |
 
 ## Terminals
 

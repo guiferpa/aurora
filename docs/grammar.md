@@ -3,7 +3,7 @@
 ## Demand list
 
 - [x] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions
-- [ ] Doesn't forget to define built-in functions to works with `hashmap` and `list` data structures
+- [ ] Doesn't forget to define built-in functions to works with `hashmap`, `list` and `string` data structures
 
 ## Tokens
 

@@ -1,5 +1,9 @@
 # Grammar
 
+## Demand list
+
+- [ ] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions
+
 ## Tokens
 
 | Name | Reference | Token |

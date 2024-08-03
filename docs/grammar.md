@@ -81,16 +81,27 @@ _params -> _id COMMA _param
 _bst -> O_BRK _stmts C_BRK
 ```
 
+#### Examples
+`{}`, `{ ... }`
+
 ### Block of statement parametrized
 ```
 _bstp -> O_PAREN _params C_PAREN _bst
 ```
+
+#### Examples
+`() {}`, `(a) {}`, `(a, b, c) {}`
+
 
 ### Identification
 ```
 _ident -> IDENT _id ASSIGN _expr
        | IDENT _id ASSIGN _bstp (It works like a function)
 ```
+
+#### Examples
+`ident a = 1 + 1`, `ident a = () {}`
+
 
 ### Hashmap item
 ```
@@ -138,7 +149,7 @@ _stmts -> _stmt SEMICOLON _stmts
        | _stmt SEMICOLON
 ```
 
-### Program
+### Module
 ```
-_program -> _stmts
+_module -> _stmts
 ```

@@ -21,7 +21,7 @@
 | Substract | **SUB** | `-` |
 | Comment | **COMMENT** | `--` |
 | Open bracket | **O_BRK** | `{` |
-| Close bracket | **O_BRK** | `}` |
+| Close bracket | **C_BRK** | `}` |
 | Comma | **COMMA** | `,` |
 | If | **IF** | `if` |
 | Colon | **COLON** | `:` |

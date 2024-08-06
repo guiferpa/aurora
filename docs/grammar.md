@@ -4,6 +4,7 @@
 
 - [x] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions
 - [ ] Doesn't forget to define built-in functions to works with `hashmap`, `list` and `string` data structures
+- [ ] Construct `IF` as Expression instead of a Statement which every final line in his block must be a valid return
 
 ## Tokens
 

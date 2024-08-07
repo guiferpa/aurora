@@ -1,6 +1,8 @@
 package token
 
-import "errors"
+import (
+	"errors"
+)
 
 const (
 	IDENT     = "IDENT"     // ident
@@ -20,6 +22,7 @@ const (
 	IF        = "IF"        // if
 	COLON     = "COLON"     // :
 	SEMICOLON = "SEMICOLON" // ;
+	ID        = "ID"
 )
 
 type Tag struct {
@@ -39,13 +42,14 @@ var (
 	tSmaller   = Tag{SMALLER, "smaller", ""}
 	tSum       = Tag{SUM, "+", ""}
 	tSub       = Tag{SUB, "-", ""}
-	tComment   = Tag{COMMENT, "--", ""}
-	tOBrk      = Tag{O_BRK, "{", ""}
-	tCBrk      = Tag{C_BRK, "}", ""}
-	tComma     = Tag{COMMA, ",", ""}
-	tIf        = Tag{IF, "if", ""}
-	tColon     = Tag{COLON, ":", ""}
-	tSemicolon = Tag{SEMICOLON, ";", ""}
+	tComment   = Tag{COMMENT, "--", "^\\-\\-"}
+	tOBrk      = Tag{O_BRK, "{", "^{"}
+	tCBrk      = Tag{C_BRK, "}", "^}"}
+	tComma     = Tag{COMMA, ",", "^,"}
+	tIf        = Tag{IF, "if", "^if"}
+	tColon     = Tag{COLON, ":", "^:"}
+	tSemicolon = Tag{SEMICOLON, ";", "^;"}
+	tId        = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 )
 
 var processableTags map[string]Tag
@@ -62,14 +66,19 @@ func init() {
 		SMALLER:   tSmaller,
 		SUM:       tSum,
 		SUB:       tSub,
-		COMMENT:   tComment,
 		O_BRK:     tOBrk,
 		C_BRK:     tCBrk,
 		COMMA:     tComma,
-		IF:        tIf,
 		COLON:     tColon,
 		SEMICOLON: tSemicolon,
+		IF:        tIf,
+		COMMENT:   tComment,
+		ID:        tId,
 	}
+}
+
+func GetProcessbleTags() map[string]Tag {
+	return processableTags
 }
 
 func GetTag(c string) (Tag, error) {

@@ -1,4 +1,4 @@
-package token
+package lexer
 
 import (
 	"errors"

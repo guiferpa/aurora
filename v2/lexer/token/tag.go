@@ -2,6 +2,7 @@ package token
 
 import (
 	"errors"
+	"strings"
 )
 
 const (
@@ -32,17 +33,17 @@ type Tag struct {
 }
 
 var (
-	tIdent     = Tag{IDENT, "ident", ""}
-	tAssign    = Tag{ASSIGN, "=", ""}
-	tOParen    = Tag{O_PAREN, "(", ""}
-	tCParen    = Tag{C_PAREN, ")", ""}
-	tEquals    = Tag{EQUALS, "equals", ""}
-	tDifferent = Tag{DIFFERENT, "different", ""}
-	tBigger    = Tag{BIGGER, "bigger", ""}
-	tSmaller   = Tag{SMALLER, "smaller", ""}
-	tSum       = Tag{SUM, "+", ""}
-	tSub       = Tag{SUB, "-", ""}
-	tComment   = Tag{COMMENT, "--", "^\\-\\-"}
+	tIdent     = Tag{IDENT, "ident", "^ident"}
+	tAssign    = Tag{ASSIGN, "=", "^="}
+	tOParen    = Tag{O_PAREN, "(", "^\\("}
+	tCParen    = Tag{C_PAREN, ")", "^\\)"}
+	tEquals    = Tag{EQUALS, "equals", "^equals"}
+	tDifferent = Tag{DIFFERENT, "different", "^different"}
+	tBigger    = Tag{BIGGER, "bigger", "^bigger"}
+	tSmaller   = Tag{SMALLER, "smaller", "^smaller"}
+	tSum       = Tag{SUM, "+", "\\+"}
+	tSub       = Tag{SUB, "-", "\\-"}
+	tComment   = Tag{COMMENT, "--", "^\\#\\-"}
 	tOBrk      = Tag{O_BRK, "{", "^{"}
 	tCBrk      = Tag{C_BRK, "}", "^}"}
 	tComma     = Tag{COMMA, ",", "^,"}
@@ -52,38 +53,36 @@ var (
 	tId        = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 )
 
-var processableTags map[string]Tag
-
-func init() {
-	processableTags = map[string]Tag{
-		IDENT:     tIdent,
-		ASSIGN:    tAssign,
-		O_PAREN:   tOParen,
-		C_PAREN:   tCParen,
-		EQUALS:    tEquals,
-		DIFFERENT: tDifferent,
-		BIGGER:    tBigger,
-		SMALLER:   tSmaller,
-		SUM:       tSum,
-		SUB:       tSub,
-		O_BRK:     tOBrk,
-		C_BRK:     tCBrk,
-		COMMA:     tComma,
-		COLON:     tColon,
-		SEMICOLON: tSemicolon,
-		IF:        tIf,
-		COMMENT:   tComment,
-		ID:        tId,
-	}
+var processableTags = []Tag{
+	tComment,
+	tIf,
+	tIdent,
+	tAssign,
+	tOParen,
+	tCParen,
+	tEquals,
+	tDifferent,
+	tBigger,
+	tSmaller,
+	tOBrk,
+	tCBrk,
+	tComma,
+	tColon,
+	tSemicolon,
+	tId,
+	tSum,
+	tSub,
 }
 
-func GetProcessbleTags() map[string]Tag {
+func GetProcessbleTags() []Tag {
 	return processableTags
 }
 
 func GetTag(c string) (Tag, error) {
-	if t, has := processableTags[c]; has {
-		return t, nil
+	for _, v := range processableTags {
+		if strings.Compare(v.Id, c) == 0 {
+			return v, nil
+		}
 	}
 	return Tag{}, errors.New("Tag not found")
 }

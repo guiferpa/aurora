@@ -19,8 +19,10 @@ const (
 	SUM           = "SUM"       // +
 	SUB           = "SUB"       // -
 	COMMENT       = "COMMENT"   // --
-	O_BRK         = "O_BRK"     // {
-	C_BRK         = "C_BRK"     // }
+	O_BRK         = "O_BRK"     // [
+	C_BRK         = "C_BRK"     // ]
+	O_CUR_BRK     = "O_CUR_BRK" // {
+	C_CUR_BRK     = "C_CUR_BRK" // }
 	COMMA         = "COMMA"     // ,
 	IF            = "IF"        // if
 	COLON         = "COLON"     // :
@@ -52,8 +54,10 @@ var (
 	tSum         = Tag{SUM, "+", "^\\+"}
 	tSub         = Tag{SUB, "-", "^\\-"}
 	tComment     = Tag{COMMENT, "--", "^\\#\\-"}
-	tOBrk        = Tag{O_BRK, "{", "^{"}
-	tCBrk        = Tag{C_BRK, "}", "^}"}
+	tOBrk        = Tag{O_BRK, "[", "^\\["}
+	tCBrk        = Tag{C_BRK, "]", "^\\]"}
+	tOCurBrk     = Tag{O_CUR_BRK, "{", "^{"}
+	tCCurBrk     = Tag{C_CUR_BRK, "}", "^}"}
 	tComma       = Tag{COMMA, ",", "^,"}
 	tIf          = Tag{IF, "if", "^if"}
 	tColon       = Tag{COLON, ":", "^:"}
@@ -78,6 +82,8 @@ var processableTags = []Tag{
 	tSmaller,
 	tOBrk,
 	tCBrk,
+	tOCurBrk,
+	tCCurBrk,
 	tComma,
 	tColon,
 	tSemicolon,

@@ -39,7 +39,7 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{1, 11, tOParen, []byte("(")},
 				tok{1, 12, tCParen, []byte(")")},
 				tok{1, 13, tWhitespace, []byte(" ")},
-				tok{1, 14, tOBrk, []byte("{")},
+				tok{1, 14, tOCurBrk, []byte("{")},
 				tok{1, 15, tBreakLine, []byte(`
 `)},
 				tok{2, 1, tWhitespace, []byte(" ")},
@@ -57,7 +57,7 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{2, 21, tSemicolon, []byte(";")},
 				tok{2, 22, tBreakLine, []byte(`
 `)},
-				tok{3, 1, tCBrk, []byte("}")},
+				tok{3, 1, tCCurBrk, []byte("}")},
 				tok{3, 2, tSemicolon, []byte(";")},
 				tok{3, 3, tEndOfBuffer, []byte{}},
 			},
@@ -78,7 +78,7 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{1, 11, tOParen, []byte("(")},
 				tok{1, 12, tCParen, []byte(")")},
 				tok{1, 13, tWhitespace, []byte(" ")},
-				tok{1, 14, tOBrk, []byte("{")},
+				tok{1, 14, tOCurBrk, []byte("{")},
 				tok{1, 15, tBreakLine, []byte(`
 `)},
 				tok{2, 1, tBreakLine, []byte(`
@@ -100,7 +100,7 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{4, 21, tSemicolon, []byte(";")},
 				tok{4, 22, tBreakLine, []byte(`
 `)},
-				tok{5, 1, tCBrk, []byte("}")},
+				tok{5, 1, tCCurBrk, []byte("}")},
 				tok{5, 2, tSemicolon, []byte(";")},
 				tok{5, 3, tEndOfBuffer, []byte{}},
 			},
@@ -116,7 +116,7 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{1, 9, tWhitespace, []byte(" ")},
 				tok{1, 10, tAssign, []byte("=")},
 				tok{1, 11, tWhitespace, []byte(" ")},
-				tok{1, 12, tOBrk, []byte("{")},
+				tok{1, 12, tOCurBrk, []byte("{")},
 				tok{1, 13, tBreakLine, []byte(`
 `)},
 				tok{2, 1, tWhitespace, []byte("  ")},
@@ -128,7 +128,7 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{2, 12, tSemicolon, []byte(";")},
 				tok{2, 13, tBreakLine, []byte(`
 `)},
-				tok{3, 1, tCBrk, []byte("}")},
+				tok{3, 1, tCCurBrk, []byte("}")},
 				tok{3, 2, tSemicolon, []byte(";")},
 				tok{3, 3, tEndOfBuffer, []byte{}},
 			},

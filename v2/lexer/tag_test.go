@@ -24,6 +24,8 @@ func TestGetTag(t *testing.T) {
 		{tComment, COMMENT},
 		{tOBrk, O_BRK},
 		{tCBrk, C_BRK},
+		{tOCurBrk, O_CUR_BRK},
+		{tCCurBrk, C_CUR_BRK},
 		{tComma, COMMA},
 		{tIf, IF},
 		{tColon, COLON},
@@ -74,10 +76,16 @@ func TestTokenMatchGivenTagRule(t *testing.T) {
 		{[]byte(`,`), COMMA, []byte(","), true},
 
 		// C_BRK
-		{[]byte(`}`), C_BRK, []byte("}"), true},
+		{[]byte(`]`), C_BRK, []byte("]"), true},
 
 		// O_BRK
-		{[]byte(`{`), O_BRK, []byte("{"), true},
+		{[]byte(`[`), O_BRK, []byte("["), true},
+
+		// C_CUR_BRK
+		{[]byte(`}`), C_CUR_BRK, []byte("}"), true},
+
+		// O_CUR_BRK
+		{[]byte(`{`), O_CUR_BRK, []byte("{"), true},
 
 		// COMMENT
 		{[]byte(`#-`), COMMENT, []byte("#-"), true},

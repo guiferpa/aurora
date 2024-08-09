@@ -105,6 +105,34 @@ func TestGetTokensGivenBytes(t *testing.T) {
 				tok{5, 3, tEndOfBuffer, []byte{}},
 			},
 		},
+		{
+			[]byte(`ident rl = {
+  3 + 1_000;
+};`),
+			[]Token{
+				tok{1, 1, tIdent, []byte("ident")},
+				tok{1, 6, tWhitespace, []byte(" ")},
+				tok{1, 7, tId, []byte("rl")},
+				tok{1, 9, tWhitespace, []byte(" ")},
+				tok{1, 10, tAssign, []byte("=")},
+				tok{1, 11, tWhitespace, []byte(" ")},
+				tok{1, 12, tOBrk, []byte("{")},
+				tok{1, 13, tBreakLine, []byte(`
+`)},
+				tok{2, 1, tWhitespace, []byte("  ")},
+				tok{2, 3, tNumber, []byte("3")},
+				tok{2, 4, tWhitespace, []byte(" ")},
+				tok{2, 5, tSum, []byte("+")},
+				tok{2, 6, tWhitespace, []byte(" ")},
+				tok{2, 7, tNumber, []byte("1_000")},
+				tok{2, 12, tSemicolon, []byte(";")},
+				tok{2, 13, tBreakLine, []byte(`
+`)},
+				tok{3, 1, tCBrk, []byte("}")},
+				tok{3, 2, tSemicolon, []byte(";")},
+				tok{3, 3, tEndOfBuffer, []byte{}},
+			},
+		},
 	}
 	for _, c := range cases {
 		tokens, err := GetTokensGivenBytes(c.Buffer)

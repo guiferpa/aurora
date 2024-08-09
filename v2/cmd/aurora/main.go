@@ -5,11 +5,16 @@ import (
 	"os"
 
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/repl"
 )
 
 func main() {
 	args := os.Args[1:]
 	if len(args) != 1 {
+		return
+	}
+	if args[0] == "repl" {
+		repl.Start(os.Stdin, os.Stdout)
 		return
 	}
 	bs, err := os.ReadFile(args[0])

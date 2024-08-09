@@ -3,7 +3,7 @@
 ## Demand list
 
 - [x] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions
-- [ ] Doesn't forget to define built-in functions to works with `hashmap`, `list` and `string` data structures
+- [ ] Doesn't forget to define built-in functions to works with `list`
 - [x] Construct `IF` as Expression instead of a Statement which every final line in his block must be a valid return
 - [x] Construct `BLOCK` as Expression instead of a Statement which every final line in his block must be a valid return
 
@@ -22,8 +22,10 @@
 | Sum | **SUM** | `+` |
 | Substract | **SUB** | `-` |
 | Comment | **COMMENT** | `--` |
-| Open bracket | **O_BRK** | `{` |
-| Close bracket | **C_BRK** | `}` |
+| Open curly bracket | **O_CUR_BRK** | `{` |
+| Close curly bracket | **C_CUR_BRK** | `}` |
+| Open bracket | **O_BRK** | `[` |
+| Close bracket | **C_BRK** | `]` |
 | Comma | **COMMA** | `,` |
 | If | **IF** | `if` |
 | Colon | **COLON** | `:` |
@@ -67,7 +69,7 @@ _boole -> _prie EQUALS _prie
 
 ### If expression
 ```
-_ife -> IF _boole O_BRK _stmts C_BRK
+_ife -> IF _boole O_CUR_BRK _stmts C_CUR_BRK
 ```
 
 #### Examples
@@ -75,7 +77,7 @@ _ife -> IF _boole O_BRK _stmts C_BRK
 
 ### Block expression
 ```
-_ble -> O_BRK _stmts C_BRK
+_ble -> O_CUR_BRK _stmts C_CUR_BRK
 ```
 
 #### Examples
@@ -95,31 +97,31 @@ _params -> _id COMMA _param
        | _id
 ```
 
-### Hashmap item
+### List item
 ```
-_hmapi -> _id COLON _expr
-       | _id COLON _bstp
-```
-
-#### Examples
-`name: () {}`, `name: 10 + 90`
-
-### Hashmap items
-```
-_hmapis -> _hmapi COMMA _hmapis
-      -> _hmapi COMMA
+_lsti -> _id COLON _expr
+      | _expr
 ```
 
 #### Examples
-`name: 20,`, `name: 10 + 90, second_name: () {},`
+`name: () {}`, `name: 10 + 90`, `() {}`, `10 + 90`
 
-### Hashmap expression
+### List items
 ```
-_hme -> O_BRK _hmapis C_BRK
+_lstis -> _lsti COMMA _lstis
+      | _lsti COMMA
 ```
 
 #### Examples
-`{ name: 20, }`, `{ name: 10 + 90, second_name: () {}, }`
+`name: 20,`, `name: 10 + 90, () {},`
+
+### List expression
+```
+_lste -> O_BRK _lstis C_BRK
+```
+
+#### Examples
+`[ name: 20, ]`, `[ name: 10 + 90, second_name: () {}, ]`
 
 ### Expression
 ```
@@ -128,7 +130,7 @@ _expr -> _adde
       | _ife
       | _ble
       | _blep
-      | _hme
+      | _lste
 ```
 
 ### Identification

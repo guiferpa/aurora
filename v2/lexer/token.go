@@ -9,12 +9,13 @@ type Token interface {
 	GetTag() Tag
 	GetLine() int
 	GetColumn() int
+	GetCursor() int
 }
 
 type tok struct {
-	x, y  int
-	tag   Tag
-	match []byte
+	x, y, c int
+	tag     Tag
+	match   []byte
 }
 
 func (t tok) GetMatch() []byte {
@@ -33,6 +34,10 @@ func (t tok) GetColumn() int {
 	return t.y
 }
 
+func (t tok) GetCursor() int {
+	return t.c
+}
+
 func GetTokensGivenBytes(bs []byte) ([]Token, error) {
 	cursor := 0
 	col := cursor + 1
@@ -44,7 +49,7 @@ func GetTokensGivenBytes(bs []byte) ([]Token, error) {
 		if !matched {
 			return tokens, errors.New("no token matched")
 		}
-		tokens = append(tokens, tok{line, col, tag, match})
+		tokens = append(tokens, tok{line, col, cursor, tag, match})
 		cursor = cursor + len(match)
 		if tag.Id == BREAK_LINE {
 			line++
@@ -53,5 +58,5 @@ func GetTokensGivenBytes(bs []byte) ([]Token, error) {
 			col = col + len(match)
 		}
 	}
-	return append(tokens, tok{line, col, tEndOfBuffer, []byte{}}), nil
+	return append(tokens, tok{line, col, cursor, tEndOfBuffer, []byte{}}), nil
 }

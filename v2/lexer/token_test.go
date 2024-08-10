@@ -22,7 +22,7 @@ func TestGetTokens(t *testing.T) {
 				tok{1, 10, 9, TagWhitespace, []byte(" ")},
 				tok{1, 11, 10, TagNumber, []byte("1")},
 				tok{1, 12, 11, TagSemicolon, []byte(";")},
-				tok{1, 13, 12, TagEndOfBuffer, []byte{}},
+				tok{1, 13, 12, TagEOF, []byte{}},
 			},
 		},
 		{
@@ -59,7 +59,7 @@ func TestGetTokens(t *testing.T) {
 `)},
 				tok{3, 1, 37, TagCCurBrk, []byte("}")},
 				tok{3, 2, 38, TagSemicolon, []byte(";")},
-				tok{3, 3, 39, TagEndOfBuffer, []byte{}},
+				tok{3, 3, 39, TagEOF, []byte{}},
 			},
 		},
 		{
@@ -102,7 +102,7 @@ func TestGetTokens(t *testing.T) {
 `)},
 				tok{5, 1, 39, TagCCurBrk, []byte("}")},
 				tok{5, 2, 40, TagSemicolon, []byte(";")},
-				tok{5, 3, 41, TagEndOfBuffer, []byte{}},
+				tok{5, 3, 41, TagEOF, []byte{}},
 			},
 		},
 		{
@@ -130,7 +130,7 @@ func TestGetTokens(t *testing.T) {
 `)},
 				tok{3, 1, 26, TagCCurBrk, []byte("}")},
 				tok{3, 2, 27, TagSemicolon, []byte(";")},
-				tok{3, 3, 28, TagEndOfBuffer, []byte{}},
+				tok{3, 3, 28, TagEOF, []byte{}},
 			},
 		},
 	}
@@ -142,7 +142,7 @@ func TestGetTokens(t *testing.T) {
 		if !reflect.DeepEqual(tokens, c.Tokens) {
 			for i, v := range tokens {
 				// Improve log for testing
-        tok := c.Tokens[i]
+				tok := c.Tokens[i]
 				fmt.Println(v.GetLine(), v.GetColumn(), v.GetCursor(), v.GetTag().Id, v.GetMatch(), "<==>", tok.GetLine(), tok.GetColumn(), tok.GetCursor(), tok.GetTag().Id, tok.GetMatch())
 			}
 			t.Errorf("\nexpected: %v,\ngot: %v", c.Tokens, tokens)

@@ -42,6 +42,23 @@ func TestEatTokenWithEmptySlice(t *testing.T) {
 	}
 }
 
+func TestEatTokenWithMismatch(t *testing.T) {
+	tokens := []lexer.Token{
+		tok{lexer.TagAssign},
+		tok{lexer.TagAssign},
+		tok{lexer.TagSum},
+	}
+	p := &pr{cursor: 0, tokens: tokens}
+	expected := lexer.IDENT
+	got, err := p.EatToken(expected)
+	if err == nil {
+		t.Error("unexpected error equals nil when eat some token")
+	}
+	if got.GetTag().Id == expected {
+		t.Errorf("unexpected token when try eat, got: %v", got)
+	}
+}
+
 func TestEatToken(t *testing.T) {
 	cases := []struct {
 		Tokens   []lexer.Token

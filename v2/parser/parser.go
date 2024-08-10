@@ -3,6 +3,8 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/guiferpa/aurora/lexer"
 )
@@ -10,7 +12,7 @@ import (
 type Parser interface {
 	GetLookahead() lexer.Token
 	EatToken(tokenId string) (lexer.Token, error)
-	Parse() AST
+	Parse() (AST, error)
 }
 
 type pr struct {
@@ -18,24 +20,131 @@ type pr struct {
 	tokens []lexer.Token
 }
 
-func (p *pr) getExpr() Node {
-	return n{}
+func (p *pr) getNum() (NumberLiteralNode, error) {
+	tok, err := p.EatToken(lexer.NUMBER)
+	if err != nil {
+		return NumberLiteralNode{}, err
+	}
+	num, err := strconv.Atoi(strings.ReplaceAll(string(tok.GetMatch()), "_", ""))
+	if err != nil {
+		return NumberLiteralNode{}, err
+	}
+	return NumberLiteralNode{num}, nil
 }
 
-func (p *pr) getIdent() Node {
-	return n{}
+func (p *pr) getPriExpr() (Node, error) {
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.O_PAREN {
+		if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+			return nil, err
+		}
+		expr, err := p.getExpr()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+			return nil, err
+		}
+		return expr, nil
+	}
+	num, err := p.getNum()
+	if err != nil {
+		return nil, err
+	}
+	return PrimaryExpressionNode{num}, nil
 }
 
-func (p *pr) getStmt() Node {
-	return n{}
+func (p *pr) getAddExpr() (Node, error) {
+	left, err := p.getPriExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.SUM {
+		sum, err := p.EatToken(lexer.SUM)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getAddExpr()
+		if err != nil {
+			return nil, err
+		}
+		return AdditiveExpressionNode{left, right, sum}, nil
+	}
+	if lookahead.GetTag().Id == lexer.SUB {
+		sub, err := p.EatToken(lexer.SUB)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getAddExpr()
+		if err != nil {
+			return nil, err
+		}
+		return AdditiveExpressionNode{left, right, sub}, nil
+	}
+
+	return left, nil
 }
 
-func (p *pr) getStmts() []Node {
-	return []Node{}
+func (p *pr) getExpr() (ExpressionNode, error) {
+	add, err := p.getAddExpr()
+	if err != nil {
+		return ExpressionNode{}, err
+	}
+	return ExpressionNode{add}, nil
 }
 
-func (p *pr) getModule() Node {
-	return n{}
+func (p *pr) getIdent() (IdentStatementNode, error) {
+	if _, err := p.EatToken(lexer.IDENT); err != nil {
+		return IdentStatementNode{}, err
+	}
+	id, err := p.EatToken(lexer.ID)
+	if len(id.GetMatch()) == 0 {
+		return IdentStatementNode{}, errors.New(fmt.Sprintf("missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn()))
+	}
+	if err != nil {
+		return IdentStatementNode{}, err
+	}
+	if _, err := p.EatToken(lexer.ASSIGN); err != nil {
+		return IdentStatementNode{}, err
+	}
+	expr, err := p.getExpr()
+	if err != nil {
+		return IdentStatementNode{}, err
+	}
+	return IdentStatementNode{id, expr}, nil
+}
+
+func (p *pr) getStmt() (StatementNode, error) {
+	ident, err := p.getIdent()
+	if err != nil {
+		return StatementNode{}, err
+	}
+	return StatementNode{ident}, nil
+}
+
+func (p *pr) getStmts() ([]StatementNode, error) {
+	stmts := make([]StatementNode, 0)
+	for p.GetLookahead().GetTag().Id != lexer.TagEOF.Id {
+		stmt, err := p.getStmt()
+		if err != nil {
+			return stmts, err
+		}
+		if _, err := p.EatToken(lexer.SEMICOLON); err != nil {
+			return stmts, err
+		}
+		stmts = append(stmts, stmt)
+	}
+	return stmts, nil
+}
+
+func (p *pr) getModule() (ModuleNode, error) {
+	stmts, err := p.getStmts()
+	if err != nil {
+		return ModuleNode{}, err
+	}
+	return ModuleNode{"main", stmts}, nil
 }
 
 func (p *pr) GetLookahead() lexer.Token {
@@ -53,7 +162,7 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	}
 
 	if tokenId != currtok.GetTag().Id {
-		return nil, errors.New(fmt.Sprintf("unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn()))
+		return currtok, errors.New(fmt.Sprintf("unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn()))
 	}
 
 	p.cursor++
@@ -61,8 +170,12 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	return currtok, nil
 }
 
-func (p *pr) Parse() AST {
-	return AST{Root: p.getModule()}
+func (p *pr) Parse() (AST, error) {
+	root, err := p.getModule()
+	if err != nil {
+		return AST{}, err
+	}
+	return AST{Root: root}, nil
 }
 
 func New(tokens []lexer.Token) Parser {

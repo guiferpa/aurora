@@ -54,8 +54,79 @@ func (p *pr) getPriExpr() (Node, error) {
 	return PrimaryExpressionNode{num}, nil
 }
 
+func (p *pr) getUnaExpr() (Node, error) {
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.SUB {
+		op, err := p.EatToken(lexer.SUB)
+		if err != nil {
+			return nil, err
+		}
+		expr, err := p.getExpr()
+		if err != nil {
+			return nil, err
+		}
+		return UnaryExpressionNode{expr, op}, nil
+	}
+	return p.getPriExpr()
+}
+
+func (p *pr) getExpExpr() (Node, error) {
+	left, err := p.getUnaExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.EXPO {
+		sum, err := p.EatToken(lexer.EXPO)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getExpExpr()
+		if err != nil {
+			return nil, err
+		}
+		return ExponentialExpressionNode{left, right, sum}, nil
+	}
+
+	return left, nil
+}
+
+func (p *pr) getMultExpr() (Node, error) {
+	left, err := p.getExpExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.MULT {
+		op, err := p.EatToken(lexer.MULT)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getAddExpr()
+		if err != nil {
+			return nil, err
+		}
+		return MultiplicativeExpressionNode{left, right, op}, nil
+	}
+	if lookahead.GetTag().Id == lexer.DIV {
+		op, err := p.EatToken(lexer.DIV)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getAddExpr()
+		if err != nil {
+			return nil, err
+		}
+		return MultiplicativeExpressionNode{left, right, op}, nil
+	}
+
+	return left, nil
+}
+
 func (p *pr) getAddExpr() (Node, error) {
-	left, err := p.getPriExpr()
+	left, err := p.getMultExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +188,19 @@ func (p *pr) getIdent() (IdentStatementNode, error) {
 }
 
 func (p *pr) getStmt() (StatementNode, error) {
-	ident, err := p.getIdent()
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.IDENT {
+		ident, err := p.getIdent()
+		if err != nil {
+			return StatementNode{}, err
+		}
+		return StatementNode{ident}, nil
+	}
+	expr, err := p.getExpr()
 	if err != nil {
 		return StatementNode{}, err
 	}
-	return StatementNode{ident}, nil
+	return StatementNode{expr}, nil
 }
 
 func (p *pr) getStmts() ([]StatementNode, error) {

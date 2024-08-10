@@ -8,8 +8,25 @@ type NumberLiteralNode struct {
 	Value int
 }
 
+type UnaryExpressionNode struct {
+	Expression Node
+	Operation  lexer.Token
+}
+
 type PrimaryExpressionNode struct {
 	Expression Node
+}
+
+type ExponentialExpressionNode struct {
+	Left      Node
+	Right     Node
+	Operation lexer.Token
+}
+
+type MultiplicativeExpressionNode struct {
+	Left      Node
+	Right     Node
+	Operation lexer.Token
 }
 
 type AdditiveExpressionNode struct {

@@ -46,15 +46,32 @@
 ```
 _prie -> O_PAREN _expr C_PAREN
       | _num
-      | _log
-      | _id
+```
+
+### Unary expression
+```
+_unae -> SUB _unae
+       | _prie
+```
+
+### Exponential expression
+```
+_expoe -> _unae EXPO _expoe
+        | _unae
+```
+
+### Multiplicative expression
+```
+_multe -> _expoe MULT _multe
+        | _expoe DIV _multe
+        | _expoe
 ```
 
 ### Additive expression
 ```
-_adde -> _prie SUM _adde
-      | _prie SUB _adde
-      | _prie
+_adde -> _multe SUM _adde
+      | _multe SUB _adde
+      | _multe
         
 ```
 

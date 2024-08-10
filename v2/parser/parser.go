@@ -29,7 +29,7 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	if err != nil {
 		return NumberLiteralNode{}, err
 	}
-	return NumberLiteralNode{num}, nil
+	return NumberLiteralNode{num, tok}, nil
 }
 
 func (p *pr) getPriExpr() (Node, error) {
@@ -65,7 +65,7 @@ func (p *pr) getUnaExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return UnaryExpressionNode{expr, op}, nil
+		return UnaryExpressionNode{expr, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 	return p.getPriExpr()
 }
@@ -78,7 +78,7 @@ func (p *pr) getExpExpr() (Node, error) {
 
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.EXPO {
-		sum, err := p.EatToken(lexer.EXPO)
+		op, err := p.EatToken(lexer.EXPO)
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func (p *pr) getExpExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return ExponentialExpressionNode{left, right, sum}, nil
+		return ExponentialExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -108,7 +108,7 @@ func (p *pr) getMultExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return MultiplicativeExpressionNode{left, right, op}, nil
+		return MultiplicativeExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.DIV {
 		op, err := p.EatToken(lexer.DIV)
@@ -119,7 +119,7 @@ func (p *pr) getMultExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return MultiplicativeExpressionNode{left, right, op}, nil
+		return MultiplicativeExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -133,7 +133,7 @@ func (p *pr) getAddExpr() (Node, error) {
 
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.SUM {
-		sum, err := p.EatToken(lexer.SUM)
+		op, err := p.EatToken(lexer.SUM)
 		if err != nil {
 			return nil, err
 		}
@@ -141,10 +141,10 @@ func (p *pr) getAddExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return AdditiveExpressionNode{left, right, sum}, nil
+		return AdditiveExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.SUB {
-		sub, err := p.EatToken(lexer.SUB)
+		op, err := p.EatToken(lexer.SUB)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +152,7 @@ func (p *pr) getAddExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return AdditiveExpressionNode{left, right, sub}, nil
+		return AdditiveExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 
 	return left, nil

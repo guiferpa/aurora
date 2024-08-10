@@ -5,9 +5,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/print"
 )
 
 const PROMPT = ">> "
@@ -24,21 +26,19 @@ func Start(in io.Reader, out io.Writer) {
 		line := bytes.NewBufferString(scanner.Text())
 
 		fmt.Println("--- TOKENS ---")
-		l, err := lexer.GetFilledTokens(line.Bytes())
+		tokens, err := lexer.GetFilledTokens(line.Bytes())
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		for _, tok := range l {
-			fmt.Printf("Line: %d, Column: %d, Tag: %s, Match: %s\n", tok.GetLine(), tok.GetColumn(), tok.GetTag().Id, tok.GetMatch())
-		}
+		print.JSON(os.Stdout, tokens)
 
 		fmt.Println("--- AST ---")
-		ast, err := parser.New(l).Parse()
+		ast, err := parser.New(tokens).Parse()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		fmt.Println(ast, "AAAAAAAAAAAAAAAAAAAAAAAAAAA")
+		print.JSON(os.Stdout, ast)
 	}
 }

@@ -4,13 +4,19 @@ import "github.com/guiferpa/aurora/lexer"
 
 type Node interface{}
 
+type OperationLiteralNode struct {
+	Value string
+	Token lexer.Token
+}
+
 type NumberLiteralNode struct {
 	Value int
+	Token lexer.Token
 }
 
 type UnaryExpressionNode struct {
 	Expression Node
-	Operation  lexer.Token
+	Operation  OperationLiteralNode
 }
 
 type PrimaryExpressionNode struct {
@@ -20,19 +26,19 @@ type PrimaryExpressionNode struct {
 type ExponentialExpressionNode struct {
 	Left      Node
 	Right     Node
-	Operation lexer.Token
+	Operation OperationLiteralNode
 }
 
 type MultiplicativeExpressionNode struct {
 	Left      Node
 	Right     Node
-	Operation lexer.Token
+	Operation OperationLiteralNode
 }
 
 type AdditiveExpressionNode struct {
 	Left      Node
 	Right     Node
-	Operation lexer.Token
+	Operation OperationLiteralNode
 }
 
 type ExpressionNode struct {

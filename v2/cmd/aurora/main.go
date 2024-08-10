@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/repl"
 )
 
@@ -21,7 +22,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	tokens, err := lexer.GetTokens(bs)
+	tokens, err := lexer.GetFilledTokens(bs)
 	if err != nil {
 		panic(err)
 	}
@@ -30,6 +31,9 @@ func main() {
 		size += len(t.GetMatch())
 		fmt.Printf("Line: %d, Column: %d, Tag: %s, Match: %v\n", t.GetLine(), t.GetColumn(), t.GetTag().Id, t.GetMatch())
 	}
-	fmt.Println("----------------------")
 	fmt.Printf("Size: %d bytes\n", size)
+	fmt.Println("----------------------")
+	if _, err := parser.New(tokens).Parse(); err != nil {
+		fmt.Println(err)
+	}
 }

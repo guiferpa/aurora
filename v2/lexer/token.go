@@ -58,5 +58,20 @@ func GetTokens(bs []byte) ([]Token, error) {
 			col = col + len(match)
 		}
 	}
-	return append(tokens, tok{line, col, cursor, TagEndOfBuffer, []byte{}}), nil
+	return append(tokens, tok{line, col, cursor, TagEOF, []byte{}}), nil
+}
+
+func GetFilledTokens(bs []byte) ([]Token, error) {
+	toks, err := GetTokens(bs)
+	if err != nil {
+		return toks, err
+	}
+	ntoks := make([]Token, 0)
+	for _, tok := range toks {
+		if tok.GetTag().Id == WHITESPACE || tok.GetTag().Id == BREAK_LINE {
+			continue
+		}
+		ntoks = append(ntoks, tok)
+	}
+	return ntoks, nil
 }

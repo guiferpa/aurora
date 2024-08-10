@@ -14,9 +14,8 @@ type Parser interface {
 }
 
 type pr struct {
-	cursor    int
-	lookahead lexer.Token
-	tokens    []lexer.Token
+	cursor int
+	tokens []lexer.Token
 }
 
 func (p *pr) getExpr() Node {
@@ -31,7 +30,7 @@ func (p *pr) getStmt() Node {
 	return n{}
 }
 
-func (p *pr) getStmts(tokens []lexer.Token) []Node {
+func (p *pr) getStmts() []Node {
 	return []Node{}
 }
 
@@ -40,31 +39,32 @@ func (p *pr) getModule() Node {
 }
 
 func (p *pr) GetLookahead() lexer.Token {
-	return p.lookahead
+	if p.cursor < len(p.tokens) {
+		return p.tokens[p.cursor]
+	}
+	return nil
 }
 
 func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
-	currtok := p.lookahead
+	currtok := p.GetLookahead()
+
+	if currtok == nil {
+		return nil, nil
+	}
 
 	if tokenId != currtok.GetTag().Id {
 		return nil, errors.New(fmt.Sprintf("unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn()))
 	}
 
-	p.lookahead = p.tokens[p.cursor]
 	p.cursor++
 
 	return currtok, nil
 }
 
 func (p *pr) Parse() AST {
-	if len(p.tokens) == 0 {
-		return AST{Root: make([]Node, 0)}
-	}
-	p.lookahead = p.tokens[p.cursor]
-	p.cursor++
 	return AST{Root: p.getModule()}
 }
 
 func New(tokens []lexer.Token) Parser {
-	return &pr{cursor: 0, tokens: tokens, lookahead: nil}
+	return &pr{cursor: 0, tokens: tokens}
 }

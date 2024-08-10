@@ -11,27 +11,28 @@ func TestGetTag(t *testing.T) {
 		Tag   Tag
 		Param string
 	}{
-		{tIdent, IDENT},
-		{tAssign, ASSIGN},
-		{tOParen, O_PAREN},
-		{tCParen, C_PAREN},
-		{tEquals, EQUALS},
-		{tDifferent, DIFFERENT},
-		{tBigger, BIGGER},
-		{tSmaller, SMALLER},
-		{tSum, SUM},
-		{tSub, SUB},
-		{tComment, COMMENT},
-		{tOBrk, O_BRK},
-		{tCBrk, C_BRK},
-		{tOCurBrk, O_CUR_BRK},
-		{tCCurBrk, C_CUR_BRK},
-		{tComma, COMMA},
-		{tIf, IF},
-		{tColon, COLON},
-		{tSemicolon, SEMICOLON},
-		{tNumber, NUMBER},
-		{tWhitespace, WHITESPACE},
+		{TagIdent, IDENT},
+		{TagAssign, ASSIGN},
+		{TagOParen, O_PAREN},
+		{TagCParen, C_PAREN},
+		{TagEquals, EQUALS},
+		{TagDifferent, DIFFERENT},
+		{TagBigger, BIGGER},
+		{TagSmaller, SMALLER},
+		{TagSum, SUM},
+		{TagSub, SUB},
+		{TagComment, COMMENT},
+		{TagOBrk, O_BRK},
+		{TagCBrk, C_BRK},
+		{TagOCurBrk, O_CUR_BRK},
+		{TagCCurBrk, C_CUR_BRK},
+		{TagComma, COMMA},
+		{TagIf, IF},
+		{TagColon, COLON},
+		{TagSemicolon, SEMICOLON},
+		{TagNumber, NUMBER},
+		{TagWhitespace, WHITESPACE},
+		{TagBreakLine, BREAK_LINE},
 	}
 
 	for _, c := range cases {
@@ -48,7 +49,7 @@ func TestGetTag(t *testing.T) {
 	}
 }
 
-func TestTokenMatchGivenTagRule(t *testing.T) {
+func TestMatchTagRule(t *testing.T) {
 	cases := []struct {
 		Buffer  []byte
 		TagId   string
@@ -135,7 +136,7 @@ func TestTokenMatchGivenTagRule(t *testing.T) {
 `), true},
 	}
 	for _, c := range cases {
-		matched, tag, match := MatchTagRuleGivenBytes(c.Buffer)
+		matched, tag, match := MatchTagRule(c.Buffer)
 		if matched != c.Matched {
 			t.Errorf("rule matching: param: %s, expected: %v, got: %v", string(c.Buffer), c.Matched, matched)
 		}

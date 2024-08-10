@@ -21,7 +21,7 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := bytes.NewBufferString(scanner.Text())
-		l, err := lexer.GetTokensGivenBytes(line.Bytes())
+		l, err := lexer.GetTokens(line.Bytes())
 		if err != nil {
 			fmt.Println(err)
 			continue

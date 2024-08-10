@@ -18,6 +18,9 @@ const (
 	SMALLER    = "SMALLER"   // smaller
 	SUM        = "SUM"       // +
 	SUB        = "SUB"       // -
+	MULT       = "MULT"      // *
+	DIV        = "DIV"       // /
+	EXPO       = "EXPO"      // ^
 	COMMENT    = "COMMENT"   // --
 	O_BRK      = "O_BRK"     // [
 	C_BRK      = "C_BRK"     // ]
@@ -53,6 +56,9 @@ var (
 	TagSmaller    = Tag{SMALLER, "smaller", "^smaller"}
 	TagSum        = Tag{SUM, "+", "^\\+"}
 	TagSub        = Tag{SUB, "-", "^\\-"}
+	TagMult       = Tag{MULT, "*", "^\\*"}
+	TagDiv        = Tag{DIV, "/", "^\\/"}
+	TagExpo       = Tag{EXPO, "^", "^\\^"}
 	TagComment    = Tag{COMMENT, "--", "^\\#\\-"}
 	TagOBrk       = Tag{O_BRK, "[", "^\\["}
 	TagCBrk       = Tag{C_BRK, "]", "^\\]"}
@@ -90,6 +96,9 @@ var processableTags = []Tag{
 	TagId,
 	TagSum,
 	TagSub,
+	TagExpo,
+	TagMult,
+	TagDiv,
 	TagNumber,
 }
 

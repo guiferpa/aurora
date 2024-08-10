@@ -21,6 +21,8 @@ func TestGetTag(t *testing.T) {
 		{TagSmaller, SMALLER},
 		{TagSum, SUM},
 		{TagSub, SUB},
+		{TagMult, MULT},
+		{TagDiv, DIV},
 		{TagComment, COMMENT},
 		{TagOBrk, O_BRK},
 		{TagCBrk, C_BRK},

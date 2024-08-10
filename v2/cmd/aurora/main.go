@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	tokens, err := lexer.GetTokensGivenBytes(bs)
+	tokens, err := lexer.GetTokens(bs)
 	if err != nil {
 		panic(err)
 	}

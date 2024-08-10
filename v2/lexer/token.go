@@ -38,14 +38,14 @@ func (t tok) GetCursor() int {
 	return t.c
 }
 
-func GetTokensGivenBytes(bs []byte) ([]Token, error) {
+func GetTokens(bs []byte) ([]Token, error) {
 	cursor := 0
 	col := cursor + 1
 	line := 1
 	length := len(bs)
 	tokens := make([]Token, 0)
 	for cursor < length {
-		matched, tag, match := MatchTagRuleGivenBytes(bs[cursor:])
+		matched, tag, match := MatchTagRule(bs[cursor:])
 		if !matched {
 			return tokens, errors.New("no token matched")
 		}
@@ -58,5 +58,5 @@ func GetTokensGivenBytes(bs []byte) ([]Token, error) {
 			col = col + len(match)
 		}
 	}
-	return append(tokens, tok{line, col, cursor, tEndOfBuffer, []byte{}}), nil
+	return append(tokens, tok{line, col, cursor, TagEndOfBuffer, []byte{}}), nil
 }

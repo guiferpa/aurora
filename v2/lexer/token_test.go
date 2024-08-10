@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestGetTokensGivenBytes(t *testing.T) {
+func TestGetTokens(t *testing.T) {
 	cases := []struct {
 		Buffer []byte
 		Tokens []Token
@@ -14,15 +14,15 @@ func TestGetTokensGivenBytes(t *testing.T) {
 		{
 			[]byte(`ident a = 1;`),
 			[]Token{
-				tok{1, 1, 0, tIdent, []byte("ident")},
-				tok{1, 6, 5, tWhitespace, []byte(" ")},
-				tok{1, 7, 6, tId, []byte("a")},
-				tok{1, 8, 7, tWhitespace, []byte(" ")},
-				tok{1, 9, 8, tAssign, []byte("=")},
-				tok{1, 10, 9, tWhitespace, []byte(" ")},
-				tok{1, 11, 10, tNumber, []byte("1")},
-				tok{1, 12, 11, tSemicolon, []byte(";")},
-				tok{1, 13, 12, tEndOfBuffer, []byte{}},
+				tok{1, 1, 0, TagIdent, []byte("ident")},
+				tok{1, 6, 5, TagWhitespace, []byte(" ")},
+				tok{1, 7, 6, TagId, []byte("a")},
+				tok{1, 8, 7, TagWhitespace, []byte(" ")},
+				tok{1, 9, 8, TagAssign, []byte("=")},
+				tok{1, 10, 9, TagWhitespace, []byte(" ")},
+				tok{1, 11, 10, TagNumber, []byte("1")},
+				tok{1, 12, 11, TagSemicolon, []byte(";")},
+				tok{1, 13, 12, TagEndOfBuffer, []byte{}},
 			},
 		},
 		{
@@ -30,36 +30,36 @@ func TestGetTokensGivenBytes(t *testing.T) {
  ident b = 3 + 1_000;
 };`),
 			[]Token{
-				tok{1, 1, 0, tIdent, []byte("ident")},
-				tok{1, 6, 5, tWhitespace, []byte(" ")},
-				tok{1, 7, 6, tId, []byte("a")},
-				tok{1, 8, 7, tWhitespace, []byte(" ")},
-				tok{1, 9, 8, tAssign, []byte("=")},
-				tok{1, 10, 9, tWhitespace, []byte(" ")},
-				tok{1, 11, 10, tOParen, []byte("(")},
-				tok{1, 12, 11, tCParen, []byte(")")},
-				tok{1, 13, 12, tWhitespace, []byte(" ")},
-				tok{1, 14, 13, tOCurBrk, []byte("{")},
-				tok{1, 15, 14, tBreakLine, []byte(`
+				tok{1, 1, 0, TagIdent, []byte("ident")},
+				tok{1, 6, 5, TagWhitespace, []byte(" ")},
+				tok{1, 7, 6, TagId, []byte("a")},
+				tok{1, 8, 7, TagWhitespace, []byte(" ")},
+				tok{1, 9, 8, TagAssign, []byte("=")},
+				tok{1, 10, 9, TagWhitespace, []byte(" ")},
+				tok{1, 11, 10, TagOParen, []byte("(")},
+				tok{1, 12, 11, TagCParen, []byte(")")},
+				tok{1, 13, 12, TagWhitespace, []byte(" ")},
+				tok{1, 14, 13, TagOCurBrk, []byte("{")},
+				tok{1, 15, 14, TagBreakLine, []byte(`
 `)},
-				tok{2, 1, 15, tWhitespace, []byte(" ")},
-				tok{2, 2, 16, tIdent, []byte("ident")},
-				tok{2, 7, 21, tWhitespace, []byte(" ")},
-				tok{2, 8, 22, tId, []byte("b")},
-				tok{2, 9, 23, tWhitespace, []byte(" ")},
-				tok{2, 10, 24, tAssign, []byte("=")},
-				tok{2, 11, 25, tWhitespace, []byte(" ")},
-				tok{2, 12, 26, tNumber, []byte("3")},
-				tok{2, 13, 27, tWhitespace, []byte(" ")},
-				tok{2, 14, 28, tSum, []byte("+")},
-				tok{2, 15, 29, tWhitespace, []byte(" ")},
-				tok{2, 16, 30, tNumber, []byte("1_000")},
-				tok{2, 21, 35, tSemicolon, []byte(";")},
-				tok{2, 22, 36, tBreakLine, []byte(`
+				tok{2, 1, 15, TagWhitespace, []byte(" ")},
+				tok{2, 2, 16, TagIdent, []byte("ident")},
+				tok{2, 7, 21, TagWhitespace, []byte(" ")},
+				tok{2, 8, 22, TagId, []byte("b")},
+				tok{2, 9, 23, TagWhitespace, []byte(" ")},
+				tok{2, 10, 24, TagAssign, []byte("=")},
+				tok{2, 11, 25, TagWhitespace, []byte(" ")},
+				tok{2, 12, 26, TagNumber, []byte("3")},
+				tok{2, 13, 27, TagWhitespace, []byte(" ")},
+				tok{2, 14, 28, TagSum, []byte("+")},
+				tok{2, 15, 29, TagWhitespace, []byte(" ")},
+				tok{2, 16, 30, TagNumber, []byte("1_000")},
+				tok{2, 21, 35, TagSemicolon, []byte(";")},
+				tok{2, 22, 36, TagBreakLine, []byte(`
 `)},
-				tok{3, 1, 37, tCCurBrk, []byte("}")},
-				tok{3, 2, 38, tSemicolon, []byte(";")},
-				tok{3, 3, 39, tEndOfBuffer, []byte{}},
+				tok{3, 1, 37, TagCCurBrk, []byte("}")},
+				tok{3, 2, 38, TagSemicolon, []byte(";")},
+				tok{3, 3, 39, TagEndOfBuffer, []byte{}},
 			},
 		},
 		{
@@ -69,40 +69,40 @@ func TestGetTokensGivenBytes(t *testing.T) {
  ident b = 3 + 1_000;
 };`),
 			[]Token{
-				tok{1, 1, 0, tIdent, []byte("ident")},
-				tok{1, 6, 5, tWhitespace, []byte(" ")},
-				tok{1, 7, 6, tId, []byte("a")},
-				tok{1, 8, 7, tWhitespace, []byte(" ")},
-				tok{1, 9, 8, tAssign, []byte("=")},
-				tok{1, 10, 9, tWhitespace, []byte(" ")},
-				tok{1, 11, 10, tOParen, []byte("(")},
-				tok{1, 12, 11, tCParen, []byte(")")},
-				tok{1, 13, 12, tWhitespace, []byte(" ")},
-				tok{1, 14, 13, tOCurBrk, []byte("{")},
-				tok{1, 15, 14, tBreakLine, []byte(`
+				tok{1, 1, 0, TagIdent, []byte("ident")},
+				tok{1, 6, 5, TagWhitespace, []byte(" ")},
+				tok{1, 7, 6, TagId, []byte("a")},
+				tok{1, 8, 7, TagWhitespace, []byte(" ")},
+				tok{1, 9, 8, TagAssign, []byte("=")},
+				tok{1, 10, 9, TagWhitespace, []byte(" ")},
+				tok{1, 11, 10, TagOParen, []byte("(")},
+				tok{1, 12, 11, TagCParen, []byte(")")},
+				tok{1, 13, 12, TagWhitespace, []byte(" ")},
+				tok{1, 14, 13, TagOCurBrk, []byte("{")},
+				tok{1, 15, 14, TagBreakLine, []byte(`
 `)},
-				tok{2, 1, 15, tBreakLine, []byte(`
+				tok{2, 1, 15, TagBreakLine, []byte(`
 `)},
-				tok{3, 1, 16, tBreakLine, []byte(`
+				tok{3, 1, 16, TagBreakLine, []byte(`
 `)},
-				tok{4, 1, 17, tWhitespace, []byte(" ")},
-				tok{4, 2, 18, tIdent, []byte("ident")},
-				tok{4, 7, 23, tWhitespace, []byte(" ")},
-				tok{4, 8, 24, tId, []byte("b")},
-				tok{4, 9, 25, tWhitespace, []byte(" ")},
-				tok{4, 10, 26, tAssign, []byte("=")},
-				tok{4, 11, 27, tWhitespace, []byte(" ")},
-				tok{4, 12, 28, tNumber, []byte("3")},
-				tok{4, 13, 29, tWhitespace, []byte(" ")},
-				tok{4, 14, 30, tSum, []byte("+")},
-				tok{4, 15, 31, tWhitespace, []byte(" ")},
-				tok{4, 16, 32, tNumber, []byte("1_000")},
-				tok{4, 21, 37, tSemicolon, []byte(";")},
-				tok{4, 22, 38, tBreakLine, []byte(`
+				tok{4, 1, 17, TagWhitespace, []byte(" ")},
+				tok{4, 2, 18, TagIdent, []byte("ident")},
+				tok{4, 7, 23, TagWhitespace, []byte(" ")},
+				tok{4, 8, 24, TagId, []byte("b")},
+				tok{4, 9, 25, TagWhitespace, []byte(" ")},
+				tok{4, 10, 26, TagAssign, []byte("=")},
+				tok{4, 11, 27, TagWhitespace, []byte(" ")},
+				tok{4, 12, 28, TagNumber, []byte("3")},
+				tok{4, 13, 29, TagWhitespace, []byte(" ")},
+				tok{4, 14, 30, TagSum, []byte("+")},
+				tok{4, 15, 31, TagWhitespace, []byte(" ")},
+				tok{4, 16, 32, TagNumber, []byte("1_000")},
+				tok{4, 21, 37, TagSemicolon, []byte(";")},
+				tok{4, 22, 38, TagBreakLine, []byte(`
 `)},
-				tok{5, 1, 39, tCCurBrk, []byte("}")},
-				tok{5, 2, 40, tSemicolon, []byte(";")},
-				tok{5, 3, 41, tEndOfBuffer, []byte{}},
+				tok{5, 1, 39, TagCCurBrk, []byte("}")},
+				tok{5, 2, 40, TagSemicolon, []byte(";")},
+				tok{5, 3, 41, TagEndOfBuffer, []byte{}},
 			},
 		},
 		{
@@ -110,32 +110,32 @@ func TestGetTokensGivenBytes(t *testing.T) {
   3 + 1_000;
 };`),
 			[]Token{
-				tok{1, 1, 0, tIdent, []byte("ident")},
-				tok{1, 6, 5, tWhitespace, []byte(" ")},
-				tok{1, 7, 6, tId, []byte("rl")},
-				tok{1, 9, 8, tWhitespace, []byte(" ")},
-				tok{1, 10, 9, tAssign, []byte("=")},
-				tok{1, 11, 10, tWhitespace, []byte(" ")},
-				tok{1, 12, 11, tOCurBrk, []byte("{")},
-				tok{1, 13, 12, tBreakLine, []byte(`
+				tok{1, 1, 0, TagIdent, []byte("ident")},
+				tok{1, 6, 5, TagWhitespace, []byte(" ")},
+				tok{1, 7, 6, TagId, []byte("rl")},
+				tok{1, 9, 8, TagWhitespace, []byte(" ")},
+				tok{1, 10, 9, TagAssign, []byte("=")},
+				tok{1, 11, 10, TagWhitespace, []byte(" ")},
+				tok{1, 12, 11, TagOCurBrk, []byte("{")},
+				tok{1, 13, 12, TagBreakLine, []byte(`
 `)},
-				tok{2, 1, 13, tWhitespace, []byte("  ")},
-				tok{2, 3, 15, tNumber, []byte("3")},
-				tok{2, 4, 16, tWhitespace, []byte(" ")},
-				tok{2, 5, 17, tSum, []byte("+")},
-				tok{2, 6, 18, tWhitespace, []byte(" ")},
-				tok{2, 7, 19, tNumber, []byte("1_000")},
-				tok{2, 12, 24, tSemicolon, []byte(";")},
-				tok{2, 13, 25, tBreakLine, []byte(`
+				tok{2, 1, 13, TagWhitespace, []byte("  ")},
+				tok{2, 3, 15, TagNumber, []byte("3")},
+				tok{2, 4, 16, TagWhitespace, []byte(" ")},
+				tok{2, 5, 17, TagSum, []byte("+")},
+				tok{2, 6, 18, TagWhitespace, []byte(" ")},
+				tok{2, 7, 19, TagNumber, []byte("1_000")},
+				tok{2, 12, 24, TagSemicolon, []byte(";")},
+				tok{2, 13, 25, TagBreakLine, []byte(`
 `)},
-				tok{3, 1, 26, tCCurBrk, []byte("}")},
-				tok{3, 2, 27, tSemicolon, []byte(";")},
-				tok{3, 3, 28, tEndOfBuffer, []byte{}},
+				tok{3, 1, 26, TagCCurBrk, []byte("}")},
+				tok{3, 2, 27, TagSemicolon, []byte(";")},
+				tok{3, 3, 28, TagEndOfBuffer, []byte{}},
 			},
 		},
 	}
 	for _, c := range cases {
-		tokens, err := GetTokensGivenBytes(c.Buffer)
+		tokens, err := GetTokens(c.Buffer)
 		if err != nil {
 			t.Errorf("param: %v, %v", string(c.Buffer), err)
 		}

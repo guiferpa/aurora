@@ -61,7 +61,7 @@ func (p *pr) getUnaExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		expr, err := p.getExpr()
+		expr, err := p.getPriExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func (p *pr) getExpExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return ExponentialExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -104,22 +104,22 @@ func (p *pr) getMultExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.getAddExpr()
+		right, err := p.getMultExpr()
 		if err != nil {
 			return nil, err
 		}
-		return MultiplicativeExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.DIV {
 		op, err := p.EatToken(lexer.DIV)
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.getAddExpr()
+		right, err := p.getMultExpr()
 		if err != nil {
 			return nil, err
 		}
-		return MultiplicativeExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -141,7 +141,7 @@ func (p *pr) getAddExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return AdditiveExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.SUB {
 		op, err := p.EatToken(lexer.SUB)
@@ -152,7 +152,7 @@ func (p *pr) getAddExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return AdditiveExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
 	}
 
 	return left, nil

@@ -44,6 +44,6 @@ func Start(in io.Reader, out io.Writer) {
 
 		fmt.Println("--- Intermediate code ---")
 		opcodes := emitter.NewThree(ast).Emit()
-		print.JSON(os.Stdout, opcodes)
+		print.JSON(os.Stdout, fmt.Sprintf("%s", opcodes))
 	}
 }

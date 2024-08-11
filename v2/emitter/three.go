@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/guiferpa/aurora/parser"
@@ -8,14 +9,14 @@ import (
 
 type emt struct {
 	ast     parser.AST
-	opcodes []string
+	opcodes *bytes.Buffer
 }
 
-func (e *emt) genTemp() string {
-	return fmt.Sprintf("t%d", len(e.opcodes))
+func (e *emt) genTemp() []byte {
+	return []byte(fmt.Sprintf("t%d", len(e.opcodes.Bytes())))
 }
 
-func (e *emt) emitNode(stmt parser.Node) string {
+func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
 		return e.emitNode(n.Statement)
 	}
@@ -33,26 +34,26 @@ func (e *emt) emitNode(stmt parser.Node) string {
 		tr := e.emitNode(n.Right)
 		op := fmt.Sprintf("%s", n.Operation.Token.GetMatch())
 		t := e.genTemp()
-		e.opcodes = append(e.opcodes, fmt.Sprintf("%s = %s %s %s", t, tl, op, tr))
+		e.opcodes.Write([]byte(fmt.Sprintf("%s:%s%s%s;", t, op, tl, tr)))
 		return t
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		t := e.genTemp()
-		e.opcodes = append(e.opcodes, fmt.Sprintf("%s = %d", t, n.Value))
+		e.opcodes.Write([]byte(fmt.Sprintf("%s:%d;", t, n.Value)))
 		return t
 	}
-	return ""
+	return []byte{}
 }
 
-func (e *emt) Emit() []string {
+func (e *emt) Emit() []byte {
 	for _, stmt := range e.ast.Root.Statements {
 		e.emitNode(stmt.Statement)
 	}
-	return e.opcodes
+	return e.opcodes.Bytes()
 }
 
 func NewThree(ast parser.AST) *emt {
-	return &emt{ast, make([]string, 0)}
+	return &emt{ast, bytes.NewBuffer([]byte{})}
 }
 
 // 10 * 2 + 8 ^ 2

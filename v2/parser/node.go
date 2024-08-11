@@ -19,26 +19,14 @@ type UnaryExpressionNode struct {
 	Operation  OperationLiteralNode
 }
 
+type BinaryExpressionNode struct {
+	Left      Node
+	Right     Node
+	Operation OperationLiteralNode
+}
+
 type PrimaryExpressionNode struct {
 	Expression Node
-}
-
-type ExponentialExpressionNode struct {
-	Left      Node
-	Right     Node
-	Operation OperationLiteralNode
-}
-
-type MultiplicativeExpressionNode struct {
-	Left      Node
-	Right     Node
-	Operation OperationLiteralNode
-}
-
-type AdditiveExpressionNode struct {
-	Left      Node
-	Right     Node
-	Operation OperationLiteralNode
 }
 
 type ExpressionNode struct {

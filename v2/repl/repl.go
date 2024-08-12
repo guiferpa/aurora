@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/print"
@@ -43,7 +44,9 @@ func Start(in io.Reader, out io.Writer) {
 		print.JSON(os.Stdout, ast)
 
 		fmt.Println("--- Intermediate code ---")
-		opcodes := emitter.NewThree(ast).Emit()
-		print.JSON(os.Stdout, fmt.Sprintf("%s", opcodes))
+		opcodes := emitter.New(ast).Emit()
+		print.Opcodes(os.Stdout, opcodes)
+
+		evaluator.New(opcodes).Evaluate()
 	}
 }

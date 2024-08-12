@@ -10,7 +10,7 @@ type OperationLiteralNode struct {
 }
 
 type NumberLiteralNode struct {
-	Value int
+	Value []byte
 	Token lexer.Token
 }
 

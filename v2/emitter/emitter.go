@@ -55,6 +55,11 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.ExpressionNode); ok {
 		return e.emitNode(n.Expression)
 	}
+	if n, ok := stmt.(parser.IdentStatementNode); ok {
+		texpr := e.emitNode(n.Expression)
+		t := e.genTemp()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpPin}), Left: e.fill64Bits(n.Name.GetMatch()), Right: e.fill64Bits(texpr)})
+	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitNode(n.Expression)
 	}
@@ -81,6 +86,11 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		t := e.genTemp()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: make([]byte, 8), Left: e.getBytesFromUInt64(n.Value), Right: make([]byte, 8)})
+		return t
+	}
+	if n, ok := stmt.(parser.IdLiteralNode); ok {
+		t := e.genTemp()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpGet}), Left: e.fill64Bits(n.Token.GetMatch()), Right: e.fill64Bits([]byte{})})
 		return t
 	}
 	return make([]byte, 8)

@@ -16,6 +16,8 @@ import (
 const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
+	ev := evaluator.New()
+
 	scanner := bufio.NewScanner(in)
 	for {
 		fmt.Fprintf(out, PROMPT)
@@ -44,12 +46,14 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		r := evaluator.New(opcodes)
-		r.Evaluate()
-		mem := r.GetMemory()
-		for _, v := range mem {
+		labels, err := ev.Evaluate(opcodes)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		for _, v := range labels {
 			d := binary.BigEndian.Uint64(v)
-			fmt.Printf("= %v\n", d)
+			fmt.Printf("= %d\n", d)
 		}
 	}
 }

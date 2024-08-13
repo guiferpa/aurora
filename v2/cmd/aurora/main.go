@@ -35,7 +35,7 @@ func run(args []string) {
 		fmt.Println(err)
 		os.Exit(4)
 	}
-	evaluator.New(opcodes).Evaluate()
+	evaluator.New().Evaluate(opcodes)
 }
 
 func main() {

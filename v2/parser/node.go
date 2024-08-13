@@ -15,6 +15,15 @@ func (oln OperationLiteralNode) Next() Node {
 	return nil
 }
 
+type IdLiteralNode struct {
+	Value string
+	Token lexer.Token
+}
+
+func (iln IdLiteralNode) Next() Node {
+	return nil
+}
+
 type NumberLiteralNode struct {
 	Value uint64
 	Token lexer.Token
@@ -67,7 +76,6 @@ type IdentStatementNode struct {
 func (isn IdentStatementNode) Next() Node {
 	return isn.Expression
 }
-
 
 type StatementNode struct {
 	Statement Node

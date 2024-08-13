@@ -6,4 +6,6 @@ const (
 	OpSub = 0x2d
 	OpDiv = 0x2f
 	OpExp = 0x5e
+	OpPin = 0x24
+	OpGet = 0x67
 )

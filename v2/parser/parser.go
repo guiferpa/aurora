@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/guiferpa/aurora/lexer"
@@ -24,9 +25,12 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	if err != nil {
 		return NumberLiteralNode{}, err
 	}
-	num := []byte(strings.ReplaceAll(string(tok.GetMatch()), "_", ""))
-	fmt.Println(num)
-	return NumberLiteralNode{num, tok}, nil
+	raw := strings.ReplaceAll(string(tok.GetMatch()), "_", "")
+	num, err := strconv.ParseInt(raw, 10, 8)
+	if err != nil {
+		return NumberLiteralNode{}, err
+	}
+	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
 func (p *pr) getPriExpr() (Node, error) {

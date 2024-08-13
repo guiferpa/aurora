@@ -8,10 +8,10 @@ import (
 	"os"
 
 	"github.com/guiferpa/aurora/emitter"
-	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/print"
+	"github.com/guiferpa/aurora/runner"
 )
 
 const PROMPT = ">> "
@@ -27,26 +27,23 @@ func Start(in io.Reader, out io.Writer) {
 
 		line := bytes.NewBufferString(scanner.Text())
 
-		fmt.Println("--- TOKENS ---")
 		tokens, err := lexer.GetFilledTokens(line.Bytes())
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		print.JSON(os.Stdout, tokens)
 
-		fmt.Println("--- AST ---")
 		ast, err := parser.New(tokens).Parse()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		print.JSON(os.Stdout, ast)
 
-		fmt.Println("--- Intermediate code ---")
 		opcodes := emitter.New(ast).Emit()
-		print.Opcodes(os.Stdout, opcodes)
 
-		evaluator.New(opcodes).Evaluate()
+		runner.New(opcodes).Run()
+
+		print.JSON(os.Stdout, ast)
+		print.Opcodes(os.Stdout, opcodes)
 	}
 }

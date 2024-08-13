@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/guiferpa/aurora/parser"
@@ -29,6 +30,21 @@ func (e *emt) genTemp() []byte {
 	return t
 }
 
+func (e *emt) fill64Bits(bfs []byte) []byte {
+	const size = 8
+	bs := make([]byte, size)
+	for i := 0; i < len(bfs); i++ {
+		bs[(size-len(bfs))+i] = bfs[i]
+	}
+	return bs
+}
+
+func (e *emt) getBytesFromUInt64(v uint64) []byte {
+	r := make([]byte, 8)
+	binary.BigEndian.PutUint64(r, v)
+	return r
+}
+
 func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
 		return e.emitNode(n.Statement)
@@ -45,17 +61,27 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
 		tl := e.emitNode(n.Left)
 		tr := e.emitNode(n.Right)
-		op := n.Operation.Token.GetMatch()
+		op := make([]byte, 8)
+		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
+		case "*":
+			op = e.fill64Bits([]byte{OpMul})
+		case "+":
+			op = e.fill64Bits([]byte{OpAdd})
+		case "-":
+			op = e.fill64Bits([]byte{OpSub})
+		case "/":
+			op = e.fill64Bits([]byte{OpSub})
+		}
 		t := e.genTemp()
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: tl, Right: tr})
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: op, Left: e.fill64Bits(tl), Right: e.fill64Bits(tr)})
 		return t
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		t := e.genTemp()
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: []byte{}, Left: n.Value, Right: []byte{}})
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: make([]byte, 8), Left: e.getBytesFromUInt64(n.Value), Right: make([]byte, 8)})
 		return t
 	}
-	return make([]byte, 0, 8)
+	return make([]byte, 8)
 }
 
 func (e *emt) Emit() []OpCode {

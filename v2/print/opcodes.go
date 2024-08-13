@@ -9,8 +9,7 @@ import (
 
 func Opcodes(w io.Writer, ocs []emitter.OpCode) error {
 	for _, oc := range ocs {
-		bs := fmt.Sprintf("%v %v %v %v", oc.Label, oc.Operation, oc.Left, oc.Right)
-		fmt.Fprintf(w, "%s: %s %s %s --> %v\n", oc.Label, oc.Operation, oc.Left, oc.Right, bs)
+		fmt.Fprintf(w, "%x(%d): %x(%d) %x(%d) %x(%d)\n", oc.Label, len(oc.Label), oc.Operation, len(oc.Operation), oc.Left, len(oc.Left), oc.Right, len(oc.Right))
 	}
 	return nil
 }

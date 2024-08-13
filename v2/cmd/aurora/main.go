@@ -11,10 +11,7 @@ import (
 
 func main() {
 	args := os.Args[1:]
-	if len(args) != 1 {
-		return
-	}
-	if args[0] == "repl" {
+	if len(args) == 0 {
 		repl.Start(os.Stdin, os.Stdout)
 		return
 	}
@@ -24,16 +21,13 @@ func main() {
 	}
 	tokens, err := lexer.GetFilledTokens(bs)
 	if err != nil {
-		panic(err)
-	}
-	size := 0
-	for _, t := range tokens {
-		size += len(t.GetMatch())
-		fmt.Printf("Line: %d, Column: %d, Tag: %s, Match: %v\n", t.GetLine(), t.GetColumn(), t.GetTag().Id, t.GetMatch())
-	}
-	fmt.Printf("Size: %d bytes\n", size)
-	fmt.Println("----------------------")
-	if _, err := parser.New(tokens).Parse(); err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
+	ast, err := parser.New(tokens).Parse()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
+	fmt.Println(ast)
 }

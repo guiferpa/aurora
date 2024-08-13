@@ -3,15 +3,14 @@ package repl
 import (
 	"bufio"
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/print"
-	"github.com/guiferpa/aurora/runner"
 )
 
 const PROMPT = ">> "
@@ -39,11 +38,18 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		opcodes := emitter.New(ast).Emit()
+		opcodes, err := emitter.New(ast).Emit()
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
 
-		runner.New(opcodes).Run()
-
-		print.JSON(os.Stdout, ast)
-		print.Opcodes(os.Stdout, opcodes)
+		r := evaluator.New(opcodes)
+		r.Evaluate()
+		mem := r.GetMemory()
+		for _, v := range mem {
+			d := binary.BigEndian.Uint64(v)
+			fmt.Printf("= %v\n", d)
+		}
 	}
 }

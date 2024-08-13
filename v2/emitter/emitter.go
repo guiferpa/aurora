@@ -15,7 +15,7 @@ type OpCode struct {
 }
 
 type Emitter interface {
-	Emit() []OpCode
+	Emit() ([]OpCode, error)
 }
 
 type emt struct {
@@ -71,6 +71,8 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 			op = e.fill64Bits([]byte{OpSub})
 		case "/":
 			op = e.fill64Bits([]byte{OpSub})
+		case "^":
+			op = e.fill64Bits([]byte{OpExp})
 		}
 		t := e.genTemp()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: op, Left: e.fill64Bits(tl), Right: e.fill64Bits(tr)})
@@ -84,11 +86,11 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	return make([]byte, 8)
 }
 
-func (e *emt) Emit() []OpCode {
+func (e *emt) Emit() ([]OpCode, error) {
 	for _, stmt := range e.ast.Root.Statements {
 		e.emitNode(stmt.Statement)
 	}
-	return e.opcodes
+	return e.opcodes, nil
 }
 
 func New(ast parser.AST) *emt {

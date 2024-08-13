@@ -26,7 +26,7 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 		return NumberLiteralNode{}, err
 	}
 	raw := strings.ReplaceAll(string(tok.GetMatch()), "_", "")
-	num, err := strconv.ParseInt(raw, 10, 8)
+	num, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
 		return NumberLiteralNode{}, err
 	}

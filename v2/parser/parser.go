@@ -20,6 +20,14 @@ type pr struct {
 	tokens []lexer.Token
 }
 
+func (p *pr) getId() (IdLiteralNode, error) {
+	tok, err := p.EatToken(lexer.ID)
+	if err != nil {
+		return IdLiteralNode{}, err
+	}
+	return IdLiteralNode{fmt.Sprintf("%s", tok.GetMatch()), tok}, nil
+}
+
 func (p *pr) getNum() (NumberLiteralNode, error) {
 	tok, err := p.EatToken(lexer.NUMBER)
 	if err != nil {
@@ -48,11 +56,18 @@ func (p *pr) getPriExpr() (Node, error) {
 		}
 		return expr, nil
 	}
-	num, err := p.getNum()
+	if lookahead.GetTag().Id == lexer.NUMBER {
+		num, err := p.getNum()
+		if err != nil {
+			return nil, err
+		}
+		return num, nil
+	}
+	id, err := p.getId()
 	if err != nil {
 		return nil, err
 	}
-	return PrimaryExpressionNode{num}, nil
+	return id, nil
 }
 
 func (p *pr) getUnaExpr() (Node, error) {

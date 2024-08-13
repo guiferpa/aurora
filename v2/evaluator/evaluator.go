@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 
@@ -9,8 +10,8 @@ import (
 )
 
 type Evaluator struct {
-	opcodes []emitter.OpCode
-	mem     map[string][]byte
+	mem    map[string][]byte
+	labels map[string][]byte
 }
 
 func (e *Evaluator) IsReference(bs []byte) bool {
@@ -23,64 +24,77 @@ func (e *Evaluator) IsReference(bs []byte) bool {
 	return false
 }
 
-func (e *Evaluator) exec(l, op, left, right []byte) {
+func (e *Evaluator) exec(l, op, left, right []byte) error {
+	veb := op[7]              // Verificator byte
+	if veb == emitter.OpPin { // Create a definition
+		e.mem[fmt.Sprintf("%x", left)] = right
+	}
+	if veb == emitter.OpGet { // Get a definition
+		if v, ok := e.mem[fmt.Sprintf("%x", left)]; ok {
+			e.labels[fmt.Sprintf("%x", l)] = v
+		} else {
+			return errors.New(fmt.Sprintf("identifier %s not defined", left))
+		}
+	}
+
 	a := binary.BigEndian.Uint64(left)
 	b := binary.BigEndian.Uint64(right)
-	veb := op[7] // Verificator byte
 	if veb == emitter.OpMul {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
-		e.mem[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", l)] = r
 	}
 	if veb == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
-		e.mem[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", l)] = r
 	}
 	if veb == emitter.OpSub {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
-		e.mem[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", l)] = r
 	}
 	if veb == emitter.OpDiv {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
-		e.mem[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", l)] = r
 	}
 	if veb == emitter.OpExp {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
 		binary.BigEndian.PutUint64(r, uint64(v))
-		e.mem[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", l)] = r
 	}
+	return nil
 }
 
-func (e *Evaluator) Evaluate() {
-	for _, oc := range e.opcodes {
+func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error) {
+	for _, oc := range opcodes {
 		if oc.Operation[7] == 0x0 {
-			e.mem[fmt.Sprintf("%x", oc.Label)] = oc.Left
+			e.labels[fmt.Sprintf("%x", oc.Label)] = oc.Left
 			continue
 		}
 		left := oc.Left
 		if e.IsReference(left) {
 			pleft := left
-			left = e.mem[fmt.Sprintf("%x", pleft)]
-			delete(e.mem, fmt.Sprintf("%x", pleft))
+			left = e.labels[fmt.Sprintf("%x", pleft)]
+			delete(e.labels, fmt.Sprintf("%x", pleft))
 		}
 		right := oc.Right
 		if e.IsReference(right) {
 			pright := right
-			right = e.mem[fmt.Sprintf("%x", pright)]
-			delete(e.mem, fmt.Sprintf("%x", pright))
+			right = e.labels[fmt.Sprintf("%x", pright)]
+			delete(e.labels, fmt.Sprintf("%x", pright))
 		}
-		e.exec(oc.Label, oc.Operation, left, right)
+		if err := e.exec(oc.Label, oc.Operation, left, right); err != nil {
+			return nil, err
+		}
 	}
+	labels := e.labels
+	e.labels = make(map[string][]byte)
+	return labels, nil
 }
 
-func (e *Evaluator) GetMemory() map[string][]byte {
-	return e.mem
-}
-
-func New(ocs []emitter.OpCode) *Evaluator {
-	return &Evaluator{ocs, make(map[string][]byte)}
+func New() *Evaluator {
+	return &Evaluator{make(map[string][]byte), make(map[string][]byte)}
 }

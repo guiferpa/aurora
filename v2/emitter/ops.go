@@ -5,4 +5,5 @@ const (
 	OpAdd = 0x2b
 	OpSub = 0x2d
 	OpDiv = 0x2f
+	OpExp = 0x5e
 )

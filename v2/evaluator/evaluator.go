@@ -1,8 +1,9 @@
-package runner
+package evaluator
 
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 
 	"github.com/guiferpa/aurora/emitter"
 )
@@ -22,7 +23,7 @@ func (e *Evaluator) IsReference(bs []byte) bool {
 	return false
 }
 
-func (e *Evaluator) Exec(l, op, left, right []byte) {
+func (e *Evaluator) exec(l, op, left, right []byte) {
 	a := binary.BigEndian.Uint64(left)
 	b := binary.BigEndian.Uint64(right)
 	veb := op[7] // Verificator byte
@@ -46,9 +47,15 @@ func (e *Evaluator) Exec(l, op, left, right []byte) {
 		binary.BigEndian.PutUint64(r, a/b)
 		e.mem[fmt.Sprintf("%x", l)] = r
 	}
+	if veb == emitter.OpExp {
+		r := make([]byte, 8)
+		v := math.Pow(float64(a), float64(b))
+		binary.BigEndian.PutUint64(r, uint64(v))
+		e.mem[fmt.Sprintf("%x", l)] = r
+	}
 }
 
-func (e *Evaluator) Run() {
+func (e *Evaluator) Evaluate() {
 	for _, oc := range e.opcodes {
 		if oc.Operation[7] == 0x0 {
 			e.mem[fmt.Sprintf("%x", oc.Label)] = oc.Left
@@ -56,14 +63,22 @@ func (e *Evaluator) Run() {
 		}
 		left := oc.Left
 		if e.IsReference(left) {
-			left = e.mem[fmt.Sprintf("%x", left)]
+			pleft := left
+			left = e.mem[fmt.Sprintf("%x", pleft)]
+			delete(e.mem, fmt.Sprintf("%x", pleft))
 		}
 		right := oc.Right
 		if e.IsReference(right) {
-			right = e.mem[fmt.Sprintf("%x", right)]
+			pright := right
+			right = e.mem[fmt.Sprintf("%x", pright)]
+			delete(e.mem, fmt.Sprintf("%x", pright))
 		}
-		e.Exec(oc.Label, oc.Operation, left, right)
+		e.exec(oc.Label, oc.Operation, left, right)
 	}
+}
+
+func (e *Evaluator) GetMemory() map[string][]byte {
+	return e.mem
 }
 
 func New(ocs []emitter.OpCode) *Evaluator {

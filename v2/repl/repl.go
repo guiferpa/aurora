@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"os"
+	"os/signal"
 
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
@@ -17,6 +19,14 @@ const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	ev := evaluator.New()
+
+	csig := make(chan os.Signal, 1)
+	signal.Notify(csig, os.Interrupt)
+	go func() {
+		<-csig
+		fmt.Println("Bye :)")
+		os.Exit(0)
+	}()
 
 	scanner := bufio.NewScanner(in)
 	for {

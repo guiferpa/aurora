@@ -8,11 +8,13 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/print"
 )
 
 const PROMPT = ">> "
@@ -34,6 +36,18 @@ func Start(in io.Reader, out io.Writer) {
 		scanned := scanner.Scan()
 		if !scanned {
 			return
+		}
+
+		if strings.Compare(scanner.Text(), "get_memory") == 0 {
+			for k, v := range ev.GetMemory() {
+				fmt.Printf("%s: %x\n", k, v)
+			}
+			continue
+		}
+
+		if strings.Compare(scanner.Text(), "get_opcodes") == 0 {
+			print.Opcodes(os.Stdout, ev.GetOpCodes())
+			continue
 		}
 
 		line := bytes.NewBufferString(scanner.Text())

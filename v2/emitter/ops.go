@@ -12,4 +12,6 @@ const (
 	OpDif = 0x64
 	OpEqu = 0x65
 	OpSma = 0x73
+	OpOBl = 0x7b
+	OpCBl = 0x7d
 )

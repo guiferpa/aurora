@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 
@@ -24,7 +25,7 @@ type emt struct {
 	opcodes []OpCode
 }
 
-func (e *emt) genTemp() []byte {
+func (e *emt) genLabel() []byte {
 	t := []byte(fmt.Sprintf("t%d", e.tmpc))
 	e.tmpc++
 	return t
@@ -47,15 +48,38 @@ func (e *emt) getBytesFromUInt64(v uint64) []byte {
 
 func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
-		return e.emitNode(n.Statement)
+		return e.emitNode(n.Node)
 	}
 	if n, ok := stmt.(parser.IdentStatementNode); ok {
 		texpr := e.emitNode(n.Expression)
-		t := e.genTemp()
-		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpPin}), Left: e.fill64Bits(n.Name.GetMatch()), Right: e.fill64Bits(texpr)})
+		t := e.genLabel()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpPin}), Left: e.fill64Bits(n.Token.GetMatch()), Right: e.fill64Bits(texpr)})
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitNode(n.Expression)
+	}
+	if n, ok := stmt.(parser.BlockExpressionNode); ok {
+		t := e.fill64Bits(e.genLabel())
+		op := e.fill64Bits([]byte{OpOBl})
+		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: e.fill64Bits([]byte{}), Right: e.fill64Bits([]byte{})})
+
+		for _, stmt := range n.Statements {
+			e.emitNode(stmt)
+		}
+
+		latest := e.opcodes[len(e.opcodes)-1]
+		isEmpty := bytes.Compare(latest.Label, t) == 0
+		op = e.fill64Bits([]byte{OpCBl})
+		t = e.fill64Bits(e.genLabel())
+		if isEmpty {
+			e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: e.fill64Bits([]byte{}), Right: e.fill64Bits([]byte{})})
+			return t
+		}
+		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: e.fill64Bits([]byte{}), Right: e.fill64Bits([]byte{})})
+
+		t = e.fill64Bits(e.genLabel())
+		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: make([]byte, 8), Left: latest.Label, Right: e.fill64Bits([]byte{})})
+		return t
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
 		tl := e.emitNode(n.Left)
@@ -71,7 +95,7 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		case "smaller":
 			op = e.fill64Bits([]byte{OpSma})
 		}
-		t := e.genTemp()
+		t := e.genLabel()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: op, Left: e.fill64Bits(tl), Right: e.fill64Bits(tr)})
 		return t
 	}
@@ -91,17 +115,17 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		case "^":
 			op = e.fill64Bits([]byte{OpExp})
 		}
-		t := e.genTemp()
+		t := e.genLabel()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: op, Left: e.fill64Bits(tl), Right: e.fill64Bits(tr)})
 		return t
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
-		t := e.genTemp()
+		t := e.genLabel()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: make([]byte, 8), Left: e.getBytesFromUInt64(n.Value), Right: make([]byte, 8)})
 		return t
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {
-		t := e.genTemp()
+		t := e.genLabel()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpGet}), Left: e.fill64Bits(n.Token.GetMatch()), Right: e.fill64Bits([]byte{})})
 		return t
 	}
@@ -109,8 +133,8 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 }
 
 func (e *emt) Emit() ([]OpCode, error) {
-	for _, stmt := range e.ast.Root.Statements {
-		e.emitNode(stmt.Statement)
+	for _, stmt := range e.ast.Module.Statements {
+		e.emitNode(stmt.Node)
 	}
 	return e.opcodes, nil
 }

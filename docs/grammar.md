@@ -77,11 +77,11 @@ _adde -> _multe SUM _adde
 
 ### Boolean expression
 ```
-_boole -> _prie EQUALS _prie
-        | _prie DIFFERENT _prie
-        | _prie BIGGER _prie
-        | _prie SMALLER _prie
-        | _log
+_boole -> _adde EQUALS _boole
+        | _adde DIFFERENT _boole
+        | _adde BIGGER _boole
+        | _adde SMALLER _boole
+        | _adde
 ```
 
 ### If expression

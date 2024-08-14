@@ -49,12 +49,6 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
 		return e.emitNode(n.Statement)
 	}
-	if n, ok := stmt.(parser.PrimaryExpressionNode); ok {
-		return e.emitNode(n.Expression)
-	}
-	if n, ok := stmt.(parser.ExpressionNode); ok {
-		return e.emitNode(n.Expression)
-	}
 	if n, ok := stmt.(parser.IdentStatementNode); ok {
 		texpr := e.emitNode(n.Expression)
 		t := e.genTemp()
@@ -62,6 +56,24 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitNode(n.Expression)
+	}
+	if n, ok := stmt.(parser.BooleanExpression); ok {
+		tl := e.emitNode(n.Left)
+		tr := e.emitNode(n.Right)
+		op := make([]byte, 8)
+		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
+		case "equals":
+			op = e.fill64Bits([]byte{OpEqu})
+		case "different":
+			op = e.fill64Bits([]byte{OpDif})
+		case "bigger":
+			op = e.fill64Bits([]byte{OpBig})
+		case "smaller":
+			op = e.fill64Bits([]byte{OpSma})
+		}
+		t := e.genTemp()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: op, Left: e.fill64Bits(tl), Right: e.fill64Bits(tr)})
+		return t
 	}
 	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
 		tl := e.emitNode(n.Left)

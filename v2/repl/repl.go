@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
@@ -75,9 +76,10 @@ func Start(in io.Reader, out io.Writer) {
 			fmt.Println(err)
 			continue
 		}
+		s := color.New(color.FgWhite, color.Bold).Sprint("=")
 		for _, v := range labels {
 			d := binary.BigEndian.Uint64(v)
-			fmt.Printf("= %d\n", d)
+			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%d", d))
 		}
 	}
 }

@@ -174,12 +174,61 @@ func (p *pr) getAddExpr() (Node, error) {
 	return left, nil
 }
 
-func (p *pr) getExpr() (ExpressionNode, error) {
-	add, err := p.getAddExpr()
+func (p *pr) getBoolExpr() (Node, error) {
+	left, err := p.getAddExpr()
 	if err != nil {
-		return ExpressionNode{}, err
+		return nil, err
 	}
-	return ExpressionNode{add}, nil
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.EQUALS {
+		op, err := p.EatToken(lexer.EQUALS)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getBoolExpr()
+		if err != nil {
+			return nil, err
+		}
+		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+	}
+	if lookahead.GetTag().Id == lexer.DIFFERENT {
+		op, err := p.EatToken(lexer.DIFFERENT)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getBoolExpr()
+		if err != nil {
+			return nil, err
+		}
+		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+	}
+	if lookahead.GetTag().Id == lexer.BIGGER {
+		op, err := p.EatToken(lexer.BIGGER)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getBoolExpr()
+		if err != nil {
+			return nil, err
+		}
+		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+	}
+	if lookahead.GetTag().Id == lexer.SMALLER {
+		op, err := p.EatToken(lexer.SMALLER)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getBoolExpr()
+		if err != nil {
+			return nil, err
+		}
+		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+	}
+	return left, nil
+}
+
+func (p *pr) getExpr() (Node, error) {
+	return p.getBoolExpr()
 }
 
 func (p *pr) getIdent() (IdentStatementNode, error) {

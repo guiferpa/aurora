@@ -25,7 +25,8 @@ func (e *Evaluator) IsReference(bs []byte) bool {
 }
 
 func (e *Evaluator) exec(l, op, left, right []byte) error {
-	veb := op[7]              // Verificator byte
+	veb := op[7] // Verificator byte
+
 	if veb == emitter.OpPin { // Create a definition
 		e.mem[fmt.Sprintf("%x", left)] = right
 	}
@@ -39,6 +40,35 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 
 	a := binary.BigEndian.Uint64(left)
 	b := binary.BigEndian.Uint64(right)
+
+	if veb == emitter.OpEqu {
+		r := make([]byte, 8)
+		if a == b {
+			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+		}
+		e.labels[fmt.Sprintf("%x", l)] = r
+	}
+	if veb == emitter.OpDif {
+		r := make([]byte, 8)
+		if a != b {
+			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+		}
+		e.labels[fmt.Sprintf("%x", l)] = r
+	}
+	if veb == emitter.OpBig {
+		r := make([]byte, 8)
+		if a > b {
+			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+		}
+		e.labels[fmt.Sprintf("%x", l)] = r
+	}
+	if veb == emitter.OpSma {
+		r := make([]byte, 8)
+		if a < b {
+			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+		}
+		e.labels[fmt.Sprintf("%x", l)] = r
+	}
 	if veb == emitter.OpMul {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)

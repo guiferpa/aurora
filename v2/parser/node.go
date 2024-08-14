@@ -60,6 +60,16 @@ func (pen PrimaryExpressionNode) Next() Node {
 	return pen.Expression
 }
 
+type BooleanExpression struct {
+	Left      Node
+	Right     Node
+	Operation OperationLiteralNode
+}
+
+func (be BooleanExpression) Next() Node {
+  return nil
+}
+
 type ExpressionNode struct {
 	Expression Node
 }

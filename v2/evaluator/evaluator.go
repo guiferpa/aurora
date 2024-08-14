@@ -10,11 +10,12 @@ import (
 )
 
 type Evaluator struct {
-	mem    map[string][]byte
-	labels map[string][]byte
+	mem     map[string][]byte
+	opcodes []emitter.OpCode
+	labels  map[string][]byte
 }
 
-func (e *Evaluator) IsReference(bs []byte) bool {
+func (e *Evaluator) IsLabel(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
 	}
@@ -24,11 +25,24 @@ func (e *Evaluator) IsReference(bs []byte) bool {
 	return false
 }
 
+func (e *Evaluator) WalkLabel(bs []byte) []byte {
+	pbs := bs
+	bs = e.labels[fmt.Sprintf("%x", pbs)]
+	delete(e.labels, fmt.Sprintf("%x", pbs))
+	if e.IsLabel(bs) {
+		return e.WalkLabel(bs)
+	}
+	return bs
+}
+
 func (e *Evaluator) exec(l, op, left, right []byte) error {
 	veb := op[7] // Verificator byte
 
 	if veb == emitter.OpPin { // Create a definition
-		e.mem[fmt.Sprintf("%x", left)] = right
+		if len(right) > 0 {
+			e.mem[fmt.Sprintf("%x", left)] = right
+		}
+		return nil
 	}
 	if veb == emitter.OpGet { // Get a definition
 		if v, ok := e.mem[fmt.Sprintf("%x", left)]; ok {
@@ -36,6 +50,14 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 		} else {
 			return errors.New(fmt.Sprintf("identifier %s not defined", left))
 		}
+	}
+
+	if veb == emitter.OpOBl { // Open scope for block
+		return nil
+	}
+
+	if veb == emitter.OpCBl { // Close scope for block
+		return nil
 	}
 
 	a := binary.BigEndian.Uint64(left)
@@ -99,22 +121,19 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 }
 
 func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error) {
-	for _, oc := range opcodes {
+	e.opcodes = opcodes
+	for _, oc := range e.opcodes {
 		if oc.Operation[7] == 0x0 {
 			e.labels[fmt.Sprintf("%x", oc.Label)] = oc.Left
 			continue
 		}
 		left := oc.Left
-		if e.IsReference(left) {
-			pleft := left
-			left = e.labels[fmt.Sprintf("%x", pleft)]
-			delete(e.labels, fmt.Sprintf("%x", pleft))
+		if e.IsLabel(left) {
+			left = e.WalkLabel(left)
 		}
 		right := oc.Right
-		if e.IsReference(right) {
-			pright := right
-			right = e.labels[fmt.Sprintf("%x", pright)]
-			delete(e.labels, fmt.Sprintf("%x", pright))
+		if e.IsLabel(right) {
+			right = e.WalkLabel(right)
 		}
 		if err := e.exec(oc.Label, oc.Operation, left, right); err != nil {
 			return nil, err
@@ -125,6 +144,14 @@ func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error
 	return labels, nil
 }
 
+func (e *Evaluator) GetMemory() map[string][]byte {
+	return e.mem
+}
+
+func (e *Evaluator) GetOpCodes() []emitter.OpCode {
+	return e.opcodes
+}
+
 func New() *Evaluator {
-	return &Evaluator{make(map[string][]byte), make(map[string][]byte)}
+	return &Evaluator{make(map[string][]byte), make([]emitter.OpCode, 0), make(map[string][]byte)}
 }

@@ -227,7 +227,22 @@ func (p *pr) getBoolExpr() (Node, error) {
 	return left, nil
 }
 
+func (p *pr) getBlockExpr() (Node, error) {
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+		return nil, err
+	}
+	stmts, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+	p.EatToken(lexer.C_CUR_BRK)
+	return BlockExpressionNode{stmts}, nil
+}
+
 func (p *pr) getExpr() (Node, error) {
+	if p.GetLookahead().GetTag().Id == lexer.O_CUR_BRK {
+		return p.getBlockExpr()
+	}
 	return p.getBoolExpr()
 }
 
@@ -249,7 +264,7 @@ func (p *pr) getIdent() (IdentStatementNode, error) {
 	if err != nil {
 		return IdentStatementNode{}, err
 	}
-	return IdentStatementNode{id, expr}, nil
+	return IdentStatementNode{fmt.Sprintf("%s", id.GetMatch()), id, expr}, nil
 }
 
 func (p *pr) getStmt() (StatementNode, error) {
@@ -268,9 +283,9 @@ func (p *pr) getStmt() (StatementNode, error) {
 	return StatementNode{expr}, nil
 }
 
-func (p *pr) getStmts() ([]StatementNode, error) {
+func (p *pr) getStmts(t lexer.Tag) ([]StatementNode, error) {
 	stmts := make([]StatementNode, 0)
-	for p.GetLookahead().GetTag().Id != lexer.TagEOF.Id {
+	for p.GetLookahead().GetTag().Id != t.Id {
 		stmt, err := p.getStmt()
 		if err != nil {
 			return stmts, err
@@ -284,7 +299,7 @@ func (p *pr) getStmts() ([]StatementNode, error) {
 }
 
 func (p *pr) getModule() (ModuleNode, error) {
-	stmts, err := p.getStmts()
+	stmts, err := p.getStmts(lexer.TagEOF)
 	if err != nil {
 		return ModuleNode{}, err
 	}
@@ -315,11 +330,11 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 }
 
 func (p *pr) Parse() (AST, error) {
-	root, err := p.getModule()
+	module, err := p.getModule()
 	if err != nil {
 		return AST{}, err
 	}
-	return AST{Root: root}, nil
+	return AST{module}, nil
 }
 
 func New(tokens []lexer.Token) Parser {

@@ -142,8 +142,7 @@ _lste -> O_BRK _lstis C_BRK
 
 ### Expression
 ```
-_expr -> _adde
-      | _boole
+_expr -> _boole
       | _ife
       | _ble
       | _blep

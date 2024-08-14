@@ -7,8 +7,8 @@ type Node interface {
 }
 
 type OperationLiteralNode struct {
-	Value string
-	Token lexer.Token
+	Value string      `json:"value"`
+	Token lexer.Token `json:"-"`
 }
 
 func (oln OperationLiteralNode) Next() Node {
@@ -16,8 +16,8 @@ func (oln OperationLiteralNode) Next() Node {
 }
 
 type IdLiteralNode struct {
-	Value string
-	Token lexer.Token
+	Value string      `json:"value"`
+	Token lexer.Token `json:"-"`
 }
 
 func (iln IdLiteralNode) Next() Node {
@@ -25,8 +25,8 @@ func (iln IdLiteralNode) Next() Node {
 }
 
 type NumberLiteralNode struct {
-	Value uint64
-	Token lexer.Token
+	Value uint64      `json:"value"`
+	Token lexer.Token `json:"-"`
 }
 
 func (nln NumberLiteralNode) Next() Node {
@@ -34,8 +34,8 @@ func (nln NumberLiteralNode) Next() Node {
 }
 
 type UnaryExpressionNode struct {
-	Expression Node
-	Operation  OperationLiteralNode
+	Expression Node                 `json:"expression"`
+	Operation  OperationLiteralNode `json:"operation"`
 }
 
 func (uen UnaryExpressionNode) Next() Node {
@@ -43,9 +43,9 @@ func (uen UnaryExpressionNode) Next() Node {
 }
 
 type BinaryExpressionNode struct {
-	Left      Node
-	Right     Node
-	Operation OperationLiteralNode
+	Left      Node                 `json:"left"`
+	Right     Node                 `json:"right"`
+	Operation OperationLiteralNode `json:"operation"`
 }
 
 func (ben BinaryExpressionNode) Next() Node {
@@ -53,7 +53,7 @@ func (ben BinaryExpressionNode) Next() Node {
 }
 
 type PrimaryExpressionNode struct {
-	Expression Node
+	Expression Node `json:"expression"`
 }
 
 func (pen PrimaryExpressionNode) Next() Node {
@@ -61,17 +61,25 @@ func (pen PrimaryExpressionNode) Next() Node {
 }
 
 type BooleanExpression struct {
-	Left      Node
-	Right     Node
-	Operation OperationLiteralNode
+	Left      Node                 `json:"left"`
+	Right     Node                 `json:"right"`
+	Operation OperationLiteralNode `json:"operation"`
 }
 
 func (be BooleanExpression) Next() Node {
-  return nil
+	return nil
+}
+
+type BlockExpressionNode struct {
+	Statements []StatementNode `json:"statements"`
+}
+
+func (ben BlockExpressionNode) Next() Node {
+	return nil
 }
 
 type ExpressionNode struct {
-	Expression Node
+	Expression Node `json:"expression"`
 }
 
 func (en ExpressionNode) Next() Node {
@@ -79,8 +87,9 @@ func (en ExpressionNode) Next() Node {
 }
 
 type IdentStatementNode struct {
-	Name       lexer.Token
-	Expression Node
+	Id         string      `json:"id"`
+	Token      lexer.Token `json:"-"`
+	Expression Node        `json:"expression"`
 }
 
 func (isn IdentStatementNode) Next() Node {
@@ -88,14 +97,14 @@ func (isn IdentStatementNode) Next() Node {
 }
 
 type StatementNode struct {
-	Statement Node
+	Node Node `json:"node"`
 }
 
 func (sn StatementNode) Next() Node {
-	return sn.Statement
+	return sn.Node
 }
 
 type ModuleNode struct {
-	Name       string
-	Statements []StatementNode
+	Name       string          `json:"name"`
+	Statements []StatementNode `json:"statements"`
 }

@@ -14,4 +14,5 @@ const (
 	OpSma = 0x73
 	OpOBl = 0x7b
 	OpCBl = 0x7d
+	OpLab = 0x6c
 )

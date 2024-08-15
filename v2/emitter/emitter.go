@@ -78,7 +78,7 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: e.fill64Bits([]byte{}), Right: e.fill64Bits([]byte{})})
 
 		t = e.fill64Bits(e.genLabel())
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: make([]byte, 8), Left: latest.Label, Right: e.fill64Bits([]byte{})})
+		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: e.fill64Bits([]byte{OpLab}), Left: latest.Label, Right: e.fill64Bits([]byte{})})
 		return t
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
@@ -121,7 +121,7 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: make([]byte, 8), Left: e.getBytesFromUInt64(n.Value), Right: make([]byte, 8)})
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpLab}), Left: e.getBytesFromUInt64(n.Value), Right: make([]byte, 8)})
 		return t
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {

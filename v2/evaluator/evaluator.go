@@ -38,15 +38,22 @@ func (e *Evaluator) WalkLabel(bs []byte) []byte {
 func (e *Evaluator) exec(l, op, left, right []byte) error {
 	veb := op[7] // Verificator byte
 
+	if veb == emitter.OpLab {
+		e.labels[fmt.Sprintf("%x", l)] = left
+		return nil
+	}
+
 	if veb == emitter.OpPin { // Create a definition
 		if len(right) > 0 {
 			e.mem[fmt.Sprintf("%x", left)] = right
+			return nil
 		}
 		return nil
 	}
 	if veb == emitter.OpGet { // Get a definition
 		if v, ok := e.mem[fmt.Sprintf("%x", left)]; ok {
 			e.labels[fmt.Sprintf("%x", l)] = v
+			return nil
 		} else {
 			return errors.New(fmt.Sprintf("identifier %s not defined", left))
 		}
@@ -123,10 +130,6 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error) {
 	e.opcodes = opcodes
 	for _, oc := range e.opcodes {
-		if oc.Operation[7] == 0x0 {
-			e.labels[fmt.Sprintf("%x", oc.Label)] = oc.Left
-			continue
-		}
 		left := oc.Left
 		if e.IsLabel(left) {
 			left = e.WalkLabel(left)

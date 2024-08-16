@@ -15,6 +15,15 @@ func (oln OperationLiteralNode) Next() Node {
 	return nil
 }
 
+type CalleeLiteralNode struct {
+	Id     IdLiteralNode `json:"id"`
+	Params []Node        `json:"params"`
+}
+
+func (cln CalleeLiteralNode) Next() Node {
+	return nil
+}
+
 type IdLiteralNode struct {
 	Value string      `json:"value"`
 	Token lexer.Token `json:"-"`

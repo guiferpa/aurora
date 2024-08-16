@@ -80,7 +80,7 @@ func (be BooleanExpression) Next() Node {
 }
 
 type BlockExpressionNode struct {
-	Statements []StatementNode `json:"statements"`
+	Statements []Node `json:"statements"`
 }
 
 func (ben BlockExpressionNode) Next() Node {
@@ -93,6 +93,14 @@ type ExpressionNode struct {
 
 func (en ExpressionNode) Next() Node {
 	return en.Expression
+}
+
+type CallPrintStatementNode struct {
+	Param Node `json:"param"`
+}
+
+func (cpsn CallPrintStatementNode) Next() Node {
+	return nil
 }
 
 type IdentStatementNode struct {
@@ -114,6 +122,6 @@ func (sn StatementNode) Next() Node {
 }
 
 type ModuleNode struct {
-	Name       string          `json:"name"`
-	Statements []StatementNode `json:"statements"`
+	Name       string `json:"name"`
+	Statements []Node `json:"statements"`
 }

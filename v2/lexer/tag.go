@@ -34,6 +34,7 @@ const (
 	NUMBER     = "NUMBER"
 	WHITESPACE = "WHITESPACE"
 	BREAK_LINE = "BREAK_LINE"
+	CALL_PRINT = "CALL_PRINT" // print
 	EOF        = "EOF"
 )
 
@@ -46,6 +47,7 @@ type Tag struct {
 var (
 	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]"}
 	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+"}
+	TagCallPrint  = Tag{CALL_PRINT, "print", "^print"}
 	TagIdent      = Tag{IDENT, "ident", "^ident"}
 	TagAssign     = Tag{ASSIGN, "=", "^="}
 	TagOParen     = Tag{O_PAREN, "(", "^\\("}
@@ -93,6 +95,7 @@ var processableTags = []Tag{
 	TagComma,
 	TagColon,
 	TagSemicolon,
+	TagCallPrint,
 	TagId,
 	TagSum,
 	TagSub,

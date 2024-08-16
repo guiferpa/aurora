@@ -1,54 +1,44 @@
 package environ
 
 type Pool struct {
-	envs []*Environ
+	env *Environ
 }
 
 func (p *Pool) IsEmpty() bool {
-	return len(p.envs) == 0
+	return p.env == nil
 }
 
-func (p *Pool) Set(key string, claim Claim) {
-	if !p.IsEmpty() {
-		curr := p.envs[len(p.envs)-1]
-		curr.Set(key, claim)
+func (p *Pool) Set(key string, value []byte) {
+	if curr := p.Current(); curr != nil {
+		curr.Set(key, value)
 	}
 }
 
-func (p *Pool) Query(key string) Claim {
-	cursor := len(p.envs) - 1
-	curr := p.envs[cursor]
-	for ; cursor >= 0; cursor-- {
+func (p *Pool) Query(key string) []byte {
+	curr := p.env
+	for curr != nil {
 		if c := curr.Get(key); c != nil {
 			return c
 		}
-		curr = p.envs[cursor]
+		curr = curr.previous
 	}
 	return nil
 }
 
-func (p *Pool) Pop() *Environ {
+func (p *Pool) Ahead() {
+	p.env = New(p.env)
+}
+
+func (p *Pool) Back() {
 	if !p.IsEmpty() {
-		i := len(p.envs) - 1
-		t := p.envs[i]
-		p.envs = p.envs[:i]
-		return t
+		p.env = p.env.previous
 	}
-	return nil
-}
-
-func (p *Pool) Append(env *Environ) {
-	p.envs = append(p.envs, env)
 }
 
 func (p *Pool) Current() *Environ {
-	if !p.IsEmpty() {
-		return p.envs[len(p.envs)-1]
-	}
-	return nil
+	return p.env
 }
 
-func NewPool() *Pool {
-	environ := New()
-	return &Pool{[]*Environ{environ}}
+func NewPool(env *Environ) *Pool {
+	return &Pool{env}
 }

@@ -46,7 +46,7 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		if strings.Compare(scanner.Text(), "get_opcodes") == 0 {
-			print.Opcodes(os.Stdout, ev.GetOpCodes())
+			print.Opcodes(os.Stdout, ev.GetOpCodes(), false)
 			continue
 		}
 

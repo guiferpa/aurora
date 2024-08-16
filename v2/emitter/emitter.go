@@ -26,7 +26,7 @@ type emt struct {
 }
 
 func (e *emt) genLabel() []byte {
-	t := []byte(fmt.Sprintf("t%d", e.tmpc))
+	t := []byte(fmt.Sprintf("%dt", e.tmpc))
 	e.tmpc++
 	return t
 }
@@ -142,12 +142,18 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpCal}), Left: e.fill64Bits(n.Id.Token.GetMatch()), Right: e.fill64Bits([]byte{})})
 		return t
 	}
+	if n, ok := stmt.(parser.CallPrintStatementNode); ok {
+		tl := e.emitNode(n.Param)
+		t := e.genLabel()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpPrt}), Left: e.fill64Bits(tl), Right: e.fill64Bits([]byte{})})
+		return t
+	}
 	return make([]byte, 8)
 }
 
 func (e *emt) Emit() ([]OpCode, error) {
 	for _, stmt := range e.ast.Module.Statements {
-		e.emitNode(stmt.Node)
+		e.emitNode(stmt)
 	}
 	return e.opcodes, nil
 }

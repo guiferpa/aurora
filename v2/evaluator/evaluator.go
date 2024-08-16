@@ -1,7 +1,6 @@
 package evaluator
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -20,11 +19,11 @@ type Evaluator struct {
 	labels    map[string][]byte
 }
 
-func (e *Evaluator) IsLabel(bs []byte) bool {
+func IsLabel(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
 	}
-	if bs[6] == 0x74 { // t
+	if bs[len(bs) - 1] == 0x74 { // t
 		return true
 	}
 	return false
@@ -34,25 +33,20 @@ func (e *Evaluator) WalkLabel(bs []byte) []byte {
 	pbs := bs
 	bs = e.labels[fmt.Sprintf("%x", pbs)]
 	delete(e.labels, fmt.Sprintf("%x", pbs))
-	if e.IsLabel(bs) {
+	if IsLabel(bs) {
 		return e.WalkLabel(bs)
 	}
 	return bs
 }
 
-func (e *Evaluator) isEqualString(bs []byte, t string) bool {
-	bsc := make([]byte, 0)
-	for i := 0; i < len(bs); i++ {
-		b := bs[i]
-		if b == 0x0 {
-			continue
-		}
-		bsc = append(bsc, b)
-	}
-	return bytes.Compare(bsc, []byte(t)) == 0
-}
-
 func (e *Evaluator) exec(l, op, left, right []byte) error {
+	if IsLabel(left) {
+		left = e.WalkLabel(left)
+	}
+	if IsLabel(right) {
+		right = e.WalkLabel(right)
+	}
+
 	veb := op[7] // Verificator byte
 
 	if veb == emitter.OpLab {
@@ -62,7 +56,7 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 	if veb == emitter.OpPin { // Create a definition
 		if len(right) > 0 {
 			k := fmt.Sprintf("%x", left)
-			e.envpool.Set(k, environ.TransportClaim(right))
+			e.envpool.Set(k, right)
 			return nil
 		}
 		return nil
@@ -70,35 +64,37 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 	if veb == emitter.OpGet { // Get a definition
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.Query(k); v != nil {
-			e.labels[fmt.Sprintf("%x", l)] = v.Bytes()
+			e.labels[fmt.Sprintf("%x", l)] = v
 			return nil
 		}
 		return errors.New(fmt.Sprintf("identifier %s not defined", left))
 	}
 
 	if veb == emitter.OpOBl { // Open scope for block
-		e.envpool.Append(environ.New())
+		e.envpool.Ahead()
 		return nil
 	}
 
 	if veb == emitter.OpCBl { // Close scope for block
-		e.envpool.Pop()
+		e.envpool.Back()
 		return nil
 	}
 
 	if veb == emitter.OpPar {
+		fmt.Println(fmt.Sprintf("%x", left), fmt.Sprintf("%s", left))
 		e.params = append(e.params, left)
 		return nil
 	}
 
+	if veb == emitter.OpPrt {
+		builtin.PrintFunction(left)
+		return nil
+	}
+
 	if veb == emitter.OpCal {
-		e.envpool.Append(environ.New())
-		e.envpool.Pop()
-		if e.isEqualString(left, "print") {
-			builtin.PrintFunction(e.params[0])
-			e.params = make([][]byte, 0)
-			return nil
-		}
+		e.envpool.Ahead()
+		fmt.Println(e.params)
+		e.envpool.Back()
 		e.params = make([][]byte, 0)
 		return nil
 	}
@@ -166,15 +162,7 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error) {
 	e.opcodes = opcodes
 	for _, oc := range e.opcodes {
-		left := oc.Left
-		if e.IsLabel(left) {
-			left = e.WalkLabel(left)
-		}
-		right := oc.Right
-		if e.IsLabel(right) {
-			right = e.WalkLabel(right)
-		}
-		if err := e.exec(oc.Label, oc.Operation, left, right); err != nil {
+		if err := e.exec(oc.Label, oc.Operation, oc.Left, oc.Right); err != nil {
 			return nil, err
 		}
 	}
@@ -192,7 +180,7 @@ func (e *Evaluator) GetOpCodes() []emitter.OpCode {
 }
 
 func New() *Evaluator {
-	pool := environ.NewPool()
+	pool := environ.NewPool(environ.New(nil))
 	params := make([][]byte, 0)
 	functions := make(map[string][]emitter.OpCode, 0)
 	opcodes := make([]emitter.OpCode, 0)

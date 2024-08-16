@@ -129,6 +129,11 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpGet}), Left: e.fill64Bits(n.Token.GetMatch()), Right: e.fill64Bits([]byte{})})
 		return t
 	}
+	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
+		t := e.genLabel()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpCal}), Left: e.fill64Bits(n.Id.Token.GetMatch()), Right: e.fill64Bits([]byte{})})
+		return t
+	}
 	return make([]byte, 8)
 }
 

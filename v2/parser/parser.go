@@ -20,12 +20,34 @@ type pr struct {
 	tokens []lexer.Token
 }
 
-func (p *pr) getId() (IdLiteralNode, error) {
+func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
+	params := make([]Node, 0)
+	if p.GetLookahead().GetTag().Id != lexer.O_PAREN {
+		return id, nil
+	}
+	p.EatToken(lexer.O_PAREN)
+	for p.GetLookahead().GetTag().Id != lexer.C_PAREN {
+		expr, err := p.getExpr()
+		if err != nil {
+			return nil, err
+		}
+		params = append(params, expr)
+		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
+			break
+		}
+		p.EatToken(lexer.COMMA)
+	}
+	p.EatToken(lexer.C_PAREN)
+	return CalleeLiteralNode{id, params}, nil
+}
+
+func (p *pr) getId() (Node, error) {
 	tok, err := p.EatToken(lexer.ID)
 	if err != nil {
-		return IdLiteralNode{}, err
+		return nil, err
 	}
-	return IdLiteralNode{fmt.Sprintf("%s", tok.GetMatch()), tok}, nil
+	id := IdLiteralNode{fmt.Sprintf("%s", tok.GetMatch()), tok}
+	return p.getCallee(id)
 }
 
 func (p *pr) getNum() (NumberLiteralNode, error) {

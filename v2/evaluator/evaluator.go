@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -36,6 +37,18 @@ func (e *Evaluator) WalkLabel(bs []byte) []byte {
 	return bs
 }
 
+func (e *Evaluator) isEqualString(bs []byte, t string) bool {
+	bsc := make([]byte, 0)
+	for i := 0; i < len(bs); i++ {
+		b := bs[i]
+		if b == 0x0 {
+			continue
+		}
+		bsc = append(bsc, b)
+	}
+	return bytes.Compare(bsc, []byte(t)) == 0
+}
+
 func (e *Evaluator) exec(l, op, left, right []byte) error {
 	veb := op[7] // Verificator byte
 
@@ -43,7 +56,6 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 		e.labels[fmt.Sprintf("%x", l)] = left
 		return nil
 	}
-
 	if veb == emitter.OpPin { // Create a definition
 		if len(right) > 0 {
 			k := fmt.Sprintf("%x", left)
@@ -68,6 +80,13 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 
 	if veb == emitter.OpCBl { // Close scope for block
 		e.envpool.Pop()
+		return nil
+	}
+
+	if veb == emitter.OpCal {
+		if e.isEqualString(left, "print") {
+			fmt.Printf("%s\n", right)
+		}
 		return nil
 	}
 

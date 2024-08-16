@@ -8,13 +8,16 @@ import (
 	"math"
 
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator/builtin"
 	"github.com/guiferpa/aurora/evaluator/environ"
 )
 
 type Evaluator struct {
-	envpool *environ.Pool
-	opcodes []emitter.OpCode
-	labels  map[string][]byte
+	envpool   *environ.Pool
+	params    [][]byte
+	functions map[string][]emitter.OpCode
+	opcodes   []emitter.OpCode
+	labels    map[string][]byte
 }
 
 func (e *Evaluator) IsLabel(bs []byte) bool {
@@ -83,10 +86,20 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 		return nil
 	}
 
+	if veb == emitter.OpPar {
+		e.params = append(e.params, left)
+		return nil
+	}
+
 	if veb == emitter.OpCal {
+		e.envpool.Append(environ.New())
+		e.envpool.Pop()
 		if e.isEqualString(left, "print") {
-			fmt.Printf("%s\n", right)
+			builtin.PrintFunction(e.params[0])
+			e.params = make([][]byte, 0)
+			return nil
 		}
+		e.params = make([][]byte, 0)
 		return nil
 	}
 
@@ -179,5 +192,11 @@ func (e *Evaluator) GetOpCodes() []emitter.OpCode {
 }
 
 func New() *Evaluator {
-	return &Evaluator{environ.NewPool(), make([]emitter.OpCode, 0), make(map[string][]byte)}
+	pool := environ.NewPool()
+	params := make([][]byte, 0)
+	functions := make(map[string][]emitter.OpCode, 0)
+	opcodes := make([]emitter.OpCode, 0)
+	labels := make(map[string][]byte, 0)
+
+	return &Evaluator{pool, params, functions, opcodes, labels}
 }

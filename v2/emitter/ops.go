@@ -16,4 +16,5 @@ const (
 	OpCBl = 0x7d
 	OpLab = 0x6c
 	OpCal = 0x63
+	OpPar = 0x70
 )

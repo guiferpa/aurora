@@ -58,6 +58,13 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		t := e.genLabel()
 		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpPin}), Left: e.fill64Bits(n.Token.GetMatch()), Right: e.fill64Bits(texpr)})
 	}
+	if n, ok := stmt.(parser.FuncExpressionNode); ok {
+		t := e.genLabel()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpFun}), Left: e.fill64Bits([]byte(n.Ref)), Right: e.fill64Bits([]byte{})})
+		t = e.genLabel()
+		e.opcodes = append(e.opcodes, OpCode{Label: e.fill64Bits(t), Operation: e.fill64Bits([]byte{OpLab}), Left: e.fill64Bits([]byte(n.Ref)), Right: e.fill64Bits([]byte{})})
+		return t
+	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitNode(n.Expression)
 	}

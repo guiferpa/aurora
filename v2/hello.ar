@@ -2,6 +2,12 @@ ident r = 1;
 {
   ident b = 3;
   {
-    print(100);
+    print((r * b) bigger 3);
   };
 };
+
+ident sum = fun (a, b) {
+  a + b;
+};
+
+print(sum);

@@ -40,9 +40,8 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		if strings.Compare(scanner.Text(), "get_memory") == 0 {
-			for k, v := range ev.GetMemory() {
-				fmt.Printf("%s: %x\n", k, v)
-			}
+			env := ev.GetEnvironPool().Current()
+			env.Print(os.Stdout)
 			continue
 		}
 

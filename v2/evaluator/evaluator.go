@@ -7,10 +7,11 @@ import (
 	"math"
 
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator/environ"
 )
 
 type Evaluator struct {
-	mem     map[string][]byte
+	envpool *environ.Pool
 	opcodes []emitter.OpCode
 	labels  map[string][]byte
 }
@@ -45,25 +46,28 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 
 	if veb == emitter.OpPin { // Create a definition
 		if len(right) > 0 {
-			e.mem[fmt.Sprintf("%x", left)] = right
+			k := fmt.Sprintf("%x", left)
+			e.envpool.Set(k, environ.TransportClaim(right))
 			return nil
 		}
 		return nil
 	}
 	if veb == emitter.OpGet { // Get a definition
-		if v, ok := e.mem[fmt.Sprintf("%x", left)]; ok {
-			e.labels[fmt.Sprintf("%x", l)] = v
+		k := fmt.Sprintf("%x", left)
+		if v := e.envpool.Query(k); v != nil {
+			e.labels[fmt.Sprintf("%x", l)] = v.Bytes()
 			return nil
-		} else {
-			return errors.New(fmt.Sprintf("identifier %s not defined", left))
 		}
+		return errors.New(fmt.Sprintf("identifier %s not defined", left))
 	}
 
 	if veb == emitter.OpOBl { // Open scope for block
+		e.envpool.Append(environ.New())
 		return nil
 	}
 
 	if veb == emitter.OpCBl { // Close scope for block
+		e.envpool.Pop()
 		return nil
 	}
 
@@ -147,8 +151,8 @@ func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error
 	return labels, nil
 }
 
-func (e *Evaluator) GetMemory() map[string][]byte {
-	return e.mem
+func (e *Evaluator) GetEnvironPool() *environ.Pool {
+	return e.envpool
 }
 
 func (e *Evaluator) GetOpCodes() []emitter.OpCode {
@@ -156,5 +160,5 @@ func (e *Evaluator) GetOpCodes() []emitter.OpCode {
 }
 
 func New() *Evaluator {
-	return &Evaluator{make(map[string][]byte), make([]emitter.OpCode, 0), make(map[string][]byte)}
+	return &Evaluator{environ.NewPool(), make([]emitter.OpCode, 0), make(map[string][]byte)}
 }

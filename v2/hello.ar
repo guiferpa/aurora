@@ -1,3 +1,7 @@
-ident a = 1;
-
-print(a + 2 * 10);
+ident r = 1;
+{
+  ident b = 3;
+  {
+    print(100);
+  };
+};

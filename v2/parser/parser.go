@@ -289,14 +289,24 @@ func (p *pr) getIdent() (IdentStatementNode, error) {
 	return IdentStatementNode{fmt.Sprintf("%s", id.GetMatch()), id, expr}, nil
 }
 
-func (p *pr) getStmt() (StatementNode, error) {
+func (p *pr) getCallPrint() (Node, error) {
+	p.EatToken(lexer.CALL_PRINT)
+	p.EatToken(lexer.O_PAREN)
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	p.EatToken(lexer.C_PAREN)
+	return CallPrintStatementNode{expr}, nil
+}
+
+func (p *pr) getStmt() (Node, error) {
 	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.CALL_PRINT {
+		return p.getCallPrint()
+	}
 	if lookahead.GetTag().Id == lexer.IDENT {
-		ident, err := p.getIdent()
-		if err != nil {
-			return StatementNode{}, err
-		}
-		return StatementNode{ident}, nil
+		return p.getIdent()
 	}
 	expr, err := p.getExpr()
 	if err != nil {
@@ -305,8 +315,8 @@ func (p *pr) getStmt() (StatementNode, error) {
 	return StatementNode{expr}, nil
 }
 
-func (p *pr) getStmts(t lexer.Tag) ([]StatementNode, error) {
-	stmts := make([]StatementNode, 0)
+func (p *pr) getStmts(t lexer.Tag) ([]Node, error) {
+	stmts := make([]Node, 0)
 	for p.GetLookahead().GetTag().Id != t.Id {
 		stmt, err := p.getStmt()
 		if err != nil {

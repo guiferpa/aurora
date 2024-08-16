@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+//	"github.com/guiferpa/aurora/print" just for debugger
 	"github.com/guiferpa/aurora/repl"
-	"github.com/guiferpa/aurora/evaluator"
 )
 
 func run(args []string) {
@@ -35,7 +37,12 @@ func run(args []string) {
 		fmt.Println(err)
 		os.Exit(4)
 	}
-	evaluator.New().Evaluate(opcodes)
+	ev := evaluator.New()
+	if _, err := ev.Evaluate(opcodes); err != nil {
+		color.Red("%v", err)
+		os.Exit(5)
+	}
+	// print.Opcodes(os.Stdout, ev.GetOpCodes(), true) just for debugger
 }
 
 func main() {

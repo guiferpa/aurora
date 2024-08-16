@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/guiferpa/aurora/lexer"
 )
@@ -261,26 +262,57 @@ func (p *pr) getBlockExpr() (Node, error) {
 	return BlockExpressionNode{stmts}, nil
 }
 
+func (p *pr) getFunc() (Node, error) {
+	p.EatToken(lexer.FUNC)
+	p.EatToken(lexer.O_PAREN)
+	arity := make([]Node, 0)
+	for p.GetLookahead().GetTag().Id != lexer.C_PAREN {
+		expr, err := p.getExpr()
+		if err != nil {
+			return nil, err
+		}
+		arity = append(arity, expr)
+		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
+			break
+		}
+		p.EatToken(lexer.COMMA)
+	}
+	p.EatToken(lexer.C_PAREN)
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+		return nil, err
+	}
+	stmts, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+	p.EatToken(lexer.C_CUR_BRK)
+	ref := fmt.Sprintf("%d", time.Now().Nanosecond())
+	return FuncExpressionNode{ref, arity, stmts}, nil
+}
+
 func (p *pr) getExpr() (Node, error) {
 	if p.GetLookahead().GetTag().Id == lexer.O_CUR_BRK {
 		return p.getBlockExpr()
 	}
+	if p.GetLookahead().GetTag().Id == lexer.FUNC {
+		return p.getFunc()
+	}
 	return p.getBoolExpr()
 }
 
-func (p *pr) getIdent() (IdentStatementNode, error) {
+func (p *pr) getIdent() (Node, error) {
 	if _, err := p.EatToken(lexer.IDENT); err != nil {
 		return IdentStatementNode{}, err
 	}
 	id, err := p.EatToken(lexer.ID)
 	if len(id.GetMatch()) == 0 {
-		return IdentStatementNode{}, errors.New(fmt.Sprintf("missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn()))
+		return nil, errors.New(fmt.Sprintf("missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn()))
 	}
 	if err != nil {
-		return IdentStatementNode{}, err
+		return nil, err
 	}
 	if _, err := p.EatToken(lexer.ASSIGN); err != nil {
-		return IdentStatementNode{}, err
+		return nil, err
 	}
 	expr, err := p.getExpr()
 	if err != nil {

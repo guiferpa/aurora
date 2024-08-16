@@ -23,7 +23,7 @@ func IsLabel(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
 	}
-	if bs[len(bs) - 1] == 0x74 { // t
+	if bs[len(bs)-1] == 0x74 { // t
 		return true
 	}
 	return false
@@ -57,7 +57,13 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 		if len(right) > 0 {
 			k := fmt.Sprintf("%x", left)
 			e.envpool.Set(k, right)
-			return nil
+		}
+		return nil
+	}
+	if veb == emitter.OpFun {
+		if len(right) > 0 {
+			k := fmt.Sprintf("%x", left)
+			e.envpool.Set(k, right)
 		}
 		return nil
 	}

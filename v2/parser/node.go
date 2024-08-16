@@ -87,6 +87,16 @@ func (ben BlockExpressionNode) Next() Node {
 	return nil
 }
 
+type FuncExpressionNode struct {
+	Ref   string `json:"id"`
+	Arity []Node `json:"arity"`
+	Body  []Node `json:"body"`
+}
+
+func (fen FuncExpressionNode) Next() Node {
+	return nil
+}
+
 type ExpressionNode struct {
 	Expression Node `json:"expression"`
 }

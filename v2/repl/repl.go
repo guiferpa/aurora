@@ -77,7 +77,7 @@ func Start(in io.Reader, out io.Writer) {
 		}
 		s := color.New(color.FgWhite, color.Bold).Sprint("=")
 		for _, v := range labels {
-			if len(v) == 8 {
+			if len(v) >= 8 {
 				d := binary.BigEndian.Uint64(v)
 				fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%d", d))
 			}

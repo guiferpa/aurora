@@ -15,9 +15,17 @@ func (oln OperationLiteralNode) Next() Node {
 	return nil
 }
 
+type ParameterLiteralNode struct {
+	Expression Node `json:"expression"`
+}
+
+func (pln ParameterLiteralNode) Next() Node {
+	return pln.Expression
+}
+
 type CalleeLiteralNode struct {
-	Id     IdLiteralNode `json:"id"`
-	Params []Node        `json:"params"`
+	Id     IdLiteralNode          `json:"id"`
+	Params []ParameterLiteralNode `json:"params"`
 }
 
 func (cln CalleeLiteralNode) Next() Node {
@@ -88,9 +96,9 @@ func (ben BlockExpressionNode) Next() Node {
 }
 
 type FuncExpressionNode struct {
-	Ref   string `json:"id"`
-	Arity []Node `json:"arity"`
-	Body  []Node `json:"body"`
+	Ref   string          `json:"id"`
+	Arity []IdLiteralNode `json:"arity"`
+	Body  []Node          `json:"body"`
 }
 
 func (fen FuncExpressionNode) Next() Node {

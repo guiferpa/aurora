@@ -126,7 +126,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		k = fmt.Sprintf("%x", v)
 		v = e.envpool.Query(k)
 		if v == nil {
-			return errors.New(fmt.Sprintf("identifier %s is not a function", left))
+			return errors.New(fmt.Sprintf("identifier %s is not callable", left))
 		}
 
 		e.envpool.Ahead()

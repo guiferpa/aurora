@@ -2,7 +2,7 @@ ident r = 1;
 {
   ident b = 3;
   {
-    print((r * b + 1) bigger 3);
+    print(r + b);
   };
 };
 

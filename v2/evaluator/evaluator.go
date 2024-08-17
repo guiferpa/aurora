@@ -19,7 +19,19 @@ type Evaluator struct {
 	labels    map[string][]byte
 }
 
-func IsLabel(bs []byte) bool {
+func Padding64Bits(bfs []byte) []byte {
+	const size = 8
+	if len(bfs) >= size {
+		return bfs
+	}
+	bs := make([]byte, size)
+	for i := 0; i < len(bfs); i++ {
+		bs[(size-len(bfs))+i] = bfs[i]
+	}
+	return bs
+}
+
+func IsLabels(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
 	}
@@ -29,28 +41,28 @@ func IsLabel(bs []byte) bool {
 	return false
 }
 
-func (e *Evaluator) WalkLabel(bs []byte) []byte {
+func (e *Evaluator) WalkLabels(bs []byte) []byte {
 	pbs := bs
 	bs = e.labels[fmt.Sprintf("%x", pbs)]
 	delete(e.labels, fmt.Sprintf("%x", pbs))
-	if IsLabel(bs) {
-		return e.WalkLabel(bs)
+	if IsLabels(bs) {
+		return e.WalkLabels(bs)
 	}
 	return bs
 }
 
-func (e *Evaluator) exec(l, op, left, right []byte) error {
-	if IsLabel(left) {
-		left = e.WalkLabel(left)
+func (e *Evaluator) exec(label, op, left, right []byte) error {
+	if IsLabels(left) {
+		left = e.WalkLabels(left)
 	}
-	if IsLabel(right) {
-		right = e.WalkLabel(right)
+	if IsLabels(right) {
+		right = e.WalkLabels(right)
 	}
 
-	veb := op[7] // Verificator byte
+	veb := op[len(op)-1] // Verificator byte
 
 	if veb == emitter.OpLab {
-		e.labels[fmt.Sprintf("%x", l)] = left
+		e.labels[fmt.Sprintf("%x", label)] = left
 		return nil
 	}
 	if veb == emitter.OpPin { // Create a definition
@@ -70,7 +82,7 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 	if veb == emitter.OpGet { // Get a definition
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.Query(k); v != nil {
-			e.labels[fmt.Sprintf("%x", l)] = v
+			e.labels[fmt.Sprintf("%x", label)] = v
 			return nil
 		}
 		return errors.New(fmt.Sprintf("identifier %s not defined", left))
@@ -87,7 +99,6 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 	}
 
 	if veb == emitter.OpPar {
-		fmt.Println(fmt.Sprintf("%x", left), fmt.Sprintf("%s", left))
 		e.params = append(e.params, left)
 		return nil
 	}
@@ -98,69 +109,89 @@ func (e *Evaluator) exec(l, op, left, right []byte) error {
 	}
 
 	if veb == emitter.OpCal {
-		e.envpool.Ahead()
-		fmt.Println(e.params)
-		e.envpool.Back()
+		params := e.params
 		e.params = make([][]byte, 0)
+
+		k := fmt.Sprintf("%x", left)
+		v := e.envpool.Query(k)
+		if v == nil {
+			return errors.New(fmt.Sprintf("identifier %s not defined", left))
+		}
+
+		k = fmt.Sprintf("%x", v)
+		v = e.envpool.Query(k)
+		if v == nil {
+			return errors.New(fmt.Sprintf("identifier %s is not a function", left))
+		}
+
+		e.envpool.Ahead()
+
+		for _, p := range params {
+			fmt.Println(p)
+		}
+
+		e.envpool.Back()
+
 		return nil
 	}
 
-	a := binary.BigEndian.Uint64(left)
-	b := binary.BigEndian.Uint64(right)
+	a := binary.BigEndian.Uint64(Padding64Bits(left))
+	b := binary.BigEndian.Uint64(Padding64Bits(right))
 
 	if veb == emitter.OpEqu {
-		r := make([]byte, 8)
+		r := make([]byte, 1)
 		if a == b {
-			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpDif {
-		r := make([]byte, 8)
+		r := make([]byte, 1)
 		if a != b {
-			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpBig {
-		r := make([]byte, 8)
+		r := make([]byte, 1)
 		if a > b {
-			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpSma {
-		r := make([]byte, 8)
+		r := make([]byte, 1)
 		if a < b {
-			r = []byte{0, 0, 0, 0, 0, 0, 0, 1}
+			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
+
 	if veb == emitter.OpMul {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpSub {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpDiv {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	if veb == emitter.OpExp {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
 		binary.BigEndian.PutUint64(r, uint64(v))
-		e.labels[fmt.Sprintf("%x", l)] = r
+		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 	return nil
 }

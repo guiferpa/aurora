@@ -1,22 +1,22 @@
 package emitter
 
 const (
-	OpMul = 0x2a
-	OpAdd = 0x2b
-	OpSub = 0x2d
-	OpDiv = 0x2f
-	OpExp = 0x5e
-	OpPin = 0x24
-	OpGet = 0x67
-	OpBig = 0x62
-	OpDif = 0x64
-	OpEqu = 0x65
-	OpSma = 0x73
-	OpOBl = 0x7b
-	OpCBl = 0x7d
-	OpLab = 0x6c
-	OpCal = 0x63
-	OpPar = 0x70
-	OpPrt = 0x50
-	OpFun = 0x46
+	OpMultiply    = 0x01
+	OpAdd         = 0x02
+	OpSubstract   = 0x03
+	OpDivide      = 0x04
+	OpExponential = 0x05
+	OpIdentify    = 0x06
+	OpLoad        = 0x07
+	OpBigger      = 0x08
+	OpDiff        = 0x09
+	OpEquals      = 0x0a
+	OpSmaller     = 0x0b
+	OpOBlock      = 0x0c
+	OpCBlock      = 0x0d
+	OpLabel       = 0x0e
+	OpCall        = 0x0f
+	OpParameter   = 0x10
+	OpPrint       = 0x11
+	OpFunction    = 0x12
 )

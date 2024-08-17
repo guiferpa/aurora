@@ -32,13 +32,13 @@ func run(args []string) {
 		fmt.Println(err)
 		os.Exit(3)
 	}
-	opcodes, err := emitter.New(ast).Emit()
+	insts, err := emitter.New(ast).Emit()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(4)
 	}
 	ev := evaluator.New()
-	if _, err := ev.Evaluate(opcodes); err != nil {
+	if _, err := ev.Evaluate(insts); err != nil {
 		color.Red("%v", err)
 		os.Exit(5)
 	}

@@ -8,21 +8,14 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-type OpCode struct {
-	Label     []byte
-	Operation []byte
-	Left      []byte
-	Right     []byte
-}
-
 type Emitter interface {
-	Emit() ([]OpCode, error)
+	Emit() ([]Instruction, error)
 }
 
 type emt struct {
-	ast     parser.AST
-	tmpc    int
-	opcodes []OpCode
+	ast   parser.AST
+	tmpc  int
+	insts []Instruction
 }
 
 func (e *emt) genLabel() []byte {
@@ -42,117 +35,117 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		return e.emitNode(n.Node)
 	}
 	if n, ok := stmt.(parser.IdentStatementNode); ok {
-		texpr := e.emitNode(n.Expression)
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: []byte{OpPin}, Left: n.Token.GetMatch(), Right: texpr})
+		ll := n.Token.GetMatch()
+		lr := e.emitNode(n.Expression)
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpIdentify, ll, lr))
 	}
 	if n, ok := stmt.(parser.FuncExpressionNode); ok {
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: []byte{OpFun}, Left: []byte(n.Ref), Right: []byte{}})
-		t = e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: []byte{OpLab}, Left: []byte(n.Ref), Right: []byte{}})
-		return t
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpFunction, []byte(n.Ref), nil))
+
+		l = e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpLabel, []byte(n.Ref), nil))
+		return l
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitNode(n.Expression)
 	}
 	if n, ok := stmt.(parser.BlockExpressionNode); ok {
-		t := e.genLabel()
-		op := []byte{OpOBl}
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: []byte{}, Right: ([]byte{})})
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpOBlock, nil, nil))
 
 		for _, stmt := range n.Statements {
 			e.emitNode(stmt)
 		}
 
-		latest := e.opcodes[len(e.opcodes)-1]
-		isEmpty := bytes.Compare(latest.Label, t) == 0
-		op = ([]byte{OpCBl})
-		t = (e.genLabel())
+		latest := e.insts[len(e.insts)-1]
+		isEmpty := bytes.Compare(latest.GetLabel(), l) == 0
+		l = e.genLabel()
 		if isEmpty {
-			e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: ([]byte{}), Right: ([]byte{})})
-			return t
+			e.insts = append(e.insts, NewInstruction(l, OpCBlock, nil, nil))
+			return l
 		}
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: op, Left: ([]byte{}), Right: ([]byte{})})
+		e.insts = append(e.insts, NewInstruction(l, OpCBlock, nil, nil))
 
-		t = (e.genLabel())
-		e.opcodes = append(e.opcodes, OpCode{Label: t, Operation: ([]byte{OpLab}), Left: latest.Label, Right: ([]byte{})})
-		return t
+		l = e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpLabel, latest.GetLabel(), nil))
+		return l
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
-		tl := e.emitNode(n.Left)
-		tr := e.emitNode(n.Right)
-		op := make([]byte, 0)
+		ll := e.emitNode(n.Left)
+		lr := e.emitNode(n.Right)
+		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "equals":
-			op = ([]byte{OpEqu})
+			op = OpEquals
 		case "different":
-			op = ([]byte{OpDif})
+			op = OpDiff
 		case "bigger":
-			op = ([]byte{OpBig})
+			op = OpBigger
 		case "smaller":
-			op = ([]byte{OpSma})
+			op = OpSmaller
 		}
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: op, Left: (tl), Right: (tr)})
-		return t
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		return l
 	}
 	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
-		tl := e.emitNode(n.Left)
-		tr := e.emitNode(n.Right)
-		op := make([]byte, 0)
+		ll := e.emitNode(n.Left)
+		lr := e.emitNode(n.Right)
+		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "*":
-			op = ([]byte{OpMul})
+			op = OpMultiply
 		case "+":
-			op = ([]byte{OpAdd})
+			op = OpAdd
 		case "-":
-			op = ([]byte{OpSub})
+			op = OpSubstract
 		case "/":
-			op = ([]byte{OpSub})
+			op = OpDivide
 		case "^":
-			op = ([]byte{OpExp})
+			op = OpExponential
 		}
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: op, Left: (tl), Right: (tr)})
-		return t
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		return l
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: ([]byte{OpLab}), Left: e.getBytesFromUInt64(n.Value), Right: make([]byte, 0)})
-		return t
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpLabel, e.getBytesFromUInt64(n.Value), nil))
+		return l
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: ([]byte{OpGet}), Left: (n.Token.GetMatch()), Right: ([]byte{})})
-		return t
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
+		return l
 	}
 	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
 		for _, p := range n.Params {
-			pn := e.emitNode(p)
-			t := e.genLabel()
-			e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: ([]byte{OpPar}), Left: (pn), Right: ([]byte{})})
+			ll := e.emitNode(p)
+			l := e.genLabel()
+			e.insts = append(e.insts, NewInstruction(l, OpParameter, ll, nil))
 		}
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: ([]byte{OpCal}), Left: (n.Id.Token.GetMatch()), Right: ([]byte{})})
-		return t
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
+		return l
 	}
 	if n, ok := stmt.(parser.CallPrintStatementNode); ok {
-		tl := e.emitNode(n.Param)
-		t := e.genLabel()
-		e.opcodes = append(e.opcodes, OpCode{Label: (t), Operation: ([]byte{OpPrt}), Left: (tl), Right: ([]byte{})})
-		return t
+		ll := e.emitNode(n.Param)
+		l := e.genLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpPrint, ll, nil))
+		return l
 	}
 	return make([]byte, 8)
 }
 
-func (e *emt) Emit() ([]OpCode, error) {
+func (e *emt) Emit() ([]Instruction, error) {
 	for _, stmt := range e.ast.Module.Statements {
 		e.emitNode(stmt)
 	}
-	return e.opcodes, nil
+	return e.insts, nil
 }
 
 func New(ast parser.AST) *emt {
-	return &emt{ast, 0, make([]OpCode, 0)}
+	return &emt{ast, 0, make([]Instruction, 0)}
 }

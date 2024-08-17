@@ -18,63 +18,62 @@ type emt struct {
 	insts []Instruction
 }
 
-func (e *emt) genLabel() []byte {
+func (e *emt) generateLabel() []byte {
 	t := []byte(fmt.Sprintf("%dt", e.tmpc))
 	e.tmpc++
 	return t
 }
 
-func (e *emt) getBytesFromUInt64(v uint64) []byte {
+func (e *emt) bytesFromUInt64(v uint64) []byte {
 	r := make([]byte, 8)
 	binary.BigEndian.PutUint64(r, v)
 	return r
 }
 
-func (e *emt) emitNode(stmt parser.Node) []byte {
+func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
-		return e.emitNode(n.Node)
+		return e.emitInstruction(n.Node)
 	}
 	if n, ok := stmt.(parser.IdentStatementNode); ok {
 		ll := n.Token.GetMatch()
-		lr := e.emitNode(n.Expression)
-		l := e.genLabel()
+		lr := e.emitInstruction(n.Expression)
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpIdentify, ll, lr))
 	}
 	if n, ok := stmt.(parser.FuncExpressionNode); ok {
-		l := e.genLabel()
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpFunction, []byte(n.Ref), nil))
 
-		l = e.genLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpLabel, []byte(n.Ref), nil))
+		l = e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpSave, []byte(n.Ref), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
-		return e.emitNode(n.Expression)
+		return e.emitInstruction(n.Expression)
 	}
 	if n, ok := stmt.(parser.BlockExpressionNode); ok {
-		l := e.genLabel()
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpOBlock, nil, nil))
 
 		for _, stmt := range n.Statements {
-			e.emitNode(stmt)
+			e.emitInstruction(stmt)
 		}
 
 		latest := e.insts[len(e.insts)-1]
 		isEmpty := bytes.Compare(latest.GetLabel(), l) == 0
-		l = e.genLabel()
+		l = e.generateLabel()
 		if isEmpty {
-			e.insts = append(e.insts, NewInstruction(l, OpCBlock, nil, nil))
-			return l
+			e.insts = append(e.insts, NewInstruction(l, OpSave, nil, nil))
+		} else {
+			e.insts = append(e.insts, NewInstruction(l, OpSave, latest.GetLabel(), nil))
 		}
-		e.insts = append(e.insts, NewInstruction(l, OpCBlock, nil, nil))
 
-		l = e.genLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpLabel, latest.GetLabel(), nil))
+		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpCBlock, nil, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
-		ll := e.emitNode(n.Left)
-		lr := e.emitNode(n.Right)
+		ll := e.emitInstruction(n.Left)
+		lr := e.emitInstruction(n.Right)
 		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "equals":
@@ -86,13 +85,13 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		case "smaller":
 			op = OpSmaller
 		}
-		l := e.genLabel()
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
 		return l
 	}
 	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
-		ll := e.emitNode(n.Left)
-		lr := e.emitNode(n.Right)
+		ll := e.emitInstruction(n.Left)
+		lr := e.emitInstruction(n.Right)
 		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "*":
@@ -106,33 +105,33 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 		case "^":
 			op = OpExponential
 		}
-		l := e.genLabel()
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
 		return l
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
-		l := e.genLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpLabel, e.getBytesFromUInt64(n.Value), nil))
+		l := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpSave, e.bytesFromUInt64(n.Value), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {
-		l := e.genLabel()
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
 		for _, p := range n.Params {
-			ll := e.emitNode(p)
-			l := e.genLabel()
+			ll := e.emitInstruction(p)
+			l := e.generateLabel()
 			e.insts = append(e.insts, NewInstruction(l, OpParameter, ll, nil))
 		}
-		l := e.genLabel()
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.CallPrintStatementNode); ok {
-		ll := e.emitNode(n.Param)
-		l := e.genLabel()
+		ll := e.emitInstruction(n.Param)
+		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpPrint, ll, nil))
 		return l
 	}
@@ -141,7 +140,7 @@ func (e *emt) emitNode(stmt parser.Node) []byte {
 
 func (e *emt) Emit() ([]Instruction, error) {
 	for _, stmt := range e.ast.Module.Statements {
-		e.emitNode(stmt)
+		e.emitInstruction(stmt)
 	}
 	return e.insts, nil
 }

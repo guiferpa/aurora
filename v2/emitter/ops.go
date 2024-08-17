@@ -14,7 +14,7 @@ const (
 	OpSmaller     = 0x0b
 	OpOBlock      = 0x0c
 	OpCBlock      = 0x0d
-	OpLabel       = 0x0e
+	OpSave        = 0x0e
 	OpCall        = 0x0f
 	OpParameter   = 0x10
 	OpPrint       = 0x11

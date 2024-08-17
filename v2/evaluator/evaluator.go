@@ -14,8 +14,8 @@ import (
 type Evaluator struct {
 	envpool   *environ.Pool
 	params    [][]byte
-	functions map[string][]emitter.OpCode
-	opcodes   []emitter.OpCode
+	functions map[string][]emitter.Instruction
+	insts     []emitter.Instruction
 	labels    map[string][]byte
 }
 
@@ -51,7 +51,7 @@ func (e *Evaluator) WalkLabels(bs []byte) []byte {
 	return bs
 }
 
-func (e *Evaluator) exec(label, op, left, right []byte) error {
+func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if IsLabels(left) {
 		left = e.WalkLabels(left)
 	}
@@ -59,27 +59,25 @@ func (e *Evaluator) exec(label, op, left, right []byte) error {
 		right = e.WalkLabels(right)
 	}
 
-	veb := op[len(op)-1] // Verificator byte
-
-	if veb == emitter.OpLab {
+	if op == emitter.OpLabel {
 		e.labels[fmt.Sprintf("%x", label)] = left
 		return nil
 	}
-	if veb == emitter.OpPin { // Create a definition
+	if op == emitter.OpIdentify { // Create a definition
 		if len(right) > 0 {
 			k := fmt.Sprintf("%x", left)
 			e.envpool.Set(k, right)
 		}
 		return nil
 	}
-	if veb == emitter.OpFun {
+	if op == emitter.OpFunction {
 		if len(right) > 0 {
 			k := fmt.Sprintf("%x", left)
 			e.envpool.Set(k, right)
 		}
 		return nil
 	}
-	if veb == emitter.OpGet { // Get a definition
+	if op == emitter.OpLoad { // Get a definition
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.Query(k); v != nil {
 			e.labels[fmt.Sprintf("%x", label)] = v
@@ -88,27 +86,27 @@ func (e *Evaluator) exec(label, op, left, right []byte) error {
 		return errors.New(fmt.Sprintf("identifier %s not defined", left))
 	}
 
-	if veb == emitter.OpOBl { // Open scope for block
+	if op == emitter.OpOBlock { // Open scope for block
 		e.envpool.Ahead()
 		return nil
 	}
 
-	if veb == emitter.OpCBl { // Close scope for block
+	if op == emitter.OpCBlock { // Close scope for block
 		e.envpool.Back()
 		return nil
 	}
 
-	if veb == emitter.OpPar {
+	if op == emitter.OpParameter {
 		e.params = append(e.params, left)
 		return nil
 	}
 
-	if veb == emitter.OpPrt {
+	if op == emitter.OpPrint {
 		builtin.PrintFunction(left)
 		return nil
 	}
 
-	if veb == emitter.OpCal {
+	if op == emitter.OpCall {
 		params := e.params
 		e.params = make([][]byte, 0)
 
@@ -138,28 +136,28 @@ func (e *Evaluator) exec(label, op, left, right []byte) error {
 	a := binary.BigEndian.Uint64(Padding64Bits(left))
 	b := binary.BigEndian.Uint64(Padding64Bits(right))
 
-	if veb == emitter.OpEqu {
+	if op == emitter.OpEquals {
 		r := make([]byte, 1)
 		if a == b {
 			r = []byte{1}
 		}
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpDif {
+	if op == emitter.OpDiff {
 		r := make([]byte, 1)
 		if a != b {
 			r = []byte{1}
 		}
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpBig {
+	if op == emitter.OpBigger {
 		r := make([]byte, 1)
 		if a > b {
 			r = []byte{1}
 		}
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpSma {
+	if op == emitter.OpSmaller {
 		r := make([]byte, 1)
 		if a < b {
 			r = []byte{1}
@@ -167,27 +165,27 @@ func (e *Evaluator) exec(label, op, left, right []byte) error {
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
 
-	if veb == emitter.OpMul {
+	if op == emitter.OpMultiply {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpAdd {
+	if op == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpSub {
+	if op == emitter.OpSubstract {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpDiv {
+	if op == emitter.OpDivide {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
 		e.labels[fmt.Sprintf("%x", label)] = r
 	}
-	if veb == emitter.OpExp {
+	if op == emitter.OpExponential {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
 		binary.BigEndian.PutUint64(r, uint64(v))
@@ -196,10 +194,10 @@ func (e *Evaluator) exec(label, op, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) Evaluate(opcodes []emitter.OpCode) (map[string][]byte, error) {
-	e.opcodes = opcodes
-	for _, oc := range e.opcodes {
-		if err := e.exec(oc.Label, oc.Operation, oc.Left, oc.Right); err != nil {
+func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
+	e.insts = insts
+	for _, ins := range e.insts {
+		if err := e.exec(ins.GetLabel(), ins.GetOpCode(), ins.GetLeft(), ins.GetRight()); err != nil {
 			return nil, err
 		}
 	}
@@ -212,15 +210,15 @@ func (e *Evaluator) GetEnvironPool() *environ.Pool {
 	return e.envpool
 }
 
-func (e *Evaluator) GetOpCodes() []emitter.OpCode {
-	return e.opcodes
+func (e *Evaluator) GetInstructions() []emitter.Instruction {
+	return e.insts
 }
 
 func New() *Evaluator {
 	pool := environ.NewPool(environ.New(nil))
 	params := make([][]byte, 0)
-	functions := make(map[string][]emitter.OpCode, 0)
-	opcodes := make([]emitter.OpCode, 0)
+	functions := make(map[string][]emitter.Instruction, 0)
+	opcodes := make([]emitter.Instruction, 0)
 	labels := make(map[string][]byte, 0)
 
 	return &Evaluator{pool, params, functions, opcodes, labels}

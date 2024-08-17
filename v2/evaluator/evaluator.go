@@ -12,11 +12,12 @@ import (
 )
 
 type Evaluator struct {
-	envpool   *environ.Pool
-	params    [][]byte
-	functions map[string][]emitter.Instruction
-	insts     []emitter.Instruction
-	labels    map[string][]byte
+	envpool *environ.Pool
+	params  [][]byte
+	insts   []emitter.Instruction
+	cursor  int
+	temps   map[string][]byte
+	labels  map[string]int
 }
 
 func Padding64Bits(bfs []byte) []byte {
@@ -31,7 +32,7 @@ func Padding64Bits(bfs []byte) []byte {
 	return bs
 }
 
-func IsLabels(bs []byte) bool {
+func IsTemp(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
 	}
@@ -41,34 +42,40 @@ func IsLabels(bs []byte) bool {
 	return false
 }
 
-func (e *Evaluator) WalkLabels(bs []byte) []byte {
+func (e *Evaluator) WalkTemps(bs []byte) []byte {
 	pbs := bs
-	bs = e.labels[fmt.Sprintf("%x", pbs)]
-	delete(e.labels, fmt.Sprintf("%x", pbs))
-	if IsLabels(bs) {
-		return e.WalkLabels(bs)
+	bs = e.temps[fmt.Sprintf("%x", pbs)]
+	delete(e.temps, fmt.Sprintf("%x", pbs))
+	if IsTemp(bs) {
+		return e.WalkTemps(bs)
 	}
 	return bs
 }
 
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
-	if IsLabels(left) {
-		left = e.WalkLabels(left)
+	if IsTemp(left) {
+		left = e.WalkTemps(left)
 	}
-	if IsLabels(right) {
-		right = e.WalkLabels(right)
+	if IsTemp(right) {
+		right = e.WalkTemps(right)
 	}
 
-	if op == emitter.OpLabel {
-		e.labels[fmt.Sprintf("%x", label)] = left
-		return nil
-	}
-	if op == emitter.OpIdentify { // Create a definition
-		if len(right) > 0 {
-			k := fmt.Sprintf("%x", left)
-			e.envpool.Set(k, right)
+	if op == emitter.OpSave {
+		if len(left) > 0 {
+			e.temps[fmt.Sprintf("%x", label)] = left
 		}
 		return nil
+	}
+	if op == emitter.OpIdentify {
+		k := fmt.Sprintf("%x", left)
+		if v := e.envpool.Current().Get(k); v != nil {
+			return errors.New(fmt.Sprintf("conflict between identifiers named %s", left))
+		}
+		if len(right) > 0 {
+			e.envpool.Set(k, right)
+			return nil
+		}
+		return errors.New(fmt.Sprintf("identifier %s cannot be null", left))
 	}
 	if op == emitter.OpFunction {
 		if len(right) > 0 {
@@ -77,10 +84,10 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		}
 		return nil
 	}
-	if op == emitter.OpLoad { // Get a definition
+	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.Query(k); v != nil {
-			e.labels[fmt.Sprintf("%x", label)] = v
+			e.temps[fmt.Sprintf("%x", label)] = v
 			return nil
 		}
 		return errors.New(fmt.Sprintf("identifier %s not defined", left))
@@ -141,68 +148,71 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		if a == b {
 			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpDiff {
 		r := make([]byte, 1)
 		if a != b {
 			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpBigger {
 		r := make([]byte, 1)
 		if a > b {
 			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpSmaller {
 		r := make([]byte, 1)
 		if a < b {
 			r = []byte{1}
 		}
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 
 	if op == emitter.OpMultiply {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpSubstract {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpDivide {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	if op == emitter.OpExponential {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
 		binary.BigEndian.PutUint64(r, uint64(v))
-		e.labels[fmt.Sprintf("%x", label)] = r
+		e.temps[fmt.Sprintf("%x", label)] = r
 	}
 	return nil
 }
 
 func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
 	e.insts = insts
-	for _, ins := range e.insts {
+	e.cursor = 0
+	for e.cursor < len(insts) {
+		ins := insts[e.cursor]
 		if err := e.exec(ins.GetLabel(), ins.GetOpCode(), ins.GetLeft(), ins.GetRight()); err != nil {
 			return nil, err
 		}
+		e.cursor++
 	}
-	labels := e.labels
-	e.labels = make(map[string][]byte)
+	labels := e.temps
+	e.temps = make(map[string][]byte)
 	return labels, nil
 }
 
@@ -217,9 +227,10 @@ func (e *Evaluator) GetInstructions() []emitter.Instruction {
 func New() *Evaluator {
 	pool := environ.NewPool(environ.New(nil))
 	params := make([][]byte, 0)
-	functions := make(map[string][]emitter.Instruction, 0)
-	opcodes := make([]emitter.Instruction, 0)
-	labels := make(map[string][]byte, 0)
+	insts := make([]emitter.Instruction, 0)
+	cursor := 0
+	temps := make(map[string][]byte, 0)
+	labels := make(map[string]int)
 
-	return &Evaluator{pool, params, functions, opcodes, labels}
+	return &Evaluator{pool, params, insts, cursor, temps, labels}
 }

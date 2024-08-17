@@ -22,7 +22,7 @@ type pr struct {
 }
 
 func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
-	params := make([]Node, 0)
+	params := make([]ParameterLiteralNode, 0)
 	if p.GetLookahead().GetTag().Id != lexer.O_PAREN {
 		return id, nil
 	}
@@ -32,7 +32,7 @@ func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		params = append(params, expr)
+		params = append(params, ParameterLiteralNode{expr})
 		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
 			break
 		}
@@ -42,13 +42,13 @@ func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
 	return CalleeLiteralNode{id, params}, nil
 }
 
-func (p *pr) getId() (Node, error) {
+func (p *pr) getId() (IdLiteralNode, error) {
 	tok, err := p.EatToken(lexer.ID)
 	if err != nil {
-		return nil, err
+		return IdLiteralNode{}, err
 	}
 	id := IdLiteralNode{fmt.Sprintf("%s", tok.GetMatch()), tok}
-	return p.getCallee(id)
+	return id, nil
 }
 
 func (p *pr) getNum() (NumberLiteralNode, error) {
@@ -89,6 +89,9 @@ func (p *pr) getPriExpr() (Node, error) {
 	id, err := p.getId()
 	if err != nil {
 		return nil, err
+	}
+	if p.GetLookahead().GetTag().Id == lexer.O_PAREN {
+		return p.getCallee(id)
 	}
 	return id, nil
 }
@@ -265,13 +268,13 @@ func (p *pr) getBlockExpr() (Node, error) {
 func (p *pr) getFunc() (Node, error) {
 	p.EatToken(lexer.FUNC)
 	p.EatToken(lexer.O_PAREN)
-	arity := make([]Node, 0)
+	arity := make([]IdLiteralNode, 0)
 	for p.GetLookahead().GetTag().Id != lexer.C_PAREN {
-		expr, err := p.getExpr()
+		id, err := p.getId()
 		if err != nil {
 			return nil, err
 		}
-		arity = append(arity, expr)
+		arity = append(arity, id)
 		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
 			break
 		}

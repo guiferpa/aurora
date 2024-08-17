@@ -44,8 +44,13 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpFunction, []byte(n.Ref), nil))
 
-		l = e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpSave, []byte(n.Ref), nil))
+		for i, a := range n.Arity {
+			l := e.generateLabel()
+			e.insts = append(e.insts, NewInstruction(l, OpGetLocal, a.Token.GetMatch(), e.bytesFromUInt64(uint64(i))))
+		}
+
+		// TODO: Continues here, missing emit body func instructions
+
 		return l
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
@@ -121,7 +126,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	}
 	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
 		for _, p := range n.Params {
-			ll := e.emitInstruction(p)
+			ll := e.emitInstruction(p.Expression)
 			l := e.generateLabel()
 			e.insts = append(e.insts, NewInstruction(l, OpParameter, ll, nil))
 		}

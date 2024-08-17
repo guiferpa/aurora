@@ -19,4 +19,6 @@ const (
 	OpParameter   = 0x10
 	OpPrint       = 0x11
 	OpFunction    = 0x12
+	OpSetLocal    = 0x13
+	OpGetLocal    = 0x14
 )

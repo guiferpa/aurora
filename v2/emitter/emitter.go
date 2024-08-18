@@ -2,9 +2,9 @@ package emitter
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/parser"
 )
 
@@ -24,12 +24,6 @@ func (e *emt) generateLabel() []byte {
 	return t
 }
 
-func (e *emt) bytesFromUInt64(v uint64) []byte {
-	r := make([]byte, 8)
-	binary.BigEndian.PutUint64(r, v)
-	return r
-}
-
 func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
 		return e.emitInstruction(n.Node)
@@ -42,14 +36,24 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	}
 	if n, ok := stmt.(parser.FuncExpressionNode); ok {
 		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpFunction, []byte(n.Ref), nil))
+		e.insts = append(e.insts, NewInstruction(l, OpBeginFunc, []byte(n.Ref), nil))
 
 		for i, a := range n.Arity {
 			l := e.generateLabel()
-			e.insts = append(e.insts, NewInstruction(l, OpGetLocal, a.Token.GetMatch(), e.bytesFromUInt64(uint64(i))))
+			e.insts = append(e.insts, NewInstruction(l, OpGetLocal, a.Token.GetMatch(), byteutil.FromUint64(uint64(i))))
 		}
 
-		// TODO: Continues here, missing emit body func instructions
+		l = e.generateLabel()
+		for _, ins := range n.Body {
+			l = e.emitInstruction(ins)
+		}
+		rl := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(rl, OpReturn, l, nil))
+
+		l = e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpSave, []byte(n.Ref), nil))
+
+		// TODO: Create segment to save function instructions
 
 		return l
 	}
@@ -116,7 +120,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpSave, e.bytesFromUInt64(n.Value), nil))
+		e.insts = append(e.insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {

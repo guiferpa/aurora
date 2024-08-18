@@ -8,7 +8,7 @@ func TestIsLabel(t *testing.T) {
 		[]byte("-1t"),
 	}
 	for _, v := range values {
-		if !IsTemp(v) {
+		if !isTemp(v) {
 			t.Errorf("unrecognized as label pattern, got: %s", v)
 			return
 		}

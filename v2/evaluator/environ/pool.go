@@ -1,23 +1,24 @@
 package environ
 
 type Pool struct {
-	env *Environ
+	globals map[string][]byte
+	locals  *Environ
 }
 
 func (p *Pool) IsEmpty() bool {
-	return p.env == nil
+	return p.locals == nil
 }
 
-func (p *Pool) Set(key string, value []byte) {
+func (p *Pool) SetLocal(key string, value []byte) {
 	if curr := p.Current(); curr != nil {
-		curr.Set(key, value)
+		curr.SetLocaL(key, value)
 	}
 }
 
 func (p *Pool) Query(key string) []byte {
-	curr := p.env
+	curr := p.locals
 	for curr != nil {
-		if c := curr.Get(key); c != nil {
+		if c := curr.GetLocal(key); c != nil {
 			return c
 		}
 		curr = curr.previous
@@ -26,19 +27,20 @@ func (p *Pool) Query(key string) []byte {
 }
 
 func (p *Pool) Ahead() {
-	p.env = New(p.env)
+	p.locals = New(p.locals)
 }
 
 func (p *Pool) Back() {
 	if !p.IsEmpty() {
-		p.env = p.env.previous
+		p.locals = p.locals.previous
 	}
 }
 
 func (p *Pool) Current() *Environ {
-	return p.env
+	return p.locals
 }
 
-func NewPool(env *Environ) *Pool {
-	return &Pool{env}
+func NewPool(locals *Environ) *Pool {
+	globals := make(map[string][]byte)
+	return &Pool{globals, locals}
 }

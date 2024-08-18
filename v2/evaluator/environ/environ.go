@@ -3,20 +3,24 @@ package environ
 import (
 	"fmt"
 	"io"
+
+	"github.com/guiferpa/aurora/emitter"
 )
 
 type EnvironContext string
 
 type Environ struct {
-	table    map[string][]byte
-	previous *Environ
+	table     map[string][]byte
+	functions map[string][]emitter.Instruction
+	segments  []string
+	previous  *Environ
 }
 
-func (env *Environ) Set(key string, value []byte) {
+func (env *Environ) SetLocaL(key string, value []byte) {
 	env.table[key] = value
 }
 
-func (env *Environ) Get(key string) []byte {
+func (env *Environ) GetLocal(key string) []byte {
 	if c, ok := env.table[key]; ok {
 		return c
 	}
@@ -30,5 +34,8 @@ func (env *Environ) Print(w io.Writer) {
 }
 
 func New(previous *Environ) *Environ {
-	return &Environ{make(map[string][]byte), previous}
+	table := make(map[string][]byte)
+	segments := make([]string, 0)
+	functions := make(map[string][]emitter.Instruction)
+	return &Environ{table, functions, segments, previous}
 }

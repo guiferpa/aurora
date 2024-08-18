@@ -20,8 +20,8 @@ func TestPool(t *testing.T) {
 
 	k := "A"
 	v := bytes.NewBufferString("B")
-	p.Set(k, v.Bytes())
-	got := p.Current().Get(k)
+	p.SetLocal(k, v.Bytes())
+	got := p.Current().GetLocal(k)
 	if bytes.Compare(got, v.Bytes()) != 0 {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return
@@ -29,15 +29,15 @@ func TestPool(t *testing.T) {
 
 	k = "C"
 	v = bytes.NewBufferString("D")
-	p.Set(k, v.Bytes())
-	got = p.Current().Get(k)
+	p.SetLocal(k, v.Bytes())
+	got = p.Current().GetLocal(k)
 	if bytes.Compare(got, v.Bytes()) != 0 {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return
 	}
 
 	p.Ahead()
-	got = p.Current().Get(k)
+	got = p.Current().GetLocal(k)
 	if got != nil {
 		t.Errorf("unexpected result: got: %v, expected: nil", got)
 		return

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator/builtin"
 	"github.com/guiferpa/aurora/evaluator/environ"
@@ -20,19 +21,7 @@ type Evaluator struct {
 	labels  map[string]int
 }
 
-func Padding64Bits(bfs []byte) []byte {
-	const size = 8
-	if len(bfs) >= size {
-		return bfs
-	}
-	bs := make([]byte, size)
-	for i := 0; i < len(bfs); i++ {
-		bs[(size-len(bfs))+i] = bfs[i]
-	}
-	return bs
-}
-
-func IsTemp(bs []byte) bool {
+func isTemp(bs []byte) bool {
 	if len(bs) == 0 {
 		return false
 	}
@@ -42,52 +31,54 @@ func IsTemp(bs []byte) bool {
 	return false
 }
 
-func (e *Evaluator) WalkTemps(bs []byte) []byte {
+func (e *Evaluator) walkTemps(bs []byte) []byte {
 	pbs := bs
 	bs = e.temps[fmt.Sprintf("%x", pbs)]
 	delete(e.temps, fmt.Sprintf("%x", pbs))
-	if IsTemp(bs) {
-		return e.WalkTemps(bs)
+	if isTemp(bs) {
+		return e.walkTemps(bs)
 	}
 	return bs
 }
 
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
-	if IsTemp(left) {
-		left = e.WalkTemps(left)
+	if isTemp(left) {
+		left = e.walkTemps(left)
 	}
-	if IsTemp(right) {
-		right = e.WalkTemps(right)
+	if isTemp(right) {
+		right = e.walkTemps(right)
 	}
 
 	if op == emitter.OpSave {
 		if len(left) > 0 {
 			e.temps[fmt.Sprintf("%x", label)] = left
 		}
+		e.cursor++
 		return nil
 	}
 	if op == emitter.OpIdentify {
 		k := fmt.Sprintf("%x", left)
-		if v := e.envpool.Current().Get(k); v != nil {
+		if v := e.envpool.Current().GetLocal(k); v != nil {
 			return errors.New(fmt.Sprintf("conflict between identifiers named %s", left))
 		}
 		if len(right) > 0 {
-			e.envpool.Set(k, right)
+			e.envpool.SetLocal(k, right)
+			e.cursor++
 			return nil
 		}
 		return errors.New(fmt.Sprintf("identifier %s cannot be null", left))
 	}
-	if op == emitter.OpFunction {
-		if len(right) > 0 {
-			k := fmt.Sprintf("%x", left)
-			e.envpool.Set(k, right)
-		}
+	if op == emitter.OpBeginFunc {
+		k := fmt.Sprintf("%x", left)
+		e.envpool.SetLocal(k, byteutil.FromUint64(uint64(e.cursor)))
+		e.cursor++
 		return nil
 	}
 	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.Query(k); v != nil {
 			e.temps[fmt.Sprintf("%x", label)] = v
+			e.cursor++
 			return nil
 		}
 		return errors.New(fmt.Sprintf("identifier %s not defined", left))
@@ -95,16 +86,19 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpOBlock { // Open scope for block
 		e.envpool.Ahead()
+		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpCBlock { // Close scope for block
 		e.envpool.Back()
+		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpParameter {
 		e.params = append(e.params, left)
+		e.cursor++
 		return nil
 	}
 
@@ -136,12 +130,13 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		}
 
 		e.envpool.Back()
+		e.cursor++
 
 		return nil
 	}
 
-	a := binary.BigEndian.Uint64(Padding64Bits(left))
-	b := binary.BigEndian.Uint64(Padding64Bits(right))
+	a := binary.BigEndian.Uint64(byteutil.Padding64Bits(left))
+	b := binary.BigEndian.Uint64(byteutil.Padding64Bits(right))
 
 	if op == emitter.OpEquals {
 		r := make([]byte, 1)
@@ -149,6 +144,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			r = []byte{1}
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpDiff {
 		r := make([]byte, 1)
@@ -156,6 +152,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			r = []byte{1}
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpBigger {
 		r := make([]byte, 1)
@@ -163,6 +160,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			r = []byte{1}
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpSmaller {
 		r := make([]byte, 1)
@@ -170,50 +168,57 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			r = []byte{1}
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 
 	if op == emitter.OpMultiply {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpSubstract {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpDivide {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	if op == emitter.OpExponential {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
 		binary.BigEndian.PutUint64(r, uint64(v))
 		e.temps[fmt.Sprintf("%x", label)] = r
+		e.cursor++
 	}
 	return nil
 }
 
 func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
+	var err error
 	e.insts = insts
-	e.cursor = 0
 	for e.cursor < len(insts) {
 		ins := insts[e.cursor]
-		if err := e.exec(ins.GetLabel(), ins.GetOpCode(), ins.GetLeft(), ins.GetRight()); err != nil {
-			return nil, err
+		err = e.exec(ins.GetLabel(), ins.GetOpCode(), ins.GetLeft(), ins.GetRight())
+		if err != nil {
+			break
 		}
-		e.cursor++
 	}
+	e.cursor = 0
 	labels := e.temps
 	e.temps = make(map[string][]byte)
-	return labels, nil
+	return labels, err
 }
 
 func (e *Evaluator) GetEnvironPool() *environ.Pool {

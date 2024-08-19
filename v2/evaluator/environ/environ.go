@@ -5,14 +5,16 @@ import (
 	"io"
 
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator/segment"
 )
 
 type EnvironContext string
 
 type Environ struct {
 	table     map[string][]byte
+	segpool   map[string]*segment.Segment
+	segcurr   string
 	functions map[string][]emitter.Instruction
-	segments  []string
 	previous  *Environ
 }
 
@@ -27,6 +29,25 @@ func (env *Environ) GetLocal(key string) []byte {
 	return nil
 }
 
+func (env *Environ) NoSegment() {
+	env.segcurr = ""
+}
+
+func (env *Environ) SetSegment(key string) {
+	env.segcurr = key
+}
+
+func (env *Environ) GetCurrentSegment() *segment.Segment {
+	if len(env.segcurr) > 0 {
+		return env.segpool[env.segcurr]
+	}
+	return nil
+}
+
+func (env *Environ) GetSegment(key string) *segment.Segment {
+	return env.segpool[key]
+}
+
 func (env *Environ) Print(w io.Writer) {
 	for k, v := range env.table {
 		fmt.Printf("%s: %v\n", k, v)
@@ -35,7 +56,8 @@ func (env *Environ) Print(w io.Writer) {
 
 func New(previous *Environ) *Environ {
 	table := make(map[string][]byte)
-	segments := make([]string, 0)
+	segpool := make(map[string]*segment.Segment, 0)
+	segcurr := ""
 	functions := make(map[string][]emitter.Instruction)
-	return &Environ{table, functions, segments, previous}
+	return &Environ{table, segpool, segcurr, functions, previous}
 }

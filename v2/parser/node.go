@@ -46,6 +46,14 @@ type NumberLiteralNode struct {
 	Token lexer.Token `json:"-"`
 }
 
+type VoidLiteralNode struct {
+	Token lexer.Token
+}
+
+func (vln VoidLiteralNode) Next() Node {
+	return nil
+}
+
 func (nln NumberLiteralNode) Next() Node {
 	return nil
 }

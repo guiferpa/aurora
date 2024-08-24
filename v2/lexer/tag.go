@@ -36,6 +36,7 @@ const (
 	BREAK_LINE = "BREAK_LINE"
 	CALL_PRINT = "CALL_PRINT" // print
 	FUNC       = "FUNC"       // fun
+	VOID       = "VOID"       // void
 	EOF        = "EOF"
 )
 
@@ -74,6 +75,7 @@ var (
 	TagFunc       = Tag{FUNC, "fun", "^fun"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
+	TagVoid       = Tag{VOID, "", "^void"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
 
@@ -99,6 +101,7 @@ var processableTags = []Tag{
 	TagSemicolon,
 	TagCallPrint,
 	TagFunc,
+	TagVoid,
 	TagId,
 	TagSum,
 	TagSub,

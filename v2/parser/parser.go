@@ -64,6 +64,14 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
+func (p *pr) getVoid() (VoidLiteralNode, error) {
+	tok, err := p.EatToken(lexer.VOID)
+	if err != nil {
+		return VoidLiteralNode{}, err
+	}
+	return VoidLiteralNode{tok}, nil
+}
+
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.O_PAREN {
@@ -85,6 +93,9 @@ func (p *pr) getPriExpr() (Node, error) {
 			return nil, err
 		}
 		return num, nil
+	}
+	if lookahead.GetTag().Id == lexer.VOID {
+		return p.getVoid()
 	}
 	id, err := p.getId()
 	if err != nil {
@@ -293,16 +304,6 @@ func (p *pr) getFunc() (Node, error) {
 	return FuncExpressionNode{ref, arity, stmts}, nil
 }
 
-func (p *pr) getExpr() (Node, error) {
-	if p.GetLookahead().GetTag().Id == lexer.O_CUR_BRK {
-		return p.getBlockExpr()
-	}
-	if p.GetLookahead().GetTag().Id == lexer.FUNC {
-		return p.getFunc()
-	}
-	return p.getBoolExpr()
-}
-
 func (p *pr) getIdent() (Node, error) {
 	if _, err := p.EatToken(lexer.IDENT); err != nil {
 		return IdentStatementNode{}, err
@@ -324,6 +325,20 @@ func (p *pr) getIdent() (Node, error) {
 	return IdentStatementNode{fmt.Sprintf("%s", id.GetMatch()), id, expr}, nil
 }
 
+func (p *pr) getExpr() (Node, error) {
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
+		return p.getBlockExpr()
+	}
+	if lookahead.GetTag().Id == lexer.FUNC {
+		return p.getFunc()
+	}
+	if lookahead.GetTag().Id == lexer.IDENT {
+		return p.getIdent()
+	}
+	return p.getBoolExpr()
+}
+
 func (p *pr) getCallPrint() (Node, error) {
 	p.EatToken(lexer.CALL_PRINT)
 	p.EatToken(lexer.O_PAREN)
@@ -339,9 +354,6 @@ func (p *pr) getStmt() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.CALL_PRINT {
 		return p.getCallPrint()
-	}
-	if lookahead.GetTag().Id == lexer.IDENT {
-		return p.getIdent()
 	}
 	expr, err := p.getExpr()
 	if err != nil {

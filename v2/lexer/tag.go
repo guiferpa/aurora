@@ -21,7 +21,7 @@ const (
 	MULT       = "MULT"      // *
 	DIV        = "DIV"       // /
 	EXPO       = "EXPO"      // ^
-	COMMENT    = "COMMENT"   // --
+	COMMENT_LINE    = "COMMENT"   // #-
 	O_BRK      = "O_BRK"     // [
 	C_BRK      = "C_BRK"     // ]
 	O_CUR_BRK  = "O_CUR_BRK" // {
@@ -63,7 +63,7 @@ var (
 	TagMult       = Tag{MULT, "*", "^\\*"}
 	TagDiv        = Tag{DIV, "/", "^\\/"}
 	TagExpo       = Tag{EXPO, "^", "^\\^"}
-	TagComment    = Tag{COMMENT, "--", "^\\#\\-"}
+	TagComment    = Tag{COMMENT_LINE, "#-", "^#-"}
 	TagOBrk       = Tag{O_BRK, "[", "^\\["}
 	TagCBrk       = Tag{C_BRK, "]", "^\\]"}
 	TagOCurBrk    = Tag{O_CUR_BRK, "{", "^{"}

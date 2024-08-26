@@ -1,6 +1,0 @@
-ident sum = fun () {
-  ident a = fun () { 2 + 2; };
-  a();
-};
-
-print(sum());

@@ -14,9 +14,9 @@ import (
 
 type Evaluator struct {
 	envpool *environ.Pool
-	params  [][]byte
-	insts   []emitter.Instruction
 	cursor  int
+	insts   []emitter.Instruction
+	params  [][]byte
 	result  []byte
 	temps   map[string][]byte
 	labels  map[string]int
@@ -89,7 +89,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
-		if v := e.envpool.Query(k); v != nil {
+		if v := e.envpool.QueryLocal(k); v != nil {
 			e.temps[fmt.Sprintf("%x", label)] = v
 			e.cursor++
 			return nil
@@ -109,8 +109,17 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	if op == emitter.OpParameter {
+	if op == emitter.OpSaveParam {
 		e.params = append(e.params, left)
+		e.cursor++
+		return nil
+	}
+
+	if op == emitter.OpLoadParam {
+		i := byteutil.ToUint64(right)
+		v := e.params[i]
+		key := fmt.Sprintf("%x", left)
+		e.envpool.SetLocal(key, v)
 		e.cursor++
 		return nil
 	}
@@ -122,6 +131,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpReturn {
+		e.params = make([][]byte, 0)
 		if len(left) > 0 {
 			e.result = left
 		}
@@ -133,17 +143,14 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpCall {
-		params := e.params
-		e.params = make([][]byte, 0)
-
 		k := fmt.Sprintf("%x", left)
-		v := e.envpool.Query(k)
+		v := e.envpool.QueryLocal(k)
 		if v == nil {
 			return errors.New(fmt.Sprintf("identifier %s not defined", left))
 		}
 
 		k = fmt.Sprintf("%x", v)
-		segcurr := e.envpool.Current().GetSegment(k)
+		segcurr := e.envpool.QueryFunctionSegment(k)
 		if segcurr == nil {
 			return errors.New(fmt.Sprintf("identifier %s is not callable segment", left))
 		}
@@ -154,10 +161,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.insts = segcurr.GetInstructions() // Retrieve instructions from function segment
 
 		e.envpool.Ahead()
-
-		for _, p := range params {
-			fmt.Println(p)
-		}
 
 		return nil
 	}
@@ -270,12 +273,12 @@ func (e *Evaluator) GetInstructions() []emitter.Instruction {
 
 func New() *Evaluator {
 	envpool := environ.NewPool(environ.New(nil))
-	params := make([][]byte, 0)
-	insts := make([]emitter.Instruction, 0)
 	cursor := 0
+	insts := make([]emitter.Instruction, 0)
+	params := make([][]byte, 0)
 	result := make([]byte, 0)
 	temps := make(map[string][]byte, 0)
 	labels := make(map[string]int)
 
-	return &Evaluator{envpool, params, insts, cursor, result, temps, labels}
+	return &Evaluator{envpool, cursor, insts, params, result, temps, labels}
 }

@@ -48,7 +48,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 
 		for i, a := range n.Arity {
 			l := e.generateLabel()
-			e.insts = append(e.insts, NewInstruction(l, OpGetLocal, a.Token.GetMatch(), byteutil.FromUint64(uint64(i))))
+			e.insts = append(e.insts, NewInstruction(l, OpLoadParam, a.Token.GetMatch(), byteutil.FromUint64(uint64(i))))
 		}
 
 		for _, ins := range n.Body {
@@ -138,7 +138,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		for _, p := range n.Params {
 			ll := e.emitInstruction(p.Expression)
 			l := e.generateLabel()
-			e.insts = append(e.insts, NewInstruction(l, OpParameter, ll, nil))
+			e.insts = append(e.insts, NewInstruction(l, OpSaveParam, ll, nil))
 		}
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))

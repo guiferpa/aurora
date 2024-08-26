@@ -24,11 +24,22 @@ func (p *Pool) SetLocal(key string, value []byte) {
 	}
 }
 
-func (p *Pool) Query(key string) []byte {
+func (p *Pool) QueryLocal(key string) []byte {
 	curr := p.locals
 	for curr != nil {
 		if c := curr.GetLocal(key); c != nil {
 			return c
+		}
+		curr = curr.previous
+	}
+	return nil
+}
+
+func (p *Pool) QueryFunctionSegment(key string) *FunctionSegment {
+	curr := p.locals
+	for curr != nil {
+		if s := curr.GetSegment(key); s != nil {
+			return s
 		}
 		curr = curr.previous
 	}

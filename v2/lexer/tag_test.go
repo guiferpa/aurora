@@ -23,7 +23,7 @@ func TestGetTag(t *testing.T) {
 		{TagSub, SUB},
 		{TagMult, MULT},
 		{TagDiv, DIV},
-		{TagComment, COMMENT},
+		{TagComment, COMMENT_LINE},
 		{TagOBrk, O_BRK},
 		{TagCBrk, C_BRK},
 		{TagOCurBrk, O_CUR_BRK},
@@ -91,7 +91,7 @@ func TestMatchTagRule(t *testing.T) {
 		{[]byte(`{`), O_CUR_BRK, []byte("{"), true},
 
 		// COMMENT
-		{[]byte(`#-`), COMMENT, []byte("#-"), true},
+		{[]byte(`#-`), COMMENT_LINE, []byte("#-"), true},
 
 		// SUB
 		{[]byte(`-`), SUB, []byte("-"), true},

@@ -43,7 +43,7 @@ func TestPool(t *testing.T) {
 		return
 	}
 
-	got = p.Query(k)
+	got = p.QueryLocal(k)
 	if got == nil {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return

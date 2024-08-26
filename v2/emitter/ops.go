@@ -16,7 +16,7 @@ const (
 	OpCBlock      = 0x0d
 	OpSave        = 0x0e
 	OpCall        = 0x0f
-	OpParameter   = 0x10
+	OpSaveParam   = 0x10
 	OpPrint       = 0x11
 	OpBeginFunc   = 0x12
 	OpEndFunc     = 0x13
@@ -24,4 +24,5 @@ const (
 	OpGetLocal    = 0x15
 	OpReturn      = 0x16
 	OpResult      = 0x17
+	OpLoadParam   = 0x18
 )

@@ -44,14 +44,26 @@ func GetTokens(bs []byte) ([]Token, error) {
 	line := 1
 	length := len(bs)
 	tokens := make([]Token, 0)
+	isComment := false
 	for cursor < length {
 		matched, tag, match := MatchTagRule(bs[cursor:])
-		if !matched {
+		if !matched && !isComment {
 			return tokens, errors.New("no token matched")
 		}
-		tokens = append(tokens, tok{line, col, cursor, tag, match})
+		if !isComment {
+			tokens = append(tokens, tok{line, col, cursor, tag, match})
+		}
+		if len(match) == 0 {
+			cursor++
+		}
 		cursor = cursor + len(match)
+
+		if tag.Id == COMMENT_LINE {
+			isComment = true
+		}
+
 		if tag.Id == BREAK_LINE {
+			isComment = false
 			line++
 			col = 1
 		} else {
@@ -68,7 +80,7 @@ func GetFilledTokens(bs []byte) ([]Token, error) {
 	}
 	ntoks := make([]Token, 0)
 	for _, tok := range toks {
-		if tok.GetTag().Id == WHITESPACE || tok.GetTag().Id == BREAK_LINE {
+		if tok.GetTag().Id == WHITESPACE || tok.GetTag().Id == BREAK_LINE || tok.GetTag().Id == COMMENT_LINE {
 			continue
 		}
 		ntoks = append(ntoks, tok)

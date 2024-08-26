@@ -1,0 +1,17 @@
+ident ref = fun () {
+  1;
+};
+
+#- It prints a reference of function
+print(ref);
+
+ident a = ref;
+print(a());
+
+ident inj = fun (f) {
+  print(f);
+  print(f());
+};
+
+inj(1);
+

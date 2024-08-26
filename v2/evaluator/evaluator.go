@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -76,6 +77,15 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		}
 		return errors.New(fmt.Sprintf("identifier %s cannot be void", left))
 	}
+	if op == emitter.OpIfNot {
+		if bytes.Compare(left, byteutil.False) == 0 {
+			end := byteutil.ToUint64(right)
+			e.cursor = e.cursor + int(end) + 1
+			return nil
+		}
+		e.cursor++
+		return nil
+	}
 	if op == emitter.OpBeginFunc {
 		start := uint64(e.cursor) + 1
 		end := byteutil.ToUint64(right)
@@ -120,6 +130,9 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		v := e.params[i]
 		key := fmt.Sprintf("%x", left)
 		e.envpool.SetLocal(key, v)
+		if int(i+1) == len(e.params) {
+			e.params = make([][]byte, 0)
+		}
 		e.cursor++
 		return nil
 	}
@@ -165,42 +178,62 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
+	if op == emitter.OpOr {
+		if byteutil.ToBoolean(left) || byteutil.ToBoolean(right) {
+			e.temps[fmt.Sprintf("%x", label)] = byteutil.True
+		} else {
+			e.temps[fmt.Sprintf("%x", label)] = byteutil.False
+		}
+		e.cursor++
+		return nil
+	}
+	if op == emitter.OpAnd {
+		if byteutil.ToBoolean(left) && byteutil.ToBoolean(right) {
+			e.temps[fmt.Sprintf("%x", label)] = byteutil.True
+		} else {
+			e.temps[fmt.Sprintf("%x", label)] = byteutil.False
+		}
+		e.cursor++
+		return nil
+	}
+
 	a := binary.BigEndian.Uint64(byteutil.Padding64Bits(left))
 	b := binary.BigEndian.Uint64(byteutil.Padding64Bits(right))
 
 	if op == emitter.OpEquals {
-		r := make([]byte, 1)
+		r := byteutil.False
 		if a == b {
-			r = []byte{1}
+			r = byteutil.True
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
 	if op == emitter.OpDiff {
-		r := make([]byte, 1)
+		r := byteutil.False
 		if a != b {
-			r = []byte{1}
+			r = byteutil.True
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
 	if op == emitter.OpBigger {
-		r := make([]byte, 1)
+		r := byteutil.False
 		if a > b {
-			r = []byte{1}
+			r = byteutil.True
 		}
 		e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
 	if op == emitter.OpSmaller {
-		r := make([]byte, 1)
+		r := byteutil.False
 		if a < b {
-			r = []byte{1}
+			r = byteutil.True
 		}
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
+		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -208,28 +241,32 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpMultiply {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
+		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
 	if op == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
+		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
 	if op == emitter.OpSubstract {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
+		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
 	if op == emitter.OpDivide {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
+		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -249,9 +286,11 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
 	var err error
 	e.insts = insts
-	for e.cursor < len(e.insts) {
+	iv := 0
+	for e.cursor < len(e.insts) && iv != 100 {
+		iv++
 		inst := e.insts[e.cursor]
-		// fmt.Println(e.cursor, fmt.Sprintf("%x: %x %x %x", inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()))
+		fmt.Println(e.cursor, fmt.Sprintf("%x: %x %x %x", inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()))
 		err = e.exec(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight())
 		if err != nil {
 			break

@@ -1,0 +1,16 @@
+ident sum = fun (a, b) {
+  a + b;
+};
+
+ident sub = fun (a, b) {
+  a - b;
+};
+
+ident op = 1;
+
+ident a = branch [
+  op equals 1: sum(1, 1), 
+  op equals 2: sub(1, 1), 
+];
+
+print(a);

@@ -8,36 +8,41 @@ import (
 )
 
 const (
-	IDENT      = "IDENT"     // idenTag
-	ASSIGN     = "ASSIGN"    // =
-	O_PAREN    = "O_PAREN"   // (
-	C_PAREN    = "C_PAREN"   // )
-	EQUALS     = "EQUALS"    // equals
-	DIFFERENT  = "DIFFERENT" // differenTag
-	BIGGER     = "BIGGER"    // bigger
-	SMALLER    = "SMALLER"   // smaller
-	SUM        = "SUM"       // +
-	SUB        = "SUB"       // -
-	MULT       = "MULT"      // *
-	DIV        = "DIV"       // /
-	EXPO       = "EXPO"      // ^
-	COMMENT_LINE    = "COMMENT"   // #-
-	O_BRK      = "O_BRK"     // [
-	C_BRK      = "C_BRK"     // ]
-	O_CUR_BRK  = "O_CUR_BRK" // {
-	C_CUR_BRK  = "C_CUR_BRK" // }
-	COMMA      = "COMMA"     // ,
-	IF         = "IF"        // if
-	COLON      = "COLON"     // :
-	SEMICOLON  = "SEMICOLON" // ;
-	ID         = "ID"
-	NUMBER     = "NUMBER"
-	WHITESPACE = "WHITESPACE"
-	BREAK_LINE = "BREAK_LINE"
-	CALL_PRINT = "CALL_PRINT" // print
-	FUNC       = "FUNC"       // fun
-	VOID       = "VOID"       // void
-	EOF        = "EOF"
+	IDENT        = "IDENT"     // idenTag
+	ASSIGN       = "ASSIGN"    // =
+	O_PAREN      = "O_PAREN"   // (
+	C_PAREN      = "C_PAREN"   // )
+	EQUALS       = "EQUALS"    // equals
+	DIFFERENT    = "DIFFERENT" // differenTag
+	BIGGER       = "BIGGER"    // bigger
+	SMALLER      = "SMALLER"   // smaller
+	OR           = "OR"        // or
+	AND          = "AND"       // and
+	SUM          = "SUM"       // +
+	SUB          = "SUB"       // -
+	MULT         = "MULT"      // *
+	DIV          = "DIV"       // /
+	EXPO         = "EXPO"      // ^
+	COMMENT_LINE = "COMMENT"   // #-
+	O_BRK        = "O_BRK"     // [
+	C_BRK        = "C_BRK"     // ]
+	O_CUR_BRK    = "O_CUR_BRK" // {
+	C_CUR_BRK    = "C_CUR_BRK" // }
+	COMMA        = "COMMA"     // ,
+	IF           = "IF"        // if
+	BRANCH       = "BRANCH"    // branch
+	COLON        = "COLON"     // :
+	SEMICOLON    = "SEMICOLON" // ;
+	ID           = "ID"
+	NUMBER       = "NUMBER"
+	TRUE         = "TRUE"  // true
+	FALSE        = "FALSE" // false
+	WHITESPACE   = "WHITESPACE"
+	BREAK_LINE   = "BREAK_LINE"
+	CALL_PRINT   = "CALL_PRINT" // print
+	FUNC         = "FUNC"       // fun
+	VOID         = "VOID"       // void
+	EOF          = "EOF"
 )
 
 type Tag struct {
@@ -58,6 +63,8 @@ var (
 	TagDifferent  = Tag{DIFFERENT, "different", "^different"}
 	TagBigger     = Tag{BIGGER, "bigger", "^bigger"}
 	TagSmaller    = Tag{SMALLER, "smaller", "^smaller"}
+	TagOr         = Tag{OR, "or", "^or"}
+	TagAnd        = Tag{AND, "and", "^and"}
 	TagSum        = Tag{SUM, "+", "^\\+"}
 	TagSub        = Tag{SUB, "-", "^\\-"}
 	TagMult       = Tag{MULT, "*", "^\\*"}
@@ -70,9 +77,12 @@ var (
 	TagCCurBrk    = Tag{C_CUR_BRK, "}", "^}"}
 	TagComma      = Tag{COMMA, ",", "^,"}
 	TagIf         = Tag{IF, "if", "^if"}
+	TagBranch     = Tag{IF, "branch", "^branch"}
 	TagColon      = Tag{COLON, ":", "^:"}
 	TagSemicolon  = Tag{SEMICOLON, ";", "^;"}
 	TagFunc       = Tag{FUNC, "fun", "^fun"}
+	TagTrue       = Tag{TRUE, "true", "^true"}
+	TagFalse      = Tag{FALSE, "false", "^false"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
 	TagVoid       = Tag{VOID, "", "^void"}
@@ -84,6 +94,7 @@ var processableTags = []Tag{
 	TagBreakLine,
 	TagComment,
 	TagIf,
+	TagBranch,
 	TagIdent,
 	TagAssign,
 	TagOParen,
@@ -92,6 +103,8 @@ var processableTags = []Tag{
 	TagDifferent,
 	TagBigger,
 	TagSmaller,
+	TagOr,
+	TagAnd,
 	TagOBrk,
 	TagCBrk,
 	TagOCurBrk,
@@ -102,6 +115,8 @@ var processableTags = []Tag{
 	TagCallPrint,
 	TagFunc,
 	TagVoid,
+	TagTrue,
+	TagFalse,
 	TagId,
 	TagSum,
 	TagSub,

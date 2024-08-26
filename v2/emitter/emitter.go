@@ -86,7 +86,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpCBlock, nil, nil))
 		return l
 	}
-	if n, ok := stmt.(parser.BooleanExpression); ok {
+	if n, ok := stmt.(parser.RelativeExpression); ok {
 		ll := e.emitInstruction(n.Left)
 		lr := e.emitInstruction(n.Right)
 		var op byte
@@ -102,6 +102,49 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		}
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		return l
+	}
+	if n, ok := stmt.(parser.BooleanExpression); ok {
+		ll := e.emitInstruction(n.Left)
+		lr := e.emitInstruction(n.Right)
+		var op byte
+		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
+		case "or":
+			op = OpOr
+		case "and":
+			op = OpAnd
+		}
+		l := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		return l
+	}
+	if n, ok := stmt.(parser.IfExpressionNode); ok {
+		cins := e.insts
+		e.insts = make([]Instruction, 0)
+		for _, ins := range n.Body {
+			e.emitInstruction(ins)
+		}
+		var length uint64 = uint64(len(e.insts)) + 1 // Length of if
+
+		e.insts = cins
+		lt := e.emitInstruction(n.Test)
+		l := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpIfNot, lt, byteutil.FromUint64(length)))
+
+		for _, ins := range n.Body {
+			e.emitInstruction(ins)
+		}
+
+		latest := e.insts[len(e.insts)-1]
+		isEmpty := bytes.Compare(latest.GetLabel(), l) == 0
+		l = e.generateLabel()
+		if isEmpty {
+			e.insts = append(e.insts, NewInstruction(l, OpSave, nil, nil))
+		} else {
+			fmt.Printf("%x %x \n", l, latest.GetLabel())
+			e.insts = append(e.insts, NewInstruction(l, OpSave, latest.GetLabel(), nil))
+		}
+
 		return l
 	}
 	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
@@ -122,11 +165,20 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		}
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
-		return l
+
+		rl := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(rl, OpResult, nil, nil))
+
+		return rl
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
+		return l
+	}
+	if n, ok := stmt.(parser.BooleanLiteralNode); ok {
+		l := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpSave, n.Value, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {

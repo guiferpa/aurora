@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
 )
 
@@ -51,6 +52,22 @@ func (p *pr) getId() (IdLiteralNode, error) {
 	return id, nil
 }
 
+func (p *pr) getTrue() (BooleanLiteralNode, error) {
+	tok, err := p.EatToken(lexer.TRUE)
+	if err != nil {
+		return BooleanLiteralNode{}, err
+	}
+	return BooleanLiteralNode{byteutil.True, tok}, nil
+}
+
+func (p *pr) getFalse() (BooleanLiteralNode, error) {
+	tok, err := p.EatToken(lexer.FALSE)
+	if err != nil {
+		return BooleanLiteralNode{}, err
+	}
+	return BooleanLiteralNode{byteutil.False, tok}, nil
+}
+
 func (p *pr) getNum() (NumberLiteralNode, error) {
 	tok, err := p.EatToken(lexer.NUMBER)
 	if err != nil {
@@ -93,6 +110,12 @@ func (p *pr) getPriExpr() (Node, error) {
 			return nil, err
 		}
 		return num, nil
+	}
+	if lookahead.GetTag().Id == lexer.TRUE {
+		return p.getTrue()
+	}
+	if lookahead.GetTag().Id == lexer.FALSE {
+		return p.getFalse()
 	}
 	if lookahead.GetTag().Id == lexer.VOID {
 		return p.getVoid()
@@ -211,7 +234,7 @@ func (p *pr) getAddExpr() (Node, error) {
 	return left, nil
 }
 
-func (p *pr) getBoolExpr() (Node, error) {
+func (p *pr) getRelExpr() (Node, error) {
 	left, err := p.getAddExpr()
 	if err != nil {
 		return nil, err
@@ -222,36 +245,67 @@ func (p *pr) getBoolExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.getBoolExpr()
+		right, err := p.getRelExpr()
 		if err != nil {
 			return nil, err
 		}
-		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.DIFFERENT {
 		op, err := p.EatToken(lexer.DIFFERENT)
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.getBoolExpr()
+		right, err := p.getRelExpr()
 		if err != nil {
 			return nil, err
 		}
-		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.BIGGER {
 		op, err := p.EatToken(lexer.BIGGER)
 		if err != nil {
 			return nil, err
 		}
+		right, err := p.getRelExpr()
+		if err != nil {
+			return nil, err
+		}
+		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+	}
+	if lookahead.GetTag().Id == lexer.SMALLER {
+		op, err := p.EatToken(lexer.SMALLER)
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.getRelExpr()
+		if err != nil {
+			return nil, err
+		}
+		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+	}
+	return left, nil
+}
+
+func (p *pr) getBoolExpr() (Node, error) {
+	left, err := p.getRelExpr()
+	if err != nil {
+		return nil, err
+	}
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.OR {
+		op, err := p.EatToken(lexer.OR)
+		if err != nil {
+			return nil, err
+		}
 		right, err := p.getBoolExpr()
 		if err != nil {
 			return nil, err
 		}
 		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
 	}
-	if lookahead.GetTag().Id == lexer.SMALLER {
-		op, err := p.EatToken(lexer.SMALLER)
+	if lookahead.GetTag().Id == lexer.AND {
+		op, err := p.EatToken(lexer.AND)
 		if err != nil {
 			return nil, err
 		}
@@ -262,6 +316,59 @@ func (p *pr) getBoolExpr() (Node, error) {
 		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
 	}
 	return left, nil
+}
+
+func (p *pr) getItem() (Node, error) {
+	test, err := p.getExpr()
+
+	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id != lexer.COLON {
+		return ItemExpressionNode{BooleanLiteralNode{byteutil.True, nil}, test}, nil
+	}
+	if _, err := p.EatToken(lexer.COLON); err != nil {
+		return nil, err
+	}
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	return ItemExpressionNode{test, expr}, nil
+}
+
+func (p *pr) getItems(t lexer.Tag) ([]Node, error) {
+	items := make([]Node, 0)
+	for p.GetLookahead().GetTag().Id != t.Id {
+		stmt, err := p.getStmt()
+		if err != nil {
+			return items, err
+		}
+		if _, err := p.EatToken(lexer.COMMA); err != nil {
+			return items, err
+		}
+		items = append(items, stmt)
+	}
+	return items, nil
+}
+
+func (p *pr) getBranch() (Node, error) {
+	if _, err := p.EatToken(lexer.BRANCH); err != nil {
+		return nil, err
+	}
+
+	if _, err := p.EatToken(lexer.O_BRK); err != nil {
+		return nil, err
+	}
+
+	items, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.EatToken(lexer.C_BRK); err != nil {
+		return nil, err
+	}
+
+	return BranchExpressionNode{items}, nil
 }
 
 func (p *pr) getBlockExpr() (Node, error) {
@@ -304,9 +411,23 @@ func (p *pr) getFunc() (Node, error) {
 	return FuncExpressionNode{ref, arity, stmts}, nil
 }
 
+func (p *pr) getIf() (Node, error) {
+	p.EatToken(lexer.IF)
+	test, err := p.getBoolExpr()
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+		return nil, err
+	}
+	body, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+	p.EatToken(lexer.C_CUR_BRK)
+	return IfExpressionNode{test, body}, nil
+}
+
 func (p *pr) getIdent() (Node, error) {
 	if _, err := p.EatToken(lexer.IDENT); err != nil {
-		return IdentStatementNode{}, err
+		return nil, err
 	}
 	id, err := p.EatToken(lexer.ID)
 	if len(id.GetMatch()) == 0 {
@@ -320,7 +441,7 @@ func (p *pr) getIdent() (Node, error) {
 	}
 	expr, err := p.getExpr()
 	if err != nil {
-		return IdentStatementNode{}, err
+		return nil, err
 	}
 	return IdentStatementNode{fmt.Sprintf("%s", id.GetMatch()), id, expr}, nil
 }
@@ -332,6 +453,12 @@ func (p *pr) getExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.FUNC {
 		return p.getFunc()
+	}
+	if lookahead.GetTag().Id == lexer.IF {
+		return p.getIf()
+	}
+	if lookahead.GetTag().Id == lexer.BRANCH {
+		return p.getBranch()
 	}
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.getIdent()

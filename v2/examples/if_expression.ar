@@ -1,0 +1,6 @@
+ident a = if 10 bigger 9 { 10; };
+print(a);
+
+if 9 bigger 10 {
+  print(10);
+};

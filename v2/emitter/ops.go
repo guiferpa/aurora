@@ -25,4 +25,7 @@ const (
 	OpReturn      = 0x16
 	OpResult      = 0x17
 	OpLoadParam   = 0x18
+	OpIfNot       = 0x19
+	OpOr          = 0x1a
+	OpAnd         = 0x1b
 )

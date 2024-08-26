@@ -1,0 +1,9 @@
+ident decrement = fun (n) {
+  print(n);
+  branch [
+    n equals 0: 0,
+    decrement(n - 1),
+  ];
+};
+
+decrement(3);

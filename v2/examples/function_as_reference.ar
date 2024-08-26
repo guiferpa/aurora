@@ -10,8 +10,8 @@ print(a());
 
 ident inj = fun (f) {
   print(f);
-  print(f());
+  print(f() + 2);
 };
 
-inj(1);
+inj(a);
 

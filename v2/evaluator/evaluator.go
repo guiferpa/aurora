@@ -81,7 +81,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		end := byteutil.ToUint64(right)
 		if curr := e.envpool.Current(); curr != nil {
 			key := fmt.Sprintf("%x", left)
-			insts := e.insts[start : end+1]
+			insts := e.insts[start : start+end+1]
 			curr.SetSegment(key, insts, start, end)
 		}
 		e.cursor = e.cursor + int(end) + 1

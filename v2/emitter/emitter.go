@@ -63,6 +63,18 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 
 		return l
 	}
+	if n, ok := stmt.(parser.ItemExpressionNode); ok {
+		fmt.Print(n)
+		return nil
+	}
+	if n, ok := stmt.(parser.BranchExpressionNode); ok {
+		for _, it := range n.Items {
+			l := e.generateLabel()
+			fmt.Println(l, it)
+			// e.insts = append(e.insts, NewInstruction(l, Op))
+		}
+		return nil
+	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitInstruction(n.Expression)
 	}

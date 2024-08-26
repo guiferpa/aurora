@@ -1,7 +1,5 @@
 ident fib = fun (n) {
-  if n smaller 1 or n equals 1 {
-    n;
-  };
+  if n smaller 1 or n equals 1 { n; };
   fib(n - 1) + fib(n - 2);
 };
 

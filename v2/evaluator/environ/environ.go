@@ -5,17 +5,13 @@ import (
 	"io"
 
 	"github.com/guiferpa/aurora/emitter"
-	"github.com/guiferpa/aurora/evaluator/segment"
 )
 
-type EnvironContext string
-
 type Environ struct {
-	table     map[string][]byte
-	segpool   map[string]*segment.Segment
-	segcurr   string
-	functions map[string][]emitter.Instruction
-	previous  *Environ
+	table    map[string][]byte
+	segpool  map[string]*FunctionSegment
+	ctx      *Context
+	previous *Environ
 }
 
 func (env *Environ) SetLocaL(key string, value []byte) {
@@ -29,23 +25,25 @@ func (env *Environ) GetLocal(key string) []byte {
 	return nil
 }
 
-func (env *Environ) NoSegment() {
-	env.segcurr = ""
-}
-
-func (env *Environ) SetSegment(key string) {
-	env.segcurr = key
-}
-
-func (env *Environ) GetCurrentSegment() *segment.Segment {
-	if len(env.segcurr) > 0 {
-		return env.segpool[env.segcurr]
+func (env *Environ) SetSegment(key string, insts []emitter.Instruction, begin, end uint64) {
+  /*
+	for i, inst := range insts {
+		fmt.Println(fmt.Sprintf("segment(%s):", key), i, fmt.Sprintf("%x: %x %x %x", inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()))
 	}
-	return nil
+  */
+	env.segpool[key] = &FunctionSegment{insts, begin, end}
 }
 
-func (env *Environ) GetSegment(key string) *segment.Segment {
+func (env *Environ) GetSegment(key string) *FunctionSegment {
 	return env.segpool[key]
+}
+
+func (env *Environ) SetContext(ctx *Context) {
+	env.ctx = ctx
+}
+
+func (env *Environ) GetContext() *Context {
+  return env.ctx
 }
 
 func (env *Environ) Print(w io.Writer) {
@@ -56,8 +54,6 @@ func (env *Environ) Print(w io.Writer) {
 
 func New(previous *Environ) *Environ {
 	table := make(map[string][]byte)
-	segpool := make(map[string]*segment.Segment, 0)
-	segcurr := ""
-	functions := make(map[string][]emitter.Instruction)
-	return &Environ{table, segpool, segcurr, functions, previous}
+	segpool := make(map[string]*FunctionSegment, 0)
+	return &Environ{table, segpool, nil, previous}
 }

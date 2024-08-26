@@ -1,5 +1,7 @@
 package environ
 
+import "github.com/guiferpa/aurora/emitter"
+
 type Pool struct {
 	globals map[string][]byte
 	locals  *Environ
@@ -7,6 +9,13 @@ type Pool struct {
 
 func (p *Pool) IsEmpty() bool {
 	return p.locals == nil
+}
+
+func (p *Pool) GetLocal(key string) []byte {
+	if curr := p.Current(); curr != nil {
+		return curr.GetLocal(key)
+	}
+	return nil
 }
 
 func (p *Pool) SetLocal(key string, value []byte) {
@@ -22,6 +31,19 @@ func (p *Pool) Query(key string) []byte {
 			return c
 		}
 		curr = curr.previous
+	}
+	return nil
+}
+
+func (p *Pool) SetContext(cursor int, insts []emitter.Instruction) {
+	if curr := p.Current(); curr != nil {
+		curr.SetContext(NewContext(cursor, insts))
+	}
+}
+
+func (p *Pool) GetContext() *Context {
+	if curr := p.Current(); curr != nil {
+		return curr.GetContext()
 	}
 	return nil
 }

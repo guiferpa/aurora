@@ -63,13 +63,13 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		opcodes, err := emitter.New(ast).Emit()
+		insts, err := emitter.New(ast).Emit()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		labels, err := ev.Evaluate(opcodes)
+		labels, err := ev.Evaluate(insts)
 		if err != nil {
 			fmt.Println(err)
 			continue

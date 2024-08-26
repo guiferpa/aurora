@@ -1,11 +1,6 @@
-ident r = 1;
-{
-  ident b = 3;
-  {
-    print(r + b);
-  };
+ident sum = fun () {
+  ident a = fun () { 2 + 2; };
+  a();
 };
 
-ident sum = r + 2;
-
-print(sum);
+print(sum());

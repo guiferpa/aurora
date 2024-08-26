@@ -35,25 +35,31 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		e.insts = append(e.insts, NewInstruction(l, OpIdentify, ll, lr))
 	}
 	if n, ok := stmt.(parser.FuncExpressionNode); ok {
+		cins := e.insts
+		e.insts = make([]Instruction, 0)
+		for _, ins := range n.Body {
+			e.emitInstruction(ins)
+		}
+		var length uint64 = uint64(len(n.Arity)) + uint64(len(e.insts)) + 1 // Length of function
+		e.insts = cins
+
 		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpBeginFunc, []byte(n.Ref), nil))
+		e.insts = append(e.insts, NewInstruction(l, OpBeginFunc, []byte(n.Ref), byteutil.FromUint64(length)))
 
 		for i, a := range n.Arity {
 			l := e.generateLabel()
 			e.insts = append(e.insts, NewInstruction(l, OpGetLocal, a.Token.GetMatch(), byteutil.FromUint64(uint64(i))))
 		}
 
-		l = e.generateLabel()
 		for _, ins := range n.Body {
 			l = e.emitInstruction(ins)
 		}
+
 		rl := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(rl, OpReturn, l, nil))
 
 		l = e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpSave, []byte(n.Ref), nil))
-
-		// TODO: Create segment to save function instructions
 
 		return l
 	}
@@ -136,6 +142,9 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		}
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
+
+		l = e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(l, OpResult, nil, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.CallPrintStatementNode); ok {

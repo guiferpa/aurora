@@ -3,11 +3,11 @@ package environ
 import "github.com/guiferpa/aurora/emitter"
 
 type Context struct {
-	cursor int
+	cursor uint64
 	insts  []emitter.Instruction
 }
 
-func (ctx *Context) GetCursor() int {
+func (ctx *Context) GetCursor() uint64 {
 	return ctx.cursor
 }
 
@@ -15,6 +15,6 @@ func (ctx *Context) GetInstructions() []emitter.Instruction {
 	return ctx.insts
 }
 
-func NewContext(cursor int, insts []emitter.Instruction) *Context {
+func NewContext(cursor uint64, insts []emitter.Instruction) *Context {
 	return &Context{cursor, insts}
 }

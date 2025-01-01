@@ -1,4 +1,3 @@
-// TODO: Emit op for ELSE token
 package emitter
 
 import (
@@ -139,12 +138,16 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		for _, ins := range n.Body {
 			e.emitInstruction(ins)
 		}
-		var length uint64 = uint64(len(e.insts)) + 1 // Length of if
+		var length uint64 = uint64(len(e.insts)) + 1 // Length of if body
 
 		e.insts = cins
 		lt := e.emitInstruction(n.Test)
 		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpIfNot, lt, byteutil.FromUint64(length)))
+		if n.Else != nil {
+			e.insts = append(e.insts, NewInstruction(l, OpIfNot, lt, byteutil.FromUint64(length+1)))
+		} else {
+			e.insts = append(e.insts, NewInstruction(l, OpIfNot, lt, byteutil.FromUint64(length)))
+		}
 
 		for _, ins := range n.Body {
 			e.emitInstruction(ins)
@@ -156,8 +159,22 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		if isEmpty {
 			e.insts = append(e.insts, NewInstruction(l, OpSave, nil, nil))
 		} else {
-			fmt.Printf("%x %x \n", l, latest.GetLabel())
 			e.insts = append(e.insts, NewInstruction(l, OpSave, latest.GetLabel(), nil))
+		}
+
+		if n.Else != nil {
+			cins = e.insts
+			for _, ins := range n.Else.Body {
+				e.emitInstruction(ins)
+			}
+
+			var euzelength uint64 = uint64(len(e.insts)) + 1 // Length of else body
+			e.insts = cins
+			e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpJump, byteutil.FromUint64(length+euzelength), nil))
+
+			for _, ins := range n.Else.Body {
+				e.emitInstruction(ins)
+			}
 		}
 
 		return l

@@ -9,7 +9,6 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
-//	"github.com/guiferpa/aurora/print" just for debugger
 	"github.com/guiferpa/aurora/repl"
 )
 
@@ -37,12 +36,12 @@ func run(args []string) {
 		fmt.Println(err)
 		os.Exit(4)
 	}
+	emitter.Print(os.Stdout, insts)
 	ev := evaluator.New()
 	if _, err := ev.Evaluate(insts); err != nil {
 		color.Red("%v", err)
 		os.Exit(5)
 	}
-	// print.Opcodes(os.Stdout, ev.GetOpCodes(), true) just for debugger
 }
 
 func main() {

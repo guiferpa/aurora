@@ -14,7 +14,6 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/print"
 )
 
 const PROMPT = ">> "
@@ -45,7 +44,7 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		if strings.Compare(scanner.Text(), "get_opcodes") == 0 {
-			print.Instructions(os.Stdout, ev.GetInstructions(), false)
+			emitter.Print(os.Stdout, ev.GetInstructions())
 			continue
 		}
 

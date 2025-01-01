@@ -46,7 +46,7 @@ func (p *Pool) QueryFunctionSegment(key string) *FunctionSegment {
 	return nil
 }
 
-func (p *Pool) SetContext(cursor int, insts []emitter.Instruction) {
+func (p *Pool) SetContext(cursor uint64, insts []emitter.Instruction) {
 	if curr := p.Current(); curr != nil {
 		curr.SetContext(NewContext(cursor, insts))
 	}

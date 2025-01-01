@@ -15,7 +15,7 @@ import (
 
 type Evaluator struct {
 	envpool *environ.Pool
-	cursor  int
+	cursor  uint64
 	insts   []emitter.Instruction
 	params  [][]byte
 	result  []byte
@@ -80,11 +80,14 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpIfNot {
 		if bytes.Compare(left, byteutil.False) == 0 {
 			end := byteutil.ToUint64(right)
-			e.cursor = e.cursor + int(end) + 1
+			e.cursor = e.cursor + end + 1
 			return nil
 		}
 		e.cursor++
 		return nil
+	}
+	if op == emitter.OpJump {
+		e.cursor = binary.BigEndian.Uint64(left)
 	}
 	if op == emitter.OpBeginFunc {
 		start := uint64(e.cursor) + 1
@@ -94,7 +97,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			insts := e.insts[start : start+end+1]
 			curr.SetSegment(key, insts, start, end)
 		}
-		e.cursor = e.cursor + int(end) + 1
+		e.cursor = e.cursor + end + 1
 		return nil
 	}
 	if op == emitter.OpLoad {
@@ -287,10 +290,9 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, er
 	var err error
 	e.insts = insts
 	iv := 0
-	for e.cursor < len(e.insts) && iv != 100 {
+	for int(e.cursor) < len(e.insts) && iv != 100 {
 		iv++
 		inst := e.insts[e.cursor]
-		fmt.Println(e.cursor, fmt.Sprintf("%x: %x %x %x", inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()))
 		err = e.exec(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight())
 		if err != nil {
 			break
@@ -312,7 +314,7 @@ func (e *Evaluator) GetInstructions() []emitter.Instruction {
 
 func New() *Evaluator {
 	envpool := environ.NewPool(environ.New(nil))
-	cursor := 0
+	var cursor uint64 = 0
 	insts := make([]emitter.Instruction, 0)
 	params := make([][]byte, 0)
 	result := make([]byte, 0)

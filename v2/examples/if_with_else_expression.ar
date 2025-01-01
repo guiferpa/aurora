@@ -1,6 +1,12 @@
-ident a = if 3 bigger 9 { 10; } else { true; };
+ident a = if 9 bigger 9 { 
+  print(90); 
+} else { 
+  if 9 bigger 11 {
+    print(100);
+  } else {
+    print(30);
+  };
+};
+
 print(a);
 
-if 9 bigger 10 {
-  print(10);
-};

@@ -1,4 +1,4 @@
-ident a = if 10 bigger 9 { 10; };
+ident a = if 3 bigger 9 { 10; };
 print(a);
 
 if 9 bigger 10 {

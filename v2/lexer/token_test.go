@@ -133,6 +133,51 @@ func TestGetTokens(t *testing.T) {
 				tok{3, 3, 28, TagEOF, []byte{}},
 			},
 		},
+		{
+			[]byte(`ident a = branch {
+  op equals 1: sum(1, 1),
+  10;
+};`),
+			[]Token{
+				tok{1, 1, 0, TagIdent, []byte("ident")},
+				tok{1, 6, 5, TagWhitespace, []byte(" ")},
+				tok{1, 7, 6, TagId, []byte("a")},
+				tok{1, 8, 7, TagWhitespace, []byte(" ")},
+				tok{1, 9, 8, TagAssign, []byte("=")},
+				tok{1, 10, 9, TagWhitespace, []byte(" ")},
+				tok{1, 11, 10, TagBranch, []byte("branch")},
+				tok{1, 17, 16, TagWhitespace, []byte(" ")},
+				tok{1, 18, 17, TagOCurBrk, []byte("{")},
+				tok{1, 19, 18, TagBreakLine, []byte(`
+`)},
+				tok{2, 1, 19, TagWhitespace, []byte("  ")},
+				tok{2, 3, 21, TagId, []byte("op")},
+				tok{2, 5, 23, TagWhitespace, []byte(" ")},
+				tok{2, 6, 24, TagEquals, []byte("equals")},
+				tok{2, 12, 30, TagWhitespace, []byte(" ")},
+				tok{2, 13, 31, TagNumber, []byte("1")},
+				tok{2, 14, 32, TagColon, []byte(":")},
+				tok{2, 15, 33, TagWhitespace, []byte(" ")},
+				tok{2, 16, 34, TagId, []byte("sum")},
+				tok{2, 19, 37, TagOParen, []byte("(")},
+				tok{2, 20, 38, TagNumber, []byte("1")},
+				tok{2, 21, 39, TagComma, []byte(",")},
+				tok{2, 22, 40, TagWhitespace, []byte(" ")},
+				tok{2, 23, 41, TagNumber, []byte("1")},
+				tok{2, 24, 42, TagCParen, []byte(")")},
+				tok{2, 25, 43, TagComma, []byte(",")},
+				tok{2, 26, 44, TagBreakLine, []byte(`
+`)},
+				tok{3, 1, 45, TagWhitespace, []byte("  ")},
+				tok{3, 3, 47, TagNumber, []byte("10")},
+				tok{3, 5, 49, TagSemicolon, []byte(";")},
+				tok{3, 6, 50, TagBreakLine, []byte(`
+`)},
+				tok{4, 1, 51, TagCCurBrk, []byte("}")},
+				tok{4, 2, 52, TagSemicolon, []byte(";")},
+				tok{4, 3, 53, TagEOF, []byte{}},
+			},
+		},
 	}
 	for _, c := range cases {
 		tokens, err := GetTokens(c.Buffer)

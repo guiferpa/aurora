@@ -8,10 +8,14 @@ ident sub = fun (a, b) {
 
 ident op = 1;
 
+ident another_id = true;
+
 ident a = branch {
   op equals 1: sum(1, 1), 
-  op equals 2: sub(1, 1), 
-  10;
+  op equals 2: sub(1, 1),
+  op equals 3: branch {
+    another_id: 10,
+  }
 };
 
 print(a);

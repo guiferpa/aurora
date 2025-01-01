@@ -133,11 +133,20 @@ func (fen FuncExpressionNode) Next() Node {
 }
 
 type IfExpressionNode struct {
-	Test Node   `json:"test"`
-	Body []Node `json:"body"`
+	Test Node               `json:"test"`
+	Body []Node             `json:"body"`
+	Else *ElseExpressionNode `json:"else"`
 }
 
 func (ien IfExpressionNode) Next() Node {
+	return nil
+}
+
+type ElseExpressionNode struct {
+	Body []Node `json:"body"`
+}
+
+func (een ElseExpressionNode) Next() Node {
 	return nil
 }
 

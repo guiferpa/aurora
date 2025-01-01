@@ -75,6 +75,9 @@ func TestMatchTagRule(t *testing.T) {
 		// IF
 		{[]byte(`if () {}`), IF, []byte("if"), true},
 
+		// ELSE
+		{[]byte(`else {}`), ELSE, []byte("else"), true},
+
 		// COMMA
 		{[]byte(`,`), COMMA, []byte(","), true},
 
@@ -89,6 +92,9 @@ func TestMatchTagRule(t *testing.T) {
 
 		// O_CUR_BRK
 		{[]byte(`{`), O_CUR_BRK, []byte("{"), true},
+
+		// BRANCH
+		{[]byte(`branch [true: 1,]`), BRANCH, []byte("branch"), true},
 
 		// COMMENT
 		{[]byte(`#-`), COMMENT_LINE, []byte("#-"), true},

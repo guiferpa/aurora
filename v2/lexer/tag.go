@@ -30,6 +30,7 @@ const (
 	C_CUR_BRK    = "C_CUR_BRK" // }
 	COMMA        = "COMMA"     // ,
 	IF           = "IF"        // if
+	ELSE         = "ELSE"      // else
 	BRANCH       = "BRANCH"    // branch
 	COLON        = "COLON"     // :
 	SEMICOLON    = "SEMICOLON" // ;
@@ -77,8 +78,9 @@ var (
 	TagCCurBrk    = Tag{C_CUR_BRK, "}", "^}"}
 	TagComma      = Tag{COMMA, ",", "^,"}
 	TagIf         = Tag{IF, "if", "^if"}
-	TagBranch     = Tag{IF, "branch", "^branch"}
+	TagElse       = Tag{ELSE, "else", "^else"}
 	TagColon      = Tag{COLON, ":", "^:"}
+	TagBranch     = Tag{BRANCH, "branch", "^branch"}
 	TagSemicolon  = Tag{SEMICOLON, ";", "^;"}
 	TagFunc       = Tag{FUNC, "fun", "^fun"}
 	TagTrue       = Tag{TRUE, "true", "^true"}
@@ -94,6 +96,7 @@ var processableTags = []Tag{
 	TagBreakLine,
 	TagComment,
 	TagIf,
+	TagElse,
 	TagBranch,
 	TagIdent,
 	TagAssign,

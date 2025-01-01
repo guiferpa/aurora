@@ -1,3 +1,4 @@
+// TODO: Emit op for ELSE token
 package emitter
 
 import (
@@ -71,6 +72,8 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		for _, it := range n.Items {
 			l := e.generateLabel()
 			fmt.Println(l, it)
+			// TODO: This op must be a sequence of if expressions with else, currenlty is missing ELSE token, create ELSE support then keep the development
+
 			// e.insts = append(e.insts, NewInstruction(l, Op))
 		}
 		return nil

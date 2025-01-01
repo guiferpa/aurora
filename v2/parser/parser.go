@@ -318,8 +318,8 @@ func (p *pr) getBoolExpr() (Node, error) {
 	return left, nil
 }
 
-func (p *pr) getItem() (Node, error) {
-	test, err := p.getExpr()
+func (p *pr) getBranchItem() (Node, error) {
+	test, err := p.getBoolExpr()
 
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id != lexer.COLON {
@@ -335,17 +335,24 @@ func (p *pr) getItem() (Node, error) {
 	return ItemExpressionNode{test, expr}, nil
 }
 
-func (p *pr) getItems(t lexer.Tag) ([]Node, error) {
+func (p *pr) getBranchItems(t lexer.Tag) ([]Node, error) {
 	items := make([]Node, 0)
 	for p.GetLookahead().GetTag().Id != t.Id {
-		stmt, err := p.getStmt()
+		expr, err := p.getBranchItem()
 		if err != nil {
 			return items, err
 		}
-		if _, err := p.EatToken(lexer.COMMA); err != nil {
-			return items, err
+		items = append(items, expr)
+		if p.GetLookahead().GetTag().Id == t.Id {
+			if _, err := p.EatToken(t.Id); err != nil {
+				return items, err
+			}
+			break
+		} else {
+			if _, err := p.EatToken(lexer.COMMA); err != nil {
+				return items, err
+			}
 		}
-		items = append(items, stmt)
 	}
 	return items, nil
 }
@@ -355,16 +362,16 @@ func (p *pr) getBranch() (Node, error) {
 		return nil, err
 	}
 
-	if _, err := p.EatToken(lexer.O_BRK); err != nil {
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
 
-	items, err := p.getStmts(lexer.TagCCurBrk)
+	items, err := p.getBranchItems(lexer.TagSemicolon)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := p.EatToken(lexer.C_BRK); err != nil {
+	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
 		return nil, err
 	}
 
@@ -422,7 +429,24 @@ func (p *pr) getIf() (Node, error) {
 		return nil, err
 	}
 	p.EatToken(lexer.C_CUR_BRK)
-	return IfExpressionNode{test, body}, nil
+	if p.GetLookahead().GetTag().Id == lexer.ELSE {
+		euze, err := p.getElse()
+		return IfExpressionNode{test, body, euze}, err
+	}
+	return IfExpressionNode{test, body, nil}, nil
+}
+
+func (p *pr) getElse() (*ElseExpressionNode, error) {
+	p.EatToken(lexer.ELSE)
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+		return nil, err
+	}
+	body, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+	p.EatToken(lexer.C_CUR_BRK)
+	return &ElseExpressionNode{body}, nil
 }
 
 func (p *pr) getIdent() (Node, error) {

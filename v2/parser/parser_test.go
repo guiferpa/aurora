@@ -64,6 +64,7 @@ func TestEatToken(t *testing.T) {
 		Tokens   []lexer.Token
 		TokenIds []string
 	}{
+		// = = +
 		{
 			[]lexer.Token{
 				tok{lexer.TagAssign},
@@ -91,3 +92,4 @@ func TestEatToken(t *testing.T) {
 		}
 	}
 }
+

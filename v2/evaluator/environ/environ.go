@@ -42,16 +42,17 @@ func (env *Environ) GetContext() *Context {
 	return env.ctx
 }
 
-func (env *Environ) GetArgument(index uint64) []byte {
-	if arg, ok := env.arguments[index]; ok {
-		return arg
-	}
-	return nil
-}
-
 func (env *Environ) PushArgument(arg []byte) {
 	index := uint64(len(env.arguments))
 	env.arguments[index] = arg
+}
+
+func (env *Environ) GetArgument(index uint64) []byte {
+	args := env.arguments
+	if arg, ok := args[index]; ok {
+		return arg
+	}
+	return nil
 }
 
 func (env *Environ) Print(w io.Writer) {

@@ -1,7 +1,6 @@
 ident sum = {
   ident x = arguments 0;
   ident y = arguments 1;
-  print 1;
   x + y;
 };
 

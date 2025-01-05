@@ -1,6 +1,8 @@
 package environ
 
 import (
+	"fmt"
+
 	"github.com/guiferpa/aurora/emitter"
 )
 
@@ -37,6 +39,17 @@ func (p *Pool) QueryLocal(key string) []byte {
 	return nil
 }
 
+func (p *Pool) QueryArgument(key uint64) []byte {
+	curr := p.locals
+	for curr != nil {
+		if c := curr.GetArgument(key); c != nil {
+			return c
+		}
+		curr = curr.previous
+	}
+	return nil
+}
+
 func (p *Pool) QueryFunctionSegment(key string) *FunctionSegment {
 	curr := p.locals
 	for curr != nil {
@@ -62,10 +75,12 @@ func (p *Pool) GetContext() *Context {
 }
 
 func (p *Pool) Ahead() {
+	fmt.Println("Ahead")
 	p.locals = New(p.locals)
 }
 
 func (p *Pool) Back() {
+	fmt.Println("Back")
 	if !p.IsEmpty() {
 		p.locals = p.locals.previous
 	}

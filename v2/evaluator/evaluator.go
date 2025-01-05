@@ -98,6 +98,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpIfNot {
+		e.envpool.Ahead()
 		if bytes.Compare(left, byteutil.False) == 0 {
 			end := byteutil.ToUint64(right)
 			e.cursor = e.cursor + end + 1
@@ -109,6 +110,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpJump {
 		e.cursor = binary.BigEndian.Uint64(left)
+		return nil
 	}
 
 	/*
@@ -215,9 +217,13 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		}
 		ctx := e.envpool.GetContext()
 		e.envpool.Back()
-		e.currseg = nil
-		e.insts = ctx.GetInstructions()
-		e.cursor = ctx.GetCursor()
+		if ctx != nil {
+			e.currseg = nil
+			e.insts = ctx.GetInstructions()
+			e.cursor = ctx.GetCursor()
+		} else {
+			e.cursor++
+		}
 		return nil
 	}
 

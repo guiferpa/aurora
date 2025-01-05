@@ -1,9 +1,10 @@
-ident decrement = fun (n) {
+ident decrement = {
+  ident n = arguments 0;
   print(n);
-  branch [
+  branch {
     n equals 0: 0,
     decrement(n - 1),
-  ];
+  };
 };
 
 decrement(3);

@@ -387,9 +387,11 @@ func (p *pr) getBlockExpr() (Node, error) {
 		return nil, err
 	}
 	p.EatToken(lexer.C_CUR_BRK)
-	return BlockExpressionNode{stmts}, nil
+	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
+	return BlockExpressionNode{ref, stmts}, nil
 }
 
+/*
 func (p *pr) getFunc() (Node, error) {
 	p.EatToken(lexer.FUNC)
 	p.EatToken(lexer.O_PAREN)
@@ -417,6 +419,7 @@ func (p *pr) getFunc() (Node, error) {
 	ref := fmt.Sprintf("%d", time.Now().Nanosecond())
 	return FuncExpressionNode{ref, arity, stmts}, nil
 }
+*/
 
 func (p *pr) getIf() (Node, error) {
 	p.EatToken(lexer.IF)
@@ -472,12 +475,17 @@ func (p *pr) getIdent() (Node, error) {
 
 func (p *pr) getExpr() (Node, error) {
 	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.ARGUMENTS {
+		return p.getArgs()
+	}
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.getBlockExpr()
 	}
+  /*
 	if lookahead.GetTag().Id == lexer.FUNC {
 		return p.getFunc()
 	}
+  */
 	if lookahead.GetTag().Id == lexer.IF {
 		return p.getIf()
 	}
@@ -490,21 +498,28 @@ func (p *pr) getExpr() (Node, error) {
 	return p.getBoolExpr()
 }
 
-func (p *pr) getCallPrint() (Node, error) {
-	p.EatToken(lexer.CALL_PRINT)
-	p.EatToken(lexer.O_PAREN)
+func (p *pr) getPrint() (Node, error) {
+	p.EatToken(lexer.PRINT)
 	expr, err := p.getExpr()
 	if err != nil {
 		return nil, err
 	}
-	p.EatToken(lexer.C_PAREN)
-	return CallPrintStatementNode{expr}, nil
+	return PrintStatementNode{expr}, nil
+}
+
+func (p *pr) getArgs() (Node, error) {
+	p.EatToken(lexer.ARGUMENTS)
+	nth, err := p.getNum()
+	if err != nil {
+		return nil, err
+	}
+	return ArgumentsExpressionNode{nth}, nil
 }
 
 func (p *pr) getStmt() (Node, error) {
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.CALL_PRINT {
-		return p.getCallPrint()
+	if lookahead.GetTag().Id == lexer.PRINT {
+		return p.getPrint()
 	}
 	expr, err := p.getExpr()
 	if err != nil {

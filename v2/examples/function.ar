@@ -1,7 +1,0 @@
-ident sum = fun (a, b) {
-  a + b;
-};
-
-#- It's a function that returns the result of sum between two numbers
-ident result = sum(10, 20);
-print(result);

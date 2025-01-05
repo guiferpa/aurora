@@ -40,9 +40,10 @@ const (
 	FALSE        = "FALSE" // false
 	WHITESPACE   = "WHITESPACE"
 	BREAK_LINE   = "BREAK_LINE"
-	CALL_PRINT   = "CALL_PRINT" // print
-	FUNC         = "FUNC"       // fun
-	VOID         = "VOID"       // void
+	PRINT        = "PRINT"     // print
+	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
+	// FUNC         = "FUNC"      // fun
+	VOID         = "VOID"      // void
 	EOF          = "EOF"
 )
 
@@ -55,7 +56,8 @@ type Tag struct {
 var (
 	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]"}
 	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+"}
-	TagCallPrint  = Tag{CALL_PRINT, "print", "^print"}
+	TagCallPrint  = Tag{PRINT, "print", "^print"}
+	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments"}
 	TagIdent      = Tag{IDENT, "ident", "^ident"}
 	TagAssign     = Tag{ASSIGN, "=", "^="}
 	TagOParen     = Tag{O_PAREN, "(", "^\\("}
@@ -82,7 +84,7 @@ var (
 	TagColon      = Tag{COLON, ":", "^:"}
 	TagBranch     = Tag{BRANCH, "branch", "^branch"}
 	TagSemicolon  = Tag{SEMICOLON, ";", "^;"}
-	TagFunc       = Tag{FUNC, "fun", "^fun"}
+	// TagFunc       = Tag{FUNC, "fun", "^fun"}
 	TagTrue       = Tag{TRUE, "true", "^true"}
 	TagFalse      = Tag{FALSE, "false", "^false"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
@@ -116,7 +118,8 @@ var processableTags = []Tag{
 	TagColon,
 	TagSemicolon,
 	TagCallPrint,
-	TagFunc,
+	TagArguments,
+	// TagFunc,
 	TagVoid,
 	TagTrue,
 	TagFalse,

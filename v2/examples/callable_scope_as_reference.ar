@@ -1,0 +1,7 @@
+ident ref = {
+  1;
+};
+
+#- It prints a reference of function
+print ref;
+

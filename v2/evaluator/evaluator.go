@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"os"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
@@ -17,6 +18,7 @@ type Evaluator struct {
 	envpool *environ.Pool
 	cursor  uint64
 	insts   []emitter.Instruction
+	currseg *environ.FunctionSegment
 	params  [][]byte
 	result  []byte
 	temps   map[string][]byte
@@ -47,6 +49,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if isTemp(left) {
 		left = e.walkTemps(left)
 	}
+
 	if isTemp(right) {
 		right = e.walkTemps(right)
 	}
@@ -58,6 +61,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpResult {
 		if len(e.result) > 0 {
 			e.temps[fmt.Sprintf("%x", label)] = e.result
@@ -65,6 +69,21 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
+	if op == emitter.OpGetArg {
+		index := byteutil.ToUint64(left)
+		v := e.envpool.Current().GetArgument(index)
+		e.temps[fmt.Sprintf("%x", label)] = v
+		e.cursor++
+		return nil
+	}
+
+	if op == emitter.OpPushArg {
+		e.envpool.Current().PushArgument(left)
+		e.cursor++
+		return nil
+	}
+
 	if op == emitter.OpIdentify {
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.GetLocal(k); v != nil {
@@ -77,6 +96,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		}
 		return errors.New(fmt.Sprintf("identifier %s cannot be void", left))
 	}
+
 	if op == emitter.OpIfNot {
 		if bytes.Compare(left, byteutil.False) == 0 {
 			end := byteutil.ToUint64(right)
@@ -86,20 +106,25 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpJump {
 		e.cursor = binary.BigEndian.Uint64(left)
 	}
-	if op == emitter.OpBeginFunc {
-		start := uint64(e.cursor) + 1
-		end := byteutil.ToUint64(right)
-		if curr := e.envpool.Current(); curr != nil {
-			key := fmt.Sprintf("%x", left)
-			insts := e.insts[start : start+end+1]
-			curr.SetSegment(key, insts, start, end)
+
+	/*
+		if op == emitter.OpBeginFunc {
+			start := uint64(e.cursor) + 1
+			end := byteutil.ToUint64(right)
+			if curr := e.envpool.Current(); curr != nil {
+				key := fmt.Sprintf("%x", left)
+				insts := e.insts[start : start+end+1]
+				curr.SetSegment(key, insts, start, end)
+			}
+			e.cursor = e.cursor + end + 1
+			return nil
 		}
-		e.cursor = e.cursor + end + 1
-		return nil
-	}
+	*/
+
 	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.QueryLocal(k); v != nil {
@@ -110,39 +135,76 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return errors.New(fmt.Sprintf("identifier %s not defined", left))
 	}
 
-	if op == emitter.OpOBlock { // Open scope for block
-		e.envpool.Ahead()
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpCBlock { // Close scope for block
-		e.envpool.Back()
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpSaveParam {
-		e.params = append(e.params, left)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpLoadParam {
-		i := byteutil.ToUint64(right)
-		v := e.params[i]
-		key := fmt.Sprintf("%x", left)
-		e.envpool.SetLocal(key, v)
-		if int(i+1) == len(e.params) {
-			e.params = make([][]byte, 0)
+	if op == emitter.OpBeginScope { // Open scope for block
+		start := uint64(e.cursor) + 1
+		end := byteutil.ToUint64(right)
+		if curr := e.envpool.Current(); curr != nil {
+			key := fmt.Sprintf("%x", left)
+			insts := e.insts[start : start+end]
+			curr.SetSegment(key, insts, start, end)
 		}
-		e.cursor++
+		e.cursor = e.cursor + end + 1
 		return nil
 	}
+
+	/*
+		if op == emitter.OpEndScope { // Close scope for block
+			e.envpool.Back()
+			e.cursor++
+			return nil
+		}
+
+			if op == emitter.OpSaveParam {
+				e.params = append(e.params, left)
+				e.cursor++
+				return nil
+			}
+
+			if op == emitter.OpLoadParam {
+				i := byteutil.ToUint64(right)
+				v := e.params[i]
+				key := fmt.Sprintf("%x", left)
+				e.envpool.SetLocal(key, v)
+				if int(i+1) == len(e.params) {
+					e.params = make([][]byte, 0)
+				}
+				e.cursor++
+				return nil
+			}
+	*/
 
 	if op == emitter.OpPrint {
 		builtin.PrintFunction(left)
 		e.cursor++
+		return nil
+	}
+
+	if op == emitter.OpPreCall {
+		k := fmt.Sprintf("%x", left)
+		v := e.envpool.QueryLocal(k)
+		if v == nil {
+			return errors.New(fmt.Sprintf("identifier %s not defined", left))
+		}
+
+		k = fmt.Sprintf("%x", v)
+		currseg := e.envpool.QueryFunctionSegment(k)
+		if currseg == nil {
+			return errors.New(fmt.Sprintf("identifier %s is not callable segment", left))
+		}
+		e.currseg = currseg
+
+		e.envpool.Ahead()
+
+		e.cursor++
+
+		return nil
+	}
+
+	if op == emitter.OpCall {
+		e.envpool.SetContext(e.cursor+1, e.insts)
+		e.cursor = 0
+		e.insts = e.currseg.GetInstructions() // Retrieve instructions from function segment
+		emitter.Print(os.Stdout, e.insts)
 		return nil
 	}
 
@@ -151,33 +213,11 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		if len(left) > 0 {
 			e.result = left
 		}
-		e.envpool.Back()
 		ctx := e.envpool.GetContext()
+		e.envpool.Back()
+		e.currseg = nil
 		e.insts = ctx.GetInstructions()
 		e.cursor = ctx.GetCursor()
-		return nil
-	}
-
-	if op == emitter.OpCall {
-		k := fmt.Sprintf("%x", left)
-		v := e.envpool.QueryLocal(k)
-		if v == nil {
-			return errors.New(fmt.Sprintf("identifier %s not defined", left))
-		}
-
-		k = fmt.Sprintf("%x", v)
-		segcurr := e.envpool.QueryFunctionSegment(k)
-		if segcurr == nil {
-			return errors.New(fmt.Sprintf("identifier %s is not callable segment", left))
-		}
-
-		e.envpool.SetContext(e.cursor+1, e.insts)
-
-		e.cursor = 0
-		e.insts = segcurr.GetInstructions() // Retrieve instructions from function segment
-
-		e.envpool.Ahead()
-
 		return nil
 	}
 
@@ -190,6 +230,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpAnd {
 		if byteutil.ToBoolean(left) && byteutil.ToBoolean(right) {
 			e.temps[fmt.Sprintf("%x", label)] = byteutil.True
@@ -212,6 +253,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpDiff {
 		r := byteutil.False
 		if a != b {
@@ -221,6 +263,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpBigger {
 		r := byteutil.False
 		if a > b {
@@ -230,6 +273,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpSmaller {
 		r := byteutil.False
 		if a < b {
@@ -249,6 +293,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpAdd {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
@@ -257,6 +302,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpSubstract {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
@@ -265,6 +311,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpDivide {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
@@ -273,6 +320,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
+
 	if op == emitter.OpExponential {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
@@ -321,5 +369,5 @@ func New() *Evaluator {
 	temps := make(map[string][]byte, 0)
 	labels := make(map[string]int)
 
-	return &Evaluator{envpool, cursor, insts, params, result, temps, labels}
+	return &Evaluator{envpool, cursor, insts, nil, params, result, temps, labels}
 }

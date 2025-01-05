@@ -8,10 +8,11 @@ import (
 )
 
 type Environ struct {
-	table    map[string][]byte
-	segpool  map[string]*FunctionSegment
-	ctx      *Context
-	previous *Environ
+	arguments map[uint64][]byte
+	table     map[string][]byte
+	segpool   map[string]*FunctionSegment
+	ctx       *Context
+	previous  *Environ
 }
 
 func (env *Environ) SetLocaL(key string, value []byte) {
@@ -26,11 +27,6 @@ func (env *Environ) GetLocal(key string) []byte {
 }
 
 func (env *Environ) SetSegment(key string, insts []emitter.Instruction, begin, end uint64) {
-  /*
-	for i, inst := range insts {
-		fmt.Println(fmt.Sprintf("segment(%s):", key), i, fmt.Sprintf("%x: %x %x %x", inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()))
-	}
-  */
 	env.segpool[key] = &FunctionSegment{insts, begin, end}
 }
 
@@ -43,7 +39,19 @@ func (env *Environ) SetContext(ctx *Context) {
 }
 
 func (env *Environ) GetContext() *Context {
-  return env.ctx
+	return env.ctx
+}
+
+func (env *Environ) GetArgument(index uint64) []byte {
+	if arg, ok := env.arguments[index]; ok {
+		return arg
+	}
+	return nil
+}
+
+func (env *Environ) PushArgument(arg []byte) {
+	index := uint64(len(env.arguments))
+	env.arguments[index] = arg
 }
 
 func (env *Environ) Print(w io.Writer) {
@@ -55,5 +63,6 @@ func (env *Environ) Print(w io.Writer) {
 func New(previous *Environ) *Environ {
 	table := make(map[string][]byte)
 	segpool := make(map[string]*FunctionSegment, 0)
-	return &Environ{table, segpool, nil, previous}
+	arguments := make(map[uint64][]byte, 0)
+	return &Environ{arguments, table, segpool, nil, previous}
 }

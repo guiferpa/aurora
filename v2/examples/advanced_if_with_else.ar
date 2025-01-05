@@ -1,0 +1,6 @@
+ident a = if 9 bigger 9 { 90; } else { 
+  if 9 bigger 11 { 100; } else { 30; };
+};
+
+print a;
+

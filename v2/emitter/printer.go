@@ -32,12 +32,14 @@ func resolveOpCode(op byte) string {
 		return "OpEquals"
 	case OpSmaller:
 		return "OpSmaller"
-	case OpOBlock:
-		return "OpOBlock"
-	case OpCBlock:
-		return "OpCBlock"
+	case OpBeginScope:
+		return "OpBeginScope"
+	case OpEndScope:
+		return "OpEndScope"
 	case OpSave:
 		return "OpSave"
+	case OpPreCall:
+		return "OpPreCall"
 	case OpCall:
 		return "OpCall"
 	case OpSaveParam:
@@ -66,6 +68,10 @@ func resolveOpCode(op byte) string {
 		return "OpAnd"
 	case OpJump:
 		return "OpJump"
+	case OpPushArg:
+		return "OpPushArg"
+	case OpGetArg:
+		return "OpGetArg"
 	}
 	return "%Unknown%"
 }

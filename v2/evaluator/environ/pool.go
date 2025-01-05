@@ -1,6 +1,8 @@
 package environ
 
-import "github.com/guiferpa/aurora/emitter"
+import (
+	"github.com/guiferpa/aurora/emitter"
+)
 
 type Pool struct {
 	globals map[string][]byte

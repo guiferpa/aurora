@@ -1,32 +1,37 @@
 package emitter
 
 const (
-	OpMultiply    byte = 0x01
-	OpAdd              = 0x02
-	OpSubstract        = 0x03
-	OpDivide           = 0x04
-	OpExponential      = 0x05
-	OpIdentify         = 0x06
-	OpLoad             = 0x07
-	OpBigger           = 0x08
-	OpDiff             = 0x09
-	OpEquals           = 0x0a
-	OpSmaller          = 0x0b
-	OpOBlock           = 0x0c
-	OpCBlock           = 0x0d
-	OpSave             = 0x0e
-	OpCall             = 0x0f
-	OpSaveParam        = 0x10
-	OpPrint            = 0x11
-	OpBeginFunc        = 0x12
-	OpEndFunc          = 0x13
-	OpSetLocal         = 0x14
-	OpGetLocal         = 0x15
-	OpReturn           = 0x16
-	OpResult           = 0x17
-	OpLoadParam        = 0x18
-	OpIfNot            = 0x19
-	OpOr               = 0x1a
-	OpAnd              = 0x1b
-	OpJump             = 0x1c
+	OpMultiply    byte = 0x01 // Multiply two numbers with max of 64 bits (uint64)
+	OpAdd              = 0x02 // Sum two numbers with max of 64 bits (uint64)
+	OpSubstract        = 0x03 // Substract two numbers with max of 64 bits (uint64)
+	OpDivide           = 0x04 // Divide two numbers with max of 64 bits (uint64)
+	OpExponential      = 0x05 // Exponential numbers with max of 64 bits (uint64)
+	OpIdentify         = 0x06 // Identify a definition from scope where evaluate step
+	OpSave             = 0x07 // Save value with max of 64 bits (uint64) to temporary storage in instructions
+	OpLoad             = 0x08 // Load value with max of 64 bits (uint64) from temporary storage in instructions
+	OpDiff             = 0x09 // Operation to compare if two numbers with max of 64 bits (uint64) are different between themself
+	OpEquals           = 0x0a // Operation to compare if two numbers with max of 64 bits (uint64) are equals between themself
+	OpBigger           = 0x0b // Operation to decide between two numbers with 64 bits (uint64) which one is bigger than other
+	OpSmaller          = 0x0c // Operation to decide between two numbers with 64 bits (uint64) which one is smaller than other
+	OpAnd              = 0x0d // Operation to decide the AND behavior logically between two boolean values (1 bit)
+	OpOr               = 0x0e // Operation to decide the OR behavior logically between two boolean values (1 bit)
+	OpPushArg          = 0x0f // Operation to push arguments to next scope
+	OpGetArg           = 0x10 // Operation to get arguments from higher scopes
+	OpBeginScope       = 0x11 // Starts a new scope in stack evaluate time
+	OpEndScope         = 0x12 // Ends the current scope started in stack evalute time
+	OpPreCall          = 0x13 // It's a pre call operation, main goal is push all scope arguments
+	OpCall             = 0x14 // Call a scope with paramters, it'll works like function
+	OpIfNot            = 0x15 // Operation logical to decide an negative condition
+	OpJump             = 0x16 // Operation just for jump to another instruction
+	OpReturn           = 0x17 // Operation to save an value with max of 64 bits (uint64) to work throught by different scopes
+	OpResult           = 0x18 // Operation to get the result persisted in return stack
+
+	/* Legacy operations */
+	OpSaveParam = 0x19
+	OpPrint     = 0x1a
+	OpBeginFunc = 0x1b
+	OpEndFunc   = 0x1c
+	OpSetLocal  = 0x1d
+	OpGetLocal  = 0x1e
+	OpLoadParam = 0x1f
 )

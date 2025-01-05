@@ -115,7 +115,8 @@ func (be BooleanExpression) Next() Node {
 }
 
 type BlockExpressionNode struct {
-	Statements []Node `json:"statements"`
+	Ref  []byte `json:"id"`
+	Body []Node `json:"body"`
 }
 
 func (ben BlockExpressionNode) Next() Node {
@@ -133,8 +134,8 @@ func (fen FuncExpressionNode) Next() Node {
 }
 
 type IfExpressionNode struct {
-	Test Node               `json:"test"`
-	Body []Node             `json:"body"`
+	Test Node                `json:"test"`
+	Body []Node              `json:"body"`
 	Else *ElseExpressionNode `json:"else"`
 }
 
@@ -175,11 +176,19 @@ func (en ExpressionNode) Next() Node {
 	return en.Expression
 }
 
-type CallPrintStatementNode struct {
+type PrintStatementNode struct {
 	Param Node `json:"param"`
 }
 
-func (cpsn CallPrintStatementNode) Next() Node {
+func (cpsn PrintStatementNode) Next() Node {
+	return nil
+}
+
+type ArgumentsExpressionNode struct {
+	Nth NumberLiteralNode `json:"nth"`
+}
+
+func (aen ArgumentsExpressionNode) Next() Node {
 	return nil
 }
 

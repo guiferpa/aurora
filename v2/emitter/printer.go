@@ -20,8 +20,8 @@ func resolveOpCode(op byte) string {
 		return "OpDivide"
 	case OpExponential:
 		return "OpExponential"
-	case OpIdentify:
-		return "OpIdentify"
+	case OpIdent:
+		return "OpIdent"
 	case OpLoad:
 		return "OpLoad"
 	case OpBigger:
@@ -42,24 +42,12 @@ func resolveOpCode(op byte) string {
 		return "OpPreCall"
 	case OpCall:
 		return "OpCall"
-	case OpSaveParam:
-		return "OpSaveParam"
 	case OpPrint:
 		return "OpPrint"
-	case OpBeginFunc:
-		return "OpBeginFunc"
-	case OpEndFunc:
-		return "OpEndFunc"
-	case OpSetLocal:
-		return "OpSetLocal"
-	case OpGetLocal:
-		return "OpGetLocal"
 	case OpReturn:
 		return "OpReturn"
 	case OpResult:
 		return "OpResult"
-	case OpLoadParam:
-		return "OpLoadParam"
 	case OpIfNot:
 		return "OpIfNot"
 	case OpOr:
@@ -97,8 +85,8 @@ func Print(w io.Writer, insts []Instruction) error {
 	for i, ins := range insts {
 		lo := fmt.Sprintf("%-12s", resolveOpCode(ins.GetOpCode()))
 		t := highlightBytesUsedInHex(c, ins.GetLabel(), 4)
-		lp := highlightBytesUsedInHex(c, ins.GetLeft(), 8)
-		rp := highlightBytesUsedInHex(c, ins.GetRight(), 8)
+		lp := highlightBytesUsedInHex(c, ins.GetLeft(), 16)
+		rp := highlightBytesUsedInHex(c, ins.GetRight(), 16)
 		o := highlightByteUsedInHex(c, ins.GetOpCode(), 1)
 		fmt.Fprintf(w, "[%016s] %0s(%d): %s(1) %s - %s(%d) %s(%d)\n", c.Sprintf("%x", i), t, len(ins.GetLabel()), o, lo, lp, len(ins.GetLeft()), rp, len(ins.GetRight()))
 	}

@@ -31,25 +31,22 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		ll := n.Token.GetMatch()
 		lr := e.emitInstruction(n.Expression)
 		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpIdentify, ll, lr))
+		e.insts = append(e.insts, NewInstruction(l, OpIdent, ll, lr))
 	}
 	if n, ok := stmt.(parser.BlockExpressionNode); ok {
+		var l []byte
 		cins := e.insts
 		e.insts = make([]Instruction, 0)
 		for _, ins := range n.Body {
-			e.emitInstruction(ins)
-		}
-		var length uint64 = uint64(len(e.insts)) + 1 // Length of function
-		e.insts = cins
-		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
-
-		l := e.generateLabel()
-		for _, ins := range n.Body {
 			l = e.emitInstruction(ins)
 		}
+		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpReturn, l, nil))
+		body := e.insts
+		e.insts = cins
 
-		rl := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(rl, OpReturn, l, nil))
+		var length uint64 = uint64(len(body)) // Length of function
+		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
+		e.insts = append(e.insts, body...)
 
 		l = e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpSave, n.Ref, nil))
@@ -59,42 +56,20 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitInstruction(n.Expression)
 	}
-	/*
-			if n, ok := stmt.(parser.BlockExpressionNode); ok {
-				l := e.generateLabel()
-				e.insts = append(e.insts, NewInstruction(l, OpBeginScope, nil, nil))
+	if n, ok := stmt.(parser.ItemExpressionNode); ok {
+		fmt.Print(n)
+		return nil
+	}
+	if n, ok := stmt.(parser.BranchExpressionNode); ok {
+		for _, it := range n.Items {
+			l := e.generateLabel()
+			fmt.Println(l, it)
+			// TODO: This op must be a sequence of if expressions with else, currenlty is missing ELSE token, create ELSE support then keep the development
 
-				for _, stmt := range n.Statements {
-					e.emitInstruction(stmt)
-				}
-
-				latest := e.insts[len(e.insts)-1]
-				isEmpty := bytes.Compare(latest.GetLabel(), l) == 0
-				l = e.generateLabel()
-				if isEmpty {
-					e.insts = append(e.insts, NewInstruction(l, OpReturn, nil, nil))
-				} else {
-					e.insts = append(e.insts, NewInstruction(l, OpReturn, latest.GetLabel(), nil))
-				}
-
-				e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpEndScope, nil, nil))
-				return l
-			}
-		if n, ok := stmt.(parser.ItemExpressionNode); ok {
-			fmt.Print(n)
-			return nil
+			// e.insts = append(e.insts, NewInstruction(l, Op))
 		}
-		if n, ok := stmt.(parser.BranchExpressionNode); ok {
-			for _, it := range n.Items {
-				l := e.generateLabel()
-				fmt.Println(l, it)
-				// TODO: This op must be a sequence of if expressions with else, currenlty is missing ELSE token, create ELSE support then keep the development
-
-				// e.insts = append(e.insts, NewInstruction(l, Op))
-			}
-			return nil
-		}
-	*/
+		return nil
+	}
 	if n, ok := stmt.(parser.RelativeExpression); ok {
 		ll := e.emitInstruction(n.Left)
 		lr := e.emitInstruction(n.Right)
@@ -111,7 +86,11 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		}
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
-		return l
+
+		rl := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(rl, OpResult, nil, nil))
+
+		return rl
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
 		ll := e.emitInstruction(n.Left)
@@ -213,10 +192,14 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		case "^":
 			op = OpExponential
 		}
+
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
 
-		return l
+		rl := e.generateLabel()
+		e.insts = append(e.insts, NewInstruction(rl, OpResult, nil, nil))
+
+		return rl
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		l := e.generateLabel()

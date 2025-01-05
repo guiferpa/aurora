@@ -1,4 +1,4 @@
-ident a = if 8 bigger 9 { 
+ident a = if 10 bigger 9 { 
   10; 
 };
 

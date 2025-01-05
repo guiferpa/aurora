@@ -6,7 +6,7 @@ const (
 	OpSubstract        = 0x03 // Substract two numbers with max of 64 bits (uint64)
 	OpDivide           = 0x04 // Divide two numbers with max of 64 bits (uint64)
 	OpExponential      = 0x05 // Exponential numbers with max of 64 bits (uint64)
-	OpIdentify         = 0x06 // Identify a definition from scope where evaluate step
+	OpIdent            = 0x06 // Identify a definition from scope where evaluate step
 	OpSave             = 0x07 // Save value with max of 64 bits (uint64) to temporary storage in instructions
 	OpLoad             = 0x08 // Load value with max of 64 bits (uint64) from temporary storage in instructions
 	OpDiff             = 0x09 // Operation to compare if two numbers with max of 64 bits (uint64) are different between themself
@@ -25,13 +25,5 @@ const (
 	OpJump             = 0x16 // Operation just for jump to another instruction
 	OpReturn           = 0x17 // Operation to save an value with max of 64 bits (uint64) to work throught by different scopes
 	OpResult           = 0x18 // Operation to get the result persisted in return stack
-
-	/* Legacy operations */
-	OpSaveParam = 0x19
-	OpPrint     = 0x1a
-	OpBeginFunc = 0x1b
-	OpEndFunc   = 0x1c
-	OpSetLocal  = 0x1d
-	OpGetLocal  = 0x1e
-	OpLoadParam = 0x1f
+	OpPrint            = 0x19 // Operation to print slice of bytes
 )

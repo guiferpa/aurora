@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"os"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
@@ -72,7 +71,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpGetArg {
 		index := byteutil.ToUint64(left)
-		v := e.envpool.Current().GetArgument(index)
+		v := e.envpool.QueryArgument(index)
 		e.temps[fmt.Sprintf("%x", label)] = v
 		e.cursor++
 		return nil
@@ -84,7 +83,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	if op == emitter.OpIdentify {
+	if op == emitter.OpIdent {
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.GetLocal(k); v != nil {
 			return errors.New(fmt.Sprintf("conflict between identifiers named %s", left))
@@ -113,20 +112,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	/*
-		if op == emitter.OpBeginFunc {
-			start := uint64(e.cursor) + 1
-			end := byteutil.ToUint64(right)
-			if curr := e.envpool.Current(); curr != nil {
-				key := fmt.Sprintf("%x", left)
-				insts := e.insts[start : start+end+1]
-				curr.SetSegment(key, insts, start, end)
-			}
-			e.cursor = e.cursor + end + 1
-			return nil
-		}
-	*/
-
 	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
 		if v := e.envpool.QueryLocal(k); v != nil {
@@ -148,32 +133,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.cursor = e.cursor + end + 1
 		return nil
 	}
-
-	/*
-		if op == emitter.OpEndScope { // Close scope for block
-			e.envpool.Back()
-			e.cursor++
-			return nil
-		}
-
-			if op == emitter.OpSaveParam {
-				e.params = append(e.params, left)
-				e.cursor++
-				return nil
-			}
-
-			if op == emitter.OpLoadParam {
-				i := byteutil.ToUint64(right)
-				v := e.params[i]
-				key := fmt.Sprintf("%x", left)
-				e.envpool.SetLocal(key, v)
-				if int(i+1) == len(e.params) {
-					e.params = make([][]byte, 0)
-				}
-				e.cursor++
-				return nil
-			}
-	*/
 
 	if op == emitter.OpPrint {
 		builtin.PrintFunction(left)
@@ -206,7 +165,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.envpool.SetContext(e.cursor+1, e.insts)
 		e.cursor = 0
 		e.insts = e.currseg.GetInstructions() // Retrieve instructions from function segment
-		emitter.Print(os.Stdout, e.insts)
 		return nil
 	}
 
@@ -255,7 +213,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		if a == b {
 			r = byteutil.True
 		}
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
 		e.cursor++
 		return nil
 	}
@@ -265,7 +223,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		if a != b {
 			r = byteutil.True
 		}
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
 		e.cursor++
 		return nil
 	}
@@ -275,7 +233,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		if a > b {
 			r = byteutil.True
 		}
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
 		e.cursor++
 		return nil
 	}
@@ -286,7 +244,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			r = byteutil.True
 		}
 		e.result = r
-		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -295,7 +252,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a*b)
 		e.result = r
-		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -304,7 +260,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a+b)
 		e.result = r
-		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -313,7 +268,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
 		e.result = r
-		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -322,7 +276,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a/b)
 		e.result = r
-		// e.temps[fmt.Sprintf("%x", label)] = r
 		e.cursor++
 		return nil
 	}
@@ -331,7 +284,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		r := make([]byte, 8)
 		v := math.Pow(float64(a), float64(b))
 		binary.BigEndian.PutUint64(r, uint64(v))
-		e.temps[fmt.Sprintf("%x", label)] = r
+		e.result = r
 		e.cursor++
 		return nil
 	}

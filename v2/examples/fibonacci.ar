@@ -1,9 +1,7 @@
 ident fib = {
   ident n = arguments 0;
-  branch {
-    n smaller 1 or n equals 1: n,
-    fib(n - 1) + fib(n - 2);
-  };
+  print n;
+  if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
 };
 
-print(fib(1));
+fib(10);

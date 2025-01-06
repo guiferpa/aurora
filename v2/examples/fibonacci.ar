@@ -1,7 +1,6 @@
 ident fib = {
   ident n = arguments 0;
-  print n;
   if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
 };
 
-fib(10);
+print fib(4);

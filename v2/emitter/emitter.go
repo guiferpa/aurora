@@ -18,7 +18,7 @@ type emt struct {
 }
 
 func (e *emt) generateLabel() []byte {
-	t := []byte(fmt.Sprintf("%dt", e.tmpc))
+	t := []byte(fmt.Sprintf("0%d", e.tmpc))
 	e.tmpc++
 	return t
 }
@@ -135,7 +135,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		lt := e.emitInstruction(n.Test)
 		inl := e.generateLabel()
 		bodylength := byteutil.FromUint64(uint64(len(body) + 1))
-		e.insts = append(e.insts, NewInstruction(inl, OpIfNot, lt, bodylength))
+		e.insts = append(e.insts, NewInstruction(inl, OpIf, lt, bodylength))
 		euzelength := byteutil.FromUint64(uint64(len(e.insts) + len(body) + len(euze) + 1))
 		body = append(body, NewInstruction(e.generateLabel(), OpJump, euzelength, nil))
 

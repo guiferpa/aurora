@@ -46,6 +46,7 @@ func (e *Evaluator) walkTemps(bs []byte) []byte {
 }
 
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
+	// Print(os.Stdout, e.counter, op, nil, nil, "END")
 	if isTemp(left) {
 		left = e.walkTemps(left)
 	}
@@ -302,7 +303,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	if op == emitter.OpSubstract {
+	if op == emitter.OpSubtract {
 		r := make([]byte, 8)
 		binary.BigEndian.PutUint64(r, a-b)
 		Print(os.Stdout, e.counter, op, r, a, b)
@@ -337,9 +338,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
 	var err error
 	e.insts = insts
-	iv := 0
-	for int(e.cursor) < len(e.insts) && iv != 100 {
-		iv++
+	for int(e.cursor) < len(e.insts) {
 		inst := e.insts[e.cursor]
 		err = e.exec(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight())
 		if err != nil {

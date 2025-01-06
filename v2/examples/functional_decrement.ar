@@ -1,6 +1,7 @@
 ident decrement = {
   ident n = arguments 0;
-  if n equals 0 { 0; } else { decrement(n - 1); };
+  print n;
+  if n equals 0 { n; } else { decrement(n - 1); };
 };
 
-print decrement(5);
+print decrement(600);

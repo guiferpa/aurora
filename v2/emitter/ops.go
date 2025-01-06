@@ -3,7 +3,7 @@ package emitter
 const (
 	OpMultiply    byte = 0x01 // Multiply two numbers with max of 64 bits (uint64)
 	OpAdd              = 0x02 // Sum two numbers with max of 64 bits (uint64)
-	OpSubstract        = 0x03 // Substract two numbers with max of 64 bits (uint64)
+	OpSubtract         = 0x03 // Subtract two numbers with max of 64 bits (uint64)
 	OpDivide           = 0x04 // Divide two numbers with max of 64 bits (uint64)
 	OpExponential      = 0x05 // Exponential numbers with max of 64 bits (uint64)
 	OpIdent            = 0x06 // Identify a definition from scope where evaluate step

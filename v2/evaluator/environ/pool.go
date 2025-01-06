@@ -1,8 +1,6 @@
 package environ
 
 import (
-	"fmt"
-
 	"github.com/guiferpa/aurora/emitter"
 )
 
@@ -75,12 +73,10 @@ func (p *Pool) GetContext() *Context {
 }
 
 func (p *Pool) Ahead() {
-	fmt.Println("Ahead")
 	p.locals = New(p.locals)
 }
 
 func (p *Pool) Back() {
-	fmt.Println("Back")
 	if !p.IsEmpty() {
 		p.locals = p.locals.previous
 	}

@@ -14,8 +14,8 @@ func ResolveOpCode(op byte) string {
 		return "OpMultiply"
 	case OpAdd:
 		return "OpAdd"
-	case OpSubstract:
-		return "OpSubstract"
+	case OpSubtract:
+		return "OpSubtract"
 	case OpDivide:
 		return "OpDivide"
 	case OpExponential:

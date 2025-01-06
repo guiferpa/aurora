@@ -8,7 +8,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func resolveOpCode(op byte) string {
+func ResolveOpCode(op byte) string {
 	switch op {
 	case OpMultiply:
 		return "OpMultiply"
@@ -48,8 +48,8 @@ func resolveOpCode(op byte) string {
 		return "OpReturn"
 	case OpResult:
 		return "OpResult"
-	case OpIfNot:
-		return "OpIfNot"
+	case OpIf:
+		return "OpIf"
 	case OpOr:
 		return "OpOr"
 	case OpAnd:
@@ -83,12 +83,12 @@ func highlightByteUsedInHex(c *color.Color, param byte, b int) string {
 func Print(w io.Writer, insts []Instruction) error {
 	c := color.New(color.FgHiYellow)
 	for i, ins := range insts {
-		lo := fmt.Sprintf("%-12s", resolveOpCode(ins.GetOpCode()))
+		lo := fmt.Sprintf("%-12s", ResolveOpCode(ins.GetOpCode()))
 		t := highlightBytesUsedInHex(c, ins.GetLabel(), 4)
 		lp := highlightBytesUsedInHex(c, ins.GetLeft(), 16)
 		rp := highlightBytesUsedInHex(c, ins.GetRight(), 16)
 		o := highlightByteUsedInHex(c, ins.GetOpCode(), 1)
-		fmt.Fprintf(w, "[%016s] %0s(%d): %s(1) %s - %s(%d) %s(%d)\n", c.Sprintf("%x", i), t, len(ins.GetLabel()), o, lo, lp, len(ins.GetLeft()), rp, len(ins.GetRight()))
+		fmt.Fprintf(w, "[%016s] %0s(%d): %s(1) %s - %s(%d) %s(%d)\n", c.Sprintf("%d", i), t, len(ins.GetLabel()), o, lo, lp, len(ins.GetLeft()), rp, len(ins.GetRight()))
 	}
 	return nil
 }

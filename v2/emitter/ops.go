@@ -21,7 +21,7 @@ const (
 	OpEndScope         = 0x12 // Ends the current scope started in stack evalute time
 	OpPreCall          = 0x13 // It's a pre call operation, main goal is push all scope arguments
 	OpCall             = 0x14 // Call a scope with paramters, it'll works like function
-	OpIfNot            = 0x15 // Operation logical to decide an negative condition
+	OpIf               = 0x15 // Operation logical to decide an condition
 	OpJump             = 0x16 // Operation just for jump to another instruction
 	OpReturn           = 0x17 // Operation to save an value with max of 64 bits (uint64) to work throught by different scopes
 	OpResult           = 0x18 // Operation to get the result persisted in return stack

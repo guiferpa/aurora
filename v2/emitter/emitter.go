@@ -186,7 +186,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		case "+":
 			op = OpAdd
 		case "-":
-			op = OpSubstract
+			op = OpSubtract
 		case "/":
 			op = OpDivide
 		case "^":

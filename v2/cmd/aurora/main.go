@@ -14,12 +14,15 @@ import (
 	"github.com/guiferpa/aurora/repl"
 )
 
-var withPlayer bool
+var (
+	player bool
+	debug  bool
+)
 
 var replCmd = &cobra.Command{
 	Use: "repl",
 	Run: func(cmd *cobra.Command, args []string) {
-		repl.Start(os.Stdin, os.Stdout)
+		repl.Start(os.Stdin, os.Stdout, debug)
 	},
 }
 
@@ -46,10 +49,10 @@ var runCmd = &cobra.Command{
 			fmt.Println(err)
 			os.Exit(4)
 		}
-		emitter.Print(os.Stdout, insts)
-		ev := evaluator.New()
-		if withPlayer {
-			ev = evaluator.NewWithPlayer(evaluator.NewPlayer(os.Stdin))
+		emitter.Print(os.Stdout, insts, debug)
+		ev := evaluator.New(debug)
+		if player && debug {
+			ev = evaluator.NewWithPlayer(true, evaluator.NewPlayer(os.Stdin))
 		}
 		if _, err := ev.Evaluate(insts); err != nil {
 			color.Red("%v", err)
@@ -69,7 +72,10 @@ func run(args []string) {
 }
 
 func main() {
-	runCmd.Flags().BoolVarP(&withPlayer, "with-player", "w", false, "enable player for evaluator phase")
+	runCmd.Flags().BoolVarP(&player, "player", "p", false, "enable player for evaluator phase")
+	runCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
+
+	replCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
 
 	rootCmd.AddCommand(runCmd, replCmd)
 	if err := rootCmd.Execute(); err != nil {

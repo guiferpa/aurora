@@ -80,15 +80,17 @@ func highlightByteUsedInHex(c *color.Color, param byte, b int) string {
 	return highlightBytesUsedInHex(c, bs, b)
 }
 
-func Print(w io.Writer, insts []Instruction) error {
-	c := color.New(color.FgHiYellow)
-	for i, ins := range insts {
-		lo := fmt.Sprintf("%-12s", ResolveOpCode(ins.GetOpCode()))
-		t := highlightBytesUsedInHex(c, ins.GetLabel(), 4)
-		lp := highlightBytesUsedInHex(c, ins.GetLeft(), 16)
-		rp := highlightBytesUsedInHex(c, ins.GetRight(), 16)
-		o := highlightByteUsedInHex(c, ins.GetOpCode(), 1)
-		fmt.Fprintf(w, "[%016s] %0s(%d): %s(1) %s - %s(%d) %s(%d)\n", c.Sprintf("%d", i), t, len(ins.GetLabel()), o, lo, lp, len(ins.GetLeft()), rp, len(ins.GetRight()))
+func Print(w io.Writer, insts []Instruction, debug bool) error {
+	if debug {
+		c := color.New(color.FgHiYellow)
+		for i, ins := range insts {
+			lo := fmt.Sprintf("%-12s", ResolveOpCode(ins.GetOpCode()))
+			t := highlightBytesUsedInHex(c, ins.GetLabel(), 4)
+			lp := highlightBytesUsedInHex(c, ins.GetLeft(), 16)
+			rp := highlightBytesUsedInHex(c, ins.GetRight(), 16)
+			o := highlightByteUsedInHex(c, ins.GetOpCode(), 1)
+			fmt.Fprintf(w, "[%016s] %0s(%d): %s(1) %s - %s(%d) %s(%d)\n", c.Sprintf("%d", i), t, len(ins.GetLabel()), o, lo, lp, len(ins.GetLeft()), rp, len(ins.GetRight()))
+		}
 	}
 	return nil
 }

@@ -4,3 +4,4 @@ ident fib = {
 };
 
 print fib(4); #- Result must be 3
+

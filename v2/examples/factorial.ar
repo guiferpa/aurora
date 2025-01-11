@@ -1,0 +1,12 @@
+ident factorial = {
+  ident n = arguments 0;
+  if n smaller 1 or n equals 1 {
+    1;
+  } else {
+    ident r = n * factorial(n - 1);
+    print r;
+    r;
+  };
+};
+
+print factorial(4); #- Should be 24

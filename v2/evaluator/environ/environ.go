@@ -11,8 +11,27 @@ type Environ struct {
 	args  map[uint64][]byte // Arguments for environment
 	table map[string][]byte
 	scs   map[string]*ScopeCallable // Segments of functions
+	temps map[string][]byte         // Temporaries of environment
 	ctx   *Context
-	prev  *Environ          // Previous environment
+	prev  *Environ // Previous environment
+}
+
+func (env *Environ) SetTemp(key string, value []byte) {
+	if len(value) > 0 {
+		env.temps[key] = value
+	}
+}
+
+func (env *Environ) GetTemp(key string) []byte {
+	return env.temps[key]
+}
+
+func (env *Environ) Temps() map[string][]byte {
+	return env.temps
+}
+
+func (env *Environ) ClearTemps() {
+	env.temps = make(map[string][]byte, 0)
 }
 
 func (env *Environ) SetLocaL(key string, value []byte) {
@@ -66,6 +85,7 @@ func New(prev *Environ) *Environ {
 		args:  make(map[uint64][]byte, 0),
 		table: make(map[string][]byte, 0),
 		scs:   make(map[string]*ScopeCallable, 0),
+		temps: make(map[string][]byte, 0),
 		ctx:   nil,
 		prev:  prev,
 	}

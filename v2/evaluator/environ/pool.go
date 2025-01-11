@@ -13,9 +13,15 @@ func (p *Pool) IsEmpty() bool {
 	return p.locals == nil
 }
 
-func (p *Pool) GetLocal(key string) []byte {
+func (p *Pool) SetTemp(key string, value []byte) {
 	if curr := p.Current(); curr != nil {
-		return curr.GetLocal(key)
+		curr.SetTemp(key, value)
+	}
+}
+
+func (p *Pool) GetTemp(key string) []byte {
+	if curr := p.Current(); curr != nil {
+		return curr.GetTemp(key)
 	}
 	return nil
 }
@@ -24,6 +30,13 @@ func (p *Pool) SetLocal(key string, value []byte) {
 	if curr := p.Current(); curr != nil {
 		curr.SetLocaL(key, value)
 	}
+}
+
+func (p *Pool) GetLocal(key string) []byte {
+	if curr := p.Current(); curr != nil {
+		return curr.GetLocal(key)
+	}
+	return nil
 }
 
 func (p *Pool) QueryLocal(key string) []byte {

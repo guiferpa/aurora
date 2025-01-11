@@ -1,5 +1,6 @@
 # aurora
-Aurora's just for studying programming language concepts
+
+🌌 Aurora's just for studying programming language concepts
 
 > ⚠ Don't use it to develop something that'll go to production environment
 

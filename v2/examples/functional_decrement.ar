@@ -1,0 +1,7 @@
+ident decrement = {
+  ident n = arguments 0;
+  print n;
+  if n equals 0 { n; } else { decrement(n - 1); };
+};
+
+print decrement(10);

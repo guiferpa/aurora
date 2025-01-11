@@ -1,0 +1,21 @@
+ident sum = {
+  ident a = arguments 0;
+  ident b = arguments 1;
+  a + b;
+};
+
+ident sub = {
+  ident a = arguments 0;
+  ident b = arguments 1;
+  a - b;
+};
+
+ident op = 1;
+
+ident a = branch {
+  op equals 1: sum(1, 1), 
+  op equals 2: sub(1, 1), 
+  10;
+};
+
+print a;

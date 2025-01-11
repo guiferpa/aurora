@@ -1,0 +1,7 @@
+ident sum = {
+  ident x = arguments 0;
+  ident y = arguments 1;
+  x + y;
+};
+
+print sum(1, 10);

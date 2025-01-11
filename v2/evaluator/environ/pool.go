@@ -32,7 +32,7 @@ func (p *Pool) QueryLocal(key string) []byte {
 		if c := curr.GetLocal(key); c != nil {
 			return c
 		}
-		curr = curr.previous
+		curr = curr.prev
 	}
 	return nil
 }
@@ -43,18 +43,18 @@ func (p *Pool) QueryArgument(key uint64) []byte {
 		if c := curr.GetArgument(key); c != nil {
 			return c
 		}
-		curr = curr.previous
+		curr = curr.prev
 	}
 	return nil
 }
 
-func (p *Pool) QueryFunctionSegment(key string) *FunctionSegment {
+func (p *Pool) QueryScopeCallable(key string) *ScopeCallable {
 	curr := p.locals
 	for curr != nil {
-		if s := curr.GetSegment(key); s != nil {
+		if s := curr.GetScopeCallable(key); s != nil {
 			return s
 		}
-		curr = curr.previous
+		curr = curr.prev
 	}
 	return nil
 }
@@ -78,7 +78,7 @@ func (p *Pool) Ahead() {
 
 func (p *Pool) Back() {
 	if !p.IsEmpty() {
-		p.locals = p.locals.previous
+		p.locals = p.locals.prev
 	}
 }
 

@@ -18,11 +18,9 @@ type Evaluator struct {
 	envpool *environ.Pool
 	cursor  uint64
 	insts   []emitter.Instruction
-	currseg *environ.FunctionSegment
-	params  [][]byte
+	currseg *environ.ScopeCallable
 	result  [][]byte
 	temps   map[string][]byte
-	labels  map[string]int
 	counter *uint64
 }
 
@@ -67,11 +65,14 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpResult {
 		l := fmt.Sprintf("%x", label)
-		Print(os.Stdout, e.counter, op, e.result, nil, nil)
 		if len(e.result) > 0 {
 			tempr := e.result
-			e.temps[l] = tempr[len(tempr)-1]
+			tempv := tempr[len(tempr)-1]
+			e.temps[l] = tempv
+			Print(os.Stdout, e.counter, op, l, tempv, nil)
 			e.result = tempr[:len(tempr)-1]
+		} else {
+			Print(os.Stdout, e.counter, op, l, nil, nil)
 		}
 		e.cursor++
 		return nil
@@ -132,6 +133,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		Print(os.Stdout, e.counter, op, fmt.Sprintf("%s", left), nil, nil)
 		if v := e.envpool.QueryLocal(k); v != nil {
 			e.temps[fmt.Sprintf("%x", label)] = v
+			fmt.Println(e.temps)
 			e.cursor++
 			return nil
 		}
@@ -145,7 +147,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		end := byteutil.ToUint64(right)
 		if curr := e.envpool.Current(); curr != nil {
 			insts := e.insts[start : start+end]
-			curr.SetSegment(key, insts, start, end)
+			curr.SetScopeCallable(key, insts, start, end)
 		}
 		e.cursor = e.cursor + end + 1
 		return nil
@@ -168,7 +170,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		}
 
 		k = fmt.Sprintf("%x", v)
-		currseg := e.envpool.QueryFunctionSegment(k)
+		currseg := e.envpool.QueryScopeCallable(k)
 		if currseg == nil {
 			return errors.New(fmt.Sprintf("identifier %s is not callable segment", left))
 		}
@@ -191,7 +193,6 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpReturn {
 		Print(os.Stdout, e.counter, op, left, nil, nil)
-		e.params = make([][]byte, 0)
 		if len(left) > 0 {
 			e.result = append(e.result, left)
 		}
@@ -342,7 +343,7 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, er
 	for int(e.cursor) < len(e.insts) {
 		if e.player != nil {
 			for e.player.scanner.Scan() {
-				fmt.Println(e.cursor)
+				fmt.Printf("[Cursor]: %v\n", e.cursor)
 				break
 			}
 		}
@@ -370,12 +371,10 @@ func NewWithPlayer(player *Player) *Evaluator {
 	envpool := environ.NewPool(environ.New(nil))
 	var cursor uint64 = 0
 	insts := make([]emitter.Instruction, 0)
-	params := make([][]byte, 0)
 	result := make([][]byte, 0)
 	temps := make(map[string][]byte, 0)
-	labels := make(map[string]int)
 
-	return &Evaluator{player, envpool, cursor, insts, nil, params, result, temps, labels, new(uint64)}
+	return &Evaluator{player, envpool, cursor, insts, nil, result, temps, new(uint64)}
 }
 
 func New() *Evaluator {

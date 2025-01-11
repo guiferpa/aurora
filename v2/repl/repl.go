@@ -39,7 +39,7 @@ func Start(in io.Reader, out io.Writer) {
 
 		if strings.Compare(scanner.Text(), "get_memory") == 0 {
 			env := ev.GetEnvironPool().Current()
-			env.Print(os.Stdout)
+			env.PrintTable(os.Stdout)
 			continue
 		}
 

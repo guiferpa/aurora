@@ -8,11 +8,11 @@ import (
 )
 
 type Environ struct {
-	arguments map[uint64][]byte
-	table     map[string][]byte
-	segpool   map[string]*FunctionSegment
-	ctx       *Context
-	previous  *Environ
+	args  map[uint64][]byte // Arguments for environment
+	table map[string][]byte
+	scs   map[string]*ScopeCallable // Segments of functions
+	ctx   *Context
+	prev  *Environ          // Previous environment
 }
 
 func (env *Environ) SetLocaL(key string, value []byte) {
@@ -26,12 +26,12 @@ func (env *Environ) GetLocal(key string) []byte {
 	return nil
 }
 
-func (env *Environ) SetSegment(key string, insts []emitter.Instruction, begin, end uint64) {
-	env.segpool[key] = &FunctionSegment{insts, begin, end}
+func (env *Environ) SetScopeCallable(key string, insts []emitter.Instruction, begin, end uint64) {
+	env.scs[key] = &ScopeCallable{insts, begin, end}
 }
 
-func (env *Environ) GetSegment(key string) *FunctionSegment {
-	return env.segpool[key]
+func (env *Environ) GetScopeCallable(key string) *ScopeCallable {
+	return env.scs[key]
 }
 
 func (env *Environ) SetContext(ctx *Context) {
@@ -43,27 +43,30 @@ func (env *Environ) GetContext() *Context {
 }
 
 func (env *Environ) PushArgument(arg []byte) {
-	index := uint64(len(env.arguments))
-	env.arguments[index] = arg
+	index := uint64(len(env.args))
+	env.args[index] = arg
 }
 
 func (env *Environ) GetArgument(index uint64) []byte {
-	args := env.arguments
+	args := env.args
 	if arg, ok := args[index]; ok {
 		return arg
 	}
 	return nil
 }
 
-func (env *Environ) Print(w io.Writer) {
+func (env *Environ) PrintTable(w io.Writer) {
 	for k, v := range env.table {
 		fmt.Printf("%s: %v\n", k, v)
 	}
 }
 
-func New(previous *Environ) *Environ {
-	table := make(map[string][]byte)
-	segpool := make(map[string]*FunctionSegment, 0)
-	arguments := make(map[uint64][]byte, 0)
-	return &Environ{arguments, table, segpool, nil, previous}
+func New(prev *Environ) *Environ {
+	return &Environ{
+		args:  make(map[uint64][]byte, 0),
+		table: make(map[string][]byte, 0),
+		scs:   make(map[string]*ScopeCallable, 0),
+		ctx:   nil,
+		prev:  prev,
+	}
 }

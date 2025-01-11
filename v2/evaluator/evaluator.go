@@ -20,7 +20,6 @@ type Evaluator struct {
 	insts   []emitter.Instruction
 	currseg *environ.ScopeCallable
 	result  [][]byte
-	temps   map[string][]byte
 	counter *uint64
 }
 
@@ -35,9 +34,9 @@ func isTemp(bs []byte) bool {
 }
 
 func (e *Evaluator) walkTemps(bs []byte) []byte {
-	pbs := bs
-	bs = e.temps[fmt.Sprintf("%x", pbs)]
-	delete(e.temps, fmt.Sprintf("%x", pbs))
+	l := fmt.Sprintf("%x", bs)
+	bs = e.envpool.GetTemp(l)
+	// delete(e.temps, fmt.Sprintf("%x", pbs))
 	if isTemp(bs) {
 		return e.walkTemps(bs)
 	}
@@ -56,9 +55,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpSave {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.counter, op, left, right, nil)
-		if len(left) > 0 {
-			e.temps[l] = left
-		}
+		e.envpool.SetTemp(l, left)
 		e.cursor++
 		return nil
 	}
@@ -66,11 +63,11 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpResult {
 		l := fmt.Sprintf("%x", label)
 		if len(e.result) > 0 {
-			tempr := e.result
-			tempv := tempr[len(tempr)-1]
-			e.temps[l] = tempv
-			Print(os.Stdout, e.counter, op, l, tempv, nil)
-			e.result = tempr[:len(tempr)-1]
+			tr := e.result
+			tv := tr[len(tr)-1]
+			Print(os.Stdout, e.counter, op, l, tv, nil)
+			e.envpool.SetTemp(l, tv)
+			e.result = tr[:len(tr)-1]
 		} else {
 			Print(os.Stdout, e.counter, op, l, nil, nil)
 		}
@@ -83,7 +80,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		v := e.envpool.QueryArgument(index)
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.counter, op, index, v, nil)
-		e.temps[l] = v
+		e.envpool.SetTemp(l, v)
 		e.cursor++
 		return nil
 	}
@@ -131,9 +128,9 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
 		Print(os.Stdout, e.counter, op, fmt.Sprintf("%s", left), nil, nil)
+		l := fmt.Sprintf("%x", label)
 		if v := e.envpool.QueryLocal(k); v != nil {
-			e.temps[fmt.Sprintf("%x", label)] = v
-			fmt.Println(e.temps)
+			e.envpool.SetTemp(l, v)
 			e.cursor++
 			return nil
 		}
@@ -213,10 +210,11 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		b := byteutil.ToBoolean(right)
 		test := a || b
 		Print(os.Stdout, e.counter, op, test, a, b)
+		l := fmt.Sprintf("%x", label)
 		if test {
-			e.temps[fmt.Sprintf("%x", label)] = byteutil.True
+			e.envpool.SetTemp(l, byteutil.True)
 		} else {
-			e.temps[fmt.Sprintf("%x", label)] = byteutil.False
+			e.envpool.SetTemp(l, byteutil.False)
 		}
 		e.cursor++
 		return nil
@@ -227,10 +225,11 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		b := byteutil.ToBoolean(right)
 		test := a && b
 		Print(os.Stdout, e.counter, op, test, a, b)
+		l := fmt.Sprintf("%x", label)
 		if test {
-			e.temps[fmt.Sprintf("%x", label)] = byteutil.True
+			e.envpool.SetTemp(l, byteutil.True)
 		} else {
-			e.temps[fmt.Sprintf("%x", label)] = byteutil.False
+			e.envpool.SetTemp(l, byteutil.False)
 		}
 		e.cursor++
 		return nil
@@ -354,8 +353,8 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, er
 		}
 	}
 	e.cursor = 0
-	labels := e.temps
-	e.temps = make(map[string][]byte)
+	labels := e.envpool.Current().Temps()
+	e.envpool.Current().ClearTemps()
 	return labels, err
 }
 
@@ -368,13 +367,14 @@ func (e *Evaluator) GetInstructions() []emitter.Instruction {
 }
 
 func NewWithPlayer(player *Player) *Evaluator {
-	envpool := environ.NewPool(environ.New(nil))
-	var cursor uint64 = 0
-	insts := make([]emitter.Instruction, 0)
-	result := make([][]byte, 0)
-	temps := make(map[string][]byte, 0)
-
-	return &Evaluator{player, envpool, cursor, insts, nil, result, temps, new(uint64)}
+	return &Evaluator{
+		player:  player,
+		envpool: environ.NewPool(environ.New(nil)),
+		cursor:  0,
+		insts:   make([]emitter.Instruction, 0),
+		result:  make([][]byte, 0),
+		counter: new(uint64),
+	}
 }
 
 func New() *Evaluator {

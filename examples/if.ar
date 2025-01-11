@@ -1,6 +1,9 @@
-if 1 greater 0 {
-  print(1)
-}
+ident a = if 10 bigger 9 { 
+  10; 
+};
 
-print(2)
+print a;
 
+if 11 bigger 10 {
+  print 20;
+};

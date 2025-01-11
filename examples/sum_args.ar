@@ -1,4 +1,0 @@
-var a = str->num(arg(0))
-var b = str->num(arg(1))
-
-print(a + b)

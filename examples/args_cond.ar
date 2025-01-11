@@ -1,6 +1,0 @@
-var a = arg(0)
-var b = arg(1)
-
-if a equal "print" {
-  print(b)
-}

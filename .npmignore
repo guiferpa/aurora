@@ -1,4 +1,0 @@
-docs/
-jest.config.ts
-.editorconfig
-**/*.test.ts

@@ -1,11 +1,7 @@
-func fib(n) 
-desc "This function calculate fibonacci number" {
-  if n less 1 or n equal 1 {
-    return n
-  }
+ident fib = {
+  ident n = arguments 0;
+  if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
+};
 
-  return fib(n - 1) + fib(n - 2)
-}
+print fib(4); #- Result must be 3
 
-var result = fib(10)
-print(result)

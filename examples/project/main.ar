@@ -1,9 +1,0 @@
-; Import another file to access greeting function
-from "examples/project/greeting" as greeting
-
-; Import another file adding alias math
-from "examples/project/math" as math
-
-var name = arg(0)
-print(greeting.hello(name))
-print(math.add(1, 2))

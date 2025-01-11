@@ -1,3 +1,0 @@
-func hello(name) {
-  return concat("Hello, ", name)
-}

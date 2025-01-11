@@ -1,5 +1,0 @@
-var c = 1
-
-func add(a, b) {
-  return a + b + c
-}

@@ -4,4 +4,4 @@ ident decrement = {
   if n equals 0 { n; } else { decrement(n - 1); };
 };
 
-print decrement(600);
+print decrement(10);

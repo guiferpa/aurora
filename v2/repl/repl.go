@@ -7,9 +7,9 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 
 	"github.com/fatih/color"
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
@@ -18,8 +18,8 @@ import (
 
 const PROMPT = ">> "
 
-func Start(in io.Reader, out io.Writer) {
-	ev := evaluator.New()
+func Start(in io.Reader, out io.Writer, debug bool) {
+	ev := evaluator.New(debug)
 
 	csig := make(chan os.Signal, 1)
 	signal.Notify(csig, os.Interrupt)
@@ -35,17 +35,6 @@ func Start(in io.Reader, out io.Writer) {
 		scanned := scanner.Scan()
 		if !scanned {
 			return
-		}
-
-		if strings.Compare(scanner.Text(), "get_memory") == 0 {
-			env := ev.GetEnvironPool().Current()
-			env.PrintTable(os.Stdout)
-			continue
-		}
-
-		if strings.Compare(scanner.Text(), "get_opcodes") == 0 {
-			emitter.Print(os.Stdout, ev.GetInstructions())
-			continue
 		}
 
 		line := bytes.NewBufferString(scanner.Text())
@@ -68,14 +57,22 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		labels, err := ev.Evaluate(insts)
+		emitter.Print(out, insts, debug)
+
+		temps, err := ev.Evaluate(insts)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 		s := color.New(color.FgWhite, color.Bold).Sprint("=")
-		for _, v := range labels {
-			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%d", v))
+		for _, v := range temps {
+			er, err := byteutil.Encode(v)
+			if err != nil {
+				color.Red("%v", err)
+				break
+
+			}
+			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", er))
 		}
 	}
 }

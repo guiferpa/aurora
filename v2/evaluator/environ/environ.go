@@ -23,7 +23,9 @@ func (env *Environ) SetTemp(key string, value []byte) {
 }
 
 func (env *Environ) GetTemp(key string) []byte {
-	return env.temps[key]
+	t := env.temps[key]
+	delete(env.temps, key)
+	return t
 }
 
 func (env *Environ) Temps() map[string][]byte {

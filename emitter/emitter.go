@@ -56,20 +56,6 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return e.emitInstruction(n.Expression)
 	}
-	if n, ok := stmt.(parser.ItemExpressionNode); ok {
-		fmt.Print(n)
-		return nil
-	}
-	if n, ok := stmt.(parser.BranchExpressionNode); ok {
-		for _, it := range n.Items {
-			l := e.generateLabel()
-			fmt.Println(l, it)
-			// TODO: This op must be a sequence of if expressions with else, currenlty is missing ELSE token, create ELSE support then keep the development
-
-			// e.insts = append(e.insts, NewInstruction(l, Op))
-		}
-		return nil
-	}
 	if n, ok := stmt.(parser.RelativeExpression); ok {
 		ll := e.emitInstruction(n.Left)
 		lr := e.emitInstruction(n.Right)
@@ -206,7 +192,7 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		e.insts = append(e.insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
 		return l
 	}
-	if n, ok := stmt.(parser.BooleanLiteralNode); ok {
+	if n, ok := stmt.(parser.BooleanLiteral); ok {
 		l := e.generateLabel()
 		e.insts = append(e.insts, NewInstruction(l, OpSave, n.Value, nil))
 		return l

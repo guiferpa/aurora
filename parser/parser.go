@@ -52,20 +52,20 @@ func (p *pr) getId() (IdLiteralNode, error) {
 	return id, nil
 }
 
-func (p *pr) getTrue() (BooleanLiteralNode, error) {
+func (p *pr) getTrue() (BooleanLiteral, error) {
 	tok, err := p.EatToken(lexer.TRUE)
 	if err != nil {
-		return BooleanLiteralNode{}, err
+		return BooleanLiteral{}, err
 	}
-	return BooleanLiteralNode{byteutil.True, tok}, nil
+	return BooleanLiteral{byteutil.True, tok}, nil
 }
 
-func (p *pr) getFalse() (BooleanLiteralNode, error) {
+func (p *pr) getFalse() (BooleanLiteral, error) {
 	tok, err := p.EatToken(lexer.FALSE)
 	if err != nil {
-		return BooleanLiteralNode{}, err
+		return BooleanLiteral{}, err
 	}
-	return BooleanLiteralNode{byteutil.False, tok}, nil
+	return BooleanLiteral{byteutil.False, tok}, nil
 }
 
 func (p *pr) getNum() (NumberLiteralNode, error) {
@@ -319,42 +319,42 @@ func (p *pr) getBoolExpr() (Node, error) {
 }
 
 func (p *pr) getBranchItem() (Node, error) {
-	test, err := p.getBoolExpr()
-
-	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id != lexer.COLON {
-		return ItemExpressionNode{BooleanLiteralNode{byteutil.True, nil}, test}, nil
-	}
-	if _, err := p.EatToken(lexer.COLON); err != nil {
-		return nil, err
-	}
 	expr, err := p.getExpr()
 	if err != nil {
 		return nil, err
 	}
-	return ItemExpressionNode{test, expr}, nil
-}
 
-func (p *pr) getBranchItems(t lexer.Tag) ([]Node, error) {
-	items := make([]Node, 0)
-	for p.GetLookahead().GetTag().Id != t.Id {
-		expr, err := p.getBranchItem()
-		if err != nil {
-			return items, err
-		}
-		items = append(items, expr)
-		if p.GetLookahead().GetTag().Id == t.Id {
-			if _, err := p.EatToken(t.Id); err != nil {
-				return items, err
-			}
-			break
-		} else {
-			if _, err := p.EatToken(lexer.COMMA); err != nil {
-				return items, err
-			}
-		}
+	if p.GetLookahead().GetTag().Id == lexer.SEMICOLON {
+		p.EatToken(lexer.SEMICOLON)
+		return expr, nil
 	}
-	return items, nil
+
+	_, isBoolean := expr.(BooleanExpression)
+	_, isRel := expr.(RelativeExpression)
+	_, isLiteralBool := expr.(BooleanLiteral)
+	if !isBoolean && !isRel && !isLiteralBool {
+		return nil, errors.New("branch must have boolean expression as test")
+	}
+
+	p.EatToken(lexer.COLON)
+
+	body, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	p.EatToken(lexer.COMMA)
+
+	euzeb, err := p.getBranchItem()
+	if err != nil {
+		return nil, err
+	}
+
+	return IfExpressionNode{
+		Test: expr,
+		Body: []Node{body},
+		Else: &ElseExpressionNode{Body: []Node{euzeb}},
+	}, nil
 }
 
 func (p *pr) getBranch() (Node, error) {
@@ -366,7 +366,7 @@ func (p *pr) getBranch() (Node, error) {
 		return nil, err
 	}
 
-	items, err := p.getBranchItems(lexer.TagSemicolon)
+	item, err := p.getBranchItem()
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +375,7 @@ func (p *pr) getBranch() (Node, error) {
 		return nil, err
 	}
 
-	return BranchExpressionNode{items}, nil
+	return item, nil
 }
 
 func (p *pr) getBlockExpr() (Node, error) {
@@ -390,36 +390,6 @@ func (p *pr) getBlockExpr() (Node, error) {
 	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
 	return BlockExpressionNode{ref, stmts}, nil
 }
-
-/*
-func (p *pr) getFunc() (Node, error) {
-	p.EatToken(lexer.FUNC)
-	p.EatToken(lexer.O_PAREN)
-	arity := make([]IdLiteralNode, 0)
-	for p.GetLookahead().GetTag().Id != lexer.C_PAREN {
-		id, err := p.getId()
-		if err != nil {
-			return nil, err
-		}
-		arity = append(arity, id)
-		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
-			break
-		}
-		p.EatToken(lexer.COMMA)
-	}
-	p.EatToken(lexer.C_PAREN)
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
-		return nil, err
-	}
-	stmts, err := p.getStmts(lexer.TagCCurBrk)
-	if err != nil {
-		return nil, err
-	}
-	p.EatToken(lexer.C_CUR_BRK)
-	ref := fmt.Sprintf("%d", time.Now().Nanosecond())
-	return FuncExpressionNode{ref, arity, stmts}, nil
-}
-*/
 
 func (p *pr) getIf() (Node, error) {
 	p.EatToken(lexer.IF)
@@ -481,11 +451,11 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.getBlockExpr()
 	}
-  /*
-	if lookahead.GetTag().Id == lexer.FUNC {
-		return p.getFunc()
-	}
-  */
+	/*
+		if lookahead.GetTag().Id == lexer.FUNC {
+			return p.getFunc()
+		}
+	*/
 	if lookahead.GetTag().Id == lexer.IF {
 		return p.getIf()
 	}

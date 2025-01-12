@@ -84,7 +84,6 @@ var (
 	TagColon      = Tag{COLON, ":", "^:"}
 	TagBranch     = Tag{BRANCH, "branch", "^branch"}
 	TagSemicolon  = Tag{SEMICOLON, ";", "^;"}
-	// TagFunc       = Tag{FUNC, "fun", "^fun"}
 	TagTrue       = Tag{TRUE, "true", "^true"}
 	TagFalse      = Tag{FALSE, "false", "^false"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}

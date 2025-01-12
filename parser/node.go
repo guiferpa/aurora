@@ -41,12 +41,12 @@ func (iln IdLiteralNode) Next() Node {
 	return nil
 }
 
-type BooleanLiteralNode struct {
+type BooleanLiteral struct {
 	Value []byte      `json:"value"`
 	Token lexer.Token `json:"-"`
 }
 
-func (bln BooleanLiteralNode) Next() Node {
+func (bln BooleanLiteral) Next() Node {
 	return nil
 }
 
@@ -148,23 +148,6 @@ type ElseExpressionNode struct {
 }
 
 func (een ElseExpressionNode) Next() Node {
-	return nil
-}
-
-type ItemExpressionNode struct {
-	Label      Node `json:"label"`
-	Expression Node `json:"expression"`
-}
-
-func (ien ItemExpressionNode) Next() Node {
-	return nil
-}
-
-type BranchExpressionNode struct {
-	Items []Node `json:"body"`
-}
-
-func (ben BranchExpressionNode) Next() Node {
 	return nil
 }
 

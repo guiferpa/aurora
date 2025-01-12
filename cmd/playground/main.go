@@ -12,6 +12,7 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/version"
 )
 
 var document js.Value
@@ -21,31 +22,40 @@ func init() {
 }
 
 func main() {
-	playground := document.Call("getElementById", "editor")
-	value := playground.Get("value").String()
-	bs := bytes.NewBufferString(value)
-	tokens, err := lexer.GetFilledTokens(bs.Bytes())
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	ast, err := parser.New(tokens).Parse()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	insts, err := emitter.New(ast).Emit()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	temps, err := evaluator.New(false).Evaluate(insts)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	s := color.New(color.FgWhite, color.Bold).Sprint("=")
-	for _, temp := range temps {
-		fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", temp))
-	}
+	eval := js.FuncOf(func(this js.Value, args []js.Value) any {
+		playground := document.Call("getElementById", "editor")
+		value := playground.Get("value").String()
+		bs := bytes.NewBufferString(value)
+		tokens, err := lexer.GetFilledTokens(bs.Bytes())
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		ast, err := parser.New(tokens).Parse()
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		insts, err := emitter.New(ast).Emit()
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		temps, err := evaluator.New(false).Evaluate(insts)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		s := color.New(color.FgWhite, color.Bold).Sprint("=")
+		for _, temp := range temps {
+			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", temp))
+		}
+		return nil
+	})
+	defer eval.Release()
+
+	document.Call("getElementById", "version").Set("innerText", fmt.Sprintf("Aurora version: %s", version.VERSION))
+	document.Call("getElementById", "runner").Call("addEventListener", "click", eval)
+
+	select {}
 }

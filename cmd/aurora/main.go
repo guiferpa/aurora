@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/repl"
+	"github.com/guiferpa/aurora/version"
 )
 
 var (
@@ -117,6 +119,13 @@ var runCmd = &cobra.Command{
 	},
 }
 
+var versionCmd = &cobra.Command{
+	Use: "version",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(version.VERSION)
+	},
+}
+
 var rootCmd = &cobra.Command{
 	Use: "aurora",
 }
@@ -130,7 +139,7 @@ func main() {
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
 	evalCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
 
-	rootCmd.AddCommand(runCmd, replCmd, buildCmd, evalCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, evalCmd)
 	if err := rootCmd.Execute(); err != nil {
 		color.Red("%v", err)
 		os.Exit(1)

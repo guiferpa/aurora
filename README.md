@@ -20,7 +20,7 @@
 
 ### Install CLI
 ```sh
-$ go install github/com/guiferpa/aurora/cmd/aurora
+$ o install -v github.com/guiferpa/aurora/cmd/aurora@main
 ```
 > 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
 
@@ -67,9 +67,30 @@ $ aurora run ./<file>.ar
 
 ## Extra options
 
+```sh
+$ aurora help
+
+Usage:
+  aurora [command]
+
+Available Commands:
+  build
+  completion  Generate the autocompletion script for the specified shell
+  eval
+  help        Help about any command
+  repl
+  run
+  version
+
+Flags:
+  -h, --help   help for aurora
+
+Use "aurora [command] --help" for more information about a command.
+```
+
 ### Debug flag
 
 All commands it'll show deep dive in instructions and evaluating
 
-`$ aurora --debug`
-`$ aurora --debug run ...`
+`$ aurora repl --debug`
+`$ aurora run --debug ...`

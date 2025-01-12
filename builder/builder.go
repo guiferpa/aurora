@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 )
 
@@ -23,21 +22,27 @@ func getLabelBytes(label []byte) ([]byte, []byte) {
 	return labellen, label
 }
 
-func getLineBytes(lblen, label, op, left, right []byte) []byte {
+func getParameter(p []byte) ([]byte, []byte) {
+	plen := make([]byte, 4)
+	binary.BigEndian.PutUint32(plen, uint32(len(p)))
+	return plen, p
+}
+
+func getLineBytes(lblen, label, op, lflen, left, rglen, right []byte) []byte {
 	lnlen := make([]byte, 4)
-	binary.BigEndian.PutUint32(lnlen, uint32(len(lnlen)+len(label)+len(op)+len(left)+len(right)))
-	return bytes.Join([][]byte{lnlen, lblen, label, op, left, right}, []byte(""))
+	binary.BigEndian.PutUint32(lnlen, uint32(len(lnlen)+len(label)+len(op)+len(lflen)+len(left)+len(rglen)+len(right)))
+	return bytes.Join([][]byte{lnlen, lblen, label, op, lflen, left, rglen, right}, []byte(""))
 }
 
 func (b *blr) Build(w io.Writer) (int, error) {
 	var size int = 0
 	var err error
 	for _, inst := range b.insts {
-		lblen, label := getLabelBytes(inst.GetLabel())  // Len 4 bytes, dynamic size
-		op := []byte{inst.GetOpCode()}                  // 1 byte
-		left := byteutil.Padding64Bits(inst.GetLeft())  // 8 byte
-		right := byteutil.Padding64Bits(inst.GetLeft()) // 8 byte
-		line := getLineBytes(lblen, label, op, left, right)
+		lblen, label := getLabelBytes(inst.GetLabel()) // Len 4 bytes, dynamic size
+		op := []byte{inst.GetOpCode()}                 // 1 byte
+		lflen, left := getParameter(inst.GetLeft())    // 1~8 byte
+		rglen, right := getParameter(inst.GetRight())  // 1~8 byte
+		line := getLineBytes(lblen, label, op, lflen, left, rglen, right)
 		size += len(line)
 		size, err = w.Write(line)
 		if err != nil {

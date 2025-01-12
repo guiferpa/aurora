@@ -20,6 +20,7 @@
 ```sh
 $ go install github/com/guiferpa/aurora/cmd/aurora
 ```
+> 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
 
 ### Using REPL mode
 
@@ -54,7 +55,7 @@ $ aurora run ./<file>.ar
 ```
 
 ### Writing some code
-> 🎈 Unfortunately this project there's no contributor enough to turn this doc better but be my guest discovering how to write some code looking at [examples folder](/examples).
+> 🎈 Unfortunately, this project there's are not contributors enough to make this doc better but be my guest to discovery how to write some code looking at [examples folder](/examples).
 
 ## Extra options
 

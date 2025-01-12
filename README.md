@@ -18,32 +18,29 @@
 
 ### Install CLI
 ```sh
-$ npm i -g @guiferpa/aurora
+$ go install github/com/guiferpa/aurora/cmd/aurora
 ```
+> 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
 
 ### Using REPL mode
 
 ```sh
-$ aurora
+$ aurora repl
 ```
 
-```sh
->> var result = 1_000 * 2
-=
->> result + 1
-= 2001
->> print(result)
-2000
-=
+```java
+>> ident a = 1_000;
+>> a + 1;
+= 1001
 ```
 
 ### Execute from file
 
 #### Create aurora source code file
 
-```js
-var result = 10 * 20
-print(result + 1)
+```java
+ident result = 10 * 20;
+print result + 1;
 ```
 
 #### Execute file
@@ -53,21 +50,18 @@ $ aurora run ./<file>.ar
 ```
 
 #### That's the output from evaluator
-```js
-201
-=
+```java
+[0 0 0 0 0 0 0 201]
 ```
 
 ### Writing some code
-> 🎈 Unfortunately this project there's no contributor enough to turn this doc better but be my guest discovering how to write some code looking at [examples folder](/examples).
+> 🎈 Unfortunately, this project there's are not contributors enough to make this doc better but be my guest to discovery how to write some code looking at [examples folder](/examples).
 
 ## Extra options
 
 ### Debug flag
 
-All commands support tree (AST) mode
+All commands it'll show deep dive in instructions and evaluating
 
-`$ aurora --tree`
-`$ aurora --tree run ...`
-
-Setting **tree mode** the CLI show up the [AST (Abstract syntax tree)](https://en.wikipedia.org/wiki/Abstract_syntax_tree) from source code 
+`$ aurora --debug`
+`$ aurora --debug run ...`

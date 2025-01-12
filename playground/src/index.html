@@ -7,10 +7,10 @@ license that can be found in the LICENSE file.
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Aurora Playground</title>
     <style>
       .container {
-        max-width: 500px;
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -18,11 +18,26 @@ license that can be found in the LICENSE file.
       #editor {
         padding: 10px;
       }
-      #runner, #debugger {
+      #runner,
+      #debugger {
         padding: 8px 4px;
       }
-      #runner:hover {
+      button:hover {
         cursor: pointer;
+      }
+      ul {
+        padding: 0px;
+        list-style: none;
+        display: flex;
+        gap: 10px;
+        flex-direction: column-reverse;
+      }
+      ul > li {
+        padding: 10px;
+      }
+      ul > li:hover {
+        cursor: pointer;
+        background-color: #cdcdcd;
       }
     </style>
   </head>
@@ -41,6 +56,7 @@ license that can be found in the LICENSE file.
       <textarea rows="10" cols="50" id="editor"></textarea>
       <button id="runner" disabled>Run</button>
       <button id="debugger" disabled>Debug</button>
+      <ul id="preview"></ul>
     </div>
   </body>
 </html>

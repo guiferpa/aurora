@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/fatih/color"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
@@ -49,9 +48,11 @@ func main() {
 				fmt.Println(err)
 				return nil
 			}
-			s := color.New(color.FgWhite, color.Bold).Sprint("=")
+			preview := document.Call("getElementById", "preview")
 			for _, temp := range temps {
-				fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", temp))
+				li := document.Call("createElement", "li")
+				li.Set("innerHTML", fmt.Sprintf("= %v", temp))
+				preview.Call("appendChild", li)
 			}
 			return nil
 		})

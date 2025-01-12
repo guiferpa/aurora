@@ -57,7 +57,7 @@ func Start(in io.Reader, out io.Writer, debug bool) {
 			continue
 		}
 
-		emitter.Print(out, insts, debug)
+		emitter.Print(insts, debug)
 
 		temps, err := ev.Evaluate(insts)
 		if err != nil {

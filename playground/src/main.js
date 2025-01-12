@@ -15,6 +15,7 @@ async function init() {
       go.importObject,
     );
     document.getElementById("runner").disabled = false;
+    document.getElementById("debugger").disabled = false;
     console.clear();
     await go.run(instance);
   } catch (err) {

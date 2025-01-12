@@ -35,7 +35,7 @@ var evalCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		emitter.Print(os.Stdout, insts, debug)
+		emitter.Print(insts, debug)
 		if _, err = evaluator.New(debug).Evaluate(insts); err != nil {
 			color.New(color.BgBlack, color.FgRed).Println(err)
 			os.Exit(1)
@@ -106,7 +106,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		emitter.Print(os.Stdout, insts, debug)
+		emitter.Print(insts, debug)
 		ev := evaluator.New(debug)
 		if player && debug {
 			ev = evaluator.NewWithPlayer(true, evaluator.NewPlayer(os.Stdin))

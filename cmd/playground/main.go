@@ -22,40 +22,49 @@ func init() {
 }
 
 func main() {
-	eval := js.FuncOf(func(this js.Value, args []js.Value) any {
-		playground := document.Call("getElementById", "editor")
-		value := playground.Get("value").String()
-		bs := bytes.NewBufferString(value)
-		tokens, err := lexer.GetFilledTokens(bs.Bytes())
-		if err != nil {
-			fmt.Println(err)
+	eval := func(debug bool) js.Func {
+		return js.FuncOf(func(this js.Value, args []js.Value) any {
+			playground := document.Call("getElementById", "editor")
+			value := playground.Get("value").String()
+			bs := bytes.NewBufferString(value)
+			tokens, err := lexer.GetFilledTokens(bs.Bytes())
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+			ast, err := parser.New(tokens).Parse()
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+			insts, err := emitter.New(ast).Emit()
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+
+			emitter.Print(insts, debug)
+			temps, err := evaluator.New(debug).Evaluate(insts)
+			if err != nil {
+				fmt.Println(err)
+				return nil
+			}
+			s := color.New(color.FgWhite, color.Bold).Sprint("=")
+			for _, temp := range temps {
+				fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", temp))
+			}
 			return nil
-		}
-		ast, err := parser.New(tokens).Parse()
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		insts, err := emitter.New(ast).Emit()
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		temps, err := evaluator.New(false).Evaluate(insts)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		s := color.New(color.FgWhite, color.Bold).Sprint("=")
-		for _, temp := range temps {
-			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", temp))
-		}
-		return nil
-	})
-	defer eval.Release()
+		})
+	}
+	evalrunner := eval(false)
+	defer evalrunner.Release()
+
+	evaldebugger := eval(true)
+	defer evaldebugger.Release()
 
 	document.Call("getElementById", "version").Set("innerText", fmt.Sprintf("Aurora version: %s", version.VERSION))
-	document.Call("getElementById", "runner").Call("addEventListener", "click", eval)
+	document.Call("getElementById", "runner").Call("addEventListener", "click", evalrunner)
+	document.Call("getElementById", "debugger").Call("addEventListener", "click", evaldebugger)
 
 	select {}
 }

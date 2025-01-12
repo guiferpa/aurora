@@ -10,7 +10,7 @@ ident sub = {
   a - b;
 };
 
-ident op = 1;
+ident op = 2;
 
 ident a = branch {
   op equals 1: sum(1, 1), 

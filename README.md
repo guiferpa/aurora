@@ -11,6 +11,8 @@
   - [Using REPL mode](#using-repl-mode)
   - [Execute from file](#execute-from-file)
   - [Writing some code](#writing-some-code)
+- [Try it out](#try-it-out)
+  - [Playground](#playground)
 - [Extra options](#extra-options)
   - [Debug flag](#debug-flag)
 
@@ -56,6 +58,12 @@ $ aurora run ./<file>.ar
 
 ### Writing some code
 > 🎈 Unfortunately, this project there's are not contributors enough to make this doc better but be my guest to discovery how to write some code looking at [examples folder](/examples).
+
+## Try it out
+
+### Playground
+> 🚀 Feel free to try Aurora with [playground](https://guiferpa.github.io/aurora) built with WebAssembly + Go (Aurora source code)
+<img width="942" alt="Screenshot 2025-01-12 at 12 27 41 AM" src="https://github.com/user-attachments/assets/51f073de-1fde-4a68-9cf8-b608b5b83032" />
 
 ## Extra options
 

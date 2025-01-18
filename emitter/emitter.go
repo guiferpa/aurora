@@ -12,53 +12,52 @@ type Emitter interface {
 }
 
 type emt struct {
-	ast   parser.AST
-	tmpc  int
-	insts []Instruction
+	ast  parser.AST
+	tmpc int
 }
 
-func (e *emt) generateLabel() []byte {
-	t := []byte(fmt.Sprintf("0%d", e.tmpc))
-	e.tmpc++
+func GenerateLabel(tc *int) []byte {
+	t := []byte(fmt.Sprintf("0%d", *tc))
+	*tc++
 	return t
 }
 
-func (e *emt) emitInstruction(stmt parser.Node) []byte {
+func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.StatementNode); ok {
-		return e.emitInstruction(n.Node)
+		return EmitInstruction(tc, insts, n.Node)
 	}
 	if n, ok := stmt.(parser.IdentStatementNode); ok {
 		ll := n.Token.GetMatch()
-		lr := e.emitInstruction(n.Expression)
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpIdent, ll, lr))
+		lr := EmitInstruction(tc, insts, n.Expression)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpIdent, ll, lr))
 	}
 	if n, ok := stmt.(parser.BlockExpressionNode); ok {
 		var l []byte
-		cins := e.insts
-		e.insts = make([]Instruction, 0)
+		cins := insts
+		*insts = make([]Instruction, 0)
 		for _, ins := range n.Body {
-			l = e.emitInstruction(ins)
+			l = EmitInstruction(tc, insts, ins)
 		}
-		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpReturn, l, nil))
-		body := e.insts
-		e.insts = cins
+		*insts = append(*insts, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
+		body := *insts
+		insts = cins
 
 		var length uint64 = uint64(len(body)) // Length of function
-		e.insts = append(e.insts, NewInstruction(e.generateLabel(), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
-		e.insts = append(e.insts, body...)
+		*insts = append(*insts, NewInstruction(GenerateLabel(tc), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
+		*insts = append(*insts, body...)
 
-		l = e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpSave, n.Ref, nil))
+		l = GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSave, n.Ref, nil))
 
 		return l
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
-		return e.emitInstruction(n.Expression)
+		return EmitInstruction(tc, insts, n.Expression)
 	}
 	if n, ok := stmt.(parser.RelativeExpression); ok {
-		ll := e.emitInstruction(n.Left)
-		lr := e.emitInstruction(n.Right)
+		ll := EmitInstruction(tc, insts, n.Left)
+		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "equals":
@@ -70,17 +69,17 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		case "smaller":
 			op = OpSmaller
 		}
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 
-		rl := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(rl, OpResult, nil, nil))
+		rl := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(rl, OpResult, nil, nil))
 
 		return rl
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
-		ll := e.emitInstruction(n.Left)
-		lr := e.emitInstruction(n.Right)
+		ll := EmitInstruction(tc, insts, n.Left)
+		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "or":
@@ -88,83 +87,83 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 		case "and":
 			op = OpAnd
 		}
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 		return l
 	}
 	if n, ok := stmt.(parser.IfExpressionNode); ok {
 		var l []byte
 
 		/*Extract Else body*/
-		cinst := e.insts
-		e.insts = make([]Instruction, 0)
+		cinst := *insts
+		*insts = make([]Instruction, 0)
 		if n.Else != nil {
 			for _, inst := range n.Else.Body {
-				l = e.emitInstruction(inst)
+				l = EmitInstruction(tc, insts, inst)
 			}
 		}
-		euze := e.insts
-		euze = append(euze, NewInstruction(e.generateLabel(), OpReturn, l, nil))
-		e.insts = cinst
+		euze := *insts
+		euze = append(euze, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
+		*insts = cinst
 
 		/*Extract Condition body*/
-		cinst = e.insts
-		e.insts = make([]Instruction, 0)
+		cinst = *insts
+		*insts = make([]Instruction, 0)
 		for _, inst := range n.Body {
-			l = e.emitInstruction(inst)
+			l = EmitInstruction(tc, insts, inst)
 		}
-		body := e.insts
-		body = append(body, NewInstruction(e.generateLabel(), OpReturn, l, nil))
+		body := *insts
+		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
 
-		e.insts = cinst
+		*insts = cinst
 
-		lt := e.emitInstruction(n.Test)
-		inl := e.generateLabel()
+		lt := EmitInstruction(tc, insts, n.Test)
+		inl := GenerateLabel(tc)
 		bodylength := byteutil.FromUint64(uint64(len(body) + 1))
-		e.insts = append(e.insts, NewInstruction(inl, OpIf, lt, bodylength))
-		euzelength := byteutil.FromUint64(uint64(len(e.insts) + len(body) + len(euze) + 1))
-		body = append(body, NewInstruction(e.generateLabel(), OpJump, euzelength, nil))
+		*insts = append(*insts, NewInstruction(inl, OpIf, lt, bodylength))
+		euzelength := byteutil.FromUint64(uint64(len(*insts) + len(body) + len(euze) + 1))
+		body = append(body, NewInstruction(GenerateLabel(tc), OpJump, euzelength, nil))
 
-		e.insts = append(e.insts, body...)
-		e.insts = append(e.insts, euze...)
+		*insts = append(*insts, body...)
+		*insts = append(*insts, euze...)
 
-		rl := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(rl, OpResult, nil, nil))
+		rl := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(rl, OpResult, nil, nil))
 
 		return rl
 	}
 	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpPreCall, n.Id.Token.GetMatch(), nil))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpPreCall, n.Id.Token.GetMatch(), nil))
 
 		for _, p := range n.Params {
-			ll := e.emitInstruction(p.Expression)
-			l := e.generateLabel()
-			e.insts = append(e.insts, NewInstruction(l, OpPushArg, ll, nil))
+			ll := EmitInstruction(tc, insts, p.Expression)
+			l := GenerateLabel(tc)
+			*insts = append(*insts, NewInstruction(l, OpPushArg, ll, nil))
 		}
 
-		l = e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
+		l = GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
 
-		l = e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpResult, nil, nil))
+		l = GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpResult, nil, nil))
 
 		return l
 	}
 	if n, ok := stmt.(parser.PrintStatementNode); ok {
-		ll := e.emitInstruction(n.Param)
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpPrint, ll, nil))
+		ll := EmitInstruction(tc, insts, n.Param)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpPrint, ll, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.ArgumentsExpressionNode); ok {
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpGetArg, byteutil.FromUint64(n.Nth.Value), nil))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpGetArg, byteutil.FromUint64(n.Nth.Value), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
-		ll := e.emitInstruction(n.Left)
-		lr := e.emitInstruction(n.Right)
+		ll := EmitInstruction(tc, insts, n.Left)
+		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
 		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
 		case "*":
@@ -179,39 +178,41 @@ func (e *emt) emitInstruction(stmt parser.Node) []byte {
 			op = OpExponential
 		}
 
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, op, ll, lr))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 
-		rl := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(rl, OpResult, nil, nil))
+		rl := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(rl, OpResult, nil, nil))
 
 		return rl
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
 		return l
 	}
 	if n, ok := stmt.(parser.BooleanLiteral); ok {
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpSave, n.Value, nil))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSave, n.Value, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.IdLiteralNode); ok {
-		l := e.generateLabel()
-		e.insts = append(e.insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
 		return l
 	}
 	return make([]byte, 8)
 }
 
 func (e *emt) Emit() ([]Instruction, error) {
+	tc := 0
+	insts := make([]Instruction, 0)
 	for _, stmt := range e.ast.Module.Statements {
-		e.emitInstruction(stmt)
+		EmitInstruction(&tc, &insts, stmt)
 	}
-	return e.insts, nil
+	return insts, nil
 }
 
 func New(ast parser.AST) *emt {
-	return &emt{ast, 0, make([]Instruction, 0)}
+	return &emt{ast, 0}
 }

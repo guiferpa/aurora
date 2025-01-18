@@ -42,8 +42,6 @@ const (
 	BREAK_LINE   = "BREAK_LINE"
 	PRINT        = "PRINT"     // print
 	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
-	// FUNC         = "FUNC"      // fun
-	VOID         = "VOID"      // void
 	EOF          = "EOF"
 )
 
@@ -88,7 +86,6 @@ var (
 	TagFalse      = Tag{FALSE, "false", "^false"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
-	TagVoid       = Tag{VOID, "", "^void"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
 
@@ -118,8 +115,6 @@ var processableTags = []Tag{
 	TagSemicolon,
 	TagCallPrint,
 	TagArguments,
-	// TagFunc,
-	TagVoid,
 	TagTrue,
 	TagFalse,
 	TagId,

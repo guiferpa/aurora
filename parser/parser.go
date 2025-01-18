@@ -81,14 +81,6 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
-func (p *pr) getVoid() (VoidLiteralNode, error) {
-	tok, err := p.EatToken(lexer.VOID)
-	if err != nil {
-		return VoidLiteralNode{}, err
-	}
-	return VoidLiteralNode{tok}, nil
-}
-
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.O_PAREN {
@@ -116,9 +108,6 @@ func (p *pr) getPriExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.FALSE {
 		return p.getFalse()
-	}
-	if lookahead.GetTag().Id == lexer.VOID {
-		return p.getVoid()
 	}
 	id, err := p.getId()
 	if err != nil {

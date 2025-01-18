@@ -95,10 +95,28 @@ func (pen PrimaryExpressionNode) Next() Node {
 }
 
 type TapeExpression struct {
-	Length uint64
+	Length uint64 `json:"length"`
 }
 
 func (_ TapeExpression) Next() Node {
+	return nil
+}
+
+type EnqueueExpression struct {
+	Target Node `json:"target"`
+	Item   Node `json:"item"`
+}
+
+func (_ EnqueueExpression) Next() Node {
+	return nil
+}
+
+type DequeueExpression struct {
+	Expression Node   `json:"expression"`
+	Length     uint64 `json:"length"`
+}
+
+func (_ DequeueExpression) Next() Node {
 	return nil
 }
 

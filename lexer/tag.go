@@ -10,6 +10,8 @@ import (
 const (
 	IDENT        = "IDENT"     // ident
 	TAPE         = "TAPE"      // tape
+	ENQUEUE      = "ENQUEUE"   // enqueue
+	DEQUEUE      = "DEQUEUE"   // dequeue
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
 	C_PAREN      = "C_PAREN"   // )
@@ -87,6 +89,8 @@ var (
 	TagFalse      = Tag{FALSE, "false", "^false"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 	TagTape       = Tag{TAPE, "tape", "^tape"}
+	TagDequeue    = Tag{DEQUEUE, "dequeue", "^dequeue"}
+	TagEnqueue    = Tag{ENQUEUE, "enqueue", "^enqueue"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
@@ -99,6 +103,8 @@ var processableTags = []Tag{
 	TagElse,
 	TagBranch,
 	TagTape,
+	TagEnqueue,
+	TagDequeue,
 	TagIdent,
 	TagAssign,
 	TagOParen,

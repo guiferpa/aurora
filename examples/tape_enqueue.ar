@@ -1,0 +1,7 @@
+ident target = tape 2; #- Size = 2 * 64bits
+ident t1 = enqueue target 1;
+ident t2 = enqueue t1 2;
+ident t3 = enqueue t2 3;
+print t1;
+print t2;
+print t3;

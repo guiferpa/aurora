@@ -130,6 +130,61 @@ func (p *pr) getTape() (Node, error) {
 	return TapeExpression{Length: length.Value}, nil
 }
 
+func (p *pr) getEnqueue() (Node, error) {
+	if _, err := p.EatToken(lexer.ENQUEUE); err != nil {
+		return nil, err
+	}
+
+	target, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	_, isDequeue := target.(DequeueExpression)
+	_, isEnqueue := target.(EnqueueExpression)
+	_, isTape := target.(TapeExpression)
+	_, isNumber := target.(NumberLiteralNode)
+	_, isId := target.(IdLiteralNode)
+	if !isTape && !isNumber && !isId && !isEnqueue && !isDequeue {
+		return nil, fmt.Errorf("It is not a valid enqueue target")
+	}
+
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	_, isTape = expr.(TapeExpression)
+	_, isNumber = expr.(NumberLiteralNode)
+	_, isId = expr.(IdLiteralNode)
+	if !isTape && !isNumber && !isId {
+		return nil, fmt.Errorf("It is not a valid enqueue item")
+	}
+	return EnqueueExpression{Target: target, Item: expr}, nil
+}
+
+func (p *pr) getDequeue() (Node, error) {
+	if _, err := p.EatToken(lexer.DEQUEUE); err != nil {
+		return nil, err
+	}
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	_, isDequeue := expr.(DequeueExpression)
+	_, isEnqueue := expr.(EnqueueExpression)
+	_, isTape := expr.(TapeExpression)
+	_, isNumber := expr.(NumberLiteralNode)
+	_, isId := expr.(IdLiteralNode)
+	if !isTape && !isNumber && !isId && !isEnqueue && !isDequeue {
+		return nil, fmt.Errorf("It is not a valid enqueue target")
+	}
+
+	length, err := p.getNum()
+	if err != nil {
+		return nil, err
+	}
+	return DequeueExpression{Expression: expr, Length: length.Value}, nil
+}
+
 func (p *pr) getUnaExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.SUB {
@@ -462,6 +517,12 @@ func (p *pr) getExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.TAPE {
 		return p.getTape()
+	}
+	if lookahead.GetTag().Id == lexer.ENQUEUE {
+		return p.getEnqueue()
+	}
+	if lookahead.GetTag().Id == lexer.DEQUEUE {
+		return p.getDequeue()
 	}
 	return p.getBoolExpr()
 }

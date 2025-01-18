@@ -1,6 +1,7 @@
-ident target = tape 3; #- Size = 3 * 64bits
+ident target = tape 2; #- Size = 2 * 64bits
 ident t1 = append target 1;
 ident t2 = append t1 2;
 ident t3 = append t2 3;
+print t1;
+print t2;
 print t3;
-print dequeue t3 2;

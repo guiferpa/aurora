@@ -60,11 +60,11 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	if op == emitter.OpEnqueue {
+	if op == emitter.OpAppend {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		ln := len(left) - (byteutil.NonZeroFilledLength(right) * 8)
-		v := append(right, left[:ln]...)
+		ln := byteutil.NonZeroFilledLength(right) * 8
+		v := append(left[ln:], right...)
 		e.envpool.SetTemp(l, v)
 	}
 
@@ -72,9 +72,20 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		index := int(byteutil.ToUint64(right))
+		ln := index * 8
+		if ln > len(left) {
+			return fmt.Errorf("over tape edge with inde equals %v from size equals %v", index, len(left)/8)
+		}
+		e.envpool.SetTemp(l, left[:ln])
+	}
+
+	if op == emitter.OpUnstack {
+		l := fmt.Sprintf("%x", label)
+		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+		index := int(byteutil.ToUint64(right))
 		ln := len(left) - index*8
-		if ln < 0 {
-			return fmt.Errorf("over tape edge with index equals %v for size equals %v", index, len(left)/8)
+		if ln > len(left) {
+			return fmt.Errorf("over tape edge with inde equals %v from size equals %v", index, len(left)/8)
 		}
 		e.envpool.SetTemp(l, left[ln:])
 	}

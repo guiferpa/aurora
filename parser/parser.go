@@ -130,8 +130,8 @@ func (p *pr) getTape() (Node, error) {
 	return TapeExpression{Length: length.Value}, nil
 }
 
-func (p *pr) getEnqueue() (Node, error) {
-	if _, err := p.EatToken(lexer.ENQUEUE); err != nil {
+func (p *pr) getAppend() (Node, error) {
+	if _, err := p.EatToken(lexer.APPEND); err != nil {
 		return nil, err
 	}
 
@@ -139,12 +139,13 @@ func (p *pr) getEnqueue() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	_, isUnstack := target.(UnstackExpression)
 	_, isDequeue := target.(DequeueExpression)
-	_, isEnqueue := target.(EnqueueExpression)
+	_, isAppend := target.(AppendExpression)
 	_, isTape := target.(TapeExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isEnqueue && !isDequeue {
+	if !isTape && !isNumber && !isId && !isAppend && !isDequeue && !isUnstack {
 		return nil, fmt.Errorf("It is not a valid enqueue target")
 	}
 
@@ -158,7 +159,7 @@ func (p *pr) getEnqueue() (Node, error) {
 	if !isTape && !isNumber && !isId {
 		return nil, fmt.Errorf("It is not a valid enqueue item")
 	}
-	return EnqueueExpression{Target: target, Item: expr}, nil
+	return AppendExpression{Target: target, Item: expr}, nil
 }
 
 func (p *pr) getDequeue() (Node, error) {
@@ -170,11 +171,11 @@ func (p *pr) getDequeue() (Node, error) {
 		return nil, err
 	}
 	_, isDequeue := expr.(DequeueExpression)
-	_, isEnqueue := expr.(EnqueueExpression)
+	_, isAppend := expr.(AppendExpression)
 	_, isTape := expr.(TapeExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isEnqueue && !isDequeue {
+	if !isTape && !isNumber && !isId && !isAppend && !isDequeue {
 		return nil, fmt.Errorf("It is not a valid enqueue target")
 	}
 
@@ -183,6 +184,31 @@ func (p *pr) getDequeue() (Node, error) {
 		return nil, err
 	}
 	return DequeueExpression{Expression: expr, Length: length.Value}, nil
+}
+
+func (p *pr) getUnstack() (Node, error) {
+	if _, err := p.EatToken(lexer.UNSTACK); err != nil {
+		return nil, err
+	}
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	_, isUnstack := expr.(UnstackExpression)
+	_, isDequeue := expr.(DequeueExpression)
+	_, isAppend := expr.(AppendExpression)
+	_, isTape := expr.(TapeExpression)
+	_, isNumber := expr.(NumberLiteralNode)
+	_, isId := expr.(IdLiteralNode)
+	if !isTape && !isNumber && !isId && !isAppend && !isDequeue && !isUnstack {
+		return nil, fmt.Errorf("It is not a valid enqueue target")
+	}
+
+	length, err := p.getNum()
+	if err != nil {
+		return nil, err
+	}
+	return UnstackExpression{Expression: expr, Length: length.Value}, nil
 }
 
 func (p *pr) getUnaExpr() (Node, error) {
@@ -518,11 +544,14 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.TAPE {
 		return p.getTape()
 	}
-	if lookahead.GetTag().Id == lexer.ENQUEUE {
-		return p.getEnqueue()
+	if lookahead.GetTag().Id == lexer.APPEND {
+		return p.getAppend()
 	}
 	if lookahead.GetTag().Id == lexer.DEQUEUE {
 		return p.getDequeue()
+	}
+	if lookahead.GetTag().Id == lexer.UNSTACK {
+		return p.getUnstack()
 	}
 	return p.getBoolExpr()
 }

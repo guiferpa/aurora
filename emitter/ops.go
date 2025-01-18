@@ -26,6 +26,7 @@ const (
 	OpReturn           = 0x17 // Operation to save an value with max of 64 bits (uint64) to work throught by different scopes
 	OpResult           = 0x18 // Operation to get the result persisted in return stack
 	OpPrint            = 0x19 // Operation to print slice of bytes
-	OpEnqueue          = 0x1a // Operation to enqueue value in slice of byte
+	OpAppend           = 0x1a // Operation to append value in slice of byte
 	OpDequeue          = 0x1b // Operation to dequeue value in slice of byte
+	OpUnstack          = 0x1c // Operation to unstack value in slice of byte
 )

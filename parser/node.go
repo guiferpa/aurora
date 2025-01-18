@@ -102,12 +102,12 @@ func (_ TapeExpression) Next() Node {
 	return nil
 }
 
-type EnqueueExpression struct {
+type AppendExpression struct {
 	Target Node `json:"target"`
 	Item   Node `json:"item"`
 }
 
-func (_ EnqueueExpression) Next() Node {
+func (_ AppendExpression) Next() Node {
 	return nil
 }
 
@@ -117,6 +117,15 @@ type DequeueExpression struct {
 }
 
 func (_ DequeueExpression) Next() Node {
+	return nil
+}
+
+type UnstackExpression struct {
+	Expression Node   `json:"expression"`
+	Length     uint64 `json:"length"`
+}
+
+func (_ UnstackExpression) Next() Node {
 	return nil
 }
 

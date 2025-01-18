@@ -53,7 +53,7 @@ func ResolveOpCode(op byte) string {
 		return "OpOr"
 	case OpAnd:
 		return "OpAnd"
-	case OpEnqueue:
+	case OpAppend:
 		return "OpEnqueue"
 	case OpDequeue:
 		return "OpDequeue"

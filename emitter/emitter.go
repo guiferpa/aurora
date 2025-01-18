@@ -91,11 +91,11 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
 		return l
 	}
-	if n, ok := stmt.(parser.EnqueueExpression); ok {
+	if n, ok := stmt.(parser.AppendExpression); ok {
 		t := EmitInstruction(tc, insts, n.Target)
 		i := EmitInstruction(tc, insts, n.Item)
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpEnqueue, t, i))
+		*insts = append(*insts, NewInstruction(l, OpAppend, t, i))
 		return l
 	}
 	if n, ok := stmt.(parser.DequeueExpression); ok {
@@ -103,6 +103,13 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		ln := byteutil.FromUint64(n.Length)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpDequeue, e, ln))
+		return l
+	}
+	if n, ok := stmt.(parser.UnstackExpression); ok {
+		e := EmitInstruction(tc, insts, n.Expression)
+		ln := byteutil.FromUint64(n.Length)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpUnstack, e, ln))
 		return l
 	}
 	if n, ok := stmt.(parser.IfExpressionNode); ok {

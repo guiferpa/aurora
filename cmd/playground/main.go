@@ -36,7 +36,7 @@ func main() {
 				fmt.Println(err)
 				return nil
 			}
-			insts, err := emitter.New(ast).Emit()
+			insts, err := emitter.New().Emit(ast)
 			if err != nil {
 				fmt.Println(err)
 				return nil

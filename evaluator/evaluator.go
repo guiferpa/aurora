@@ -114,14 +114,13 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			e.cursor++
 			return nil
 		}
-		end := byteutil.ToUint64(right)
-		e.cursor = e.cursor + end + 1
+		e.cursor = e.cursor + byteutil.ToUint64(right) + 1
 		return nil
 	}
 
 	if op == emitter.OpJump {
 		Print(os.Stdout, e.debug, e.counter, op, left, nil, nil)
-		e.cursor = binary.BigEndian.Uint64(left)
+		e.cursor = e.cursor + binary.BigEndian.Uint64(left) + 1
 		return nil
 	}
 

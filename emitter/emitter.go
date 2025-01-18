@@ -89,35 +89,27 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		var l []byte
 
 		/*Extract Else body*/
-		cinst := *insts
-		*insts = make([]Instruction, 0)
+		euze := make([]Instruction, 0)
 		if n.Else != nil {
 			for _, inst := range n.Else.Body {
-				l = EmitInstruction(tc, insts, inst)
+				l = EmitInstruction(tc, &euze, inst)
 			}
 		}
-		euze := *insts
 		euze = append(euze, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
-		*insts = cinst
+		euzelen := byteutil.FromUint64(uint64(len(euze)))
 
 		/*Extract Condition body*/
-		cinst = *insts
-		*insts = make([]Instruction, 0)
+		body := make([]Instruction, 0)
 		for _, inst := range n.Body {
-			l = EmitInstruction(tc, insts, inst)
+			l = EmitInstruction(tc, &body, inst)
 		}
-		body := *insts
 		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
-
-		*insts = cinst
+		body = append(body, NewInstruction(GenerateLabel(tc), OpJump, euzelen, nil))
+		bodylen := byteutil.FromUint64(uint64(len(body)))
 
 		lt := EmitInstruction(tc, insts, n.Test)
 		inl := GenerateLabel(tc)
-		bodylength := byteutil.FromUint64(uint64(len(body) + 1))
-		*insts = append(*insts, NewInstruction(inl, OpIf, lt, bodylength))
-		euzelength := byteutil.FromUint64(uint64(len(*insts) + len(body) + len(euze) + 1))
-		body = append(body, NewInstruction(GenerateLabel(tc), OpJump, euzelength, nil))
-
+		*insts = append(*insts, NewInstruction(inl, OpIf, lt, bodylen))
 		*insts = append(*insts, body...)
 		*insts = append(*insts, euze...)
 

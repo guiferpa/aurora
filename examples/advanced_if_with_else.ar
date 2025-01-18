@@ -1,4 +1,4 @@
-ident op = 2;
+ident op = 1;
 
 ident a = if op equals 1 { 1 + 1; } else { 
  if op equals 2 { 1 - 1; } else { 10; };

@@ -51,7 +51,7 @@ func Start(in io.Reader, out io.Writer, debug bool) {
 			continue
 		}
 
-		insts, err := emitter.New(ast).Emit()
+		insts, err := emitter.New().Emit(ast)
 		if err != nil {
 			fmt.Println(err)
 			continue

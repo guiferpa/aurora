@@ -8,13 +8,10 @@ import (
 )
 
 type Emitter interface {
-	Emit() ([]Instruction, error)
+	Emit(ast parser.AST) ([]Instruction, error)
 }
 
-type emt struct {
-	ast  parser.AST
-	tmpc int
-}
+type emt struct{}
 
 func GenerateLabel(tc *int) []byte {
 	t := []byte(fmt.Sprintf("0%d", *tc))
@@ -34,14 +31,11 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 	}
 	if n, ok := stmt.(parser.BlockExpressionNode); ok {
 		var l []byte
-		cins := insts
-		*insts = make([]Instruction, 0)
+		body := make([]Instruction, 0)
 		for _, ins := range n.Body {
-			l = EmitInstruction(tc, insts, ins)
+			l = EmitInstruction(tc, &body, ins)
 		}
-		*insts = append(*insts, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
-		body := *insts
-		insts = cins
+		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
 
 		var length uint64 = uint64(len(body)) // Length of function
 		*insts = append(*insts, NewInstruction(GenerateLabel(tc), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
@@ -204,15 +198,15 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 	return make([]byte, 8)
 }
 
-func (e *emt) Emit() ([]Instruction, error) {
+func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {
 	tc := 0
 	insts := make([]Instruction, 0)
-	for _, stmt := range e.ast.Module.Statements {
+	for _, stmt := range ast.Module.Statements {
 		EmitInstruction(&tc, &insts, stmt)
 	}
 	return insts, nil
 }
 
-func New(ast parser.AST) *emt {
-	return &emt{ast, 0}
+func New() *emt {
+	return &emt{}
 }

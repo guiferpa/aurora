@@ -41,7 +41,7 @@ var buildCmd = &cobra.Command{
 		bs := logger.MustError(os.ReadFile(args[0]))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
 		ast := logger.MustError(parser.New(tokens).Parse())
-		insts := logger.MustError(emitter.New(ast).Emit())
+		insts := logger.MustError(emitter.New().Emit(ast))
 		fd := os.Stdout
 		if strings.Compare(output, "") != 0 {
 			fd = logger.MustError(os.Create(output))
@@ -64,7 +64,7 @@ var runCmd = &cobra.Command{
 		bs := logger.MustError(os.ReadFile(args[0]))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
 		ast := logger.MustError(parser.New(tokens).Parse())
-		insts := logger.MustError(emitter.New(ast).Emit())
+		insts := logger.MustError(emitter.New().Emit(ast))
 		emitter.Print(insts, debug)
 		ev := evaluator.New(debug)
 		if player && debug {

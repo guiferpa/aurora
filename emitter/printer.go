@@ -85,8 +85,8 @@ func Print(insts []Instruction, debug bool) error {
 		for i, ins := range insts {
 			lo := fmt.Sprintf("%-12s", ResolveOpCode(ins.GetOpCode()))
 			t := highlightBytesUsedInHex(c, ins.GetLabel(), 4)
-			lp := highlightBytesUsedInHex(c, ins.GetLeft(), 16)
-			rp := highlightBytesUsedInHex(c, ins.GetRight(), 16)
+			lp := highlightBytesUsedInHex(c, ins.GetLeft(), 32)
+			rp := highlightBytesUsedInHex(c, ins.GetRight(), 32)
 			o := highlightByteUsedInHex(c, ins.GetOpCode(), 1)
 			fmt.Printf("[%016s] %0s(%d): %s(1) %s - %s(%d) %s(%d)\n", c.Sprintf("%d", i), t, len(ins.GetLabel()), o, lo, lp, len(ins.GetLeft()), rp, len(ins.GetRight()))
 		}

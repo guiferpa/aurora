@@ -94,6 +94,14 @@ func (pen PrimaryExpressionNode) Next() Node {
 	return pen.Expression
 }
 
+type TapeExpression struct {
+	Length uint64
+}
+
+func (_ TapeExpression) Next() Node {
+	return nil
+}
+
 type RelativeExpression struct {
 	Left      Node                 `json:"left"`
 	Right     Node                 `json:"right"`
@@ -120,16 +128,6 @@ type BlockExpressionNode struct {
 }
 
 func (ben BlockExpressionNode) Next() Node {
-	return nil
-}
-
-type FuncExpressionNode struct {
-	Ref   string          `json:"id"`
-	Arity []IdLiteralNode `json:"arity"`
-	Body  []Node          `json:"body"`
-}
-
-func (fen FuncExpressionNode) Next() Node {
 	return nil
 }
 

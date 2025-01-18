@@ -119,6 +119,17 @@ func (p *pr) getPriExpr() (Node, error) {
 	return id, nil
 }
 
+func (p *pr) getTape() (Node, error) {
+	if _, err := p.EatToken(lexer.TAPE); err != nil {
+		return nil, err
+	}
+	length, err := p.getNum()
+	if err != nil {
+		return nil, err
+	}
+	return TapeExpression{Length: length.Value}, nil
+}
+
 func (p *pr) getUnaExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.SUB {
@@ -135,7 +146,7 @@ func (p *pr) getUnaExpr() (Node, error) {
 	return p.getPriExpr()
 }
 
-func (p *pr) getExpExpr() (Node, error) {
+func (p *pr) getExpoExpr() (Node, error) {
 	left, err := p.getUnaExpr()
 	if err != nil {
 		return nil, err
@@ -147,7 +158,7 @@ func (p *pr) getExpExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.getExpExpr()
+		right, err := p.getExpoExpr()
 		if err != nil {
 			return nil, err
 		}
@@ -158,7 +169,7 @@ func (p *pr) getExpExpr() (Node, error) {
 }
 
 func (p *pr) getMultExpr() (Node, error) {
-	left, err := p.getExpExpr()
+	left, err := p.getExpoExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -440,11 +451,6 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.getBlockExpr()
 	}
-	/*
-		if lookahead.GetTag().Id == lexer.FUNC {
-			return p.getFunc()
-		}
-	*/
 	if lookahead.GetTag().Id == lexer.IF {
 		return p.getIf()
 	}
@@ -453,6 +459,9 @@ func (p *pr) getExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.getIdent()
+	}
+	if lookahead.GetTag().Id == lexer.TAPE {
+		return p.getTape()
 	}
 	return p.getBoolExpr()
 }

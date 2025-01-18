@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	IDENT        = "IDENT"     // idenTag
+	IDENT        = "IDENT"     // ident
+	TAPE         = "TAPE"      // tape
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
 	C_PAREN      = "C_PAREN"   // )
@@ -85,6 +86,7 @@ var (
 	TagTrue       = Tag{TRUE, "true", "^true"}
 	TagFalse      = Tag{FALSE, "false", "^false"}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
+	TagTape       = Tag{TAPE, "tape", "^tape"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
@@ -96,6 +98,7 @@ var processableTags = []Tag{
 	TagIf,
 	TagElse,
 	TagBranch,
+	TagTape,
 	TagIdent,
 	TagAssign,
 	TagOParen,

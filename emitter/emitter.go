@@ -85,6 +85,12 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 		return l
 	}
+	if n, ok := stmt.(parser.TapeExpression); ok {
+		l := GenerateLabel(tc)
+		tape := make([]byte, n.Length*8)
+		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
+		return l
+	}
 	if n, ok := stmt.(parser.IfExpressionNode); ok {
 		var l []byte
 

@@ -7,8 +7,6 @@ type Instruction interface {
 	GetRight() []byte
 }
 
-type Instructions []Instruction
-
 type inst struct {
 	label  []byte
 	opcode byte

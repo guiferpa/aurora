@@ -24,8 +24,9 @@ var (
 )
 
 var evalCmd = &cobra.Command{
-	Use:  "eval",
-	Args: cobra.MinimumNArgs(1),
+	Use:   "eval [file]",
+	Short: "Evaluate aurora binary file built by build command",
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		bs := logger.MustError(os.ReadFile(args[0]))
 		insts := logger.MustError(emitter.Parse(bs))
@@ -35,8 +36,9 @@ var evalCmd = &cobra.Command{
 }
 
 var buildCmd = &cobra.Command{
-	Use:  "build",
-	Args: cobra.MinimumNArgs(1),
+	Use:   "build [file]",
+	Short: "Build binary from source code",
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		bs := logger.MustError(os.ReadFile(args[0]))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
@@ -51,15 +53,17 @@ var buildCmd = &cobra.Command{
 }
 
 var replCmd = &cobra.Command{
-	Use: "repl",
+	Use:   "repl",
+	Short: "Enter in Read-Eval-Print Loop mode",
 	Run: func(cmd *cobra.Command, args []string) {
 		repl.Start(os.Stdin, os.Stdout, debug)
 	},
 }
 
 var runCmd = &cobra.Command{
-	Use:  "run",
-	Args: cobra.MinimumNArgs(1),
+	Use:   "run [file]",
+	Short: "Run program directly from source code",
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		bs := logger.MustError(os.ReadFile(args[0]))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
@@ -75,7 +79,8 @@ var runCmd = &cobra.Command{
 }
 
 var versionCmd = &cobra.Command{
-	Use: "version",
+	Use:   "version",
+	Short: "Show toolbox version",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version.VERSION)
 	},

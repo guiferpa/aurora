@@ -1,6 +1,10 @@
 package byteutil
 
-import "errors"
+type ErrEncode struct{}
+
+func (err *ErrEncode) Error() string {
+	return "unknown byte sequence to encode"
+}
 
 func Encode(v []byte) (any, error) {
 	if len(v) == 8 {
@@ -9,5 +13,5 @@ func Encode(v []byte) (any, error) {
 	if len(v) == 1 {
 		return ToBoolean(v), nil
 	}
-	return nil, errors.New("unknown byte sequence to encode")
+	return nil, &ErrEncode{}
 }

@@ -1,6 +1,6 @@
 module github.com/guiferpa/aurora
 
-go 1.21.1
+go 1.23
 
 require (
 	github.com/fatih/color v1.17.0

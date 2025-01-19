@@ -137,6 +137,15 @@ func (_ TailExpression) Next() Node {
 	return nil
 }
 
+type PushExpression struct {
+	Target Node `json:"target"`
+	Item   Node `json:"item"`
+}
+
+func (_ PushExpression) Next() Node {
+	return nil
+}
+
 type RelativeExpression struct {
 	Left      Node                 `json:"left"`
 	Right     Node                 `json:"right"`

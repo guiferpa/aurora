@@ -13,6 +13,7 @@ const (
 	APPEND       = "APPEND"    // append
 	HEAD         = "HEAD"      // head
 	TAIL         = "TAIL"      // tail
+	PUSH         = "PUSH"      // push
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
 	C_PAREN      = "C_PAREN"   // )
@@ -93,6 +94,7 @@ var (
 	TagAppend     = Tag{APPEND, "append", "^append"}
 	TagHead       = Tag{HEAD, "head", "^head"}
 	TagTail       = Tag{TAIL, "tail", "^tail"}
+	TagPush       = Tag{PUSH, "push", "^push"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
@@ -108,6 +110,7 @@ var processableTags = []Tag{
 	TagAppend,
 	TagHead,
 	TagTail,
+	TagPush,
 	TagIdent,
 	TagAssign,
 	TagOParen,

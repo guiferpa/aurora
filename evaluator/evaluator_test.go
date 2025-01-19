@@ -135,6 +135,20 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
+			"tape_push_1",
+			`ident target = tape 3;
+      ident t1 = append target 1;
+      ident t2 = append t1 2;
+      push t2 3;`,
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
 			"tape_bracket_1",
 			"[1, 20, 300];",
 			func(name string, r [][]byte) func(t *testing.T) {
@@ -186,6 +200,28 @@ func TestEvaluate(t *testing.T) {
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
 					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
+			"tape_bracket_push_1",
+			"push [1, 2] 3;",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
+			"tape_bracket_push_2",
+			"push [1, 2, 3] 3;",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2}; !bytes.Equal(got, expected) {
 						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
 					}
 				}

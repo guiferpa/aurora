@@ -128,6 +128,13 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpTail, e, ln))
 		return l
 	}
+	if n, ok := stmt.(parser.PushExpression); ok {
+		lt := EmitInstruction(tc, insts, n.Target)
+		li := EmitInstruction(tc, insts, n.Item)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpPush, lt, li))
+		return l
+	}
 	if n, ok := stmt.(parser.IfExpressionNode); ok {
 		var l []byte
 

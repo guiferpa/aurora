@@ -29,4 +29,5 @@ const (
 	OpAppend      byte = 0x1a // Operation to append value in slice of byte
 	OpHead        byte = 0x1b // Operation to head values in slice of byte
 	OpTail        byte = 0x1c // Operation to tail values in slice of byte
+	OpPush        byte = 0x1d // Operation to push values in slice of byte
 )

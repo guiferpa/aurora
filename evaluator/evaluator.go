@@ -89,6 +89,14 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.envpool.SetTemp(l, left[ln:])
 	}
 
+	if op == emitter.OpPush {
+		l := fmt.Sprintf("%x", label)
+		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+		ln := byteutil.NonZeroFilledLength(right) * 8
+		v := append(right, left[:len(left)-ln]...)
+		e.envpool.SetTemp(l, v)
+	}
+
 	if op == emitter.OpResult {
 		l := fmt.Sprintf("%x", label)
 		if len(e.result) > 0 {

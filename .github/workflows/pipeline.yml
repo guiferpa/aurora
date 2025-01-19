@@ -1,0 +1,33 @@
+name: Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        go: ['1.21', '1.22', '1.23']
+    name: Go ${{ matrix.go }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Running test
+        run: go test $(go list ./... | grep -v examples) -race -covermode atomic -coverprofile=covprofile
+
+      - name: Send coverage
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: covprofile
+

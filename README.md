@@ -26,14 +26,14 @@
 
 ### Install CLI
 ```sh
-$ go install -v github.com/guiferpa/aurora/cmd/aurora@main
+go install -v github.com/guiferpa/aurora/cmd/aurora@main
 ```
 > 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
 
 ### Using REPL mode
 
 ```sh
-$ aurora repl
+aurora repl
 ```
 
 ```java
@@ -54,7 +54,7 @@ print result + 1;
 #### Execute file
 
 ```sh
-$ aurora run ./<file>.ar
+aurora run ./<file>.ar
 ```
 
 #### That's the output from evaluator
@@ -74,7 +74,7 @@ $ aurora run ./<file>.ar
 ## Extra options
 
 ```sh
-$ aurora help
+aurora help
 
 Usage:
   aurora [command]

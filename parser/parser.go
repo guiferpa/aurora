@@ -102,6 +102,12 @@ func (p *pr) getPriExpr() (Node, error) {
 		}
 		return expr, nil
 	}
+	if lookahead.GetTag().Id == lexer.O_BRK {
+		return p.getTapeBrk()
+	}
+	if lookahead.GetTag().Id == lexer.TAPE {
+		return p.getTape()
+	}
 	if lookahead.GetTag().Id == lexer.NUMBER {
 		num, err := p.getNum()
 		if err != nil {
@@ -134,6 +140,30 @@ func (p *pr) getTape() (Node, error) {
 		return nil, err
 	}
 	return TapeExpression{Length: length.Value}, nil
+}
+
+func (p *pr) getTapeBrk() (Node, error) {
+	if _, err := p.EatToken(lexer.O_BRK); err != nil {
+		return nil, err
+	}
+	items := make([]Node, 0)
+	for {
+		expr, err := p.getExpr()
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, expr)
+		if p.GetLookahead().GetTag().Id == lexer.C_BRK {
+			break
+		}
+		if _, err := p.EatToken(lexer.COMMA); err != nil {
+			return nil, err
+		}
+	}
+	if _, err := p.EatToken(lexer.C_BRK); err != nil {
+		return nil, err
+	}
+	return TapeBracketExpression{Items: items}, nil
 }
 
 func (p *pr) getAppend() (Node, error) {
@@ -565,9 +595,6 @@ func (p *pr) getExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.getIdent()
-	}
-	if lookahead.GetTag().Id == lexer.TAPE {
-		return p.getTape()
 	}
 	if lookahead.GetTag().Id == lexer.APPEND {
 		return p.getAppend()

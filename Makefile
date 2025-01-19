@@ -7,12 +7,17 @@ ACT_BIN = $(GOPATH)/bin/act
 TPARSE_BIN = $(GOPATH)/bin/tparse
 
 # Execute all meaningful jobs from Makefile to release the project's binary
-all: test lint build
+all: test lint clean build-force
+
+build-force: clean build
 
 build: $(BIN)
 
 $(BIN):
 	@CGO_ENABLED=0 go build -race -o $(BIN) ./cmd/aurora/*.go
+
+clean:
+	@rm -rf $(BIN)
 
 # Run tests
 test: $(TPARSE_BIN)
@@ -46,4 +51,4 @@ $(TPARSE_BIN):
 	@echo "==> Installing tparse..."
 	@go install github.com/mfridman/tparse@latest
 
-.PHONY: all build test bench lint act cover-html
+.PHONY: all build build-force test bench lint act cover-html

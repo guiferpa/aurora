@@ -91,11 +91,27 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
 		return l
 	}
-	if n, ok := stmt.(parser.AppendExpression); ok {
-		t := EmitInstruction(tc, insts, n.Target)
-		i := EmitInstruction(tc, insts, n.Item)
+	if n, ok := stmt.(parser.TapeBracketExpression); ok {
+		ln := 2 // Mimimum of length
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpAppend, t, i))
+		if len(n.Items) > 0 {
+			ln = len(n.Items)
+		}
+		tape := make([]byte, ln*8)
+		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
+		for _, i := range n.Items {
+			la := GenerateLabel(tc)
+			li := EmitInstruction(tc, insts, i)
+			*insts = append(*insts, NewInstruction(la, OpAppend, l, li))
+			l = la
+		}
+		return l
+	}
+	if n, ok := stmt.(parser.AppendExpression); ok {
+		lt := EmitInstruction(tc, insts, n.Target)
+		li := EmitInstruction(tc, insts, n.Item)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpAppend, lt, li))
 		return l
 	}
 	if n, ok := stmt.(parser.DequeueExpression); ok {

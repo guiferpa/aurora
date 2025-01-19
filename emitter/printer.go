@@ -54,9 +54,11 @@ func ResolveOpCode(op byte) string {
 	case OpAnd:
 		return "OpAnd"
 	case OpAppend:
-		return "OpEnqueue"
+		return "OpAppend"
 	case OpDequeue:
 		return "OpDequeue"
+	case OpUnstack:
+		return "OpUnstack"
 	case OpPushArg:
 		return "OpPushArg"
 	case OpGetArg:

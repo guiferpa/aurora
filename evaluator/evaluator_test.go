@@ -61,6 +61,25 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
+			"math_1",
+			`1 + 1;
+      20 + 20;
+      200 + 2_00;`,
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 2}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+					if got, expected := r[1], []byte{0, 0, 0, 0, 0, 0, 0, 40}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+					if got, expected := r[2], []byte{0, 0, 0, 0, 0, 0, 1, 144}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
 			"tape_bracket_1",
 			"[1, 20, 300];",
 			func(name string, r [][]byte) func(t *testing.T) {

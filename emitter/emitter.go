@@ -121,11 +121,11 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpHead, e, ln))
 		return l
 	}
-	if n, ok := stmt.(parser.UnstackExpression); ok {
+	if n, ok := stmt.(parser.TailExpression); ok {
 		e := EmitInstruction(tc, insts, n.Expression)
 		ln := byteutil.FromUint64(n.Length)
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpUnstack, e, ln))
+		*insts = append(*insts, NewInstruction(l, OpTail, e, ln))
 		return l
 	}
 	if n, ok := stmt.(parser.IfExpressionNode); ok {

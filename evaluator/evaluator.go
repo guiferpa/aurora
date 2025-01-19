@@ -78,7 +78,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.envpool.SetTemp(l, left[:ln])
 	}
 
-	if op == emitter.OpUnstack {
+	if op == emitter.OpTail {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		index := int(byteutil.ToUint64(right))

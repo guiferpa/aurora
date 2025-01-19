@@ -57,8 +57,8 @@ func ResolveOpCode(op byte) string {
 		return "OpAppend"
 	case OpHead:
 		return "OpHead"
-	case OpUnstack:
-		return "OpUnstack"
+	case OpTail:
+		return "OpTail"
 	case OpPushArg:
 		return "OpPushArg"
 	case OpGetArg:

@@ -128,12 +128,12 @@ func (_ HeadExpression) Next() Node {
 	return nil
 }
 
-type UnstackExpression struct {
+type TailExpression struct {
 	Expression Node   `json:"expression"`
 	Length     uint64 `json:"length"`
 }
 
-func (_ UnstackExpression) Next() Node {
+func (_ TailExpression) Next() Node {
 	return nil
 }
 

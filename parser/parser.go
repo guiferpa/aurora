@@ -175,13 +175,13 @@ func (p *pr) getAppend() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isUnstack := target.(UnstackExpression)
+	_, isTail := target.(TailExpression)
 	_, isHead := target.(HeadExpression)
 	_, isAppend := target.(AppendExpression)
 	_, isTape := target.(TapeExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isAppend && !isHead && !isUnstack {
+	if !isTape && !isNumber && !isId && !isAppend && !isHead && !isTail {
 		return nil, fmt.Errorf("It is not a valid enqueue target")
 	}
 
@@ -222,21 +222,21 @@ func (p *pr) getHead() (Node, error) {
 	return HeadExpression{Expression: expr, Length: length.Value}, nil
 }
 
-func (p *pr) getUnstack() (Node, error) {
-	if _, err := p.EatToken(lexer.UNSTACK); err != nil {
+func (p *pr) getTail() (Node, error) {
+	if _, err := p.EatToken(lexer.TAIL); err != nil {
 		return nil, err
 	}
 	expr, err := p.getExpr()
 	if err != nil {
 		return nil, err
 	}
-	_, isUnstack := expr.(UnstackExpression)
+	_, isTail := expr.(TailExpression)
 	_, isHead := expr.(HeadExpression)
 	_, isAppend := expr.(AppendExpression)
 	_, isTape := expr.(TapeExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isAppend && !isHead && !isUnstack {
+	if !isTape && !isNumber && !isId && !isAppend && !isHead && !isTail {
 		return nil, fmt.Errorf("It is not a valid enqueue target")
 	}
 
@@ -244,7 +244,7 @@ func (p *pr) getUnstack() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return UnstackExpression{Expression: expr, Length: length.Value}, nil
+	return TailExpression{Expression: expr, Length: length.Value}, nil
 }
 
 func (p *pr) getUnaExpr() (Node, error) {
@@ -602,8 +602,8 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.HEAD {
 		return p.getHead()
 	}
-	if lookahead.GetTag().Id == lexer.UNSTACK {
-		return p.getUnstack()
+	if lookahead.GetTag().Id == lexer.TAIL {
+		return p.getTail()
 	}
 	return p.getBoolExpr()
 }

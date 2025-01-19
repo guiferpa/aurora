@@ -12,7 +12,7 @@ const (
 	TAPE         = "TAPE"      // tape
 	APPEND       = "APPEND"    // append
 	HEAD         = "HEAD"      // head
-	UNSTACK      = "UNSTACK"   // unstack
+	TAIL         = "TAIL"      // tail
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
 	C_PAREN      = "C_PAREN"   // )
@@ -92,7 +92,7 @@ var (
 	TagTape       = Tag{TAPE, "tape", "^tape"}
 	TagAppend     = Tag{APPEND, "append", "^append"}
 	TagHead       = Tag{HEAD, "head", "^head"}
-	TagUnstack    = Tag{UNSTACK, "unstack", "^unstack"}
+	TagTail       = Tag{TAIL, "tail", "^tail"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
@@ -107,7 +107,7 @@ var processableTags = []Tag{
 	TagTape,
 	TagAppend,
 	TagHead,
-	TagUnstack,
+	TagTail,
 	TagIdent,
 	TagAssign,
 	TagOParen,

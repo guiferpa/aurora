@@ -26,7 +26,7 @@
 
 ### Install CLI
 ```sh
-go install -v github.com/guiferpa/aurora/cmd/aurora@main
+go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD
 ```
 > 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
 

@@ -21,7 +21,7 @@ clean:
 
 # Run tests
 test: $(TPARSE_BIN)
-	@go test $(PKGS) -v -json -race -buildvcs -cover -coverprofile=coverage.out | $(TPARSE_BIN) -pass
+	@go test $(PKGS) -v -json -race -buildvcs -cover -test.v | $(TPARSE_BIN) -pass -follow
 
 # Run benchmarks of source code
 bench:

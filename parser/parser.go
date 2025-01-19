@@ -493,7 +493,8 @@ func (p *pr) getBranchItem() (Node, error) {
 	_, isBoolean := expr.(BooleanExpression)
 	_, isRel := expr.(RelativeExpression)
 	_, isLiteralBool := expr.(BooleanLiteral)
-	if !isBoolean && !isRel && !isLiteralBool {
+	_, isId := expr.(IdLiteralNode)
+	if !isBoolean && !isRel && !isLiteralBool && !isId {
 		return nil, errors.New("branch must have boolean expression as test")
 	}
 

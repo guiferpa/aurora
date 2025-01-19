@@ -5,3 +5,7 @@ ident t3 = append t2 3;
 print t1;
 print t2;
 print t3;
+
+ident b = append tape 2 2_00;
+ident c = append b 500;
+print c;

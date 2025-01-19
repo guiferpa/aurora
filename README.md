@@ -80,13 +80,13 @@ Usage:
   aurora [command]
 
 Available Commands:
-  build
+  build       Build binary from source code
   completion  Generate the autocompletion script for the specified shell
-  eval
+  eval        Evaluate aurora binary file built by build command
   help        Help about any command
-  repl
-  run
-  version
+  repl        Enter in Read-Eval-Print Loop mode
+  run         Run program directly from source code
+  version     Show toolbox version
 
 Flags:
   -h, --help   help for aurora

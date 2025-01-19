@@ -67,18 +67,36 @@ func TestEvaluate(t *testing.T) {
       200 + 2_00;`,
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
-					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 2}; !bytes.Equal(got, expected) {
+					if got, expected := r[1], []byte{0, 0, 0, 0, 0, 0, 0, 2}; !bytes.Equal(got, expected) {
 						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
 					}
-					if got, expected := r[1], []byte{0, 0, 0, 0, 0, 0, 0, 40}; !bytes.Equal(got, expected) {
+					if got, expected := r[2], []byte{0, 0, 0, 0, 0, 0, 0, 40}; !bytes.Equal(got, expected) {
 						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
 					}
-					if got, expected := r[2], []byte{0, 0, 0, 0, 0, 0, 1, 144}; !bytes.Equal(got, expected) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 1, 144}; !bytes.Equal(got, expected) {
 						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
 					}
 				}
 			},
 		},
+		{
+			"tape_head_1",
+			`ident target = tape 3;
+      ident t1 = append target 1;
+      ident t2 = append t1 2;
+      ident t3 = append t2 3;
+      head t3 2;
+
+      `,
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+
 		{
 			"tape_bracket_1",
 			"[1, 20, 300];",
@@ -92,6 +110,7 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 	}
+
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
 		tokens, err := lexer.GetFilledTokens(bs)
@@ -110,6 +129,10 @@ func TestEvaluate(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		t.Run(c.Name, c.Fn(c.Name, slices.Collect[[]byte](maps.Values(m))))
+		r := make([][]byte, 0)
+		for _, k := range slices.Sorted(maps.Keys(m)) {
+			r = append(r, m[k])
+		}
+		t.Run(c.Name, c.Fn(c.Name, r))
 	}
 }

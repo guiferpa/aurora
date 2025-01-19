@@ -119,12 +119,12 @@ func (_ AppendExpression) Next() Node {
 	return nil
 }
 
-type DequeueExpression struct {
+type HeadExpression struct {
 	Expression Node   `json:"expression"`
 	Length     uint64 `json:"length"`
 }
 
-func (_ DequeueExpression) Next() Node {
+func (_ HeadExpression) Next() Node {
 	return nil
 }
 

@@ -11,7 +11,7 @@ const (
 	IDENT        = "IDENT"     // ident
 	TAPE         = "TAPE"      // tape
 	APPEND       = "APPEND"    // append
-	DEQUEUE      = "DEQUEUE"   // dequeue
+	HEAD         = "HEAD"      // head
 	UNSTACK      = "UNSTACK"   // unstack
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
@@ -91,7 +91,7 @@ var (
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
 	TagTape       = Tag{TAPE, "tape", "^tape"}
 	TagAppend     = Tag{APPEND, "append", "^append"}
-	TagDequeue    = Tag{DEQUEUE, "dequeue", "^dequeue"}
+	TagHead       = Tag{HEAD, "head", "^head"}
 	TagUnstack    = Tag{UNSTACK, "unstack", "^unstack"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
@@ -106,7 +106,7 @@ var processableTags = []Tag{
 	TagBranch,
 	TagTape,
 	TagAppend,
-	TagDequeue,
+	TagHead,
 	TagUnstack,
 	TagIdent,
 	TagAssign,

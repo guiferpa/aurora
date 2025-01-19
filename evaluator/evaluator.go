@@ -67,7 +67,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		e.envpool.SetTemp(l, v)
 	}
 
-	if op == emitter.OpDequeue {
+	if op == emitter.OpHead {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		index := int(byteutil.ToUint64(right))

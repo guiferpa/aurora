@@ -27,6 +27,6 @@ const (
 	OpResult      byte = 0x18 // Operation to get the result persisted in return stack
 	OpPrint       byte = 0x19 // Operation to print slice of bytes
 	OpAppend      byte = 0x1a // Operation to append value in slice of byte
-	OpDequeue     byte = 0x1b // Operation to dequeue value in slice of byte
+	OpHead        byte = 0x1b // Operation to head values in slice of byte
 	OpUnstack     byte = 0x1c // Operation to unstack value in slice of byte
 )

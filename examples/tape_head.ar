@@ -3,4 +3,4 @@ ident t1 = append target 1;
 ident t2 = append t1 2;
 ident t3 = append t2 3;
 print t3;
-print dequeue t3 2;
+print head t3 2;

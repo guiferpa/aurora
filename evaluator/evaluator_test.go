@@ -80,6 +80,17 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
+			"tape_1",
+			"tape 3;",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
 			"tape_append_1",
 			`ident target = tape 3;
       ident t1 = append target 1;
@@ -135,25 +146,74 @@ func TestEvaluate(t *testing.T) {
 				}
 			},
 		},
+		{
+			"tape_bracket_2",
+			"[];",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+					if got, expected := r[0], expected; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
+			"tape_bracket_append_1",
+			"append [1, 2] 3;",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
+			"tape_bracket_head_1",
+			"head [1, 2, 3] 2;",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
+			"tape_bracket_tail_1",
+			`tail [1, 2, 3] 2;`,
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
 	}
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
 		tokens, err := lexer.GetFilledTokens(bs)
 		if err != nil {
-			t.Error(err)
+			t.Errorf("%v: %v", c.Name, err)
+			return
 		}
 		ast, err := parser.New(tokens).Parse()
 		if err != nil {
-			t.Error(err)
+			t.Errorf("%v: %v", c.Name, err)
+			return
 		}
 		insts, err := emitter.New().Emit(ast)
 		if err != nil {
-			t.Error(err)
+			t.Errorf("%v: %v", c.Name, err)
+			return
 		}
 		m, err := New(false).Evaluate(insts)
 		if err != nil {
-			t.Error(err)
+			t.Errorf("%v: %v", c.Name, err)
+			return
 		}
 		r := make([][]byte, 0)
 		for _, k := range slices.Sorted(maps.Keys(m)) {

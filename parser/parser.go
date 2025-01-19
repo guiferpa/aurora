@@ -147,7 +147,7 @@ func (p *pr) getTapeBrk() (Node, error) {
 		return nil, err
 	}
 	items := make([]Node, 0)
-	for {
+	for p.GetLookahead().GetTag().Id != lexer.C_BRK {
 		expr, err := p.getExpr()
 		if err != nil {
 			return nil, err
@@ -179,10 +179,11 @@ func (p *pr) getAppend() (Node, error) {
 	_, isHead := target.(HeadExpression)
 	_, isAppend := target.(AppendExpression)
 	_, isTape := target.(TapeExpression)
+	_, isTapeBrk := target.(TapeBracketExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isAppend && !isHead && !isTail {
-		return nil, fmt.Errorf("It is not a valid enqueue target")
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isHead && !isTail {
+		return nil, fmt.Errorf("It is not a valid append target")
 	}
 
 	expr, err := p.getExpr()
@@ -190,9 +191,10 @@ func (p *pr) getAppend() (Node, error) {
 		return nil, err
 	}
 	_, isTape = expr.(TapeExpression)
+	_, isTapeBrk = expr.(TapeBracketExpression)
 	_, isNumber = expr.(NumberLiteralNode)
 	_, isId = expr.(IdLiteralNode)
-	if !isTape && !isNumber && !isId {
+	if !isTape && !isTapeBrk && !isNumber && !isId {
 		return nil, fmt.Errorf("It is not a valid enqueue item")
 	}
 	return AppendExpression{Target: target, Item: expr}, nil
@@ -209,10 +211,11 @@ func (p *pr) getHead() (Node, error) {
 	_, isHead := expr.(HeadExpression)
 	_, isAppend := expr.(AppendExpression)
 	_, isTape := expr.(TapeExpression)
+	_, isTapeBrk := expr.(TapeBracketExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isAppend && !isHead {
-		return nil, fmt.Errorf("It is not a valid enqueue target")
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isHead {
+		return nil, fmt.Errorf("It is not a valid head target")
 	}
 
 	length, err := p.getNum()
@@ -234,10 +237,11 @@ func (p *pr) getTail() (Node, error) {
 	_, isHead := expr.(HeadExpression)
 	_, isAppend := expr.(AppendExpression)
 	_, isTape := expr.(TapeExpression)
+	_, isTapeBrk := expr.(TapeBracketExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isNumber && !isId && !isAppend && !isHead && !isTail {
-		return nil, fmt.Errorf("It is not a valid enqueue target")
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isHead && !isTail {
+		return nil, fmt.Errorf("It is not a valid tail target")
 	}
 
 	length, err := p.getNum()

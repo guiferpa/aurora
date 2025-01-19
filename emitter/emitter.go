@@ -92,11 +92,12 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		return l
 	}
 	if n, ok := stmt.(parser.TapeBracketExpression); ok {
-		ln := 2 // Mimimum of length
+		ln := 2 // Minimum of length
 		l := GenerateLabel(tc)
 		if len(n.Items) > 0 {
 			ln = len(n.Items)
 		}
+		fmt.Println("LNNN", ln)
 		tape := make([]byte, ln*8)
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
 		for _, i := range n.Items {

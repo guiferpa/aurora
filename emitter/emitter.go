@@ -97,7 +97,6 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		if len(n.Items) > 0 {
 			ln = len(n.Items)
 		}
-		fmt.Println("LNNN", ln)
 		tape := make([]byte, ln*8)
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
 		for _, i := range n.Items {

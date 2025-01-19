@@ -27,7 +27,9 @@ func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
 	if p.GetLookahead().GetTag().Id != lexer.O_PAREN {
 		return id, nil
 	}
-	p.EatToken(lexer.O_PAREN)
+	if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+		return nil, err
+	}
 	for p.GetLookahead().GetTag().Id != lexer.C_PAREN {
 		expr, err := p.getExpr()
 		if err != nil {
@@ -37,9 +39,13 @@ func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
 		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
 			break
 		}
-		p.EatToken(lexer.COMMA)
+		if _, err := p.EatToken(lexer.COMMA); err != nil {
+			return nil, err
+		}
 	}
-	p.EatToken(lexer.C_PAREN)
+	if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+		return nil, err
+	}
 	return CalleeLiteralNode{id, params}, nil
 }
 
@@ -48,7 +54,7 @@ func (p *pr) getId() (IdLiteralNode, error) {
 	if err != nil {
 		return IdLiteralNode{}, err
 	}
-	id := IdLiteralNode{fmt.Sprintf("%s", tok.GetMatch()), tok}
+	id := IdLiteralNode{string(tok.GetMatch()), tok}
 	return id, nil
 }
 
@@ -222,7 +228,7 @@ func (p *pr) getUnaExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return UnaryExpressionNode{expr, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return UnaryExpressionNode{expr, OperationLiteralNode{string(op.GetMatch()), op}}, nil
 	}
 	return p.getPriExpr()
 }
@@ -243,7 +249,7 @@ func (p *pr) getExpoExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -265,7 +271,7 @@ func (p *pr) getMultExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.DIV {
 		op, err := p.EatToken(lexer.DIV)
@@ -276,7 +282,7 @@ func (p *pr) getMultExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -298,7 +304,7 @@ func (p *pr) getAddExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.SUB {
 		op, err := p.EatToken(lexer.SUB)
@@ -309,7 +315,7 @@ func (p *pr) getAddExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{fmt.Sprintf("%s", op.GetMatch()), op}}, nil
+		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
 	}
 
 	return left, nil
@@ -330,7 +336,7 @@ func (p *pr) getRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return RelativeExpression{left, right, OperationLiteralNode{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.DIFFERENT {
 		op, err := p.EatToken(lexer.DIFFERENT)
@@ -341,7 +347,7 @@ func (p *pr) getRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return RelativeExpression{left, right, OperationLiteralNode{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.BIGGER {
 		op, err := p.EatToken(lexer.BIGGER)
@@ -352,7 +358,7 @@ func (p *pr) getRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return RelativeExpression{left, right, OperationLiteralNode{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.SMALLER {
 		op, err := p.EatToken(lexer.SMALLER)
@@ -363,7 +369,7 @@ func (p *pr) getRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return RelativeExpression{left, right, OperationLiteralNode{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	return left, nil
 }
@@ -383,7 +389,7 @@ func (p *pr) getBoolExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return BooleanExpression{left, right, OperationLiteralNode{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == lexer.AND {
 		op, err := p.EatToken(lexer.AND)
@@ -394,7 +400,7 @@ func (p *pr) getBoolExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BooleanExpression{left, right, OperationLiteralNode{Value: fmt.Sprintf("%s", op.GetMatch()), Token: op}}, nil
+		return BooleanExpression{left, right, OperationLiteralNode{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	return left, nil
 }
@@ -406,7 +412,9 @@ func (p *pr) getBranchItem() (Node, error) {
 	}
 
 	if p.GetLookahead().GetTag().Id == lexer.SEMICOLON {
-		p.EatToken(lexer.SEMICOLON)
+		if _, err := p.EatToken(lexer.SEMICOLON); err != nil {
+			return nil, err
+		}
 		return expr, nil
 	}
 
@@ -417,14 +425,18 @@ func (p *pr) getBranchItem() (Node, error) {
 		return nil, errors.New("branch must have boolean expression as test")
 	}
 
-	p.EatToken(lexer.COLON)
+	if _, err := p.EatToken(lexer.COLON); err != nil {
+		return nil, err
+	}
 
 	body, err := p.getExpr()
 	if err != nil {
 		return nil, err
 	}
 
-	p.EatToken(lexer.COMMA)
+	if _, err := p.EatToken(lexer.COMMA); err != nil {
+		return nil, err
+	}
 
 	euzeb, err := p.getBranchItem()
 	if err != nil {
@@ -467,14 +479,21 @@ func (p *pr) getBlockExpr() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.EatToken(lexer.C_CUR_BRK)
+	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+		return nil, err
+	}
 	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
 	return BlockExpressionNode{ref, stmts}, nil
 }
 
 func (p *pr) getIf() (Node, error) {
-	p.EatToken(lexer.IF)
+	if _, err := p.EatToken(lexer.IF); err != nil {
+		return nil, err
+	}
 	test, err := p.getBoolExpr()
+	if err != nil {
+		return nil, err
+	}
 	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
@@ -482,7 +501,9 @@ func (p *pr) getIf() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.EatToken(lexer.C_CUR_BRK)
+	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+		return nil, err
+	}
 	if p.GetLookahead().GetTag().Id == lexer.ELSE {
 		euze, err := p.getElse()
 		return IfExpressionNode{test, body, euze}, err
@@ -491,7 +512,9 @@ func (p *pr) getIf() (Node, error) {
 }
 
 func (p *pr) getElse() (*ElseExpressionNode, error) {
-	p.EatToken(lexer.ELSE)
+	if _, err := p.EatToken(lexer.ELSE); err != nil {
+		return nil, err
+	}
 	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
@@ -499,7 +522,9 @@ func (p *pr) getElse() (*ElseExpressionNode, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.EatToken(lexer.C_CUR_BRK)
+	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+		return nil, err
+	}
 	return &ElseExpressionNode{body}, nil
 }
 
@@ -509,7 +534,7 @@ func (p *pr) getIdent() (Node, error) {
 	}
 	id, err := p.EatToken(lexer.ID)
 	if len(id.GetMatch()) == 0 {
-		return nil, errors.New(fmt.Sprintf("missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn()))
+		return nil, fmt.Errorf("missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn())
 	}
 	if err != nil {
 		return nil, err
@@ -521,7 +546,7 @@ func (p *pr) getIdent() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return IdentStatementNode{fmt.Sprintf("%s", id.GetMatch()), id, expr}, nil
+	return IdentStatementNode{string(id.GetMatch()), id, expr}, nil
 }
 
 func (p *pr) getExpr() (Node, error) {
@@ -557,7 +582,9 @@ func (p *pr) getExpr() (Node, error) {
 }
 
 func (p *pr) getPrint() (Node, error) {
-	p.EatToken(lexer.PRINT)
+	if _, err := p.EatToken(lexer.PRINT); err != nil {
+		return nil, err
+	}
 	expr, err := p.getExpr()
 	if err != nil {
 		return nil, err
@@ -566,7 +593,9 @@ func (p *pr) getPrint() (Node, error) {
 }
 
 func (p *pr) getArgs() (Node, error) {
-	p.EatToken(lexer.ARGUMENTS)
+	if _, err := p.EatToken(lexer.ARGUMENTS); err != nil {
+		return nil, err
+	}
 	nth, err := p.getNum()
 	if err != nil {
 		return nil, err
@@ -624,7 +653,7 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	}
 
 	if tokenId != currtok.GetTag().Id {
-		return currtok, errors.New(fmt.Sprintf("unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn()))
+		return currtok, fmt.Errorf("unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn())
 	}
 
 	p.cursor++

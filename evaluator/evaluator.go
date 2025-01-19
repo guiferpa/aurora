@@ -2,7 +2,6 @@ package evaluator
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -124,16 +123,16 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpIdent {
 		k := fmt.Sprintf("%x", left)
-		Print(os.Stdout, e.debug, e.counter, op, fmt.Sprintf("%s", left), right, nil)
+		Print(os.Stdout, e.debug, e.counter, op, string(left), right, nil)
 		if v := e.envpool.GetLocal(k); v != nil {
-			return errors.New(fmt.Sprintf("conflict between identifiers named %s", left))
+			return fmt.Errorf("conflict between identifiers named %s", left)
 		}
 		if len(right) > 0 {
 			e.envpool.SetLocal(k, right)
 			e.cursor++
 			return nil
 		}
-		return errors.New(fmt.Sprintf("identifier %s cannot be void", left))
+		return fmt.Errorf("identifier %s cannot be void", left)
 	}
 
 	if op == emitter.OpIf {
@@ -156,14 +155,14 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpLoad {
 		k := fmt.Sprintf("%x", left)
-		Print(os.Stdout, e.debug, e.counter, op, fmt.Sprintf("%s", left), nil, nil)
+		Print(os.Stdout, e.debug, e.counter, op, string(left), nil, nil)
 		l := fmt.Sprintf("%x", label)
 		if v := e.envpool.QueryLocal(k); v != nil {
 			e.envpool.SetTemp(l, v)
 			e.cursor++
 			return nil
 		}
-		return errors.New(fmt.Sprintf("identifier %s not defined", left))
+		return fmt.Errorf("identifier %s not defined", left)
 	}
 
 	if op == emitter.OpBeginScope { // Open scope for block
@@ -189,16 +188,16 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpPreCall {
 		k := fmt.Sprintf("%x", left)
 		v := e.envpool.QueryLocal(k)
-		Print(os.Stdout, e.debug, e.counter, op, fmt.Sprintf("%s", left), v, nil)
+		Print(os.Stdout, e.debug, e.counter, op, string(left), v, nil)
 
 		if v == nil {
-			return errors.New(fmt.Sprintf("identifier %s not defined", left))
+			return fmt.Errorf("identifier %s not defined", left)
 		}
 
 		k = fmt.Sprintf("%x", v)
 		currseg := e.envpool.QueryScopeCallable(k)
 		if currseg == nil {
-			return errors.New(fmt.Sprintf("identifier %s is not callable segment", left))
+			return fmt.Errorf("identifier %s is not callable segment", left)
 		}
 		e.currseg = currseg
 
@@ -210,7 +209,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpCall {
-		Print(os.Stdout, e.debug, e.counter, op, fmt.Sprintf("%s", left), nil, nil)
+		Print(os.Stdout, e.debug, e.counter, op, string(left), nil, nil)
 		e.envpool.SetContext(e.cursor+1, e.insts)
 		e.cursor = 0
 		e.insts = e.currseg.GetInstructions() // Retrieve instructions from function segment

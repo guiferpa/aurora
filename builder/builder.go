@@ -34,22 +34,19 @@ func getLineBytes(lblen, label, op, lflen, left, rglen, right []byte) []byte {
 	return bytes.Join([][]byte{lnlen, lblen, label, op, lflen, left, rglen, right}, []byte(""))
 }
 
-func (b *blr) Build(w io.Writer) (int, error) {
-	var size int = 0
-	var err error
+func (b *blr) Build(w io.Writer) (size int, err error) {
 	for _, inst := range b.insts {
 		lblen, label := getLabelBytes(inst.GetLabel()) // Len 4 bytes, dynamic size
 		op := []byte{inst.GetOpCode()}                 // 1 byte
 		lflen, left := getParameter(inst.GetLeft())    // 1~8 byte
 		rglen, right := getParameter(inst.GetRight())  // 1~8 byte
 		line := getLineBytes(lblen, label, op, lflen, left, rglen, right)
-		size += len(line)
 		size, err = w.Write(line)
 		if err != nil {
-			return size, err
+			return
 		}
 	}
-	return size, nil
+	return
 }
 
 func New(insts []emitter.Instruction) *blr {

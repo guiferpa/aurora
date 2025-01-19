@@ -16,7 +16,7 @@ func TestPadding64Bits(t *testing.T) {
 	}
 	for _, c := range cases {
 		got := Padding64Bits(c.Value)
-		if expected := c.Expected; bytes.Compare(got, expected) != 0 {
+		if expected := c.Expected; !bytes.Equal(got, expected) {
 			t.Errorf("Unexpected padding: got %v, expected: %v", got, expected)
 		}
 	}

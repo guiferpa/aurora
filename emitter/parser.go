@@ -30,7 +30,6 @@ func parseLine(ln []byte) (Instruction, error) {
 	// Extract right
 	rglen := binary.BigEndian.Uint32((ln[0:RIGHT_SIZE_COUNTER]))
 	right := ln[RIGHT_SIZE_COUNTER : rglen+RIGHT_SIZE_COUNTER]
-	ln = ln[rglen+RIGHT_SIZE_COUNTER:]
 
 	return NewInstruction(label, op[0], left, right), nil
 }

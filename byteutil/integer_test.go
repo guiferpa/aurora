@@ -17,7 +17,7 @@ func TestFromUint64(t *testing.T) {
 	}
 	for _, c := range cases {
 		got := FromUint64(c.Value)
-		if expected := c.Expected; bytes.Compare(got, expected) != 0 {
+		if expected := c.Expected; !bytes.Equal(got, expected) {
 			t.Errorf("Unexpected byte slice: got %v, expected: %v", got, expected)
 		}
 	}

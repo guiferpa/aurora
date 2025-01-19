@@ -14,7 +14,7 @@ func TestEnvironSetter(t *testing.T) {
 	if !ok {
 		t.Errorf("unexpected emty result: got: %v, expected: %v", got, v.Bytes())
 	}
-	if bytes.Compare(got, v.Bytes()) != 0 {
+	if !bytes.Equal(got, v.Bytes()) {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 	}
 }
@@ -25,7 +25,7 @@ func TestEnvironGetter(t *testing.T) {
 	env := New(nil)
 	env.SetLocaL(k, v.Bytes())
 	got := env.GetLocal(k)
-	if bytes.Compare(got, v.Bytes()) != 0 {
+	if !bytes.Equal(got, v.Bytes()) {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 	}
 }

@@ -53,7 +53,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		ll := EmitInstruction(tc, insts, n.Left)
 		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
-		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
+		switch string(n.Operation.Token.GetMatch()) {
 		case "equals":
 			op = OpEquals
 		case "different":
@@ -75,7 +75,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		ll := EmitInstruction(tc, insts, n.Left)
 		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
-		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
+		switch string(n.Operation.Token.GetMatch()) {
 		case "or":
 			op = OpOr
 		case "and":
@@ -178,7 +178,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		ll := EmitInstruction(tc, insts, n.Left)
 		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
-		switch fmt.Sprintf("%s", n.Operation.Token.GetMatch()) {
+		switch string(n.Operation.Token.GetMatch()) {
 		case "*":
 			op = OpMultiply
 		case "+":

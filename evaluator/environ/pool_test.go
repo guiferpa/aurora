@@ -22,7 +22,7 @@ func TestPool(t *testing.T) {
 	v := bytes.NewBufferString("B")
 	p.SetLocal(k, v.Bytes())
 	got := p.Current().GetLocal(k)
-	if bytes.Compare(got, v.Bytes()) != 0 {
+	if !bytes.Equal(got, v.Bytes()) {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return
 	}
@@ -31,7 +31,7 @@ func TestPool(t *testing.T) {
 	v = bytes.NewBufferString("D")
 	p.SetLocal(k, v.Bytes())
 	got = p.Current().GetLocal(k)
-	if bytes.Compare(got, v.Bytes()) != 0 {
+	if !bytes.Equal(got, v.Bytes()) {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return
 	}
@@ -48,7 +48,7 @@ func TestPool(t *testing.T) {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return
 	}
-	if bytes.Compare(got, v.Bytes()) != 0 {
+	if !bytes.Equal(got, v.Bytes()) {
 		t.Errorf("unexpected result: got: %v, expected: %v", got, v.Bytes())
 		return
 	}

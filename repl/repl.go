@@ -16,8 +16,6 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-const PROMPT = ">> "
-
 func Start(in io.Reader, out io.Writer, debug bool) {
 	ev := evaluator.New(debug)
 
@@ -31,7 +29,7 @@ func Start(in io.Reader, out io.Writer, debug bool) {
 
 	scanner := bufio.NewScanner(in)
 	for {
-		fmt.Fprintf(out, PROMPT)
+		fmt.Fprintf(out, ">> ")
 		scanned := scanner.Scan()
 		if !scanned {
 			return

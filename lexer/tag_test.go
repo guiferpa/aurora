@@ -151,7 +151,7 @@ func TestMatchTagRule(t *testing.T) {
 		if strings.Compare(c.TagId, tag.Id) != 0 {
 			t.Errorf("param: %s, expected: %v, got: %v", string(c.Buffer), c.TagId, tag.Id)
 		}
-		if bytes.Compare(c.Match, match) != 0 {
+		if !bytes.Equal(c.Match, match) {
 			t.Errorf("param: %s, expected: %v, got: %v", string(c.Buffer), c.Match, match)
 		}
 	}

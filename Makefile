@@ -7,7 +7,7 @@ ACT_BIN = $(GOPATH)/bin/act
 TPARSE_BIN = $(GOPATH)/bin/tparse
 
 # Execute all meaningful jobs from Makefile to release the project's binary
-all: test lint clean build-force
+all: test lint build-force
 
 build-force: clean build
 

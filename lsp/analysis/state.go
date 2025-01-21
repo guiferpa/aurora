@@ -158,7 +158,9 @@ func (s *State) TextDocumentCompletion(id int, uri string) textdoc.CompletionRes
 			RPC: "2.0",
 			ID:  &id,
 		},
-		Result: items,
+		Result: textdoc.CompletionResult{
+			Items: items,
+		},
 	}
 }
 

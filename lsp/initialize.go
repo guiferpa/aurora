@@ -1,5 +1,9 @@
 package lsp
 
+import (
+	"github.com/guiferpa/aurora/version"
+)
+
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
 type InitializeRequestParams struct {
@@ -12,8 +16,8 @@ type InitializeRequest struct {
 }
 
 type InitiazeResult struct {
-	ServerCapabilities ServerCapabilities
-	ServerInfo         ServerInfo
+	ServerCapabilities ServerCapabilities `json:"capabilities"`
+	ServerInfo         ServerInfo         `json:"serverInfo"`
 }
 
 type InitializeResponse struct {
@@ -29,15 +33,11 @@ func NewInitializeResponse(id int) InitializeResponse {
 		},
 		Result: InitiazeResult{
 			ServerCapabilities: ServerCapabilities{
-				TextDocumentSync:   1,
-				HoverProvider:      true,
-				DefinitionProvider: true,
-				CodeActionProvider: true,
 				CompletionProvider: map[string]any{},
 			},
 			ServerInfo: ServerInfo{
-				Name:    "",
-				Version: "",
+				Name:    "aurorals",
+				Version: version.VERSION,
 			},
 		},
 	}

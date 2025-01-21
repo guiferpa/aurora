@@ -18,7 +18,11 @@ type CompletionItem struct {
 	Documentation string `json:"documentation"`
 }
 
+type CompletionResult struct {
+	Items []CompletionItem `json:"items"`
+}
+
 type CompletionResponse struct {
 	lsp.Response
-	Result []CompletionItem `json:"result"`
+	Result CompletionResult `json:"result"`
 }

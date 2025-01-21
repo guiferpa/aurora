@@ -1,6 +1,6 @@
 SHELL=/bin/sh
 GOPATH ?= $(shell go env GOPATH)
-BIN ?= ./target/bin/aurora
+BIN ?= ./target/bin
 PKGS = $(shell go list ./... | grep -v examples)
 LINTER = $(GOPATH)/bin/golangci-lint
 ACT_BIN = $(GOPATH)/bin/act
@@ -9,12 +9,17 @@ TPARSE_BIN = $(GOPATH)/bin/tparse
 # Execute all meaningful jobs from Makefile to release the project's binary
 all: test lint build-force
 
-build-force: clean build
+build-force: aurora aurorals
 
-build: $(BIN)
+aurora: $(BIN)/aurora
 
-$(BIN):
-	@CGO_ENABLED=0 go build -race -o $(BIN) ./cmd/aurora/*.go
+aurorals: $(BIN)/aurorals
+
+$(BIN)/aurora:
+	@CGO_ENABLED=0 go build -race -o $(BIN)/aurora ./cmd/aurora/*.go
+
+$(BIN)/aurorals:
+	@CGO_ENABLED=0 go build -race -o $(BIN)/aurorals ./cmd/aurorals/*.go
 
 clean:
 	@rm -rf $(BIN)
@@ -51,4 +56,4 @@ $(TPARSE_BIN):
 	@echo "==> Installing tparse..."
 	@go install github.com/mfridman/tparse@latest
 
-.PHONY: all build build-force test bench lint act cover-html
+.PHONY: all build build-force aurora lsp test bench lint act cover-html

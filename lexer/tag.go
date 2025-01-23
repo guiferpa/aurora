@@ -51,52 +51,53 @@ const (
 )
 
 type Tag struct {
-	Id      string
-	Keyword string
-	Rule    string
+	Id          string
+	Keyword     string
+	Rule        string
+	Description string
 }
 
 var (
-	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]"}
-	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+"}
-	TagCallPrint  = Tag{PRINT, "print", "^print"}
-	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments"}
-	TagIdent      = Tag{IDENT, "ident", "^ident"}
-	TagAssign     = Tag{ASSIGN, "=", "^="}
-	TagOParen     = Tag{O_PAREN, "(", "^\\("}
-	TagCParen     = Tag{C_PAREN, ")", "^\\)"}
-	TagEquals     = Tag{EQUALS, "equals", "^equals"}
-	TagDifferent  = Tag{DIFFERENT, "different", "^different"}
-	TagBigger     = Tag{BIGGER, "bigger", "^bigger"}
-	TagSmaller    = Tag{SMALLER, "smaller", "^smaller"}
-	TagOr         = Tag{OR, "or", "^or"}
-	TagAnd        = Tag{AND, "and", "^and"}
-	TagSum        = Tag{SUM, "+", "^\\+"}
-	TagSub        = Tag{SUB, "-", "^\\-"}
-	TagMult       = Tag{MULT, "*", "^\\*"}
-	TagDiv        = Tag{DIV, "/", "^\\/"}
-	TagExpo       = Tag{EXPO, "^", "^\\^"}
-	TagComment    = Tag{COMMENT_LINE, "#-", "^#-"}
-	TagOBrk       = Tag{O_BRK, "[", "^\\["}
-	TagCBrk       = Tag{C_BRK, "]", "^\\]"}
-	TagOCurBrk    = Tag{O_CUR_BRK, "{", "^{"}
-	TagCCurBrk    = Tag{C_CUR_BRK, "}", "^}"}
-	TagComma      = Tag{COMMA, ",", "^,"}
-	TagIf         = Tag{IF, "if", "^if"}
-	TagElse       = Tag{ELSE, "else", "^else"}
-	TagColon      = Tag{COLON, ":", "^:"}
-	TagBranch     = Tag{BRANCH, "branch", "^branch"}
-	TagSemicolon  = Tag{SEMICOLON, ";", "^;"}
-	TagTrue       = Tag{TRUE, "true", "^true"}
-	TagFalse      = Tag{FALSE, "false", "^false"}
-	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*"}
-	TagTape       = Tag{TAPE, "tape", "^tape"}
-	TagAppend     = Tag{APPEND, "append", "^append"}
-	TagHead       = Tag{HEAD, "head", "^head"}
-	TagTail       = Tag{TAIL, "tail", "^tail"}
-	TagPush       = Tag{PUSH, "push", "^push"}
-	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b"}
-	TagEOF        = Tag{EOF, "<EOF>", ""}
+	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]", ""}
+	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+", ""}
+	TagCallPrint  = Tag{PRINT, "print", "^print", "Print anything"}
+	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments", "Get arguments from any callable scope"}
+	TagIdent      = Tag{IDENT, "ident", "^ident", "Create an immutable identifier"}
+	TagAssign     = Tag{ASSIGN, "=", "^=", ""}
+	TagOParen     = Tag{O_PAREN, "(", "^\\(", ""}
+	TagCParen     = Tag{C_PAREN, ")", "^\\)", ""}
+	TagEquals     = Tag{EQUALS, "equals", "^equals", ""}
+	TagDifferent  = Tag{DIFFERENT, "different", "^different", ""}
+	TagBigger     = Tag{BIGGER, "bigger", "^bigger", ""}
+	TagSmaller    = Tag{SMALLER, "smaller", "^smaller", ""}
+	TagOr         = Tag{OR, "or", "^or", ""}
+	TagAnd        = Tag{AND, "and", "^and", ""}
+	TagSum        = Tag{SUM, "+", "^\\+", ""}
+	TagSub        = Tag{SUB, "-", "^\\-", ""}
+	TagMult       = Tag{MULT, "*", "^\\*", ""}
+	TagDiv        = Tag{DIV, "/", "^\\/", ""}
+	TagExpo       = Tag{EXPO, "^", "^\\^", ""}
+	TagComment    = Tag{COMMENT_LINE, "#-", "^#-", ""}
+	TagOBrk       = Tag{O_BRK, "[", "^\\[", ""}
+	TagCBrk       = Tag{C_BRK, "]", "^\\]", ""}
+	TagOCurBrk    = Tag{O_CUR_BRK, "{", "^{", ""}
+	TagCCurBrk    = Tag{C_CUR_BRK, "}", "^}", ""}
+	TagComma      = Tag{COMMA, ",", "^,", ""}
+	TagIf         = Tag{IF, "if", "^if", "Make conditions with If"}
+	TagElse       = Tag{ELSE, "else", "^else", "Make else for conditions with If"}
+	TagColon      = Tag{COLON, ":", "^:", ""}
+	TagBranch     = Tag{BRANCH, "branch", "^branch", "Make possible many branches"}
+	TagSemicolon  = Tag{SEMICOLON, ";", "^;", ""}
+	TagTrue       = Tag{TRUE, "true", "^true", ""}
+	TagFalse      = Tag{FALSE, "false", "^false", ""}
+	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*", ""}
+	TagTape       = Tag{TAPE, "tape", "^tape", ""}
+	TagHead       = Tag{HEAD, "head", "^head", "Get left to right nth items from a tape"}
+	TagTail       = Tag{TAIL, "tail", "^tail", "Get right to left nth items from a tape"}
+	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
+	TagAppend     = Tag{APPEND, "append", "^append", "Append item in right to left"}
+	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b", ""}
+	TagEOF        = Tag{EOF, "<EOF>", "", ""}
 )
 
 var processableTags = []Tag{
@@ -141,12 +142,23 @@ var processableTags = []Tag{
 	TagNumber,
 }
 
-func GeTagProcessbleTags() []Tag {
+func GetProcessbleTags() []Tag {
 	return processableTags
 }
 
+func GetProcessbleTagsWithDescription() []Tag {
+	tags := make([]Tag, 0)
+	for _, t := range GetProcessbleTags() {
+		if strings.Compare(t.Description, "") == 0 {
+			continue
+		}
+		tags = append(tags, t)
+	}
+	return tags
+}
+
 func MatchTagRule(bs []byte) (bool, Tag, []byte) {
-	for _, v := range GeTagProcessbleTags() {
+	for _, v := range GetProcessbleTags() {
 		re := regexp.MustCompile(v.Rule)
 		match := re.FindString(string(bs))
 		if len(match) > 0 {

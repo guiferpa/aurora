@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/lsp/state"
 	"github.com/guiferpa/aurora/lsp/textdoc"
@@ -15,16 +16,19 @@ func TextdocCompletionHandler(l *log.Logger, s *state.State, contents []byte) an
 	if err != nil {
 		l.Println(err)
 		return nil
-
 	}
 
-	items := []textdoc.CompletionItem{
-		{
-			Label:         "Golang",
-			Detail:        "Simple and fast programming laguage",
-			Documentation: "Go is expressive, concise, clean, and efficient.\nIt's a fast, statically typed, compiled language.",
-		},
+	items := make([]textdoc.CompletionItem, 0)
+	tags := lexer.GetProcessbleTagsWithDescription()
+	for _, t := range tags {
+		items = append(items, textdoc.CompletionItem{
+			Label:  t.Keyword,
+			Detail: t.Description,
+			Kind:   textdoc.Keyword,
+		})
 	}
+
+	l.Println(items)
 
 	return textdoc.NewCompletionResponse(req.ID, items)
 }
@@ -34,7 +38,6 @@ func TextdocDidOpenHandler(l *log.Logger, s *state.State, contents []byte) any {
 	if err != nil {
 		l.Println(err)
 		return nil
-
 	}
 
 	uri := noti.Params.TextDocument.URI
@@ -51,7 +54,6 @@ func TextdocDidChangeHandler(l *log.Logger, s *state.State, contents []byte) any
 	if err != nil {
 		l.Println(err)
 		return nil
-
 	}
 
 	uri := noti.Params.TextDocument.URI
@@ -69,7 +71,6 @@ func TextdocHoverHandler(l *log.Logger, s *state.State, contents []byte) any {
 	if err != nil {
 		l.Println(err)
 		return nil
-
 	}
 
 	uri := req.Params.TextDocument.URI

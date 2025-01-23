@@ -3,31 +3,15 @@ package textdoc
 import "github.com/guiferpa/aurora/lsp"
 
 type Item struct {
-	/**
-	 * The text document's URI.
-	 */
-	URI string `json:"uri"`
-
-	/**
-	* The text document's language identifier.
-	 */
+	URI lsp.URI `json:"uri"`
 	LanguageID string `json:"languageId"`
-
-	/**
-	* The version number of this document (it will increase after each
-	* change, including undo/redo).
-	 */
 	Version int `json:"version"`
-
-	/**
-	* The content of the opened text document.
-	 */
 	Text string `json:"text"`
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentIdentifier
 type Identifier struct {
-	URI string `json:"uri"`
+	URI lsp.URI `json:"uri"`
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#versionedTextDocumentIdentifier
@@ -57,7 +41,7 @@ type Command struct {
 // replaces old text from given range with new text for given files
 // one file can have multiple text edits
 type WorkspaceEdit struct {
-	Changes map[string][]TextEdit `json:"changes"`
+	Changes map[lsp.URI][]TextEdit `json:"changes"`
 }
 
 type TextEdit struct {

@@ -1,6 +1,10 @@
 package textdoc
 
-import "github.com/guiferpa/aurora/lsp"
+import (
+	"encoding/json"
+
+	"github.com/guiferpa/aurora/lsp"
+)
 
 type CompletionParams struct {
 	PositionParams
@@ -25,4 +29,24 @@ type CompletionResult struct {
 type CompletionResponse struct {
 	lsp.Response
 	Result CompletionResult `json:"result"`
+}
+
+func ParseCompletionRequest(contents []byte) (*CompletionRequest, error) {
+	var req CompletionRequest
+	if err := json.Unmarshal(contents, &req); err != nil {
+		return nil, err
+	}
+	return &req, nil
+}
+
+func NewCompletionResponse(id int, items []CompletionItem) CompletionResponse {
+	return CompletionResponse{
+		Response: lsp.Response{
+			RPC: "2.0",
+			ID:  &id,
+		},
+		Result: CompletionResult{
+			Items: items,
+		},
+	}
 }

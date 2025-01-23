@@ -17,11 +17,24 @@ type Diagnostic struct {
 type Diagnocstics []Diagnostic
 
 type DiagnosticsParams struct {
-	URI         string       `json:"uri"`
+	URI         lsp.URI      `json:"uri"`
 	Diagnostics Diagnocstics `json:"diagnostics"`
 }
 
 type DiagnosticsNotification struct {
 	lsp.Notification
 	Params DiagnosticsParams `json:"params"`
+}
+
+func NewDiagnosticsNotification(uri lsp.URI, diagnostics Diagnocstics) DiagnosticsNotification {
+	return DiagnosticsNotification{
+		Notification: lsp.Notification{
+			RPC:    "2.0",
+			Method: "textDocument/publishDiagnostics",
+		},
+		Params: DiagnosticsParams{
+			URI:         uri,
+			Diagnostics: diagnostics,
+		},
+	}
 }

@@ -9,7 +9,7 @@ TPARSE_BIN = $(GOPATH)/bin/tparse
 # Execute all meaningful jobs from Makefile to release the project's binary
 all: test lint build-force
 
-build-force: aurora aurorals
+build-force: clean aurora aurorals
 
 aurora: $(BIN)/aurora
 
@@ -56,4 +56,4 @@ $(TPARSE_BIN):
 	@echo "==> Installing tparse..."
 	@go install github.com/mfridman/tparse@latest
 
-.PHONY: all build build-force aurora lsp test bench lint act cover-html
+.PHONY: all build build-force aurora aurorals test bench lint act cover-html clean

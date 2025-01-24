@@ -10,7 +10,7 @@ import (
 const (
 	IDENT        = "IDENT"     // ident
 	TAPE         = "TAPE"      // tape
-	APPEND       = "APPEND"    // append
+	PULL         = "PULL"      // pull
 	HEAD         = "HEAD"      // head
 	TAIL         = "TAIL"      // tail
 	PUSH         = "PUSH"      // push
@@ -95,7 +95,7 @@ var (
 	TagHead       = Tag{HEAD, "head", "^head", "Get left to right nth items from a tape"}
 	TagTail       = Tag{TAIL, "tail", "^tail", "Get right to left nth items from a tape"}
 	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
-	TagAppend     = Tag{APPEND, "append", "^append", "Append item in right to left"}
+	TagAppend     = Tag{PULL, "pull", "^pull", "Pull item in right to left"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b", ""}
 	TagEOF        = Tag{EOF, "<EOF>", "", ""}
 )

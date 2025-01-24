@@ -345,11 +345,11 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
-			"tape_append_1",
+			"tape_pull_1",
 			`ident target = tape 3;
-      ident t1 = append target 1;
-      ident t2 = append t1 2;
-      append t2 3;`,
+      ident t1 = pull target 1;
+      ident t2 = pull t1 2;
+      pull t2 3;`,
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
 					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3}; !bytes.Equal(got, expected) {
@@ -361,9 +361,9 @@ func TestEvaluate(t *testing.T) {
 		{
 			"tape_head_1",
 			`ident target = tape 3;
-      ident t1 = append target 1;
-      ident t2 = append t1 2;
-      ident t3 = append t2 3;
+      ident t1 = pull target 1;
+      ident t2 = pull t1 2;
+      ident t3 = pull t2 3;
       head t3 2;`,
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
@@ -376,9 +376,9 @@ func TestEvaluate(t *testing.T) {
 		{
 			"tape_tail_1",
 			`ident target = tape 3;
-      ident t1 = append target 1;
-      ident t2 = append t1 2;
-      ident t3 = append t2 3;
+      ident t1 = pull target 1;
+      ident t2 = pull t1 2;
+      ident t3 = pull t2 3;
       tail t3 2;`,
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
@@ -391,8 +391,8 @@ func TestEvaluate(t *testing.T) {
 		{
 			"tape_push_1",
 			`ident target = tape 3;
-      ident t1 = append target 1;
-      ident t2 = append t1 2;
+      ident t1 = pull target 1;
+      ident t2 = pull t1 2;
       push t2 3;`,
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
@@ -427,8 +427,8 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
-			"tape_bracket_append_1",
-			"append [1, 2] 3;",
+			"tape_bracket_pull_1",
+			"pull [1, 2] 3;",
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
 					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 3}; !bytes.Equal(got, expected) {
@@ -438,8 +438,8 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
-			"tape_bracket_append_2",
-			"append [] 3;",
+			"tape_bracket_pull_2",
+			"pull [] 3;",
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
 					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3}; !bytes.Equal(got, expected) {
@@ -493,7 +493,7 @@ func TestEvaluate(t *testing.T) {
 			},
 		},
 		{
-			"tape_bracket_append_2",
+			"tape_bracket_push_3",
 			"push [] 3;",
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {

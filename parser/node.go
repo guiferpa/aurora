@@ -110,12 +110,12 @@ func (_ TapeBracketExpression) Next() Node {
 	return nil
 }
 
-type AppendExpression struct {
+type PullExpression struct {
 	Target Node `json:"target"`
 	Item   Node `json:"item"`
 }
 
-func (_ AppendExpression) Next() Node {
+func (_ PullExpression) Next() Node {
 	return nil
 }
 

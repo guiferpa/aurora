@@ -59,7 +59,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	if op == emitter.OpAppend {
+	if op == emitter.OpPull {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		ln := byteutil.NonZeroFilledLength(right) * 8

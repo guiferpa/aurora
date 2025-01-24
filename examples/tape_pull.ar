@@ -1,0 +1,11 @@
+ident target = tape 2; #- Size = 2 * 64bits
+ident t1 = pull target 1;
+ident t2 = pull t1 2;
+ident t3 = pull t2 3;
+print t1;
+print t2;
+print t3;
+
+ident b = pull tape 2 2_00;
+ident c = pull b 500;
+print c;

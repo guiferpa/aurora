@@ -102,16 +102,16 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		for _, i := range n.Items {
 			la := GenerateLabel(tc)
 			li := EmitInstruction(tc, insts, i)
-			*insts = append(*insts, NewInstruction(la, OpAppend, l, li))
+			*insts = append(*insts, NewInstruction(la, OpPull, l, li))
 			l = la
 		}
 		return l
 	}
-	if n, ok := stmt.(parser.AppendExpression); ok {
+	if n, ok := stmt.(parser.PullExpression); ok {
 		lt := EmitInstruction(tc, insts, n.Target)
 		li := EmitInstruction(tc, insts, n.Item)
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpAppend, lt, li))
+		*insts = append(*insts, NewInstruction(l, OpPull, lt, li))
 		return l
 	}
 	if n, ok := stmt.(parser.HeadExpression); ok {

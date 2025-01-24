@@ -166,8 +166,8 @@ func (p *pr) getTapeBrk() (Node, error) {
 	return TapeBracketExpression{Items: items}, nil
 }
 
-func (p *pr) getAppend() (Node, error) {
-	if _, err := p.EatToken(lexer.APPEND); err != nil {
+func (p *pr) getPull() (Node, error) {
+	if _, err := p.EatToken(lexer.PULL); err != nil {
 		return nil, err
 	}
 
@@ -177,13 +177,13 @@ func (p *pr) getAppend() (Node, error) {
 	}
 	_, isTail := target.(TailExpression)
 	_, isHead := target.(HeadExpression)
-	_, isAppend := target.(AppendExpression)
+	_, isPull := target.(PullExpression)
 	_, isPush := target.(PushExpression)
 	_, isTape := target.(TapeExpression)
 	_, isTapeBrk := target.(TapeBracketExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isPush && !isHead && !isTail {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail {
 		return nil, fmt.Errorf("It is not a valid append target")
 	}
 
@@ -198,7 +198,7 @@ func (p *pr) getAppend() (Node, error) {
 	if !isTape && !isTapeBrk && !isNumber && !isId {
 		return nil, fmt.Errorf("It is not a valid append item")
 	}
-	return AppendExpression{Target: target, Item: expr}, nil
+	return PullExpression{Target: target, Item: expr}, nil
 }
 
 func (p *pr) getHead() (Node, error) {
@@ -210,13 +210,13 @@ func (p *pr) getHead() (Node, error) {
 		return nil, err
 	}
 	_, isHead := expr.(HeadExpression)
-	_, isAppend := expr.(AppendExpression)
+	_, isPull := expr.(PullExpression)
 	_, isPush := expr.(PushExpression)
 	_, isTape := expr.(TapeExpression)
 	_, isTapeBrk := expr.(TapeBracketExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isPush && !isHead {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead {
 		return nil, fmt.Errorf("It is not a valid head target")
 	}
 
@@ -237,13 +237,13 @@ func (p *pr) getTail() (Node, error) {
 	}
 	_, isTail := expr.(TailExpression)
 	_, isHead := expr.(HeadExpression)
-	_, isAppend := expr.(AppendExpression)
+	_, isPull := expr.(PullExpression)
 	_, isPush := expr.(PushExpression)
 	_, isTape := expr.(TapeExpression)
 	_, isTapeBrk := expr.(TapeBracketExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isPush && !isHead && !isTail {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail {
 		return nil, fmt.Errorf("It is not a valid tail target")
 	}
 
@@ -265,13 +265,13 @@ func (p *pr) getPush() (Node, error) {
 	}
 	_, isTail := target.(TailExpression)
 	_, isHead := target.(HeadExpression)
-	_, isAppend := target.(AppendExpression)
+	_, isPull := target.(PullExpression)
 	_, isPush := target.(PushExpression)
 	_, isTape := target.(TapeExpression)
 	_, isTapeBrk := target.(TapeBracketExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isAppend && !isPush && !isHead && !isTail {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail {
 		return nil, fmt.Errorf("It is not a valid push target")
 	}
 
@@ -639,8 +639,8 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.getIdent()
 	}
-	if lookahead.GetTag().Id == lexer.APPEND {
-		return p.getAppend()
+	if lookahead.GetTag().Id == lexer.PULL {
+		return p.getPull()
 	}
 	if lookahead.GetTag().Id == lexer.HEAD {
 		return p.getHead()

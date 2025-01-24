@@ -193,12 +193,13 @@ func (p *pr) getPull() (Node, error) {
 	_, isTail := target.(TailExpression)
 	_, isHead := target.(HeadExpression)
 	_, isPull := target.(PullExpression)
+	_, isGlue := target.(GlueExpression)
 	_, isPush := target.(PushExpression)
 	_, isTape := target.(TapeExpression)
 	_, isTapeBrk := target.(TapeBracketExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
 		return nil, fmt.Errorf("It is not a valid append target")
 	}
 
@@ -226,12 +227,13 @@ func (p *pr) getHead() (Node, error) {
 	}
 	_, isHead := expr.(HeadExpression)
 	_, isPull := expr.(PullExpression)
+	_, isGlue := expr.(GlueExpression)
 	_, isPush := expr.(PushExpression)
 	_, isTape := expr.(TapeExpression)
 	_, isTapeBrk := expr.(TapeBracketExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isGlue {
 		return nil, fmt.Errorf("It is not a valid head target")
 	}
 
@@ -253,12 +255,13 @@ func (p *pr) getTail() (Node, error) {
 	_, isTail := expr.(TailExpression)
 	_, isHead := expr.(HeadExpression)
 	_, isPull := expr.(PullExpression)
+	_, isGlue := expr.(GlueExpression)
 	_, isPush := expr.(PushExpression)
 	_, isTape := expr.(TapeExpression)
 	_, isTapeBrk := expr.(TapeBracketExpression)
 	_, isNumber := expr.(NumberLiteralNode)
 	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
 		return nil, fmt.Errorf("It is not a valid tail target")
 	}
 
@@ -281,12 +284,13 @@ func (p *pr) getPush() (Node, error) {
 	_, isTail := target.(TailExpression)
 	_, isHead := target.(HeadExpression)
 	_, isPull := target.(PullExpression)
+	_, isGlue := target.(GlueExpression)
 	_, isPush := target.(PushExpression)
 	_, isTape := target.(TapeExpression)
 	_, isTapeBrk := target.(TapeBracketExpression)
 	_, isNumber := target.(NumberLiteralNode)
 	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail {
+	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
 		return nil, fmt.Errorf("It is not a valid push target")
 	}
 

@@ -46,6 +46,13 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 
 		return l
 	}
+	if n, ok := stmt.(parser.GlueExpression); ok {
+		la := EmitInstruction(tc, insts, n.A)
+		lb := EmitInstruction(tc, insts, n.B)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpGlue, la, lb))
+		return l
+	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return EmitInstruction(tc, insts, n.Expression)
 	}

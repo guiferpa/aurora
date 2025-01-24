@@ -69,6 +69,15 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
+	if op == emitter.OpGlue {
+		l := fmt.Sprintf("%x", label)
+		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+		v := append(left, right...)
+		e.envpool.SetTemp(l, v)
+		e.cursor++
+		return nil
+	}
+
 	if op == emitter.OpPush {
 		l := fmt.Sprintf("%x", label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)

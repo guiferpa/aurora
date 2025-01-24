@@ -87,10 +87,10 @@ func Split(data []byte, _ bool) (advance int, token []byte, err error) {
 	return totalLength, data[:totalLength], nil
 }
 
-func Write(writer io.Writer, msg any) {
+func Write(writer io.Writer, msg any) (int, error) {
 	if msg == nil {
-		return
+		return 0, nil
 	}
 	reply := Encode(msg)
-	writer.Write([]byte(reply))
+	return writer.Write([]byte(reply))
 }

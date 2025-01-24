@@ -28,6 +28,9 @@ func Listen(l *log.Logger, r io.Reader, w io.Writer, handlers map[Method]MethodH
 		if !ok {
 			continue
 		}
-		messenger.Write(w, h(l, s, contents))
+		if _, err := messenger.Write(w, h(l, s, contents)); err != nil {
+			l.Println(err)
+			continue
+		}
 	}
 }

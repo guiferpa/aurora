@@ -554,6 +554,28 @@ func TestEvaluate(t *testing.T) {
 				}
 			},
 		},
+		{
+			"glue_1",
+			"glue [1, 2] [2, 1];",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
+		{
+			"glue_2",
+			"glue 13 12;",
+			func(name string, r [][]byte) func(t *testing.T) {
+				return func(t *testing.T) {
+					if got, expected := r[0], []byte{0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 12}; !bytes.Equal(got, expected) {
+						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
+					}
+				}
+			},
+		},
 	}
 
 	for _, c := range cases {

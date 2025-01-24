@@ -87,6 +87,21 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
+func (p *pr) getGlue() (Node, error) {
+	if _, err := p.EatToken(lexer.GLUE); err != nil {
+		return nil, err
+	}
+	a, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	b, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	return GlueExpression{A: a, B: b}, nil
+}
+
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.O_PAREN {
@@ -650,6 +665,9 @@ func (p *pr) getExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.PUSH {
 		return p.getPush()
+	}
+	if lookahead.GetTag().Id == lexer.GLUE {
+		return p.getGlue()
 	}
 	return p.getBoolExpr()
 }

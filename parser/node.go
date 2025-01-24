@@ -23,6 +23,15 @@ func (pln ParameterLiteralNode) Next() Node {
 	return pln.Expression
 }
 
+type GlueExpression struct {
+	A Node `json:"a"`
+	B Node `json:"b"`
+}
+
+func (ge GlueExpression) Next() Node {
+	return nil
+}
+
 type CalleeLiteralNode struct {
 	Id     IdLiteralNode          `json:"id"`
 	Params []ParameterLiteralNode `json:"params"`

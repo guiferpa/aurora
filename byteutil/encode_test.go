@@ -39,6 +39,17 @@ func TestEncodeUint64(t *testing.T) {
 	}
 }
 
+func TestEncodeTapeUint64(t *testing.T) {
+	value := []byte{0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 50, 1}
+	got, err := Encode(value)
+	if err != nil {
+		t.Error(err)
+	}
+	if got, expected := got.([]uint64), []uint64{65535, 12801}; !reflect.DeepEqual(got, expected) {
+		t.Errorf("Unexpected uint64: got %v, expected: %v", got, expected)
+	}
+}
+
 func TestEncodeSliceGreaterThan64Bits(t *testing.T) {
 	value := []byte{0, 0, 0, 0, 0, 0, 0, 255, 255}
 	_, got := Encode(value)

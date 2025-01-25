@@ -11,3 +11,9 @@ func FromUint64(v uint64) []byte {
 func ToUint64(b []byte) uint64 {
 	return binary.BigEndian.Uint64(b)
 }
+
+func FromUint32(v uint32) []byte {
+	r := make([]byte, 4)
+	binary.BigEndian.PutUint32(r, v)
+	return r
+}

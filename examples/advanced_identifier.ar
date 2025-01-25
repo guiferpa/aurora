@@ -1,0 +1,4 @@
+#- It works like a variable but it's immutable
+ident a = 1 + 2;
+ident b = a + 1;
+print b;

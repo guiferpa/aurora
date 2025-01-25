@@ -24,3 +24,5 @@ func Encode(v []byte) (any, error) {
 	}
 	return nil, &ErrEncode{}
 }
+
+

@@ -288,8 +288,9 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	a := binary.BigEndian.Uint64(byteutil.Padding64Bits(left))
-	b := binary.BigEndian.Uint64(byteutil.Padding64Bits(right))
+	a := byteutil.ToUint64(byteutil.Padding64Bits(left))
+	b := byteutil.ToUint64(byteutil.Padding64Bits(right))
+
 
 	if op == emitter.OpEquals {
 		r := byteutil.False

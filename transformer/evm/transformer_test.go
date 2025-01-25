@@ -26,19 +26,118 @@ func TestTransform(t *testing.T) {
 	}{
 		{
 			"math_sum_1",
-			`10 + 20_001;`,
+			`4294967295 + 4294967295;`,
 			func(name string, mw *mockWriter) func(t *testing.T) {
 				return func(t *testing.T) {
 					expected := []byte{}
 					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
-						t.Errorf("EVM transformer: name: %v, got: %v, expected: %v", name, got, expected)
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"math_sum_and_multiply_2",
+			`3 + 3 * 2;`,
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"math_sub_and_multiply_2",
+			`3 - 3 * 2;`,
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"math_sub_and_divide_2",
+			`3 - 5 / 2;`,
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"ident_1",
+			"1 + 2;",
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"ident_2",
+			"ident a = 1 + 2 * 3;",
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"id_1",
+			"ident a = 1 + 2;",
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"id_2",
+			`ident a = 1 + 2;
+      ident b = a + 1;`,
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
+					}
+				}
+			},
+		},
+		{
+			"print_1",
+			`ident a = 1 + 2;
+      ident b = a + 1;
+      print b;`,
+			func(name string, mw *mockWriter) func(t *testing.T) {
+				return func(t *testing.T) {
+					expected := []byte{}
+					if got, expected := mw.Buffer, expected; !bytes.Equal(got, expected) {
+						t.Errorf("EVM transformer: name: %v, got: %v, expected: %x", name, ToString(got), ToString(expected))
 					}
 				}
 			},
 		},
 	}
 
-	transformer := &Transformer{}
+	transformer := NewTransformer()
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()

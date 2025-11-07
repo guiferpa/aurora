@@ -22,6 +22,26 @@ type pr struct {
 	tokens []lexer.Token
 }
 
+// Helper functions to validate node types for tape operations
+func isValidTapeTarget(node Node) bool {
+	switch node.(type) {
+	case TapeExpression, TapeBracketExpression, NumberLiteralNode, IdLiteralNode,
+		PullExpression, PushExpression, HeadExpression, TailExpression, GlueExpression:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidTapeItem(node Node) bool {
+	switch node.(type) {
+	case TapeExpression, TapeBracketExpression, NumberLiteralNode, IdLiteralNode:
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
 	params := make([]ParameterLiteralNode, 0)
 	if p.GetLookahead().GetTag().Id != lexer.O_PAREN {
@@ -190,16 +210,7 @@ func (p *pr) getPull() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTail := target.(TailExpression)
-	_, isHead := target.(HeadExpression)
-	_, isPull := target.(PullExpression)
-	_, isGlue := target.(GlueExpression)
-	_, isPush := target.(PushExpression)
-	_, isTape := target.(TapeExpression)
-	_, isTapeBrk := target.(TapeBracketExpression)
-	_, isNumber := target.(NumberLiteralNode)
-	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
+	if !isValidTapeTarget(target) {
 		return nil, fmt.Errorf("It is not a valid append target")
 	}
 
@@ -207,11 +218,7 @@ func (p *pr) getPull() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTape = expr.(TapeExpression)
-	_, isTapeBrk = expr.(TapeBracketExpression)
-	_, isNumber = expr.(NumberLiteralNode)
-	_, isId = expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId {
+	if !isValidTapeItem(expr) {
 		return nil, fmt.Errorf("It is not a valid append item")
 	}
 	return PullExpression{Target: target, Item: expr}, nil
@@ -225,15 +232,7 @@ func (p *pr) getHead() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isHead := expr.(HeadExpression)
-	_, isPull := expr.(PullExpression)
-	_, isGlue := expr.(GlueExpression)
-	_, isPush := expr.(PushExpression)
-	_, isTape := expr.(TapeExpression)
-	_, isTapeBrk := expr.(TapeBracketExpression)
-	_, isNumber := expr.(NumberLiteralNode)
-	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isGlue {
+	if !isValidTapeTarget(expr) {
 		return nil, fmt.Errorf("It is not a valid head target")
 	}
 
@@ -252,16 +251,7 @@ func (p *pr) getTail() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTail := expr.(TailExpression)
-	_, isHead := expr.(HeadExpression)
-	_, isPull := expr.(PullExpression)
-	_, isGlue := expr.(GlueExpression)
-	_, isPush := expr.(PushExpression)
-	_, isTape := expr.(TapeExpression)
-	_, isTapeBrk := expr.(TapeBracketExpression)
-	_, isNumber := expr.(NumberLiteralNode)
-	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
+	if !isValidTapeTarget(expr) {
 		return nil, fmt.Errorf("It is not a valid tail target")
 	}
 
@@ -281,16 +271,7 @@ func (p *pr) getPush() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTail := target.(TailExpression)
-	_, isHead := target.(HeadExpression)
-	_, isPull := target.(PullExpression)
-	_, isGlue := target.(GlueExpression)
-	_, isPush := target.(PushExpression)
-	_, isTape := target.(TapeExpression)
-	_, isTapeBrk := target.(TapeBracketExpression)
-	_, isNumber := target.(NumberLiteralNode)
-	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
+	if !isValidTapeTarget(target) {
 		return nil, fmt.Errorf("It is not a valid push target")
 	}
 
@@ -298,11 +279,7 @@ func (p *pr) getPush() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTape = expr.(TapeExpression)
-	_, isTapeBrk = expr.(TapeBracketExpression)
-	_, isNumber = expr.(NumberLiteralNode)
-	_, isId = expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId {
+	if !isValidTapeItem(expr) {
 		return nil, fmt.Errorf("It is not a valid push item")
 	}
 	return PushExpression{Target: target, Item: expr}, nil

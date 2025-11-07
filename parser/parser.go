@@ -25,8 +25,8 @@ type pr struct {
 // Helper functions to validate node types for tape operations
 func isValidTapeTarget(node Node) bool {
 	switch node.(type) {
-	case TapeExpression, TapeBracketExpression, NumberLiteralNode, IdLiteralNode,
-		PullExpression, PushExpression, HeadExpression, TailExpression, GlueExpression:
+	case TapeBracketExpression, NumberLiteralNode, IdLiteralNode,
+		PullExpression, PushExpression, HeadExpression, TailExpression:
 		return true
 	default:
 		return false
@@ -35,7 +35,7 @@ func isValidTapeTarget(node Node) bool {
 
 func isValidTapeItem(node Node) bool {
 	switch node.(type) {
-	case TapeExpression, TapeBracketExpression, NumberLiteralNode, IdLiteralNode:
+	case TapeBracketExpression, NumberLiteralNode, IdLiteralNode:
 		return true
 	default:
 		return false
@@ -107,20 +107,6 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
-func (p *pr) getGlue() (Node, error) {
-	if _, err := p.EatToken(lexer.GLUE); err != nil {
-		return nil, err
-	}
-	a, err := p.getExpr()
-	if err != nil {
-		return nil, err
-	}
-	b, err := p.getExpr()
-	if err != nil {
-		return nil, err
-	}
-	return GlueExpression{A: a, B: b}, nil
-}
 
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
@@ -139,9 +125,6 @@ func (p *pr) getPriExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.O_BRK {
 		return p.getTapeBrk()
-	}
-	if lookahead.GetTag().Id == lexer.TAPE {
-		return p.getTape()
 	}
 	if lookahead.GetTag().Id == lexer.NUMBER {
 		num, err := p.getNum()
@@ -166,16 +149,6 @@ func (p *pr) getPriExpr() (Node, error) {
 	return id, nil
 }
 
-func (p *pr) getTape() (Node, error) {
-	if _, err := p.EatToken(lexer.TAPE); err != nil {
-		return nil, err
-	}
-	length, err := p.getNum()
-	if err != nil {
-		return nil, err
-	}
-	return TapeExpression{Length: length.Value}, nil
-}
 
 func (p *pr) getTapeBrk() (Node, error) {
 	if _, err := p.EatToken(lexer.O_BRK); err != nil {
@@ -646,9 +619,6 @@ func (p *pr) getExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.PUSH {
 		return p.getPush()
-	}
-	if lookahead.GetTag().Id == lexer.GLUE {
-		return p.getGlue()
 	}
 	return p.getBoolExpr()
 }

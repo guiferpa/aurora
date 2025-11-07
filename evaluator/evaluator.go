@@ -78,28 +78,66 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpPull {
 		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		ln := byteutil.NonZeroFilledLength(right) * 8
-		v := append(left[ln:], right...)
-		e.envpool.SetTemp(l, v)
+		
+		// Ensure right is exactly 8 bytes (handles both uint64 and direct bytes)
+		rightDirect := byteutil.Padding64Bits(right)
+		
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+		
+		// Extract significant bytes from right (bytes from first non-zero to end)
+		rightSignificantBytes := byteutil.ExtractSignificantBytes(rightDirect)
+		
+		// Extract significant bytes from left (bytes from first non-zero to end)
+		leftSignificantBytes := byteutil.ExtractSignificantBytes(leftDirect)
+		
+		// pull: remove bytes from beginning of left, add bytes from right at the end
+		// Concatenate: left bytes + right bytes
+		result := append(leftSignificantBytes, rightSignificantBytes...)
+		
+		// If result exceeds 8 bytes, keep only the last 8 bytes
+		if len(result) > 8 {
+			result = result[len(result)-8:]
+		}
+		
+		// Pad to exactly 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+		
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
 
-	if op == emitter.OpGlue {
-		l := byteutil.ToHex(label)
-		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		v := append(left, right...)
-		e.envpool.SetTemp(l, v)
-		e.cursor++
-		return nil
-	}
 
 	if op == emitter.OpPush {
 		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		ln := byteutil.NonZeroFilledLength(right) * 8
-		v := append(right, left[:len(left)-ln]...)
-		e.envpool.SetTemp(l, v)
+		
+		// Ensure right is exactly 8 bytes (handles both uint64 and direct bytes)
+		rightDirect := byteutil.Padding64Bits(right)
+		
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+		
+		// Extract significant bytes from right (bytes from first non-zero to end)
+		rightSignificantBytes := byteutil.ExtractSignificantBytes(rightDirect)
+		
+		// Extract significant bytes from left (bytes from first non-zero to end)
+		leftSignificantBytes := byteutil.ExtractSignificantBytes(leftDirect)
+		
+		// push: add bytes from right at the beginning, remove bytes from end of left
+		// Concatenate: right bytes + left bytes
+		result := append(rightSignificantBytes, leftSignificantBytes...)
+		
+		// If result exceeds 8 bytes, keep only the first 8 bytes
+		if len(result) > 8 {
+			result = result[:8]
+		}
+		
+		// Pad to exactly 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+		
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
@@ -107,12 +145,23 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpHead {
 		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+		
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+		
+		// Get index in bytes (not in 8-byte slots)
 		index := int(byteutil.ToUint64(right))
-		ln := index * 8
-		if ln > len(left) {
-			return fmt.Errorf("over tape edge with index equals %v from size equals %v", index, len(left)/8)
-		}
-		e.envpool.SetTemp(l, left[:ln])
+		
+		// Apply modulo 8 to handle any index value (handles negative values too)
+		index = (index%8 + 8) % 8
+		
+		// Extract first 'index' bytes
+		result := leftDirect[:index]
+		
+		// Pad to 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+		
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
@@ -120,12 +169,23 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpTail {
 		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+		
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+		
+		// Get index in bytes (not in 8-byte slots)
 		index := int(byteutil.ToUint64(right))
-		ln := len(left) - index*8
-		if ln > len(left) {
-			return fmt.Errorf("over tape edge with index equals %v from size equals %v", index, len(left)/8)
-		}
-		e.envpool.SetTemp(l, left[ln:])
+		
+		// Apply modulo 8 to handle any index value (handles negative values too)
+		index = (index%8 + 8) % 8
+		
+		// Extract bytes from index to end
+		result := leftDirect[index:]
+		
+		// Pad to 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+		
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}

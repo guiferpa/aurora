@@ -14,7 +14,6 @@ const (
 	HEAD         = "HEAD"      // head
 	TAIL         = "TAIL"      // tail
 	PUSH         = "PUSH"      // push
-	GLUE         = "GLUE"      // glue
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
 	C_PAREN      = "C_PAREN"   // )
@@ -97,7 +96,6 @@ var (
 	TagTail       = Tag{TAIL, "tail", "^tail", "Get right to left nth items from a tape"}
 	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
 	TagPull       = Tag{PULL, "pull", "^pull", "Pull item in right to left"}
-	TagGlue       = Tag{GLUE, "glue", "^glue", "Glue two values into just one"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b", ""}
 	TagEOF        = Tag{EOF, "<EOF>", "", ""}
 )
@@ -106,7 +104,6 @@ var processableTags = []Tag{
 	TagWhitespace,
 	TagBreakLine,
 	TagComment,
-	TagGlue,
 	TagIf,
 	TagElse,
 	TagBranch,

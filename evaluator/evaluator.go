@@ -42,6 +42,22 @@ func (e *Evaluator) walkTemps(bs []byte) []byte {
 	return bs
 }
 
+// bytesToUint64ForArithmetic converts byte arrays to uint64 for arithmetic operations.
+// Note: In Aurora's untyped design, all values are byte arrays. For arithmetic operations,
+// we interpret the first 8 bytes as a uint64. If the array is larger than 8 bytes,
+// only the first 8 bytes are used (right-aligned for arrays < 8 bytes via padding).
+// This is a design decision: arithmetic operations work on 64-bit integers.
+func bytesToUint64ForArithmetic(bs []byte) uint64 {
+	padded := byteutil.Padding64Bits(bs)
+	// If array is larger than 8 bytes, we only use the first 8 bytes
+	// This means tapes larger than 8 bytes will have their extra bytes ignored
+	if len(bs) > 8 {
+		// Use first 8 bytes (most significant bytes in big-endian)
+		return binary.BigEndian.Uint64(padded[:8])
+	}
+	return binary.BigEndian.Uint64(padded)
+}
+
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if isTemp(left) {
 		left = e.walkTemps(left)
@@ -288,8 +304,10 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	a := binary.BigEndian.Uint64(byteutil.Padding64Bits(left))
-	b := binary.BigEndian.Uint64(byteutil.Padding64Bits(right))
+	// Convert byte arrays to uint64 for arithmetic/comparison operations
+	// Note: Only first 8 bytes are used; larger arrays are truncated
+	a := bytesToUint64ForArithmetic(left)
+	b := bytesToUint64ForArithmetic(right)
 
 	if op == emitter.OpEquals {
 		r := byteutil.False

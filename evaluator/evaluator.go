@@ -34,7 +34,7 @@ func isTemp(bs []byte) bool {
 }
 
 func (e *Evaluator) walkTemps(bs []byte) []byte {
-	l := fmt.Sprintf("%x", bs)
+	l := byteutil.ToHex(bs)
 	bs = e.envpool.GetTemp(l)
 	if isTemp(bs) {
 		return e.walkTemps(bs)
@@ -68,7 +68,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpSave {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		e.envpool.SetTemp(l, left)
 		e.cursor++
@@ -76,7 +76,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpPull {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		ln := byteutil.NonZeroFilledLength(right) * 8
 		v := append(left[ln:], right...)
@@ -86,7 +86,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpGlue {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		v := append(left, right...)
 		e.envpool.SetTemp(l, v)
@@ -95,7 +95,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpPush {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		ln := byteutil.NonZeroFilledLength(right) * 8
 		v := append(right, left[:len(left)-ln]...)
@@ -105,7 +105,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpHead {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		index := int(byteutil.ToUint64(right))
 		ln := index * 8
@@ -118,7 +118,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpTail {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		index := int(byteutil.ToUint64(right))
 		ln := len(left) - index*8
@@ -131,7 +131,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpResult {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if len(e.result) > 0 {
 			tr := e.result
 			tv := tr[len(tr)-1]
@@ -148,7 +148,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpGetArg {
 		index := byteutil.ToUint64(left)
 		v := e.envpool.QueryArgument(index)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, index, v, nil)
 		e.envpool.SetTemp(l, v)
 		e.cursor++
@@ -163,7 +163,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpIdent {
-		k := fmt.Sprintf("%x", left)
+		k := byteutil.ToHex(left)
 		Print(os.Stdout, e.debug, e.counter, op, string(left), right, nil)
 		if v := e.envpool.GetLocal(k); v != nil {
 			return fmt.Errorf("conflict between identifiers named %s", left)
@@ -195,9 +195,9 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpLoad {
-		k := fmt.Sprintf("%x", left)
+		k := byteutil.ToHex(left)
 		Print(os.Stdout, e.debug, e.counter, op, string(left), nil, nil)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if v := e.envpool.QueryLocal(k); v != nil {
 			e.envpool.SetTemp(l, v)
 			e.cursor++
@@ -207,7 +207,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpBeginScope { // Open scope for block
-		key := fmt.Sprintf("%x", left)
+		key := byteutil.ToHex(left)
 		Print(os.Stdout, e.debug, e.counter, op, label, key, nil)
 		start := uint64(e.cursor) + 1
 		end := byteutil.ToUint64(right)
@@ -227,7 +227,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpPreCall {
-		k := fmt.Sprintf("%x", left)
+		k := byteutil.ToHex(left)
 		v := e.envpool.QueryLocal(k)
 		Print(os.Stdout, e.debug, e.counter, op, string(left), v, nil)
 
@@ -235,7 +235,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			return fmt.Errorf("identifier %s not defined", left)
 		}
 
-		k = fmt.Sprintf("%x", v)
+		k = byteutil.ToHex(v)
 		currseg := e.envpool.QueryScopeCallable(k)
 		if currseg == nil {
 			return fmt.Errorf("identifier %s is not callable segment", left)
@@ -279,7 +279,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		b := byteutil.ToBoolean(right)
 		test := a || b
 		Print(os.Stdout, e.debug, e.counter, op, test, a, b)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if test {
 			e.envpool.SetTemp(l, byteutil.True)
 		} else {
@@ -294,7 +294,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		b := byteutil.ToBoolean(right)
 		test := a && b
 		Print(os.Stdout, e.debug, e.counter, op, test, a, b)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if test {
 			e.envpool.SetTemp(l, byteutil.True)
 		} else {

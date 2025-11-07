@@ -425,13 +425,13 @@ func TestEvaluate(t *testing.T) {
 		},
 		{
 			"tape_bracket_1",
-			"[1, 20, 300];",
+			"[1, 20, 255];",
 			func(name string, r [][]byte) func(t *testing.T) {
 				return func(t *testing.T) {
-					// [1, 20, 300] as direct bytes: 1=[1], 20=[20], 300=[1,44] (0x012C)
-					// After pulls: [] -> pull 1 -> pull 20 -> pull 300
-					// Result: [0, 0, 0, 0, 1, 20, 1, 44] (8 bytes, right-aligned)
-					expected := []byte{0, 0, 0, 0, 1, 20, 1, 44}
+					// [1, 20, 255] as direct bytes: 1=[1], 20=[20], 255=[255]
+					// After pulls: [] -> pull 1 -> pull 20 -> pull 255
+					// Result: [0, 0, 0, 0, 0, 1, 20, 255] (8 bytes, right-aligned)
+					expected := []byte{0, 0, 0, 0, 0, 1, 20, 255}
 					if got, expected := r[0], expected; !bytes.Equal(got, expected) {
 						t.Errorf("%s, got: %v, expected: %v", name, got, expected)
 					}

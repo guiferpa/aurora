@@ -160,6 +160,15 @@ func (p *pr) getTapeBrk() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
+		
+		// Validate: if item is a number literal, it must be between 0 and 255
+		// (since tapes store values as direct bytes)
+		if numNode, ok := expr.(NumberLiteralNode); ok {
+			if numNode.Value > byteutil.MAX_BYTES {
+				return nil, fmt.Errorf("tape values must be between 0 and %d, got %d", byteutil.MAX_BYTES, numNode.Value)
+			}
+		}
+		
 		items = append(items, expr)
 		if p.GetLookahead().GetTag().Id == lexer.C_BRK {
 			break

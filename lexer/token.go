@@ -1,8 +1,6 @@
 package lexer
 
-import (
-	"errors"
-)
+import "fmt"
 
 type Token interface {
 	GetMatch() []byte
@@ -48,7 +46,7 @@ func GetTokens(bs []byte) ([]Token, error) {
 	for cursor < length {
 		matched, tag, match := MatchTagRule(bs[cursor:])
 		if !matched && !isComment {
-			return tokens, errors.New("no token matched")
+			return tokens, fmt.Errorf("unexpected character at line %d, column %d", line, col)
 		}
 		if !isComment {
 			tokens = append(tokens, tok{line, col, cursor, tag, match})

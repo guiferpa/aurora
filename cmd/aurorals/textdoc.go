@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
@@ -44,9 +43,10 @@ func TextdocDidOpenHandler(l *log.Logger, s *state.State, contents []byte) any {
 	text := noti.Params.TextDocument.Text
 	s.UpdateDocument(string(uri), text)
 
-	diagnocstics := textdoc.Diagnocstics{}
+	// Validate the code and generate diagnostics
+	diagnostics := textdoc.ValidateCode(text)
 
-	return textdoc.NewDiagnosticsNotification(uri, diagnocstics)
+	return textdoc.NewDiagnosticsNotification(uri, diagnostics)
 }
 
 func TextdocDidChangeHandler(l *log.Logger, s *state.State, contents []byte) any {
@@ -57,13 +57,16 @@ func TextdocDidChangeHandler(l *log.Logger, s *state.State, contents []byte) any
 	}
 
 	uri := noti.Params.TextDocument.URI
+	var updatedText string
 	for _, changes := range noti.Params.ContentChanges {
-		s.UpdateDocument(string(uri), changes.Text)
+		updatedText = changes.Text
+		s.UpdateDocument(string(uri), updatedText)
 	}
 
-	diagnocstics := textdoc.Diagnocstics{}
+	// Validate the updated code and generate diagnostics
+	diagnostics := textdoc.ValidateCode(updatedText)
 
-	return textdoc.NewDiagnosticsNotification(uri, diagnocstics)
+	return textdoc.NewDiagnosticsNotification(uri, diagnostics)
 }
 
 func TextdocHoverHandler(l *log.Logger, s *state.State, contents []byte) any {
@@ -75,8 +78,15 @@ func TextdocHoverHandler(l *log.Logger, s *state.State, contents []byte) any {
 
 	uri := req.Params.TextDocument.URI
 	doc := s.GetDocument(string(uri))
+	pos := req.Params.Position
 
-	return textdoc.NewHoverResponse(req.ID, fmt.Sprintf("Doc: %s, Chars: %d", uri, len(doc)))
+	// Get hover information for the position
+	hoverInfo := textdoc.GetHoverInfo(doc, pos)
+	if hoverInfo == "" {
+		return nil
+	}
+
+	return textdoc.NewHoverResponse(req.ID, hoverInfo)
 }
 
 func TextdocDefinitionHandler(l *log.Logger, s *state.State, contents []byte) any {
@@ -87,9 +97,28 @@ func TextdocDefinitionHandler(l *log.Logger, s *state.State, contents []byte) an
 	}
 
 	uri := req.Params.TextDocument.URI
-	position := req.Params.Position
+	doc := s.GetDocument(string(uri))
+	pos := req.Params.Position
 
-	return textdoc.NewDefinitionResponse(req.ID, uri, position)
+	// Get the token at the position
+	token, err := textdoc.GetTokenAtPosition(doc, pos)
+	if err != nil || token == nil {
+		return nil
+	}
+
+	// Only handle identifier definitions
+	if token.GetTag().Id != lexer.ID {
+		return nil
+	}
+
+	// Find the definition
+	identName := string(token.GetMatch())
+	defPos, found := textdoc.FindIdentifierDefinition(doc, identName)
+	if !found {
+		return nil
+	}
+
+	return textdoc.NewDefinitionResponse(req.ID, uri, defPos)
 }
 
 func TextdocCodeActionHandler(l *log.Logger, s *state.State, contents []byte) any {

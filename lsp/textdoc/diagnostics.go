@@ -14,11 +14,11 @@ type Diagnostic struct {
 	Message string `json:"message"`
 }
 
-type Diagnocstics []Diagnostic
+type Diagnostics []Diagnostic
 
 type DiagnosticsParams struct {
 	URI         lsp.URI      `json:"uri"`
-	Diagnostics Diagnocstics `json:"diagnostics"`
+	Diagnostics Diagnostics `json:"diagnostics"`
 }
 
 type DiagnosticsNotification struct {
@@ -26,7 +26,7 @@ type DiagnosticsNotification struct {
 	Params DiagnosticsParams `json:"params"`
 }
 
-func NewDiagnosticsNotification(uri lsp.URI, diagnostics Diagnocstics) DiagnosticsNotification {
+func NewDiagnosticsNotification(uri lsp.URI, diagnostics Diagnostics) DiagnosticsNotification {
 	return DiagnosticsNotification{
 		Notification: lsp.Notification{
 			RPC:    "2.0",

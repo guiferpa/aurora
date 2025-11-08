@@ -1,0 +1,45 @@
+#- Hexadecimal Numbers Example
+#- In Aurora, you can use hexadecimal numbers with the 0x prefix
+#- Both 0x and 0X are supported (case-insensitive)
+
+#- Basic hexadecimal assignments
+ident hex_ff = 0xFF;      #- 255 in decimal
+ident hex_10 = 0x10;      #- 16 in decimal
+ident hex_1a = 0x1A;      #- 26 in decimal
+ident hex_upper = 0XFF;   #- 255 (uppercase X also works)
+
+print hex_ff;
+print hex_10;
+print hex_1a;
+print hex_upper;
+
+#- Hexadecimal in tapes
+ident tape_hex = [0xFF, 0x10, 0x1A, 0x00];
+print tape_hex;
+
+#- Arithmetic operations with hexadecimal
+ident sum = 0x10 + 0x20;      #- 16 + 32 = 48 (0x30)
+ident mult = 0x05 * 0x03;     #- 5 * 3 = 15 (0x0F)
+ident sub = 0xFF - 0xF0;      #- 255 - 240 = 15 (0x0F)
+
+print sum;
+print mult;
+print sub;
+
+#- Comparisons with hexadecimal
+ident eq1 = 0xFF equals 255;   #- true (255 == 255)
+ident eq2 = 0x10 equals 16;    #- true (16 == 16)
+ident eq3 = 0xFF equals 256;   #- false (255 != 256)
+
+print eq1;
+print eq2;
+print eq3;
+
+#- Mixed decimal and hexadecimal
+ident mixed = 10 + 0x10;       #- 10 + 16 = 26 (0x1A)
+print mixed;
+
+#- Complex expressions with hexadecimal
+ident complex = (0x10 * 2) + 0x05;  #- (16 * 2) + 5 = 37 (0x25)
+print complex;
+

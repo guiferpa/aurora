@@ -95,17 +95,28 @@ func (p *pr) getFalse() (BooleanLiteral, error) {
 	return BooleanLiteral{byteutil.False, tok}, nil
 }
 
+func (p *pr) getNumFromBase(b int, raw string, tok lexer.Token) (NumberLiteralNode, error) {
+	parsed, err := strconv.ParseUint(raw, b, 64)
+	if err != nil {
+		return NumberLiteralNode{}, err
+	}
+	return NumberLiteralNode{parsed, tok}, nil
+}
+
 func (p *pr) getNum() (NumberLiteralNode, error) {
 	tok, err := p.EatToken(lexer.NUMBER)
 	if err != nil {
 		return NumberLiteralNode{}, err
 	}
+
 	raw := strings.ReplaceAll(string(tok.GetMatch()), "_", "")
-	num, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return NumberLiteralNode{}, err
+
+	// Check if it's a hexadecimal number (starts with 0x)
+	if strings.HasPrefix(raw, "0x") || strings.HasPrefix(raw, "0X") {
+		return p.getNumFromBase(16, raw[2:], tok)
 	}
-	return NumberLiteralNode{uint64(num), tok}, nil
+	// Parse as decimal
+	return p.getNumFromBase(10, raw, tok)
 }
 
 func (p *pr) getReel() (ReelLiteralNode, error) {

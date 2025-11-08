@@ -135,6 +135,18 @@ func TestMatchTagRule(t *testing.T) {
 		{[]byte(`10`), NUMBER, []byte("10"), true},
 		{[]byte(`9`), NUMBER, []byte("9"), true},
 
+		// NUMBER - Hexadecimal
+		{[]byte(`0xFF`), NUMBER, []byte("0xFF"), true},
+		{[]byte(`0xff`), NUMBER, []byte("0xff"), true},
+		{[]byte(`0XFF`), NUMBER, []byte("0XFF"), true},
+		{[]byte(`0x10`), NUMBER, []byte("0x10"), true},
+		{[]byte(`0x1A`), NUMBER, []byte("0x1A"), true},
+		{[]byte(`0xABCD`), NUMBER, []byte("0xABCD"), true},
+		{[]byte(`0xabcd`), NUMBER, []byte("0xabcd"), true},
+		{[]byte(`0xAbCd`), NUMBER, []byte("0xAbCd"), true},
+		{[]byte(`0x0`), NUMBER, []byte("0x0"), true},
+		{[]byte(`0x00`), NUMBER, []byte("0x00"), true},
+
 		// WHITESPACE
 		{[]byte(`  `), WHITESPACE, []byte(`  `), true},
 

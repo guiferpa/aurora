@@ -9,7 +9,6 @@ import (
 
 const (
 	IDENT        = "IDENT"     // ident
-	TAPE         = "TAPE"      // tape
 	PULL         = "PULL"      // pull
 	HEAD         = "HEAD"      // head
 	TAIL         = "TAIL"      // tail
@@ -96,12 +95,11 @@ var (
 	TagTrue       = Tag{TRUE, "true", "^true", ""}
 	TagFalse      = Tag{FALSE, "false", "^false", ""}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*", ""}
-	TagTape       = Tag{TAPE, "tape", "^tape", ""}
 	TagHead       = Tag{HEAD, "head", "^head", "Get left to right nth items from a tape"}
 	TagTail       = Tag{TAIL, "tail", "^tail", "Get right to left nth items from a tape"}
 	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
 	TagPull       = Tag{PULL, "pull", "^pull", "Pull item in right to left"}
-	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b", ""}
+	TagNumber     = Tag{NUMBER, "", "^(0[xX][0-9A-Fa-f]+|[0-9][0-9_]*)\\b", ""}
 	TagString     = Tag{STRING, "", "^\"[^\"]*\"", ""} // String literal: "text" (reel - array of tapes)
 	TagEOF        = Tag{EOF, "<EOF>", "", ""}
 )
@@ -113,7 +111,6 @@ var processableTags = []Tag{
 	TagIf,
 	TagElse,
 	TagBranch,
-	TagTape,
 	TagPull,
 	TagHead,
 	TagTail,

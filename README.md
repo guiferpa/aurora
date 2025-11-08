@@ -20,7 +20,7 @@
 - [Language Design](#language-design)
   - [Untyped Philosophy](#untyped-philosophy)
   - [Tapes (Arrays)](#tapes-arrays)
-  - [Reels (Strings)](#reels-strings)
+  - [Reels](#reels)
   - [Arithmetic Operations](#arithmetic-operations)
 - [Try it out](#try-it-out)
   - [Playground](#playground)

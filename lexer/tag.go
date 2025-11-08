@@ -47,6 +47,7 @@ const (
 	BREAK_LINE   = "BREAK_LINE"
 	PRINT        = "PRINT"     // print
 	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
+	ASSERT       = "ASSERT"    // assert
 	EOF          = "EOF"
 )
 
@@ -62,6 +63,7 @@ var (
 	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+", ""}
 	TagCallPrint  = Tag{PRINT, "print", "^print", "Print anything"}
 	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments", "Get arguments from any callable scope"}
+	TagAssert     = Tag{ASSERT, "assert", "^assert", "Assert a condition in tests"}
 	TagIdent      = Tag{IDENT, "ident", "^ident", "Create an immutable identifier"}
 	TagAssign     = Tag{ASSIGN, "=", "^=", ""}
 	TagOParen     = Tag{O_PAREN, "(", "^\\(", ""}
@@ -131,6 +133,7 @@ var processableTags = []Tag{
 	TagSemicolon,
 	TagCallPrint,
 	TagArguments,
+	TagAssert,
 	TagTrue,
 	TagFalse,
 	TagId,

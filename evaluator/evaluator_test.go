@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"maps"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/guiferpa/aurora/emitter"
@@ -643,5 +644,167 @@ func TestEvaluate(t *testing.T) {
 			r = append(r, m[k])
 		}
 		t.Run(c.Name, c.Fn(c.Name, r))
+	}
+}
+
+func TestAssert(t *testing.T) {
+	cases := []struct {
+		Name       string
+		SourceCode string
+		ShouldFail bool
+		ErrorMsg   string
+	}{
+		{
+			"assert_equals_pass",
+			`assert 2 equals 2;`,
+			false,
+			"",
+		},
+		{
+			"assert_equals_fail",
+			`assert 1 equals 2;`,
+			true,
+			"assertion failed: expected condition to be true on line 1",
+		},
+		{
+			"assert_different_pass",
+			`assert 1 different 2;`,
+			false,
+			"",
+		},
+		{
+			"assert_different_fail",
+			`assert 2 different 2;`,
+			true,
+			"assertion failed: expected condition to be true on line 1",
+		},
+		{
+			"assert_bigger_pass",
+			`assert 5 bigger 3;`,
+			false,
+			"",
+		},
+		{
+			"assert_bigger_fail",
+			`assert 3 bigger 5;`,
+			true,
+			"assertion failed: expected condition to be true on line 1",
+		},
+		{
+			"assert_smaller_pass",
+			`assert 3 smaller 5;`,
+			false,
+			"",
+		},
+		{
+			"assert_smaller_fail",
+			`assert 5 smaller 3;`,
+			true,
+			"assertion failed: expected condition to be true on line 1",
+		},
+		{
+			"assert_with_variable",
+			`ident a = 10;
+      assert a equals 10;`,
+			false,
+			"",
+		},
+		{
+			"assert_with_expression",
+			`assert 2 + 2 equals 4;`,
+			false,
+			"",
+		},
+		{
+			"assert_with_function_call",
+			`ident sum = {
+        ident x = arguments 0;
+        ident y = arguments 1;
+        x + y;
+      };
+      assert sum(2, 3) equals 5;`,
+			false,
+			"",
+		},
+		{
+			"assert_multiple_asserts",
+			`assert 1 equals 1;
+      assert 2 bigger 1;
+      assert 3 smaller 10;`,
+			false,
+			"",
+		},
+		{
+			"assert_fails_on_first",
+			`assert 1 equals 2;
+      assert 3 equals 3;`,
+			true,
+			"assertion failed: expected condition to be true on line 1",
+		},
+		{
+			"assert_multiple_failures",
+			`assert 1 equals 2;
+      assert 3 equals 4;
+      assert 5 equals 6;`,
+			true,
+			"assertion failed: expected condition to be true",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.Name, func(t *testing.T) {
+			bs := bytes.NewBufferString(c.SourceCode).Bytes()
+			tokens, err := lexer.GetFilledTokens(bs)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			// Use .test.ar filename to allow assert
+			ast, err := parser.NewWithFilename(tokens, "test.test.ar").Parse()
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			insts, err := emitter.New().Emit(ast)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			ev := New(false)
+			_, err = ev.Evaluate(insts)
+			assertErrors := ev.GetAssertErrors()
+
+			if c.ShouldFail {
+				if len(assertErrors) == 0 {
+					t.Errorf("%s: expected assert errors but got none", c.Name)
+					return
+				}
+				if c.ErrorMsg != "" {
+					// Check if any assert error contains the expected text
+					found := false
+					for _, assertErr := range assertErrors {
+						if strings.Contains(assertErr, c.ErrorMsg) {
+							found = true
+							break
+						}
+					}
+					if !found {
+						t.Errorf("%s: expected assert error to contain '%s', got %v", c.Name, c.ErrorMsg, assertErrors)
+					}
+				}
+				// Evaluate should NOT return error when there are assert errors
+				// Assert errors are collected and handled separately by logger.AssertError
+				if err != nil {
+					t.Errorf("%s: Evaluate should not return error when assert errors exist (errors are collected), got: %v", c.Name, err)
+				}
+			} else {
+				if len(assertErrors) > 0 {
+					t.Errorf("%s: unexpected assert errors: %v", c.Name, assertErrors)
+				}
+				if err != nil {
+					t.Errorf("%s: unexpected error: %v", c.Name, err)
+				}
+			}
+		})
 	}
 }

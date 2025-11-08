@@ -18,8 +18,9 @@ type Parser interface {
 }
 
 type pr struct {
-	cursor int
-	tokens []lexer.Token
+	cursor   int
+	tokens   []lexer.Token
+	filename string
 }
 
 // Helper functions to validate node types for tape operations
@@ -107,7 +108,6 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
-
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.O_PAREN {
@@ -149,7 +149,6 @@ func (p *pr) getPriExpr() (Node, error) {
 	return id, nil
 }
 
-
 func (p *pr) getTapeBrk() (Node, error) {
 	if _, err := p.EatToken(lexer.O_BRK); err != nil {
 		return nil, err
@@ -160,7 +159,7 @@ func (p *pr) getTapeBrk() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// Validate: if item is a number literal, it must be between 0 and 255
 		// (since tapes store values as direct bytes)
 		if numNode, ok := expr.(NumberLiteralNode); ok {
@@ -168,7 +167,7 @@ func (p *pr) getTapeBrk() (Node, error) {
 				return nil, fmt.Errorf("tape values must be between 0 and %d, got %d", byteutil.MAX_BYTES, numNode.Value)
 			}
 		}
-		
+
 		items = append(items, expr)
 		if p.GetLookahead().GetTag().Id == lexer.C_BRK {
 			break
@@ -643,6 +642,29 @@ func (p *pr) getPrint() (Node, error) {
 	return PrintStatementNode{expr}, nil
 }
 
+func (p *pr) getAssert() (Node, error) {
+	// Validate that assert can only be used in .test.ar files
+	if !strings.HasSuffix(p.filename, ".test.ar") {
+		lookahead := p.GetLookahead()
+		return nil, fmt.Errorf("assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
+	}
+
+	t, err := p.EatToken(lexer.ASSERT)
+	if err != nil {
+		return nil, err
+	}
+
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	return AssertStatementNode{
+		Expression: expr,
+		Token:      t,
+	}, nil
+}
+
 func (p *pr) getArgs() (Node, error) {
 	if _, err := p.EatToken(lexer.ARGUMENTS); err != nil {
 		return nil, err
@@ -658,6 +680,9 @@ func (p *pr) getStmt() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.PRINT {
 		return p.getPrint()
+	}
+	if lookahead.GetTag().Id == lexer.ASSERT {
+		return p.getAssert()
 	}
 	expr, err := p.getExpr()
 	if err != nil {
@@ -721,5 +746,9 @@ func (p *pr) Parse() (AST, error) {
 }
 
 func New(tokens []lexer.Token) Parser {
-	return &pr{cursor: 0, tokens: tokens}
+	return &pr{cursor: 0, tokens: tokens, filename: ""}
+}
+
+func NewWithFilename(tokens []lexer.Token, filename string) Parser {
+	return &pr{cursor: 0, tokens: tokens, filename: filename}
 }

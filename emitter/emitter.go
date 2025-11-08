@@ -90,7 +90,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		l := GenerateLabel(tc)
 		tape := make([]byte, 8)
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
-		
+
 		// For each item, generate instruction and use OpPull to add bytes directly
 		for _, i := range n.Items {
 			la := GenerateLabel(tc)
@@ -183,6 +183,14 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		ll := EmitInstruction(tc, insts, n.Param)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpPrint, ll, nil))
+		return l
+	}
+	if n, ok := stmt.(parser.AssertStatementNode); ok {
+		expr := EmitInstruction(tc, insts, n.Expression)
+		l := GenerateLabel(tc)
+
+		line := byteutil.FromUint64(uint64(n.Token.GetLine()))
+		*insts = append(*insts, NewInstruction(l, OpAssert, expr, line))
 		return l
 	}
 	if n, ok := stmt.(parser.ArgumentsExpressionNode); ok {

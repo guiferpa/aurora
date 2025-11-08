@@ -227,6 +227,15 @@ func (isn IdentStatementNode) Next() Node {
 	return isn.Expression
 }
 
+type AssertStatementNode struct {
+	Expression Node        `json:"expression"`
+	Token      lexer.Token `json:"-"`
+}
+
+func (asn AssertStatementNode) Next() Node {
+	return nil
+}
+
 type StatementNode struct {
 	Node Node `json:"node"`
 }

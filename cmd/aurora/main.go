@@ -40,9 +40,10 @@ var buildCmd = &cobra.Command{
 	Short: "Build binary from source code",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		bs := logger.MustError(os.ReadFile(args[0]))
+		filename := args[0]
+		bs := logger.MustError(os.ReadFile(filename))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
-		ast := logger.MustError(parser.New(tokens).Parse())
+		ast := logger.MustError(parser.NewWithFilename(tokens, filename).Parse())
 		insts := logger.MustError(emitter.New().Emit(ast))
 		fd := os.Stdout
 		if strings.Compare(output, "") != 0 {
@@ -65,9 +66,10 @@ var runCmd = &cobra.Command{
 	Short: "Run program directly from source code",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		bs := logger.MustError(os.ReadFile(args[0]))
+		filename := args[0]
+		bs := logger.MustError(os.ReadFile(filename))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
-		ast := logger.MustError(parser.New(tokens).Parse())
+		ast := logger.MustError(parser.NewWithFilename(tokens, filename).Parse())
 		insts := logger.MustError(emitter.New().Emit(ast))
 		emitter.Print(insts, debug)
 		ev := evaluator.New(debug)
@@ -75,6 +77,7 @@ var runCmd = &cobra.Command{
 			ev = evaluator.NewWithPlayer(true, evaluator.NewPlayer(os.Stdin))
 		}
 		logger.MustError(ev.Evaluate(insts))
+		logger.AssertError(ev.GetAssertErrors(), filename)
 	},
 }
 

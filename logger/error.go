@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/fatih/color"
@@ -21,4 +22,15 @@ func CommandError(err error) {
 	}
 	color.New(color.BgBlack, color.FgHiMagenta).Println(err)
 	os.Exit(2)
+}
+
+func AssertError(errs []string, filename string) {
+	if len(errs) == 0 {
+		return
+	}
+	color.New(color.FgWhite).Println(fmt.Sprintf("Assertion errors in %s:", filename))
+	for _, err := range errs {
+		color.New(color.BgBlack, color.FgRed).Println(err)
+	}
+	os.Exit(3)
 }

@@ -108,6 +108,37 @@ func (p *pr) getNum() (NumberLiteralNode, error) {
 	return NumberLiteralNode{uint64(num), tok}, nil
 }
 
+func (p *pr) getReel() (ReelLiteralNode, error) {
+	tok, err := p.EatToken(lexer.STRING)
+	if err != nil {
+		return ReelLiteralNode{}, err
+	}
+	// Remove surrounding quotes and get the string content
+	match := tok.GetMatch()
+	if len(match) < 2 {
+		return ReelLiteralNode{}, fmt.Errorf("invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
+	}
+	// Remove first and last character (quotes)
+	content := match[1 : len(match)-1]
+
+	// Convert string to reel (array of tapes)
+	// Each character becomes a tape (8-byte array) padded with zeros
+	reel := make([][]byte, 0, len(content))
+	for _, char := range content {
+		charByte := byte(char)
+		// Each character is a tape (8-byte array)
+		tape := byteutil.Padding64Bits([]byte{charByte})
+		reel = append(reel, tape)
+	}
+
+	// If empty string, create a reel with one empty tape
+	if len(reel) == 0 {
+		reel = append(reel, make([]byte, 8))
+	}
+
+	return ReelLiteralNode{reel, tok}, nil
+}
+
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.O_PAREN {
@@ -132,6 +163,13 @@ func (p *pr) getPriExpr() (Node, error) {
 			return nil, err
 		}
 		return num, nil
+	}
+	if lookahead.GetTag().Id == lexer.STRING {
+		reel, err := p.getReel()
+		if err != nil {
+			return nil, err
+		}
+		return reel, nil
 	}
 	if lookahead.GetTag().Id == lexer.TRUE {
 		return p.getTrue()
@@ -642,6 +680,17 @@ func (p *pr) getPrint() (Node, error) {
 	return PrintStatementNode{expr}, nil
 }
 
+func (p *pr) getEcho() (Node, error) {
+	if _, err := p.EatToken(lexer.ECHO); err != nil {
+		return nil, err
+	}
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	return EchoStatementNode{expr}, nil
+}
+
 func (p *pr) getAssert() (Node, error) {
 	// Validate that assert can only be used in .test.ar files
 	if !strings.HasSuffix(p.filename, ".test.ar") {
@@ -680,6 +729,9 @@ func (p *pr) getStmt() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.PRINT {
 		return p.getPrint()
+	}
+	if lookahead.GetTag().Id == lexer.ECHO {
+		return p.getEcho()
 	}
 	if lookahead.GetTag().Id == lexer.ASSERT {
 		return p.getAssert()

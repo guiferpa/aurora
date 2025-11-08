@@ -67,6 +67,8 @@ func ResolveOpCode(op byte) string {
 		return "OpGetArg"
 	case OpAssert:
 		return "OpAssert"
+	case OpEcho:
+		return "OpEcho"
 	}
 	return "%Unknown%"
 }

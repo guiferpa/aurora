@@ -41,11 +41,13 @@ const (
 	SEMICOLON    = "SEMICOLON" // ;
 	ID           = "ID"
 	NUMBER       = "NUMBER"
-	TRUE         = "TRUE"  // true
-	FALSE        = "FALSE" // false
+	STRING       = "STRING" // string literal "text" (reel - array of tapes)
+	TRUE         = "TRUE"   // true
+	FALSE        = "FALSE"  // false
 	WHITESPACE   = "WHITESPACE"
 	BREAK_LINE   = "BREAK_LINE"
 	PRINT        = "PRINT"     // print
+	ECHO         = "ECHO"      // echo - print bytes as text
 	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
 	ASSERT       = "ASSERT"    // assert
 	EOF          = "EOF"
@@ -62,6 +64,7 @@ var (
 	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]", ""}
 	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+", ""}
 	TagCallPrint  = Tag{PRINT, "print", "^print", "Print anything"}
+	TagEcho       = Tag{ECHO, "echo", "^echo", "Echo bytes as text"}
 	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments", "Get arguments from any callable scope"}
 	TagAssert     = Tag{ASSERT, "assert", "^assert", "Assert a condition in tests"}
 	TagIdent      = Tag{IDENT, "ident", "^ident", "Create an immutable identifier"}
@@ -99,6 +102,7 @@ var (
 	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
 	TagPull       = Tag{PULL, "pull", "^pull", "Pull item in right to left"}
 	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b", ""}
+	TagString     = Tag{STRING, "", "^\"[^\"]*\"", ""} // String literal: "text" (reel - array of tapes)
 	TagEOF        = Tag{EOF, "<EOF>", "", ""}
 )
 
@@ -132,6 +136,7 @@ var processableTags = []Tag{
 	TagColon,
 	TagSemicolon,
 	TagCallPrint,
+	TagEcho,
 	TagArguments,
 	TagAssert,
 	TagTrue,
@@ -143,6 +148,7 @@ var processableTags = []Tag{
 	TagMult,
 	TagDiv,
 	TagNumber,
+	TagString,
 }
 
 func GetProcessbleTags() []Tag {

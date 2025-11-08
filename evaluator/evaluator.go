@@ -289,6 +289,13 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
+	if op == emitter.OpEcho {
+		Print(os.Stdout, e.debug, e.counter, op, left, nil, nil)
+		builtin.EchoFunction(left)
+		e.cursor++
+		return nil
+	}
+
 	if op == emitter.OpAssert {
 		// OpAssert receives the label of the comparison result
 		// We need to get the result from the temp storage

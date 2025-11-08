@@ -31,4 +31,5 @@ const (
 	OpTail                          // Operation to tail values in slice of byte
 	OpPush                          // Operation to push values in slice of byte
 	OpAssert                        // Operation to assert a condition in tests
+	OpEcho                          // Operation to echo bytes as text
 )

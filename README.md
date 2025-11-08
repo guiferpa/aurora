@@ -20,6 +20,7 @@
 - [Language Design](#language-design)
   - [Untyped Philosophy](#untyped-philosophy)
   - [Tapes (Arrays)](#tapes-arrays)
+  - [Reels (Strings)](#reels-strings)
   - [Arithmetic Operations](#arithmetic-operations)
 - [Try it out](#try-it-out)
   - [Playground](#playground)
@@ -171,6 +172,89 @@ ident h = pull [1, 2] [3, 4];  // Concatenate: [0, 0, 0, 0, 1, 2, 3, 4] (signifi
 ```
 
 Remember: Tapes are just a convenient way to create and work with 8-byte arrays. They're not a separate type - they're the same 8-byte arrays that Aurora uses for everything!
+
+### Reels
+
+Reels are arrays of tapes, where each character in a string is represented as a tape (8 bytes). In Aurora, strings are reels - a more structured way to work with sequences of characters.
+
+#### What are Reels?
+
+A reel is an array of tapes, where each tape represents a single character. This means:
+- **Every string is a reel**: When you write `"hello"`, it becomes a reel with 5 tapes (one for each character)
+- **Each character is a tape**: Each character is stored as an 8-byte tape
+- **Reels can contain multiple tapes**: A string like `"hello"` contains 5 tapes concatenated together
+
+#### Creating Strings (Reels)
+
+```javascript
+// Single character string (reel with one tape)
+ident a = "a";  // One tape: [0, 0, 0, 0, 0, 0, 0, 97]
+
+// Multi-character string (reel with multiple tapes)
+ident greeting = "hello";  // Five tapes concatenated:
+                           // [0,0,0,0,0,0,0,104] [0,0,0,0,0,0,0,101] [0,0,0,0,0,0,0,108] [0,0,0,0,0,0,0,108] [0,0,0,0,0,0,0,111]
+
+// Empty string (reel with one empty tape)
+ident empty = "";  // One empty tape: [0, 0, 0, 0, 0, 0, 0, 0]
+```
+
+#### Key Points
+
+- **Strings are reels**: Every string literal `"text"` creates a reel (array of tapes)
+- **Each character is a tape**: Each character in the string becomes an 8-byte tape
+- **Reels store complete strings**: Unlike single tapes, reels preserve all characters in a string
+- **Arithmetic works with reels**: When you do arithmetic with a string, it uses the last tape (last character) as the value
+
+#### The `echo` Function
+
+The `echo` function is designed to work with reels, printing all characters in sequence:
+
+```javascript
+ident greeting = "hello";
+echo greeting;  // Prints: hello
+
+ident single = "a";
+echo single;    // Prints: a
+
+ident empty = "";
+echo empty;     // Prints: (empty line)
+```
+
+The `echo` function:
+- **Detects reels**: If the value is a multiple of 8 bytes and greater than 8 bytes, it's treated as a reel
+- **Prints each tape**: Iterates through each 8-byte tape and prints the character
+- **Works with single tapes**: If the value is 8 bytes or less, it prints a single character
+
+#### Examples
+
+```javascript
+// Basic string operations
+ident greeting = "hello";
+print greeting;  // Shows raw bytes: [0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 101 ...]
+echo greeting;   // Shows text: hello
+
+// Arithmetic with strings (uses last character)
+ident a = "a";   // Last tape: [0, 0, 0, 0, 0, 0, 0, 97] (ASCII 'a' = 97)
+ident result = 1 + a;  // 1 + 97 = 98
+echo result;     // Prints: b (ASCII 98)
+
+// String with numbers
+ident num_str = "123";
+echo num_str;    // Prints: 123
+
+// Empty string
+ident empty = "";
+echo empty;      // Prints: (empty line)
+```
+
+#### Relationship Between Reels and Tapes
+
+- **Every reel is an array of tapes**: A reel is fundamentally a concatenation of multiple 8-byte tapes
+- **Not every tape is a reel**: A single tape (8 bytes) is not a reel - it's just a tape
+- **Reels preserve all characters**: Unlike single tapes which are limited to 8 bytes, reels can store multiple characters
+- **Arithmetic uses the last tape**: When doing arithmetic with a reel, only the last tape (last character) is used
+
+Remember: Strings in Aurora are reels - arrays of tapes where each character is a tape. This allows Aurora to work with text while maintaining its untyped, byte-array philosophy!
 
 ### Arithmetic Operations
 

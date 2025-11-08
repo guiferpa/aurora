@@ -185,6 +185,12 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpPrint, ll, nil))
 		return l
 	}
+	if n, ok := stmt.(parser.EchoStatementNode); ok {
+		ll := EmitInstruction(tc, insts, n.Param)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpEcho, ll, nil))
+		return l
+	}
 	if n, ok := stmt.(parser.AssertStatementNode); ok {
 		expr := EmitInstruction(tc, insts, n.Expression)
 		l := GenerateLabel(tc)
@@ -226,6 +232,18 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
+		return l
+	}
+	if n, ok := stmt.(parser.ReelLiteralNode); ok {
+		// Reel is an array of tapes (each char is a tape of 8 bytes)
+		// Store the complete reel by concatenating all tapes
+		l := GenerateLabel(tc)
+		// Concatenate all tapes into a single byte array
+		reelBytes := make([]byte, 0, len(n.Value)*8)
+		for _, tape := range n.Value {
+			reelBytes = append(reelBytes, tape...)
+		}
+		*insts = append(*insts, NewInstruction(l, OpSave, reelBytes, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.BooleanLiteral); ok {

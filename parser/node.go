@@ -55,6 +55,11 @@ type NumberLiteralNode struct {
 	Token lexer.Token `json:"-"`
 }
 
+type ReelLiteralNode struct {
+	Value [][]byte    `json:"value"` // Reel as array of tapes: each char is a tape (8 bytes), stored as array of 8-byte arrays
+	Token lexer.Token `json:"-"`
+}
+
 type VoidLiteralNode struct {
 	Token lexer.Token
 }
@@ -64,6 +69,10 @@ func (vln VoidLiteralNode) Next() Node {
 }
 
 func (nln NumberLiteralNode) Next() Node {
+	return nil
+}
+
+func (rln ReelLiteralNode) Next() Node {
 	return nil
 }
 
@@ -206,6 +215,14 @@ type PrintStatementNode struct {
 }
 
 func (cpsn PrintStatementNode) Next() Node {
+	return nil
+}
+
+type EchoStatementNode struct {
+	Param Node `json:"param"`
+}
+
+func (esn EchoStatementNode) Next() Node {
 	return nil
 }
 

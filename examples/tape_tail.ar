@@ -1,4 +1,4 @@
-ident target = tape 3; #- Size = 3 * 64bits
+ident target = 0; #- Creates 8 bytes (64 bits) - all zeros
 ident t1 = pull target 1;
 ident t2 = pull t1 2;
 ident t3 = pull t2 3;

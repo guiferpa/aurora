@@ -9,12 +9,10 @@ import (
 
 const (
 	IDENT        = "IDENT"     // ident
-	TAPE         = "TAPE"      // tape
 	PULL         = "PULL"      // pull
 	HEAD         = "HEAD"      // head
 	TAIL         = "TAIL"      // tail
 	PUSH         = "PUSH"      // push
-	GLUE         = "GLUE"      // glue
 	ASSIGN       = "ASSIGN"    // =
 	O_PAREN      = "O_PAREN"   // (
 	C_PAREN      = "C_PAREN"   // )
@@ -42,12 +40,15 @@ const (
 	SEMICOLON    = "SEMICOLON" // ;
 	ID           = "ID"
 	NUMBER       = "NUMBER"
-	TRUE         = "TRUE"  // true
-	FALSE        = "FALSE" // false
+	STRING       = "STRING" // string literal "text" (reel - array of tapes)
+	TRUE         = "TRUE"   // true
+	FALSE        = "FALSE"  // false
 	WHITESPACE   = "WHITESPACE"
 	BREAK_LINE   = "BREAK_LINE"
 	PRINT        = "PRINT"     // print
+	ECHO         = "ECHO"      // echo - print bytes as text
 	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
+	ASSERT       = "ASSERT"    // assert
 	EOF          = "EOF"
 )
 
@@ -62,7 +63,9 @@ var (
 	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]", ""}
 	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+", ""}
 	TagCallPrint  = Tag{PRINT, "print", "^print", "Print anything"}
+	TagEcho       = Tag{ECHO, "echo", "^echo", "Echo bytes as text"}
 	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments", "Get arguments from any callable scope"}
+	TagAssert     = Tag{ASSERT, "assert", "^assert", "Assert a condition in tests"}
 	TagIdent      = Tag{IDENT, "ident", "^ident", "Create an immutable identifier"}
 	TagAssign     = Tag{ASSIGN, "=", "^=", ""}
 	TagOParen     = Tag{O_PAREN, "(", "^\\(", ""}
@@ -92,13 +95,12 @@ var (
 	TagTrue       = Tag{TRUE, "true", "^true", ""}
 	TagFalse      = Tag{FALSE, "false", "^false", ""}
 	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*", ""}
-	TagTape       = Tag{TAPE, "tape", "^tape", ""}
 	TagHead       = Tag{HEAD, "head", "^head", "Get left to right nth items from a tape"}
 	TagTail       = Tag{TAIL, "tail", "^tail", "Get right to left nth items from a tape"}
 	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
 	TagPull       = Tag{PULL, "pull", "^pull", "Pull item in right to left"}
-	TagGlue       = Tag{GLUE, "glue", "^glue", "Glue two values into just one"}
-	TagNumber     = Tag{NUMBER, "", "^[0-9][0-9_]*\\b", ""}
+	TagNumber     = Tag{NUMBER, "", "^(0[xX][0-9A-Fa-f]+|[0-9][0-9_]*)\\b", ""}
+	TagString     = Tag{STRING, "", "^\"[^\"]*\"", ""} // String literal: "text" (reel - array of tapes)
 	TagEOF        = Tag{EOF, "<EOF>", "", ""}
 )
 
@@ -106,11 +108,9 @@ var processableTags = []Tag{
 	TagWhitespace,
 	TagBreakLine,
 	TagComment,
-	TagGlue,
 	TagIf,
 	TagElse,
 	TagBranch,
-	TagTape,
 	TagPull,
 	TagHead,
 	TagTail,
@@ -133,7 +133,9 @@ var processableTags = []Tag{
 	TagColon,
 	TagSemicolon,
 	TagCallPrint,
+	TagEcho,
 	TagArguments,
+	TagAssert,
 	TagTrue,
 	TagFalse,
 	TagId,
@@ -143,6 +145,7 @@ var processableTags = []Tag{
 	TagMult,
 	TagDiv,
 	TagNumber,
+	TagString,
 }
 
 func GetProcessbleTags() []Tag {

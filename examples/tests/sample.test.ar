@@ -1,0 +1,100 @@
+group "sum" {
+   #- Code at group root: executed ONCE before all cases (sequentially)
+   #- All code here runs in sequence, top to bottom
+   
+   #- Example 1: Single function declaration
+   ident sum = {
+     ident x = arguments 0;
+     ident y = arguments 1;
+     x + y;
+   };
+   
+   #- Example 2: Multiple function declarations (all executed sequentially)
+   ident multiply = {
+     ident x = arguments 0;
+     ident y = arguments 1;
+     x * y;
+   };
+   
+   ident subtract = {
+     ident x = arguments 0;
+     ident y = arguments 1;
+     x - y;
+   };
+   
+   #- Example 3: Shared variables/constants for all tests
+   ident base_value = 10;
+   ident test_multiplier = 2;
+   
+   #- Example 4: Helper function for test setup
+   ident double = {
+     ident n = arguments 0;
+     n * 2;
+   };
+   
+   #- Executed BEFORE each case (even if previous case failed)
+   before {
+     #- Specific setup before each test
+     #- This runs before EVERY case, not just once
+   }
+
+   #- Executed AFTER each case (even if case failed)
+   after {
+     #- Cleanup after each test
+     #- This runs after EVERY case, not just once
+   }
+
+   #- All cases run sequentially, one after another
+   case "should return 3 when passing 1 and 2" {
+     ident result = sum(1, 2);
+     assert result equals 3;
+   };
+
+   case "should return 5 when passing 2 and 3" {
+     ident result = sum(2, 3);
+     assert result equals 5;
+   };
+
+   case "should use shared variable" {
+     ident result = sum(base_value, 5);
+     assert result equals 15;
+   };
+
+   case "should use helper function" {
+     ident doubled = double(5);
+     assert doubled equals 10;
+   };
+
+   case "should use multiple functions" {
+     ident added = sum(3, 4);
+     ident multiplied = multiply(added, 2);
+     assert multiplied equals 14;
+   };
+   
+   #- Example 5: Complex setup - function that uses other functions
+   #- Note: Even though this appears AFTER some cases in the source code,
+   #- since it's in the root, it runs BEFORE all cases and is available to ALL cases
+   #- The order within root matters for dependencies (calculate uses sum and test_multiplier),
+   #- but everything in root is available to all cases regardless of position
+   ident calculate = {
+     ident a = arguments 0;
+     ident b = arguments 1;
+     sum(a, b) * test_multiplier;
+   };
+
+   case "should use complex setup function" {
+     ident result = calculate(5, 3);
+     #- calculate(5, 3) = sum(5, 3) * test_multiplier = 8 * 2 = 16
+     assert result equals 16;
+   };
+
+   case "should be different from 10" {
+     ident result = sum(3, 4);
+     assert result different 10;
+   };
+
+   case "should be bigger than 0" {
+     ident result = sum(5, 10);
+     assert result bigger 0;
+   };
+}

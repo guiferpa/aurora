@@ -1,2 +1,2 @@
-ident a = [1, 20, 300];
+ident a = [1, 20, 255];
 print a;

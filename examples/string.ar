@@ -1,0 +1,54 @@
+#- String/Reel Examples
+#- In Aurora, strings are reels (arrays of tapes)
+#- A reel is an array of tapes, where each character is a tape (8 bytes)
+#- The echo function prints reels in sequence, showing all characters
+
+#- Basic string assignment (reel with multiple tapes)
+ident greeting = "hello";
+print greeting;
+echo greeting;
+
+#- String with single character (reel with one tape)
+ident char_a = "a";
+print char_a;
+echo char_a;
+
+#- Arithmetic with strings (each char is a tape of 8 bytes, so "a" = 97)
+ident result1 = 1 + "a";
+print result1;
+echo result1;
+
+#- String with multiple characters (reel with multiple tapes)
+ident word = "world";
+print word;
+echo word;
+
+#- String concatenation concept (using arithmetic)
+ident char_h = "h";
+ident char_e = "e";
+ident sum_chars = char_h + char_e;
+print sum_chars;
+echo sum_chars;
+
+#- Empty string (reel with one empty tape)
+ident empty = "";
+print empty;
+echo empty;
+
+#- String with numbers (treated as characters, each is a tape)
+ident num_str = "123";
+print num_str;
+echo num_str;
+
+#- Arithmetic operations with string characters
+ident a_char = "a";
+ident b_char = "b";
+ident diff = b_char - a_char;
+print diff;
+echo diff;
+
+#- Echo with numbers (converts to ASCII character)
+ident num = 97;
+echo num;
+ident num2 = 98;
+echo num2;

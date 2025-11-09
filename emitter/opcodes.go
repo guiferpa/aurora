@@ -30,5 +30,6 @@ const (
 	OpHead                          // Operation to head values in slice of byte
 	OpTail                          // Operation to tail values in slice of byte
 	OpPush                          // Operation to push values in slice of byte
-	OpGlue                          // Operation to glue two values
+	OpAssert                        // Operation to assert a condition in tests
+	OpEcho                          // Operation to echo bytes as text
 )

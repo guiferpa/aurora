@@ -46,13 +46,6 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 
 		return l
 	}
-	if n, ok := stmt.(parser.GlueExpression); ok {
-		la := EmitInstruction(tc, insts, n.A)
-		lb := EmitInstruction(tc, insts, n.B)
-		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpGlue, la, lb))
-		return l
-	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return EmitInstruction(tc, insts, n.Expression)
 	}
@@ -92,20 +85,13 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 		return l
 	}
-	if n, ok := stmt.(parser.TapeExpression); ok {
-		l := GenerateLabel(tc)
-		tape := make([]byte, n.Length*8)
-		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
-		return l
-	}
 	if n, ok := stmt.(parser.TapeBracketExpression); ok {
-		ln := 2 // Minimum of length
+		// Create initial tape with 8 bytes (all zeros)
 		l := GenerateLabel(tc)
-		if len(n.Items) > 0 {
-			ln = len(n.Items)
-		}
-		tape := make([]byte, ln*8)
+		tape := make([]byte, 8)
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
+
+		// For each item, generate instruction and use OpPull to add bytes directly
 		for _, i := range n.Items {
 			la := GenerateLabel(tc)
 			li := EmitInstruction(tc, insts, i)
@@ -199,6 +185,20 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpPrint, ll, nil))
 		return l
 	}
+	if n, ok := stmt.(parser.EchoStatementNode); ok {
+		ll := EmitInstruction(tc, insts, n.Param)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpEcho, ll, nil))
+		return l
+	}
+	if n, ok := stmt.(parser.AssertStatementNode); ok {
+		expr := EmitInstruction(tc, insts, n.Expression)
+		l := GenerateLabel(tc)
+
+		line := byteutil.FromUint64(uint64(n.Token.GetLine()))
+		*insts = append(*insts, NewInstruction(l, OpAssert, expr, line))
+		return l
+	}
 	if n, ok := stmt.(parser.ArgumentsExpressionNode); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpGetArg, byteutil.FromUint64(n.Nth.Value), nil))
@@ -232,6 +232,18 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
+		return l
+	}
+	if n, ok := stmt.(parser.ReelLiteralNode); ok {
+		// Reel is an array of tapes (each char is a tape of 8 bytes)
+		// Store the complete reel by concatenating all tapes
+		l := GenerateLabel(tc)
+		// Concatenate all tapes into a single byte array
+		reelBytes := make([]byte, 0, len(n.Value)*8)
+		for _, tape := range n.Value {
+			reelBytes = append(reelBytes, tape...)
+		}
+		*insts = append(*insts, NewInstruction(l, OpSave, reelBytes, nil))
 		return l
 	}
 	if n, ok := stmt.(parser.BooleanLiteral); ok {

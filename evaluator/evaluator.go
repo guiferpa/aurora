@@ -13,14 +13,15 @@ import (
 )
 
 type Evaluator struct {
-	player  *Player
-	envpool *environ.Pool
-	cursor  uint64
-	insts   []emitter.Instruction
-	currseg *environ.ScopeCallable
-	result  [][]byte
-	counter *uint64
-	debug   bool
+	player       *Player
+	envpool      *environ.Pool
+	cursor       uint64
+	insts        []emitter.Instruction
+	currseg      *environ.ScopeCallable
+	result       [][]byte
+	counter      *uint64
+	debug        bool
+	assertErrors []string // Buffer to collect assert errors
 }
 
 func isTemp(bs []byte) bool {
@@ -34,7 +35,7 @@ func isTemp(bs []byte) bool {
 }
 
 func (e *Evaluator) walkTemps(bs []byte) []byte {
-	l := fmt.Sprintf("%x", bs)
+	l := byteutil.ToHex(bs)
 	bs = e.envpool.GetTemp(l)
 	if isTemp(bs) {
 		return e.walkTemps(bs)
@@ -42,9 +43,28 @@ func (e *Evaluator) walkTemps(bs []byte) []byte {
 	return bs
 }
 
+// bytesToUint64ForArithmetic converts byte arrays to uint64 for arithmetic operations.
+// Note: In Aurora's untyped design, all values are byte arrays. For arithmetic operations,
+// we interpret the first 8 bytes as a uint64. If the array is larger than 8 bytes,
+// only the first 8 bytes are used (right-aligned for arrays < 8 bytes via padding).
+// This is a design decision: arithmetic operations work on 64-bit integers.
+func bytesToUint64ForArithmetic(bs []byte) uint64 {
+	padded := byteutil.Padding64Bits(bs)
+	// If array is larger than 8 bytes, we only use the first 8 bytes
+	// This means tapes larger than 8 bytes will have their extra bytes ignored
+	if len(bs) > 8 {
+		// Use first 8 bytes (most significant bytes in big-endian)
+		return binary.BigEndian.Uint64(padded[:8])
+	}
+	return binary.BigEndian.Uint64(padded)
+}
+
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
-	if isTemp(left) {
-		left = e.walkTemps(left)
+	// For OpAssert, left is a label reference, don't resolve it
+	if op != emitter.OpAssert {
+		if isTemp(left) {
+			left = e.walkTemps(left)
+		}
 	}
 
 	if isTemp(right) {
@@ -52,7 +72,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpSave {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
 		e.envpool.SetTemp(l, left)
 		e.cursor++
@@ -60,62 +80,121 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpPull {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		ln := byteutil.NonZeroFilledLength(right) * 8
-		v := append(left[ln:], right...)
-		e.envpool.SetTemp(l, v)
-		e.cursor++
-		return nil
-	}
 
-	if op == emitter.OpGlue {
-		l := fmt.Sprintf("%x", label)
-		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		v := append(left, right...)
-		e.envpool.SetTemp(l, v)
+		// Ensure right is exactly 8 bytes (handles both uint64 and direct bytes)
+		rightDirect := byteutil.Padding64Bits(right)
+
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+
+		// Extract significant bytes from right (bytes from first non-zero to end)
+		rightSignificantBytes := byteutil.ExtractSignificantBytes(rightDirect)
+
+		// Extract significant bytes from left (bytes from first non-zero to end)
+		leftSignificantBytes := byteutil.ExtractSignificantBytes(leftDirect)
+
+		// pull: remove bytes from beginning of left, add bytes from right at the end
+		// Concatenate: left bytes + right bytes
+		result := append(leftSignificantBytes, rightSignificantBytes...)
+
+		// If result exceeds 8 bytes, keep only the last 8 bytes
+		if len(result) > 8 {
+			result = result[len(result)-8:]
+		}
+
+		// Pad to exactly 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpPush {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
-		ln := byteutil.NonZeroFilledLength(right) * 8
-		v := append(right, left[:len(left)-ln]...)
-		e.envpool.SetTemp(l, v)
+
+		// Ensure right is exactly 8 bytes (handles both uint64 and direct bytes)
+		rightDirect := byteutil.Padding64Bits(right)
+
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+
+		// Extract significant bytes from right (bytes from first non-zero to end)
+		rightSignificantBytes := byteutil.ExtractSignificantBytes(rightDirect)
+
+		// Extract significant bytes from left (bytes from first non-zero to end)
+		leftSignificantBytes := byteutil.ExtractSignificantBytes(leftDirect)
+
+		// push: add bytes from right at the beginning, remove bytes from end of left
+		// Concatenate: right bytes + left bytes
+		result := append(rightSignificantBytes, leftSignificantBytes...)
+
+		// If result exceeds 8 bytes, keep only the first 8 bytes
+		if len(result) > 8 {
+			result = result[:8]
+		}
+
+		// Pad to exactly 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpHead {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+
+		// Get index in bytes (not in 8-byte slots)
 		index := int(byteutil.ToUint64(right))
-		ln := index * 8
-		if ln > len(left) {
-			return fmt.Errorf("over tape edge with index equals %v from size equals %v", index, len(left)/8)
-		}
-		e.envpool.SetTemp(l, left[:ln])
+
+		// Apply modulo 8 to handle any index value (handles negative values too)
+		index = (index%8 + 8) % 8
+
+		// Extract first 'index' bytes
+		result := leftDirect[:index]
+
+		// Pad to 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpTail {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+
+		// Ensure left is exactly 8 bytes
+		leftDirect := byteutil.Padding64Bits(left)
+
+		// Get index in bytes (not in 8-byte slots)
 		index := int(byteutil.ToUint64(right))
-		ln := len(left) - index*8
-		if ln > len(left) {
-			return fmt.Errorf("over tape edge with index equals %v from size equals %v", index, len(left)/8)
-		}
-		e.envpool.SetTemp(l, left[ln:])
+
+		// Apply modulo 8 to handle any index value (handles negative values too)
+		index = (index%8 + 8) % 8
+
+		// Extract bytes from index to end
+		result := leftDirect[index:]
+
+		// Pad to 8 bytes with right-alignment
+		result = byteutil.Padding64Bits(result)
+
+		e.envpool.SetTemp(l, result)
 		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpResult {
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if len(e.result) > 0 {
 			tr := e.result
 			tv := tr[len(tr)-1]
@@ -132,7 +211,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpGetArg {
 		index := byteutil.ToUint64(left)
 		v := e.envpool.QueryArgument(index)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		Print(os.Stdout, e.debug, e.counter, op, index, v, nil)
 		e.envpool.SetTemp(l, v)
 		e.cursor++
@@ -147,7 +226,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpIdent {
-		k := fmt.Sprintf("%x", left)
+		k := byteutil.ToHex(left)
 		Print(os.Stdout, e.debug, e.counter, op, string(left), right, nil)
 		if v := e.envpool.GetLocal(k); v != nil {
 			return fmt.Errorf("conflict between identifiers named %s", left)
@@ -179,9 +258,9 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpLoad {
-		k := fmt.Sprintf("%x", left)
+		k := byteutil.ToHex(left)
 		Print(os.Stdout, e.debug, e.counter, op, string(left), nil, nil)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if v := e.envpool.QueryLocal(k); v != nil {
 			e.envpool.SetTemp(l, v)
 			e.cursor++
@@ -191,7 +270,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpBeginScope { // Open scope for block
-		key := fmt.Sprintf("%x", left)
+		key := byteutil.ToHex(left)
 		Print(os.Stdout, e.debug, e.counter, op, label, key, nil)
 		start := uint64(e.cursor) + 1
 		end := byteutil.ToUint64(right)
@@ -210,8 +289,41 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
+	if op == emitter.OpEcho {
+		Print(os.Stdout, e.debug, e.counter, op, left, nil, nil)
+		builtin.EchoFunction(left)
+		e.cursor++
+		return nil
+	}
+
+	if op == emitter.OpAssert {
+		// OpAssert receives the label of the comparison result
+		// We need to get the result from the temp storage
+		// left is the label (e.g., "3032"), we need to convert it to hex and get from temp
+		// right contains the line number (stored as uint64 bytes)
+		l := byteutil.ToHex(left)
+		r := e.envpool.GetTemp(l)
+		line := byteutil.ToUint64(byteutil.Padding64Bits(right))
+
+		if r == nil {
+			// Collect error instead of returning immediately
+			e.assertErrors = append(e.assertErrors, fmt.Sprintf("assertion failed: could not find comparison result on line %d", line))
+			e.cursor++
+			return nil
+		}
+
+		isTrue := byteutil.ToBoolean(r)
+		Print(os.Stdout, e.debug, e.counter, op, r, nil, nil)
+		if !isTrue {
+			// Collect error instead of returning immediately
+			e.assertErrors = append(e.assertErrors, fmt.Sprintf("assertion failed: expected condition to be true on line %d", line))
+		}
+		e.cursor++
+		return nil
+	}
+
 	if op == emitter.OpPreCall {
-		k := fmt.Sprintf("%x", left)
+		k := byteutil.ToHex(left)
 		v := e.envpool.QueryLocal(k)
 		Print(os.Stdout, e.debug, e.counter, op, string(left), v, nil)
 
@@ -219,7 +331,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 			return fmt.Errorf("identifier %s not defined", left)
 		}
 
-		k = fmt.Sprintf("%x", v)
+		k = byteutil.ToHex(v)
 		currseg := e.envpool.QueryScopeCallable(k)
 		if currseg == nil {
 			return fmt.Errorf("identifier %s is not callable segment", left)
@@ -263,7 +375,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		b := byteutil.ToBoolean(right)
 		test := a || b
 		Print(os.Stdout, e.debug, e.counter, op, test, a, b)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if test {
 			e.envpool.SetTemp(l, byteutil.True)
 		} else {
@@ -278,7 +390,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		b := byteutil.ToBoolean(right)
 		test := a && b
 		Print(os.Stdout, e.debug, e.counter, op, test, a, b)
-		l := fmt.Sprintf("%x", label)
+		l := byteutil.ToHex(label)
 		if test {
 			e.envpool.SetTemp(l, byteutil.True)
 		} else {
@@ -288,9 +400,10 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		return nil
 	}
 
-	a := byteutil.ToUint64(byteutil.Padding64Bits(left))
-	b := byteutil.ToUint64(byteutil.Padding64Bits(right))
-
+	// Convert byte arrays to uint64 for arithmetic/comparison operations
+	// Note: Only first 8 bytes are used; larger arrays are truncated
+	a := bytesToUint64ForArithmetic(left)
+	b := bytesToUint64ForArithmetic(right)
 
 	if op == emitter.OpEquals {
 		r := byteutil.False
@@ -393,6 +506,8 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
 	var err error
 	e.insts = insts
+	e.assertErrors = make([]string, 0) // Reset assert errors buffer
+
 	for int(e.cursor) < len(e.insts) {
 		if e.player != nil {
 			for e.player.scanner.Scan() {
@@ -406,29 +521,28 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, er
 			break
 		}
 	}
+
 	e.cursor = 0
 	temps := e.envpool.Current().Temps()
 	e.envpool.Current().ClearTemps()
+
 	return temps, err
 }
 
-func (e *Evaluator) GetEnvironPool() *environ.Pool {
-	return e.envpool
-}
-
-func (e *Evaluator) GetInstructions() []emitter.Instruction {
-	return e.insts
+func (e *Evaluator) GetAssertErrors() []string {
+	return e.assertErrors
 }
 
 func NewWithPlayer(debug bool, player *Player) *Evaluator {
 	return &Evaluator{
-		player:  player,
-		envpool: environ.NewPool(environ.New(nil)),
-		cursor:  0,
-		insts:   make([]emitter.Instruction, 0),
-		result:  make([][]byte, 0),
-		counter: new(uint64),
-		debug:   debug,
+		player:       player,
+		envpool:      environ.NewPool(environ.New(nil)),
+		cursor:       0,
+		insts:        make([]emitter.Instruction, 0),
+		result:       make([][]byte, 0),
+		counter:      new(uint64),
+		debug:        debug,
+		assertErrors: make([]string, 0),
 	}
 }
 

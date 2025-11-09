@@ -12,7 +12,7 @@ func TestToBoolean(t *testing.T) {
 		{false, []byte{0, 0}},
 		{false, []byte{0, 0, 0, 0, 0, 0, 0, 0}},
 		{false, []byte{0, 0, 0, 0, 0, 0, 0, 0, 0}},
-		{false, []byte{0, 0, 0, 0, 0, 0, 0, 0, 1}},
+		{true, []byte{0, 0, 0, 0, 0, 0, 0, 0, 1}}, // Truncated to last 8 bytes: [0, 0, 0, 0, 0, 0, 0, 1] = true
 		{false, False},
 		{true, []byte{1}},
 		{true, []byte{1, 1}},

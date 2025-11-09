@@ -23,15 +23,6 @@ func (pln ParameterLiteralNode) Next() Node {
 	return pln.Expression
 }
 
-type GlueExpression struct {
-	A Node `json:"a"`
-	B Node `json:"b"`
-}
-
-func (ge GlueExpression) Next() Node {
-	return nil
-}
-
 type CalleeLiteralNode struct {
 	Id     IdLiteralNode          `json:"id"`
 	Params []ParameterLiteralNode `json:"params"`
@@ -64,6 +55,11 @@ type NumberLiteralNode struct {
 	Token lexer.Token `json:"-"`
 }
 
+type ReelLiteralNode struct {
+	Value [][]byte    `json:"value"` // Reel as array of tapes: each char is a tape (8 bytes), stored as array of 8-byte arrays
+	Token lexer.Token `json:"-"`
+}
+
 type VoidLiteralNode struct {
 	Token lexer.Token
 }
@@ -73,6 +69,10 @@ func (vln VoidLiteralNode) Next() Node {
 }
 
 func (nln NumberLiteralNode) Next() Node {
+	return nil
+}
+
+func (rln ReelLiteralNode) Next() Node {
 	return nil
 }
 
@@ -218,6 +218,14 @@ func (cpsn PrintStatementNode) Next() Node {
 	return nil
 }
 
+type EchoStatementNode struct {
+	Param Node `json:"param"`
+}
+
+func (esn EchoStatementNode) Next() Node {
+	return nil
+}
+
 type ArgumentsExpressionNode struct {
 	Nth NumberLiteralNode `json:"nth"`
 }
@@ -234,6 +242,15 @@ type IdentStatementNode struct {
 
 func (isn IdentStatementNode) Next() Node {
 	return isn.Expression
+}
+
+type AssertStatementNode struct {
+	Expression Node        `json:"expression"`
+	Token      lexer.Token `json:"-"`
+}
+
+func (asn AssertStatementNode) Next() Node {
+	return nil
 }
 
 type StatementNode struct {

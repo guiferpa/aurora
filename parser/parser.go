@@ -18,8 +18,29 @@ type Parser interface {
 }
 
 type pr struct {
-	cursor int
-	tokens []lexer.Token
+	cursor   int
+	tokens   []lexer.Token
+	filename string
+}
+
+// Helper functions to validate node types for tape operations
+func isValidTapeTarget(node Node) bool {
+	switch node.(type) {
+	case TapeBracketExpression, NumberLiteralNode, IdLiteralNode,
+		PullExpression, PushExpression, HeadExpression, TailExpression:
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidTapeItem(node Node) bool {
+	switch node.(type) {
+	case TapeBracketExpression, NumberLiteralNode, IdLiteralNode:
+		return true
+	default:
+		return false
+	}
 }
 
 func (p *pr) getCallee(id IdLiteralNode) (Node, error) {
@@ -74,32 +95,59 @@ func (p *pr) getFalse() (BooleanLiteral, error) {
 	return BooleanLiteral{byteutil.False, tok}, nil
 }
 
+func (p *pr) getNumFromBase(b int, raw string, tok lexer.Token) (NumberLiteralNode, error) {
+	parsed, err := strconv.ParseUint(raw, b, 64)
+	if err != nil {
+		return NumberLiteralNode{}, err
+	}
+	return NumberLiteralNode{parsed, tok}, nil
+}
+
 func (p *pr) getNum() (NumberLiteralNode, error) {
 	tok, err := p.EatToken(lexer.NUMBER)
 	if err != nil {
 		return NumberLiteralNode{}, err
 	}
+
 	raw := strings.ReplaceAll(string(tok.GetMatch()), "_", "")
-	num, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return NumberLiteralNode{}, err
+
+	// Check if it's a hexadecimal number (starts with 0x)
+	if strings.HasPrefix(raw, "0x") || strings.HasPrefix(raw, "0X") {
+		return p.getNumFromBase(16, raw[2:], tok)
 	}
-	return NumberLiteralNode{uint64(num), tok}, nil
+	// Parse as decimal
+	return p.getNumFromBase(10, raw, tok)
 }
 
-func (p *pr) getGlue() (Node, error) {
-	if _, err := p.EatToken(lexer.GLUE); err != nil {
-		return nil, err
-	}
-	a, err := p.getExpr()
+func (p *pr) getReel() (ReelLiteralNode, error) {
+	tok, err := p.EatToken(lexer.STRING)
 	if err != nil {
-		return nil, err
+		return ReelLiteralNode{}, err
 	}
-	b, err := p.getExpr()
-	if err != nil {
-		return nil, err
+	// Remove surrounding quotes and get the string content
+	match := tok.GetMatch()
+	if len(match) < 2 {
+		return ReelLiteralNode{}, fmt.Errorf("invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
 	}
-	return GlueExpression{A: a, B: b}, nil
+	// Remove first and last character (quotes)
+	content := match[1 : len(match)-1]
+
+	// Convert string to reel (array of tapes)
+	// Each character becomes a tape (8-byte array) padded with zeros
+	reel := make([][]byte, 0, len(content))
+	for _, char := range content {
+		charByte := byte(char)
+		// Each character is a tape (8-byte array)
+		tape := byteutil.Padding64Bits([]byte{charByte})
+		reel = append(reel, tape)
+	}
+
+	// If empty string, create a reel with one empty tape
+	if len(reel) == 0 {
+		reel = append(reel, make([]byte, 8))
+	}
+
+	return ReelLiteralNode{reel, tok}, nil
 }
 
 func (p *pr) getPriExpr() (Node, error) {
@@ -120,15 +168,19 @@ func (p *pr) getPriExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.O_BRK {
 		return p.getTapeBrk()
 	}
-	if lookahead.GetTag().Id == lexer.TAPE {
-		return p.getTape()
-	}
 	if lookahead.GetTag().Id == lexer.NUMBER {
 		num, err := p.getNum()
 		if err != nil {
 			return nil, err
 		}
 		return num, nil
+	}
+	if lookahead.GetTag().Id == lexer.STRING {
+		reel, err := p.getReel()
+		if err != nil {
+			return nil, err
+		}
+		return reel, nil
 	}
 	if lookahead.GetTag().Id == lexer.TRUE {
 		return p.getTrue()
@@ -146,17 +198,6 @@ func (p *pr) getPriExpr() (Node, error) {
 	return id, nil
 }
 
-func (p *pr) getTape() (Node, error) {
-	if _, err := p.EatToken(lexer.TAPE); err != nil {
-		return nil, err
-	}
-	length, err := p.getNum()
-	if err != nil {
-		return nil, err
-	}
-	return TapeExpression{Length: length.Value}, nil
-}
-
 func (p *pr) getTapeBrk() (Node, error) {
 	if _, err := p.EatToken(lexer.O_BRK); err != nil {
 		return nil, err
@@ -167,6 +208,15 @@ func (p *pr) getTapeBrk() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Validate: if item is a number literal, it must be between 0 and 255
+		// (since tapes store values as direct bytes)
+		if numNode, ok := expr.(NumberLiteralNode); ok {
+			if numNode.Value > byteutil.MAX_BYTES {
+				return nil, fmt.Errorf("tape values must be between 0 and %d, got %d", byteutil.MAX_BYTES, numNode.Value)
+			}
+		}
+
 		items = append(items, expr)
 		if p.GetLookahead().GetTag().Id == lexer.C_BRK {
 			break
@@ -190,16 +240,7 @@ func (p *pr) getPull() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTail := target.(TailExpression)
-	_, isHead := target.(HeadExpression)
-	_, isPull := target.(PullExpression)
-	_, isGlue := target.(GlueExpression)
-	_, isPush := target.(PushExpression)
-	_, isTape := target.(TapeExpression)
-	_, isTapeBrk := target.(TapeBracketExpression)
-	_, isNumber := target.(NumberLiteralNode)
-	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
+	if !isValidTapeTarget(target) {
 		return nil, fmt.Errorf("It is not a valid append target")
 	}
 
@@ -207,11 +248,7 @@ func (p *pr) getPull() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTape = expr.(TapeExpression)
-	_, isTapeBrk = expr.(TapeBracketExpression)
-	_, isNumber = expr.(NumberLiteralNode)
-	_, isId = expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId {
+	if !isValidTapeItem(expr) {
 		return nil, fmt.Errorf("It is not a valid append item")
 	}
 	return PullExpression{Target: target, Item: expr}, nil
@@ -225,15 +262,7 @@ func (p *pr) getHead() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isHead := expr.(HeadExpression)
-	_, isPull := expr.(PullExpression)
-	_, isGlue := expr.(GlueExpression)
-	_, isPush := expr.(PushExpression)
-	_, isTape := expr.(TapeExpression)
-	_, isTapeBrk := expr.(TapeBracketExpression)
-	_, isNumber := expr.(NumberLiteralNode)
-	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isGlue {
+	if !isValidTapeTarget(expr) {
 		return nil, fmt.Errorf("It is not a valid head target")
 	}
 
@@ -252,16 +281,7 @@ func (p *pr) getTail() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTail := expr.(TailExpression)
-	_, isHead := expr.(HeadExpression)
-	_, isPull := expr.(PullExpression)
-	_, isGlue := expr.(GlueExpression)
-	_, isPush := expr.(PushExpression)
-	_, isTape := expr.(TapeExpression)
-	_, isTapeBrk := expr.(TapeBracketExpression)
-	_, isNumber := expr.(NumberLiteralNode)
-	_, isId := expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
+	if !isValidTapeTarget(expr) {
 		return nil, fmt.Errorf("It is not a valid tail target")
 	}
 
@@ -281,16 +301,7 @@ func (p *pr) getPush() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTail := target.(TailExpression)
-	_, isHead := target.(HeadExpression)
-	_, isPull := target.(PullExpression)
-	_, isGlue := target.(GlueExpression)
-	_, isPush := target.(PushExpression)
-	_, isTape := target.(TapeExpression)
-	_, isTapeBrk := target.(TapeBracketExpression)
-	_, isNumber := target.(NumberLiteralNode)
-	_, isId := target.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId && !isPull && !isPush && !isHead && !isTail && !isGlue {
+	if !isValidTapeTarget(target) {
 		return nil, fmt.Errorf("It is not a valid push target")
 	}
 
@@ -298,11 +309,7 @@ func (p *pr) getPush() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, isTape = expr.(TapeExpression)
-	_, isTapeBrk = expr.(TapeBracketExpression)
-	_, isNumber = expr.(NumberLiteralNode)
-	_, isId = expr.(IdLiteralNode)
-	if !isTape && !isTapeBrk && !isNumber && !isId {
+	if !isValidTapeItem(expr) {
 		return nil, fmt.Errorf("It is not a valid push item")
 	}
 	return PushExpression{Target: target, Item: expr}, nil
@@ -670,9 +677,6 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.PUSH {
 		return p.getPush()
 	}
-	if lookahead.GetTag().Id == lexer.GLUE {
-		return p.getGlue()
-	}
 	return p.getBoolExpr()
 }
 
@@ -685,6 +689,40 @@ func (p *pr) getPrint() (Node, error) {
 		return nil, err
 	}
 	return PrintStatementNode{expr}, nil
+}
+
+func (p *pr) getEcho() (Node, error) {
+	if _, err := p.EatToken(lexer.ECHO); err != nil {
+		return nil, err
+	}
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	return EchoStatementNode{expr}, nil
+}
+
+func (p *pr) getAssert() (Node, error) {
+	// Validate that assert can only be used in .test.ar files
+	if !strings.HasSuffix(p.filename, ".test.ar") {
+		lookahead := p.GetLookahead()
+		return nil, fmt.Errorf("assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
+	}
+
+	t, err := p.EatToken(lexer.ASSERT)
+	if err != nil {
+		return nil, err
+	}
+
+	expr, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+
+	return AssertStatementNode{
+		Expression: expr,
+		Token:      t,
+	}, nil
 }
 
 func (p *pr) getArgs() (Node, error) {
@@ -702,6 +740,12 @@ func (p *pr) getStmt() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.PRINT {
 		return p.getPrint()
+	}
+	if lookahead.GetTag().Id == lexer.ECHO {
+		return p.getEcho()
+	}
+	if lookahead.GetTag().Id == lexer.ASSERT {
+		return p.getAssert()
 	}
 	expr, err := p.getExpr()
 	if err != nil {
@@ -765,5 +809,9 @@ func (p *pr) Parse() (AST, error) {
 }
 
 func New(tokens []lexer.Token) Parser {
-	return &pr{cursor: 0, tokens: tokens}
+	return &pr{cursor: 0, tokens: tokens, filename: ""}
+}
+
+func NewWithFilename(tokens []lexer.Token, filename string) Parser {
+	return &pr{cursor: 0, tokens: tokens, filename: filename}
 }

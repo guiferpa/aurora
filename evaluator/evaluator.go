@@ -43,22 +43,6 @@ func (e *Evaluator) walkTemps(bs []byte) []byte {
 	return bs
 }
 
-// bytesToUint64ForArithmetic converts byte arrays to uint64 for arithmetic operations.
-// Note: In Aurora's untyped design, all values are byte arrays. For arithmetic operations,
-// we interpret the first 8 bytes as a uint64. If the array is larger than 8 bytes,
-// only the first 8 bytes are used (right-aligned for arrays < 8 bytes via padding).
-// This is a design decision: arithmetic operations work on 64-bit integers.
-func bytesToUint64ForArithmetic(bs []byte) uint64 {
-	padded := byteutil.Padding64Bits(bs)
-	// If array is larger than 8 bytes, we only use the first 8 bytes
-	// This means tapes larger than 8 bytes will have their extra bytes ignored
-	if len(bs) > 8 {
-		// Use first 8 bytes (most significant bytes in big-endian)
-		return binary.BigEndian.Uint64(padded[:8])
-	}
-	return binary.BigEndian.Uint64(padded)
-}
-
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	// For OpAssert, left is a label reference, don't resolve it
 	if op != emitter.OpAssert {
@@ -253,7 +237,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	if op == emitter.OpJump {
 		Print(os.Stdout, e.debug, e.counter, op, left, nil, nil)
-		e.cursor = e.cursor + binary.BigEndian.Uint64(left) + 1
+		e.cursor = e.cursor + byteutil.ToUint64(left) + 1
 		return nil
 	}
 
@@ -303,7 +287,7 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 		// right contains the line number (stored as uint64 bytes)
 		l := byteutil.ToHex(left)
 		r := e.envpool.GetTemp(l)
-		line := byteutil.ToUint64(byteutil.Padding64Bits(right))
+		line := byteutil.ToUint64(right)
 
 		if r == nil {
 			// Collect error instead of returning immediately
@@ -402,8 +386,8 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 
 	// Convert byte arrays to uint64 for arithmetic/comparison operations
 	// Note: Only first 8 bytes are used; larger arrays are truncated
-	a := bytesToUint64ForArithmetic(left)
-	b := bytesToUint64ForArithmetic(right)
+	a := byteutil.ToUint64(left)
+	b := byteutil.ToUint64(right)
 
 	if op == emitter.OpEquals {
 		r := byteutil.False

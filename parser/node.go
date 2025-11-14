@@ -253,6 +253,16 @@ func (asn AssertStatementNode) Next() Node {
 	return nil
 }
 
+type CaseStatementNode struct {
+	Name  ReelLiteralNode `json:"name"` // Case name as a reel (string)
+	Body  []Node          `json:"body"` // Statements inside the case
+	Token lexer.Token     `json:"-"`
+}
+
+func (csn CaseStatementNode) Next() Node {
+	return nil
+}
+
 type StatementNode struct {
 	Node Node `json:"node"`
 }

@@ -1,0 +1,50 @@
+#- Test cases example
+#- Each case is an independent test that can contain multiple assertions
+
+case "should add two numbers correctly" {
+  ident result = 2 + 3;
+  assert result equals 5;
+};
+
+case "should subtract two numbers correctly" {
+  ident result = 10 - 3;
+  assert result equals 7;
+};
+
+case "should multiply two numbers correctly" {
+  ident result = 4 * 5;
+  assert result equals 20;
+};
+
+case "should divide two numbers correctly" {
+  ident result = 15 / 3;
+  assert result equals 5;
+};
+
+case "should handle comparisons correctly" {
+  ident a = 10;
+  ident b = 5;
+  assert a bigger b;
+  assert b smaller a;
+  assert a different b;
+};
+
+case "should work with variables" {
+  ident x = 10;
+  ident y = 20;
+  ident sum = x + y;
+  assert sum equals 30;
+};
+
+case "should handle complex expressions" {
+  ident result = (2 + 3) * 4;
+  assert result equals 20;
+};
+
+case "should handle boolean operations" {
+  ident a = 5 bigger 3;
+  assert a equals true;
+  
+  ident b = 2 smaller 1;
+  assert b equals false;
+};

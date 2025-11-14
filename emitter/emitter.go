@@ -199,6 +199,21 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		*insts = append(*insts, NewInstruction(l, OpAssert, expr, line))
 		return l
 	}
+	if n, ok := stmt.(parser.CaseStatementNode); ok {
+		// Emit the case name (reel)
+		ln := EmitInstruction(tc, insts, n.Name)
+
+		// Emit all statements in the case body
+		for _, bodyStmt := range n.Body {
+			_ = EmitInstruction(tc, insts, bodyStmt)
+		}
+
+		// Emit OpCase instruction with case name label
+		// This serves as a marker that the case was executed
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpCase, ln, nil))
+		return l
+	}
 	if n, ok := stmt.(parser.ArgumentsExpressionNode); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpGetArg, byteutil.FromUint64(n.Nth.Value), nil))

@@ -48,7 +48,8 @@ const (
 	PRINT        = "PRINT"     // print
 	ECHO         = "ECHO"      // echo - print bytes as text
 	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
-	ASSERT       = "ASSERT"    // assert
+	ASSERT       = "ASSERT"    // assert - assert a condition in tests
+	CASE         = "CASE"      // case - test case
 	EOF          = "EOF"
 )
 
@@ -66,6 +67,7 @@ var (
 	TagEcho       = Tag{ECHO, "echo", "^echo", "Echo bytes as text"}
 	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments", "Get arguments from any callable scope"}
 	TagAssert     = Tag{ASSERT, "assert", "^assert", "Assert a condition in tests"}
+	TagCase       = Tag{CASE, "case", "^case", "Define a test case"}
 	TagIdent      = Tag{IDENT, "ident", "^ident", "Create an immutable identifier"}
 	TagAssign     = Tag{ASSIGN, "=", "^=", ""}
 	TagOParen     = Tag{O_PAREN, "(", "^\\(", ""}
@@ -136,6 +138,7 @@ var processableTags = []Tag{
 	TagEcho,
 	TagArguments,
 	TagAssert,
+	TagCase,
 	TagTrue,
 	TagFalse,
 	TagId,

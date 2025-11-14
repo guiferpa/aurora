@@ -725,6 +725,42 @@ func (p *pr) getAssert() (Node, error) {
 	}, nil
 }
 
+func (p *pr) getCase() (Node, error) {
+	// Validate that case can only be used in .test.ar files
+	if !strings.HasSuffix(p.filename, ".test.ar") {
+		lookahead := p.GetLookahead()
+		return nil, fmt.Errorf("case can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
+	}
+
+	t, err := p.EatToken(lexer.CASE)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the case name (must be a string/reel)
+	name, err := p.getReel()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+		return nil, err
+	}
+
+	// Read the body block
+	body, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+
+	// Eat the closing brace
+	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+		return nil, err
+	}
+
+	return CaseStatementNode{Name: name, Body: body, Token: t}, nil
+}
+
 func (p *pr) getArgs() (Node, error) {
 	if _, err := p.EatToken(lexer.ARGUMENTS); err != nil {
 		return nil, err
@@ -746,6 +782,9 @@ func (p *pr) getStmt() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.ASSERT {
 		return p.getAssert()
+	}
+	if lookahead.GetTag().Id == lexer.CASE {
+		return p.getCase()
 	}
 	expr, err := p.getExpr()
 	if err != nil {

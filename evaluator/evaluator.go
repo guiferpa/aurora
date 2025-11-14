@@ -6,6 +6,8 @@ import (
 	"math"
 	"os"
 
+	"github.com/fatih/color"
+
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator/builtin"
@@ -44,15 +46,14 @@ func (e *Evaluator) walkTemps(bs []byte) []byte {
 }
 
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
-	// For OpAssert, left is a label reference, don't resolve it
+	if isTemp(right) {
+		right = e.walkTemps(right)
+	}
+
 	if op != emitter.OpAssert {
 		if isTemp(left) {
 			left = e.walkTemps(left)
 		}
-	}
-
-	if isTemp(right) {
-		right = e.walkTemps(right)
 	}
 
 	if op == emitter.OpSave {
@@ -205,6 +206,13 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	if op == emitter.OpPushArg {
 		Print(os.Stdout, e.debug, e.counter, op, left, nil, nil)
 		e.envpool.Current().PushArgument(left)
+		e.cursor++
+		return nil
+	}
+
+	if op == emitter.OpCase {
+		Print(os.Stdout, e.debug, e.counter, op, left, right, nil)
+		fmt.Printf("%s %s\n", "Testing case:", color.New(color.FgHiYellow).Sprintf("%s", string(left)))
 		e.cursor++
 		return nil
 	}

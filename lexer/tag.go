@@ -148,13 +148,13 @@ var processableTags = []Tag{
 	TagString,
 }
 
-func GetProcessbleTags() []Tag {
+func GetProcessableTags() []Tag {
 	return processableTags
 }
 
-func GetProcessbleTagsWithDescription() []Tag {
+func GetProcessableTagsWithDescription() []Tag {
 	tags := make([]Tag, 0)
-	for _, t := range GetProcessbleTags() {
+	for _, t := range GetProcessableTags() {
 		if strings.Compare(t.Description, "") == 0 {
 			continue
 		}
@@ -164,7 +164,7 @@ func GetProcessbleTagsWithDescription() []Tag {
 }
 
 func MatchTagRule(bs []byte) (bool, Tag, []byte) {
-	for _, v := range GetProcessbleTags() {
+	for _, v := range GetProcessableTags() {
 		re := regexp.MustCompile(v.Rule)
 		match := re.FindString(string(bs))
 		if len(match) > 0 {

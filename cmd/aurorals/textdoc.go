@@ -18,7 +18,7 @@ func TextdocCompletionHandler(l *log.Logger, s *state.State, contents []byte) an
 	}
 
 	items := make([]textdoc.CompletionItem, 0)
-	tags := lexer.GetProcessbleTagsWithDescription()
+	tags := lexer.GetProcessableTagsWithDescription()
 	for _, t := range tags {
 		items = append(items, textdoc.CompletionItem{
 			Label:  t.Keyword,

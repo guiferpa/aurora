@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/guiferpa/aurora/builder"
+	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
@@ -49,8 +49,10 @@ var buildCmd = &cobra.Command{
 		fd := os.Stdout
 		if strings.Compare(output, "") != 0 {
 			fd = logger.MustError(os.Create(output))
+			defer fd.Close()
 		}
-		logger.MustError(builder.New(insts).Build(fd))
+		builder := evm.NewBuilder()
+		logger.MustError(builder.Build(fd, insts))
 	},
 }
 

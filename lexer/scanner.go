@@ -1,27 +1,35 @@
 package lexer
 
-var keywords = map[string]Tag{
-	"ident":     TagIdent,
-	"if":        TagIf,
-	"else":      TagElse,
-	"branch":    TagBranch,
-	"print":     TagCallPrint,
-	"echo":      TagEcho,
-	"true":      TagTrue,
-	"false":     TagFalse,
-	"equals":    TagEquals,
-	"different": TagDifferent,
-	"bigger":    TagBigger,
-	"smaller":   TagSmaller,
-	"or":        TagOr,
-	"and":       TagAnd,
-	"head":      TagHead,
-	"tail":      TagTail,
-	"push":      TagPush,
-	"pull":      TagPull,
-	"arguments": TagArguments,
-	"assert":    TagAssert,
+var keywordTags = []Tag{
+	TagIdent,
+	TagIf,
+	TagElse,
+	TagBranch,
+	TagCallPrint,
+	TagEcho,
+	TagTrue,
+	TagFalse,
+	TagEquals,
+	TagDifferent,
+	TagBigger,
+	TagSmaller,
+	TagOr,
+	TagAnd,
+	TagHead,
+	TagTail,
+	TagPush,
+	TagPull,
+	TagArguments,
+	TagAssert,
 }
+
+var Keywords = func() map[string]Tag {
+	m := make(map[string]Tag, len(keywordTags))
+	for _, t := range keywordTags {
+		m[t.Keyword] = t
+	}
+	return m
+}()
 
 func isLowercaseLetter(c byte) bool {
 	return c >= 'a' && c <= 'z'
@@ -114,9 +122,7 @@ func scanWord(bs []byte) (bool, Tag, []byte) {
 		return false, Tag{}, nil
 	}
 
-	word := string(bs[:i])
-
-	if tag, isKeyword := keywords[word]; isKeyword {
+	if tag, isKeyword := Keywords[string(bs[:i])]; isKeyword {
 		return true, tag, bs[:i]
 	}
 

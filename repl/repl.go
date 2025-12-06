@@ -16,7 +16,26 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-func Start(in io.Reader, out io.Writer, debug bool) {
+func printReadable(w io.Writer, temps map[string][]byte) {
+	s := color.New(color.FgWhite, color.Bold).Sprint("=")
+	for _, v := range temps {
+		er, err := byteutil.Encode(v)
+		if err != nil {
+			fmt.Fprint(w, color.New(color.FgRed).Sprint(err))
+			break
+		}
+		fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(er))
+	}
+}
+
+func printRaw(w io.Writer, temps map[string][]byte) {
+	s := color.New(color.FgWhite, color.Bold).Sprint("=")
+	for _, v := range temps {
+		fmt.Fprintf(w, "%s %v\n", s, color.New(color.FgHiMagenta).Sprint(v))
+	}
+}
+
+func Start(in io.Reader, out io.Writer, debug bool, readable bool) {
 	ev := evaluator.New(debug)
 
 	csig := make(chan os.Signal, 1)
@@ -62,15 +81,10 @@ func Start(in io.Reader, out io.Writer, debug bool) {
 			fmt.Println(err)
 			continue
 		}
-		s := color.New(color.FgWhite, color.Bold).Sprint("=")
-		for _, v := range temps {
-			er, err := byteutil.Encode(v)
-			if err != nil {
-				color.Red("%v", err)
-				break
-
-			}
-			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", er))
+		if readable {
+			printReadable(out, temps)
+			continue
 		}
+		printRaw(out, temps)
 	}
 }

@@ -6,52 +6,7 @@ import (
 	"testing"
 )
 
-func TestGetTag(t *testing.T) {
-	cases := []struct {
-		Tag   Tag
-		Param string
-	}{
-		{TagIdent, IDENT},
-		{TagAssign, ASSIGN},
-		{TagOParen, O_PAREN},
-		{TagCParen, C_PAREN},
-		{TagEquals, EQUALS},
-		{TagDifferent, DIFFERENT},
-		{TagBigger, BIGGER},
-		{TagSmaller, SMALLER},
-		{TagSum, SUM},
-		{TagSub, SUB},
-		{TagMult, MULT},
-		{TagDiv, DIV},
-		{TagComment, COMMENT_LINE},
-		{TagOBrk, O_BRK},
-		{TagCBrk, C_BRK},
-		{TagOCurBrk, O_CUR_BRK},
-		{TagCCurBrk, C_CUR_BRK},
-		{TagComma, COMMA},
-		{TagIf, IF},
-		{TagColon, COLON},
-		{TagSemicolon, SEMICOLON},
-		{TagNumber, NUMBER},
-		{TagWhitespace, WHITESPACE},
-		{TagBreakLine, BREAK_LINE},
-	}
-
-	for _, c := range cases {
-		got, err := GetTag(c.Param)
-		if err != nil {
-			t.Errorf("Unexpected error: %v", err)
-		}
-		if got.Id != c.Tag.Id {
-			t.Errorf("Unexpected tag: got %v, expected: %v", got, c.Tag)
-		}
-		if got.Id != c.Param {
-			t.Errorf("Mismatch tag and parameter: got %v, expected: %v", got, c.Param)
-		}
-	}
-}
-
-func TestMatchTagRule(t *testing.T) {
+func TestMatchToken(t *testing.T) {
 	cases := []struct {
 		Buffer  []byte
 		TagId   string
@@ -60,11 +15,11 @@ func TestMatchTagRule(t *testing.T) {
 	}{
 		// ID
 		{[]byte(`abc`), ID, []byte("abc"), true},
-		{[]byte(`is_true?`), ID, []byte("is_true?"), true},
-		{[]byte(`e_não?`), ID, []byte("e_n"), true},
-		{[]byte(`explore->implore?`), ID, []byte("explore->implore?"), true},
-		{[]byte(`0d?`), "", []byte(""), false}, // Exception
-		{[]byte(`Id?`), ID, []byte("Id?"), true},
+		{[]byte(`is_true`), ID, []byte("is_true"), true},
+		{[]byte(`my_var_123`), ID, []byte("my_var_123"), true},
+		{[]byte(`explore`), ID, []byte("explore"), true},
+		{[]byte(`Id`), ID, []byte("Id"), true},
+		{[]byte(`CamelCase`), ID, []byte("CamelCase"), true},
 
 		// SEMICOLON
 		{[]byte(`;`), SEMICOLON, []byte(";"), true},
@@ -156,7 +111,7 @@ func TestMatchTagRule(t *testing.T) {
 `), true},
 	}
 	for _, c := range cases {
-		matched, tag, match := MatchTagRule(c.Buffer)
+		matched, tag, match := MatchToken(c.Buffer)
 		if matched != c.Matched {
 			t.Errorf("rule matching: param: %s, expected: %v, got: %v", string(c.Buffer), c.Matched, matched)
 		}

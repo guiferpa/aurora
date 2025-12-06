@@ -1,12 +1,5 @@
 package lexer
 
-import (
-	"bytes"
-	"errors"
-	"regexp"
-	"strings"
-)
-
 const (
 	IDENT        = "IDENT"     // ident
 	PULL         = "PULL"      // pull
@@ -55,130 +48,74 @@ const (
 type Tag struct {
 	Id          string
 	Keyword     string
-	Rule        string
 	Description string
 }
 
 var (
-	TagBreakLine  = Tag{BREAK_LINE, "", "^[\\r\\n]", ""}
-	TagWhitespace = Tag{WHITESPACE, " ", "^[ ]+", ""}
-	TagCallPrint  = Tag{PRINT, "print", "^print", "Print anything"}
-	TagEcho       = Tag{ECHO, "echo", "^echo", "Echo bytes as text"}
-	TagArguments  = Tag{ARGUMENTS, "arguments", "^arguments", "Get arguments from any callable scope"}
-	TagAssert     = Tag{ASSERT, "assert", "^assert", "Assert a condition in tests"}
-	TagIdent      = Tag{IDENT, "ident", "^ident", "Create an immutable identifier"}
-	TagAssign     = Tag{ASSIGN, "=", "^=", ""}
-	TagOParen     = Tag{O_PAREN, "(", "^\\(", ""}
-	TagCParen     = Tag{C_PAREN, ")", "^\\)", ""}
-	TagEquals     = Tag{EQUALS, "equals", "^equals", ""}
-	TagDifferent  = Tag{DIFFERENT, "different", "^different", ""}
-	TagBigger     = Tag{BIGGER, "bigger", "^bigger", ""}
-	TagSmaller    = Tag{SMALLER, "smaller", "^smaller", ""}
-	TagOr         = Tag{OR, "or", "^or", ""}
-	TagAnd        = Tag{AND, "and", "^and", ""}
-	TagSum        = Tag{SUM, "+", "^\\+", ""}
-	TagSub        = Tag{SUB, "-", "^\\-", ""}
-	TagMult       = Tag{MULT, "*", "^\\*", ""}
-	TagDiv        = Tag{DIV, "/", "^\\/", ""}
-	TagExpo       = Tag{EXPO, "^", "^\\^", ""}
-	TagComment    = Tag{COMMENT_LINE, "#-", "^#-", ""}
-	TagOBrk       = Tag{O_BRK, "[", "^\\[", ""}
-	TagCBrk       = Tag{C_BRK, "]", "^\\]", ""}
-	TagOCurBrk    = Tag{O_CUR_BRK, "{", "^{", ""}
-	TagCCurBrk    = Tag{C_CUR_BRK, "}", "^}", ""}
-	TagComma      = Tag{COMMA, ",", "^,", ""}
-	TagIf         = Tag{IF, "if", "^if", "Make conditions with If"}
-	TagElse       = Tag{ELSE, "else", "^else", "Make else for conditions with If"}
-	TagColon      = Tag{COLON, ":", "^:", ""}
-	TagBranch     = Tag{BRANCH, "branch", "^branch", "Make possible many branches"}
-	TagSemicolon  = Tag{SEMICOLON, ";", "^;", ""}
-	TagTrue       = Tag{TRUE, "true", "^true", ""}
-	TagFalse      = Tag{FALSE, "false", "^false", ""}
-	TagId         = Tag{ID, "", "^[A-Za-z][A-Za-z0-9-_?!><]*", ""}
-	TagHead       = Tag{HEAD, "head", "^head", "Get left to right nth items from a tape"}
-	TagTail       = Tag{TAIL, "tail", "^tail", "Get right to left nth items from a tape"}
-	TagPush       = Tag{PUSH, "push", "^push", "Push item in left to right"}
-	TagPull       = Tag{PULL, "pull", "^pull", "Pull item in right to left"}
-	TagNumber     = Tag{NUMBER, "", "^(0[xX][0-9A-Fa-f]+|[0-9][0-9_]*)\\b", ""}
-	TagString     = Tag{STRING, "", "^\"[^\"]*\"", ""} // String literal: "text" (reel - array of tapes)
-	TagEOF        = Tag{EOF, "<EOF>", "", ""}
+	TagBreakLine  = Tag{BREAK_LINE, "", ""}
+	TagWhitespace = Tag{WHITESPACE, " ", ""}
+	TagCallPrint  = Tag{PRINT, "print", "Print anything"}
+	TagEcho       = Tag{ECHO, "echo", "Echo bytes as text"}
+	TagArguments  = Tag{ARGUMENTS, "arguments", "Get arguments from any callable scope"}
+	TagAssert     = Tag{ASSERT, "assert", "Assert a condition in tests"}
+	TagIdent      = Tag{IDENT, "ident", "Create an immutable identifier"}
+	TagAssign     = Tag{ASSIGN, "=", ""}
+	TagOParen     = Tag{O_PAREN, "(", ""}
+	TagCParen     = Tag{C_PAREN, ")", ""}
+	TagEquals     = Tag{EQUALS, "equals", ""}
+	TagDifferent  = Tag{DIFFERENT, "different", ""}
+	TagBigger     = Tag{BIGGER, "bigger", ""}
+	TagSmaller    = Tag{SMALLER, "smaller", ""}
+	TagOr         = Tag{OR, "or", ""}
+	TagAnd        = Tag{AND, "and", ""}
+	TagSum        = Tag{SUM, "+", ""}
+	TagSub        = Tag{SUB, "-", ""}
+	TagMult       = Tag{MULT, "*", ""}
+	TagDiv        = Tag{DIV, "/", ""}
+	TagExpo       = Tag{EXPO, "^", ""}
+	TagComment    = Tag{COMMENT_LINE, "#-", ""}
+	TagOBrk       = Tag{O_BRK, "[", ""}
+	TagCBrk       = Tag{C_BRK, "]", ""}
+	TagOCurBrk    = Tag{O_CUR_BRK, "{", ""}
+	TagCCurBrk    = Tag{C_CUR_BRK, "}", ""}
+	TagComma      = Tag{COMMA, ",", ""}
+	TagIf         = Tag{IF, "if", "Make conditions with If"}
+	TagElse       = Tag{ELSE, "else", "Make else for conditions with If"}
+	TagColon      = Tag{COLON, ":", ""}
+	TagBranch     = Tag{BRANCH, "branch", "Make possible many branches"}
+	TagSemicolon  = Tag{SEMICOLON, ";", ""}
+	TagTrue       = Tag{TRUE, "true", ""}
+	TagFalse      = Tag{FALSE, "false", ""}
+	TagId         = Tag{ID, "", ""}
+	TagHead       = Tag{HEAD, "head", "Get left to right nth items from a tape"}
+	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
+	TagPush       = Tag{PUSH, "push", "Push item in left to right"}
+	TagPull       = Tag{PULL, "pull", "Pull item in right to left"}
+	TagNumber     = Tag{NUMBER, "", ""}
+	TagString     = Tag{STRING, "", ""} // String literal: "text" (reel - array of tapes)
+	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
 
-var processableTags = []Tag{
-	TagWhitespace,
-	TagBreakLine,
-	TagComment,
-	TagIf,
-	TagElse,
-	TagBranch,
-	TagPull,
-	TagHead,
-	TagTail,
-	TagPush,
-	TagIdent,
-	TagAssign,
-	TagOParen,
-	TagCParen,
-	TagEquals,
-	TagDifferent,
-	TagBigger,
-	TagSmaller,
-	TagOr,
-	TagAnd,
-	TagOBrk,
-	TagCBrk,
-	TagOCurBrk,
-	TagCCurBrk,
-	TagComma,
-	TagColon,
-	TagSemicolon,
+// tagsWithDescription contains only tags that have descriptions (for LSP autocompletion)
+var tagsWithDescription = []Tag{
 	TagCallPrint,
 	TagEcho,
 	TagArguments,
 	TagAssert,
-	TagTrue,
-	TagFalse,
-	TagId,
-	TagSum,
-	TagSub,
-	TagExpo,
-	TagMult,
-	TagDiv,
-	TagNumber,
-	TagString,
-}
-
-func GetProcessableTags() []Tag {
-	return processableTags
+	TagIdent,
+	TagIf,
+	TagElse,
+	TagBranch,
+	TagHead,
+	TagTail,
+	TagPush,
+	TagPull,
 }
 
 func GetProcessableTagsWithDescription() []Tag {
-	tags := make([]Tag, 0)
-	for _, t := range GetProcessableTags() {
-		if strings.Compare(t.Description, "") == 0 {
-			continue
-		}
-		tags = append(tags, t)
-	}
-	return tags
+	return tagsWithDescription
 }
 
-func MatchTagRule(bs []byte) (bool, Tag, []byte) {
-	for _, v := range GetProcessableTags() {
-		re := regexp.MustCompile(v.Rule)
-		match := re.FindString(string(bs))
-		if len(match) > 0 {
-			return true, v, bytes.NewBufferString(match).Bytes()
-		}
-	}
-	return false, Tag{}, []byte{}
-}
-
-func GetTag(c string) (Tag, error) {
-	for _, v := range processableTags {
-		if strings.Compare(v.Id, c) == 0 {
-			return v, nil
-		}
-	}
-	return Tag{}, errors.New("no tag found")
+func MatchToken(bs []byte) (bool, Tag, []byte) {
+	return ScanToken(bs)
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"unicode/utf8"
 
 	"github.com/fatih/color"
 	"github.com/guiferpa/aurora/byteutil"
@@ -16,7 +17,36 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-func Start(in io.Reader, out io.Writer, debug bool) {
+func printReadable(w io.Writer, temps map[string][]byte) {
+	s := color.New(color.FgWhite, color.Bold).Sprint("=")
+	for _, v := range temps {
+		isBoolean := len(v) == 1 && v[0] == 0
+		if isBoolean {
+			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(byteutil.ToBoolean(v)))
+			continue
+		}
+		isString := len(v) > 8 && len(v)%8 == 0
+		if isString && utf8.Valid(v) {
+			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(string(v)))
+			continue
+		}
+		er, err := byteutil.Encode(v)
+		if err != nil {
+			fmt.Fprint(w, color.New(color.FgRed).Sprint(err))
+			break
+		}
+		fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(er))
+	}
+}
+
+func printRaw(w io.Writer, temps map[string][]byte) {
+	s := color.New(color.FgWhite, color.Bold).Sprint("=")
+	for _, v := range temps {
+		fmt.Fprintf(w, "%s %v\n", s, color.New(color.FgHiMagenta).Sprint(v))
+	}
+}
+
+func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 	ev := evaluator.New(debug)
 
 	csig := make(chan os.Signal, 1)
@@ -62,15 +92,10 @@ func Start(in io.Reader, out io.Writer, debug bool) {
 			fmt.Println(err)
 			continue
 		}
-		s := color.New(color.FgWhite, color.Bold).Sprint("=")
-		for _, v := range temps {
-			er, err := byteutil.Encode(v)
-			if err != nil {
-				color.Red("%v", err)
-				break
-
-			}
-			fmt.Printf("%s %s\n", s, color.New(color.FgHiYellow).Sprintf("%v", er))
+		if raw {
+			printRaw(out, temps)
+			continue
 		}
+		printReadable(out, temps)
 	}
 }

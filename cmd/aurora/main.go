@@ -20,6 +20,7 @@ import (
 var (
 	player bool
 	debug  bool
+	raw    bool
 	output string
 )
 
@@ -57,7 +58,7 @@ var replCmd = &cobra.Command{
 	Use:   "repl",
 	Short: "Enter in Read-Eval-Print Loop mode",
 	Run: func(cmd *cobra.Command, args []string) {
-		repl.Start(os.Stdin, os.Stdout, debug)
+		repl.Start(os.Stdin, os.Stdout, debug, raw)
 	},
 }
 
@@ -98,10 +99,13 @@ func main() {
 	runCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
 
 	replCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
+	replCmd.Flags().BoolVarP(&raw, "raw", "r", false, "enable raw mode for show raw output")
 
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
+
 	evalCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
 
 	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, evalCmd)
+
 	logger.CommandError(rootCmd.Execute())
 }

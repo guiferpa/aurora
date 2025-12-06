@@ -20,6 +20,11 @@ import (
 func printReadable(w io.Writer, temps map[string][]byte) {
 	s := color.New(color.FgWhite, color.Bold).Sprint("=")
 	for _, v := range temps {
+		isBoolean := len(v) == 1 && v[0] == 0
+		if isBoolean {
+			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(byteutil.ToBoolean(v)))
+			continue
+		}
 		isString := len(v) > 8 && len(v)%8 == 0
 		if isString && utf8.Valid(v) {
 			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(string(v)))

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"unicode/utf8"
 
 	"github.com/fatih/color"
 	"github.com/guiferpa/aurora/byteutil"
@@ -19,6 +20,11 @@ import (
 func printReadable(w io.Writer, temps map[string][]byte) {
 	s := color.New(color.FgWhite, color.Bold).Sprint("=")
 	for _, v := range temps {
+		isString := len(v) > 8 && len(v)%8 == 0
+		if isString && utf8.Valid(v) {
+			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(string(v)))
+			continue
+		}
 		er, err := byteutil.Encode(v)
 		if err != nil {
 			fmt.Fprint(w, color.New(color.FgRed).Sprint(err))
@@ -35,7 +41,7 @@ func printRaw(w io.Writer, temps map[string][]byte) {
 	}
 }
 
-func Start(in io.Reader, out io.Writer, debug bool, readable bool) {
+func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 	ev := evaluator.New(debug)
 
 	csig := make(chan os.Signal, 1)
@@ -81,10 +87,10 @@ func Start(in io.Reader, out io.Writer, debug bool, readable bool) {
 			fmt.Println(err)
 			continue
 		}
-		if readable {
-			printReadable(out, temps)
+		if raw {
+			printRaw(out, temps)
 			continue
 		}
-		printRaw(out, temps)
+		printReadable(out, temps)
 	}
 }

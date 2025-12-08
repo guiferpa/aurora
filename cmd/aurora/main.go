@@ -24,18 +24,6 @@ var (
 	output string
 )
 
-var evalCmd = &cobra.Command{
-	Use:   "eval [file]",
-	Short: "Evaluate aurora binary file built by build command",
-	Args:  cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		bs := logger.MustError(os.ReadFile(args[0]))
-		insts := logger.MustError(emitter.Parse(bs))
-		logger.MustError(0, emitter.Print(insts, debug))
-		logger.MustError(evaluator.New(debug).Evaluate(insts))
-	},
-}
-
 var buildCmd = &cobra.Command{
 	Use:   "build [file]",
 	Short: "Build binary from source code",
@@ -109,9 +97,7 @@ func main() {
 
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
 
-	evalCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
-
-	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, evalCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd)
 
 	logger.CommandError(rootCmd.Execute())
 }

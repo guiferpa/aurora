@@ -31,7 +31,7 @@ var evalCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		bs := logger.MustError(os.ReadFile(args[0]))
 		insts := logger.MustError(emitter.Parse(bs))
-		emitter.Print(insts, debug)
+		logger.MustError(0, emitter.Print(insts, debug))
 		logger.MustError(evaluator.New(debug).Evaluate(insts))
 	},
 }
@@ -49,7 +49,11 @@ var buildCmd = &cobra.Command{
 		fd := os.Stdout
 		if strings.Compare(output, "") != 0 {
 			fd = logger.MustError(os.Create(output))
-			defer fd.Close()
+			defer func() {
+				if err := fd.Close(); err != nil {
+					logger.MustError(0, err)
+				}
+			}()
 		}
 		builder := evm.NewBuilder()
 		logger.MustError(builder.Build(fd, insts))
@@ -74,7 +78,7 @@ var runCmd = &cobra.Command{
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
 		ast := logger.MustError(parser.NewWithFilename(tokens, filename).Parse())
 		insts := logger.MustError(emitter.New().Emit(ast))
-		emitter.Print(insts, debug)
+		logger.MustError(0, emitter.Print(insts, debug))
 		ev := evaluator.New(debug)
 		if player && debug {
 			ev = evaluator.NewWithPlayer(true, evaluator.NewPlayer(os.Stdin))

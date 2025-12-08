@@ -242,7 +242,7 @@ func TestGetTokens(t *testing.T) {
 			for i, v := range tokens {
 				// Improve log for testing
 				tok := c.Tokens[i]
-				fmt.Println(v.GetLine(), v.GetColumn(), v.GetCursor(), v.GetTag().Id, v.GetMatch(), "<==>", tok.GetLine(), tok.GetColumn(), tok.GetCursor(), tok.GetTag().Id, tok.GetMatch())
+				fmt.Println(v.GetLine(), v.GetColumn(), v.GetCursor(), v.GetTag().Id, string(v.GetMatch()), "<==>", tok.GetLine(), tok.GetColumn(), tok.GetCursor(), tok.GetTag().Id, string(tok.GetMatch()))
 			}
 			t.Errorf("\nexpected: %v,\ngot: %v", c.Tokens, tokens)
 		}

@@ -22,27 +22,27 @@ func printReadable(w io.Writer, temps map[string][]byte) {
 	for _, v := range temps {
 		isBoolean := len(v) == 1 && v[0] == 0
 		if isBoolean {
-			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(byteutil.ToBoolean(v)))
+			_, _ = fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(byteutil.ToBoolean(v)))
 			continue
 		}
 		isString := len(v) > 8 && len(v)%8 == 0
 		if isString && utf8.Valid(v) {
-			fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(string(v)))
+			_, _ = fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(string(v)))
 			continue
 		}
 		er, err := byteutil.Encode(v)
 		if err != nil {
-			fmt.Fprint(w, color.New(color.FgRed).Sprint(err))
+			_, _ = fmt.Fprint(w, color.New(color.FgRed).Sprint(err))
 			break
 		}
-		fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(er))
+		_, _ = fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(er))
 	}
 }
 
 func printRaw(w io.Writer, temps map[string][]byte) {
 	s := color.New(color.FgWhite, color.Bold).Sprint("=")
 	for _, v := range temps {
-		fmt.Fprintf(w, "%s %v\n", s, color.New(color.FgHiMagenta).Sprint(v))
+		_, _ = fmt.Fprintf(w, "%s %v\n", s, color.New(color.FgHiMagenta).Sprint(v))
 	}
 }
 
@@ -59,7 +59,7 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 
 	scanner := bufio.NewScanner(in)
 	for {
-		fmt.Fprintf(out, ">> ")
+		_, _ = fmt.Fprintf(out, ">> ")
 		scanned := scanner.Scan()
 		if !scanned {
 			return
@@ -85,7 +85,10 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 			continue
 		}
 
-		emitter.Print(insts, debug)
+		if err := emitter.Print(insts, debug); err != nil {
+			fmt.Println(err)
+			continue
+		}
 
 		temps, err := ev.Evaluate(insts)
 		if err != nil {

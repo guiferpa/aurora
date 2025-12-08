@@ -107,7 +107,7 @@ type TapeExpression struct {
 	Length uint64 `json:"length"`
 }
 
-func (_ TapeExpression) Next() Node {
+func (TapeExpression) Next() Node {
 	return nil
 }
 
@@ -115,7 +115,7 @@ type TapeBracketExpression struct {
 	Items []Node `json:"items"`
 }
 
-func (_ TapeBracketExpression) Next() Node {
+func (TapeBracketExpression) Next() Node {
 	return nil
 }
 
@@ -124,7 +124,7 @@ type PullExpression struct {
 	Item   Node `json:"item"`
 }
 
-func (_ PullExpression) Next() Node {
+func (PullExpression) Next() Node {
 	return nil
 }
 
@@ -133,7 +133,7 @@ type HeadExpression struct {
 	Length     uint64 `json:"length"`
 }
 
-func (_ HeadExpression) Next() Node {
+func (HeadExpression) Next() Node {
 	return nil
 }
 
@@ -142,7 +142,7 @@ type TailExpression struct {
 	Length     uint64 `json:"length"`
 }
 
-func (_ TailExpression) Next() Node {
+func (TailExpression) Next() Node {
 	return nil
 }
 
@@ -151,7 +151,7 @@ type PushExpression struct {
 	Item   Node `json:"item"`
 }
 
-func (_ PushExpression) Next() Node {
+func (PushExpression) Next() Node {
 	return nil
 }
 

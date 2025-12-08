@@ -1,6 +1,8 @@
 package evm
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -10,6 +12,11 @@ import (
 )
 
 const CALLDATA_SLOT_READABLE = 32 // bytes
+const BYTE_SIZE = 8
+
+func GetCalldataArgsIndex(index int) byte {
+	return CALLDATA_SLOT_READABLE << index
+}
 
 func ToOpByte(op uint32) []byte {
 	return byteutil.NoPadding(byteutil.FromUint32(op))
@@ -96,10 +103,62 @@ func (t *Builder) buildDivideOperation(w io.Writer) (int, error) {
 }
 
 func (t *Builder) buildDispatcherOperation(w io.Writer, id string) (int, error) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if _, err := bs.Write([]byte{OpPush1}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{0x00}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpCallDataLoad}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpPush1}); err != nil {
+		return 0, err
+	}
+	// Isolate the first 4 bytes of the keccak256 hash of the id
+	if _, err := bs.Write([]byte{byte((CALLDATA_SLOT_READABLE - 4) * BYTE_SIZE)}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpShiftRight}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpPush4}); err != nil {
+		return 0, err
+	}
+	selector := crypto.Keccak256([]byte(id))[:4]
+	if _, err := bs.Write(selector); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpEqual}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpPush1}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{byte(bs.Len() + 3)}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpJumpIf}); err != nil {
+		return 0, err
+	}
+	if _, err := bs.Write([]byte{OpStop}); err != nil {
+		return 0, err
+	}
+	if _, err := io.Copy(w, bs); err != nil {
+		return 0, err
+	}
+	return bs.Len(), nil
+}
+
+func (t *Builder) buildJumpDestinyOperation(w io.Writer) (int, error) {
+	if _, err := w.Write([]byte{OpJumpDestiny}); err != nil {
+		return 0, err
+	}
 	if _, err := w.Write([]byte{OpPush1}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{0x00}); err != nil {
+	if _, err := w.Write([]byte{GetCalldataArgsIndex(0)}); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
@@ -108,25 +167,32 @@ func (t *Builder) buildDispatcherOperation(w io.Writer, id string) (int, error) 
 	if _, err := w.Write([]byte{OpPush1}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{byte(CALLDATA_SLOT_READABLE - 4)}); err != nil {
+	if _, err := w.Write([]byte{GetCalldataArgsIndex(1)}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpShiftRight}); err != nil {
+	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
 		return 0, err
 	}
-	selector := crypto.Keccak256([]byte(id))[:4]
-	if _, err := w.Write(selector); err != nil {
+	if _, err := w.Write([]byte{OpAdd}); err != nil {
 		return 0, err
 	}
 	return 0, nil
+}
+
+func (t *Builder) buildIdentOperation(w io.Writer, id string) (int, error) {
+	if _, err := t.buildDispatcherOperation(w, id); err != nil {
+		return 0, err
+	}
+	return t.buildJumpDestinyOperation(w)
 }
 
 func (t *Builder) Build(w io.Writer, insts []emitter.Instruction) (int, error) {
 	for _, inst := range insts {
 		op := inst.GetOpCode()
 
-		if op == emitter.OpPreCall {
-			if _, err := t.buildDispatcherOperation(w, "sum()"); err != nil {
+		if op == emitter.OpIdent {
+			id := string(inst.GetLeft())
+			if _, err := t.buildIdentOperation(w, fmt.Sprintf("%s()", id)); err != nil {
 				return 0, err
 			}
 		}

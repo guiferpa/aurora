@@ -33,7 +33,7 @@ func Print(w io.Writer, debug bool, nth *uint64, op byte, a, b, c any) {
 	if debug {
 		clr := color.New(color.FgHiCyan)
 		lo := fmt.Sprintf("%-12s", emitter.ResolveOpCode(op))
-		fmt.Fprintf(w, "[%016s] %s %v %v %v\n", clr.Sprintf("%d", *nth), lo, resolveAny(a), resolveAny(b), resolveAny(c))
+		_, _ = fmt.Fprintf(w, "[%016s] %s %v %v %v\n", clr.Sprintf("%d", *nth), lo, resolveAny(a), resolveAny(b), resolveAny(c))
 	}
 	*nth++
 }

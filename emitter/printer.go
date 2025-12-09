@@ -76,6 +76,9 @@ func ResolveOpCode(op byte) string {
 func highlightBytesUsed(c *color.Color, param []byte, b int, f string) string {
 	length := len(param)
 	padding := b - length
+	if padding < 0 {
+		padding = 0
+	}
 	return fmt.Sprintf("%s%s", strings.Repeat("0", padding*2), c.Sprintf(f, param))
 }
 

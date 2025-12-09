@@ -241,7 +241,7 @@ func (p *pr) getPull() (Node, error) {
 		return nil, err
 	}
 	if !isValidTapeTarget(target) {
-		return nil, fmt.Errorf("It is not a valid append target")
+		return nil, errors.New("it is not a valid append target")
 	}
 
 	expr, err := p.getExpr()
@@ -249,7 +249,7 @@ func (p *pr) getPull() (Node, error) {
 		return nil, err
 	}
 	if !isValidTapeItem(expr) {
-		return nil, fmt.Errorf("It is not a valid append item")
+		return nil, errors.New("it is not a valid append item")
 	}
 	return PullExpression{Target: target, Item: expr}, nil
 }
@@ -263,7 +263,7 @@ func (p *pr) getHead() (Node, error) {
 		return nil, err
 	}
 	if !isValidTapeTarget(expr) {
-		return nil, fmt.Errorf("It is not a valid head target")
+		return nil, errors.New("it is not a valid head target")
 	}
 
 	length, err := p.getNum()
@@ -282,7 +282,7 @@ func (p *pr) getTail() (Node, error) {
 		return nil, err
 	}
 	if !isValidTapeTarget(expr) {
-		return nil, fmt.Errorf("It is not a valid tail target")
+		return nil, errors.New("it is not a valid tail target")
 	}
 
 	length, err := p.getNum()
@@ -302,7 +302,7 @@ func (p *pr) getPush() (Node, error) {
 		return nil, err
 	}
 	if !isValidTapeTarget(target) {
-		return nil, fmt.Errorf("It is not a valid push target")
+		return nil, errors.New("it is not a valid push target")
 	}
 
 	expr, err := p.getExpr()
@@ -310,7 +310,7 @@ func (p *pr) getPush() (Node, error) {
 		return nil, err
 	}
 	if !isValidTapeItem(expr) {
-		return nil, fmt.Errorf("It is not a valid push item")
+		return nil, errors.New("it is not a valid push item")
 	}
 	return PushExpression{Target: target, Item: expr}, nil
 }

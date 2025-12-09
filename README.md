@@ -10,6 +10,10 @@
 
 > ⚠ Don't use it to develop something that'll go to production environment
 
+## Development Goal
+
+Aurora is a study-focused programming language whose main goal is to compile source code to the Ethereum Virtual Machine (EVM). Although it already provides basic compilation features, the language is still under active development. Features, syntax, and behaviors may change as the project evolves, and some intended EVM integration capabilities are not yet fully implemented or stabilized.
+
 ## Summary
 
 - [Get started](#get-started)
@@ -328,7 +332,6 @@ Usage:
 Available Commands:
   build       Build binary from source code
   completion  Generate the autocompletion script for the specified shell
-  eval        Evaluate aurora binary file built by build command
   help        Help about any command
   repl        Enter in Read-Eval-Print Loop mode
   run         Run program directly from source code

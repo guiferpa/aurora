@@ -39,7 +39,7 @@ lint: $(LINTER)
 
 $(LINTER):
 	@echo "==> Installing linter..."
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/d302a302c93198df24e842a29f6ddebb5f4cb3dd/install.sh | sh -s -- -b ${GOBIN} v1.60.3
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/f7cf900a4f6021580b7b962645872bbd453f11f2/install.sh | sh -s -- -b ${GOBIN} v2.7.2
 
 # This jobs is to simulate github ci environment for tests github action workflows
 act: $(ACT_BIN)

@@ -37,7 +37,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		}
 		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
 
-		var length uint64 = uint64(len(body)) // Length of function
+		length := uint64(len(body)) // Length of function
 		*insts = append(*insts, NewInstruction(GenerateLabel(tc), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
 		*insts = append(*insts, body...)
 

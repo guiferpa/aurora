@@ -192,7 +192,7 @@ func (t *Builder) buildInitCode(runtimeSize byte) (*bytes.Buffer, error) {
 	if _, err := dst.Write([]byte{OpPush1, runtimeSize}); err != nil {
 		return nil, err
 	}
-	if _, err := dst.Write([]byte{OpPush1, 0x0c}); err != nil {
+	if _, err := dst.Write([]byte{OpPush1, 0x00}); err != nil {
 		return nil, err
 	}
 	if _, err := dst.Write([]byte{OpReturn}); err != nil {

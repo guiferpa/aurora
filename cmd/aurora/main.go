@@ -1,10 +1,19 @@
 package main
 
 import (
+	"context"
+	"encoding/hex"
 	"fmt"
+	"log"
+	"math/big"
 	"os"
 	"strings"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/spf13/cobra"
 
 	"github.com/guiferpa/aurora/builder/evm"
@@ -76,6 +85,58 @@ var runCmd = &cobra.Command{
 	},
 }
 
+var deployCmd = &cobra.Command{
+	Use:   "deploy [file] [address] [private key]",
+	Short: "Deploy program to a blockchain",
+	Args:  cobra.MinimumNArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		filename := args[0]
+		bs := logger.MustError(os.ReadFile(filename))
+
+		privateKey := logger.MustError(crypto.HexToECDSA(args[2]))
+		from := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+		address := args[1]
+		client := logger.MustError(ethclient.Dial(address))
+
+		nonce := logger.MustError(client.PendingNonceAt(context.Background(), from))
+		gasPrice := logger.MustError(client.SuggestGasPrice(context.Background()))
+
+		tx := types.NewContractCreation(nonce, big.NewInt(0), 3_000_000, gasPrice, bs)
+
+		chainID := logger.MustError(client.NetworkID(context.Background()))
+		signedTx := logger.MustError(types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey))
+		logger.MustError(0, client.SendTransaction(context.Background(), signedTx))
+
+		log.Println("Deploy TX:", signedTx.Hash().Hex())
+
+		contractAddr := crypto.CreateAddress(from, nonce)
+		logger.MustError(fmt.Println("Contract deployed at:", contractAddr.Hex()))
+	},
+}
+
+var callCmd = &cobra.Command{
+	Use:   "call [calldata] [contract address] [address]",
+	Short: "Call program on a blockchain",
+	Args:  cobra.MinimumNArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		calldata := logger.MustError(hex.DecodeString(args[0]))
+		contract := common.HexToAddress(args[1])
+
+		address := args[2]
+		client := logger.MustError(ethclient.Dial(address))
+
+		message := ethereum.CallMsg{
+			To:   &contract,
+			Data: calldata,
+		}
+
+		result := logger.MustError(client.CallContract(context.Background(), message, nil))
+
+		fmt.Printf("Result: %v\n", result)
+	},
+}
+
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show toolbox version",
@@ -97,7 +158,7 @@ func main() {
 
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
 
-	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd)
 
 	logger.CommandError(rootCmd.Execute())
 }

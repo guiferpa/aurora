@@ -48,18 +48,65 @@ license that can be found in the LICENSE file.
 	<script src="https://cdn.jsdelivr.net/npm/text-encoding@0.7.0/lib/encoding.min.js"></script>
 	(see https://caniuse.com/#feat=textencoder)
 	-->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs/loader.js"></script>
+
+    <script>
+      require.config({ paths: { vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs" }});
+      require(["vs/editor/editor.main"], function () {
+        window.editor = monaco.editor.create(document.getElementById('editor'), {
+          value: "print \"Hello, World!\";",
+          language: "aurora",
+          theme: "vs-dark",
+          automaticLayout: true,
+          padding: {
+            top: 16,
+            bottom: 16,
+          },
+          minimap: {
+            enabled: false,
+          },
+        });
+      });
+
+      monaco.languages.register({ id: "aurora" });
+
+      monaco.languages.setMonarchTokensProvider("aurora", {
+        comments: {
+          lineComment: "#-",
+        },
+
+        brackets: [
+          ["{", "}", "curly"],
+            ["[", "]", "bracket"],
+            ["(", ")", "paren"],
+        ],
+
+        tokenizer: {
+          root: [
+            { regex: /[ \t\r\n]+/, action: "white" },
+
+            [/#-.*/, "comment"],
+
+            [/\"[^\"]*\"/, "string"],
+
+            [/(0[xX][0-9A-Fa-f]+|[0-9][0-9_]*)\b/, "number"],
+
+            [/\b(print|echo|arguments|assert|ident|equals|different|bigger|smaller|or|and|if|else|branch|true|false|head|tail|push|pull)\b/, "keyword"],
+
+            [/[{}()\[\]]/, "@brackets"],
+
+            [/[A-Za-z][A-Za-z0-9-_?!><]*/, "identifier"],
+          ],
+        },
+      });
+
+    </script>
     <script src="wasm_exec.js"></script>
     <script type="module" src="main.js"></script>
 
     <div class="container">
       <span id="version"></span>
-      <textarea
-        rows="10"
-        cols="50"
-        id="editor"
-        autocorrect="off"
-        autocapitalize="off"
-      ></textarea>
+      <div id="editor" style="height: 500px;"></div>
       <button id="runner" disabled>Run</button>
       <button id="debugger" disabled>Debug</button>
       <ul id="preview"></ul>

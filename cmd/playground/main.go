@@ -23,8 +23,8 @@ func init() {
 func main() {
 	eval := func(debug bool) js.Func {
 		return js.FuncOf(func(this js.Value, args []js.Value) any {
-			playground := document.Call("getElementById", "editor")
-			value := playground.Get("value").String()
+			editor := js.Global().Get("editor")
+			value := editor.Call("getValue").String()
 			bs := bytes.NewBufferString(value)
 			tokens, err := lexer.GetFilledTokens(bs.Bytes())
 			if err != nil {

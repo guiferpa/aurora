@@ -5,7 +5,7 @@ import (
 )
 
 func PrintFunction(bs []byte) {
-	fmt.Println(string(bs))
+	_, _ = fmt.Printf("%v\n", bs)
 }
 
 // EchoFunction converts bytes to text and prints it

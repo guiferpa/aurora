@@ -82,43 +82,43 @@ func BenchmarkScanToken_Comment(b *testing.B) {
 
 func BenchmarkGetTokens_Simple(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetTokens(simpleInput)
+		_, _ = GetTokens(simpleInput)
 	}
 }
 
 func BenchmarkGetTokens_Medium(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetTokens(mediumInput)
+		_, _ = GetTokens(mediumInput)
 	}
 }
 
 func BenchmarkGetTokens_Complex(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetTokens(complexInput)
+		_, _ = GetTokens(complexInput)
 	}
 }
 
 func BenchmarkGetTokens_Hex(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetTokens(hexInput)
+		_, _ = GetTokens(hexInput)
 	}
 }
 
 func BenchmarkGetTokens_Strings(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetTokens(stringInput)
+		_, _ = GetTokens(stringInput)
 	}
 }
 
 func BenchmarkGetTokens_ManyTokens(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetTokens(manyTokensInput)
+		_, _ = GetTokens(manyTokensInput)
 	}
 }
 
 func BenchmarkGetFilledTokens_Complex(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		GetFilledTokens(complexInput)
+		_, _ = GetFilledTokens(complexInput)
 	}
 }
 func BenchmarkIsIdentChar(b *testing.B) {

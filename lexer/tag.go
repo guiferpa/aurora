@@ -96,7 +96,7 @@ var (
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
 
-var tagsWithDescription = []Tag{
+var processableTags = []Tag{
 	TagCallPrint,
 	TagEcho,
 	TagArguments,
@@ -111,8 +111,8 @@ var tagsWithDescription = []Tag{
 	TagPull,
 }
 
-func GetProcessableTagsWithDescription() []Tag {
-	return tagsWithDescription
+func GetProcessableTags() []Tag {
+	return processableTags
 }
 
 func MatchToken(bs []byte) (bool, Tag, []byte) {

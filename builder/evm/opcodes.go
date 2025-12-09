@@ -116,3 +116,5 @@ const (
 	OpPush31                            // Place value 31 on stack
 	OpPush32                            // Place value 32 on stack
 )
+
+const OpReturn byte = 0xf3 // Halt execution returning output data from the last call

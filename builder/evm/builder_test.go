@@ -10,16 +10,7 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-type mockWriter struct {
-	Buffer []byte
-}
-
-func (mw *mockWriter) Write(bs []byte) (int, error) {
-	mw.Buffer = append(mw.Buffer, bs...)
-	return 0, nil
-}
-
-func TestBuilder(t *testing.T) {
+func TestBuildRuntimeCode(t *testing.T) {
 	cases := []struct {
 		Name       string
 		SourceCode string
@@ -104,12 +95,12 @@ func TestBuilder(t *testing.T) {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		mw := &mockWriter{Buffer: make([]byte, 0)}
-		if _, err := builder.Build(mw, insts); err != nil {
+		bfr, err := builder.buildRuntimeCode(insts)
+		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		got := mw.Buffer
+		got := bfr.Bytes()
 		t.Run(c.Name, func(t *testing.T) {
 			expected := c.FnExpected()
 			if !bytes.Equal(got, expected) {

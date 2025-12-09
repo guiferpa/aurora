@@ -26,10 +26,6 @@ type Builder struct {
 	operands [][]byte
 }
 
-func (t *Builder) push(value []byte) {
-	t.operands = append(t.operands, value)
-}
-
 func (t *Builder) pop() []byte {
 	value := t.operands[len(t.operands)-1]
 	t.operands = t.operands[:len(t.operands)-1]
@@ -179,53 +175,103 @@ func (t *Builder) buildJumpDestinyOperation(w io.Writer) (int, error) {
 	return 0, nil
 }
 
-func (t *Builder) buildIdentOperation(w io.Writer, id string) (int, error) {
-	if _, err := t.buildDispatcherOperation(w, id); err != nil {
-		return 0, err
+func (t *Builder) buildInitCode(runtimeSize byte) (*bytes.Buffer, error) {
+	dst := bytes.NewBuffer(make([]byte, 0))
+	if _, err := dst.Write([]byte{OpPush1, runtimeSize}); err != nil {
+		return nil, err
 	}
-	return t.buildJumpDestinyOperation(w)
+	if _, err := dst.Write([]byte{OpPush1, 0x0c}); err != nil {
+		return nil, err
+	}
+	if _, err := dst.Write([]byte{OpPush1, 0x00}); err != nil {
+		return nil, err
+	}
+	if _, err := dst.Write([]byte{OpCodeCopy}); err != nil {
+		return nil, err
+	}
+	if _, err := dst.Write([]byte{OpPush1, runtimeSize}); err != nil {
+		return nil, err
+	}
+	if _, err := dst.Write([]byte{OpPush1, 0x0c}); err != nil {
+		return nil, err
+	}
+	if _, err := dst.Write([]byte{OpReturn}); err != nil {
+		return nil, err
+	}
+	return dst, nil
 }
 
-func (t *Builder) Build(w io.Writer, insts []emitter.Instruction) (int, error) {
+func (t *Builder) buildIdentOperation(w io.Writer, id string) (int, error) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if _, err := t.buildDispatcherOperation(bs, id); err != nil {
+		return 0, err
+	}
+	if _, err := t.buildJumpDestinyOperation(bs); err != nil {
+		return 0, err
+	}
+	if _, err := io.Copy(w, bs); err != nil {
+		return 0, err
+	}
+	return bs.Len(), nil
+}
+
+func (t *Builder) buildRuntimeCode(insts []emitter.Instruction) (*bytes.Buffer, error) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+
 	for _, inst := range insts {
 		op := inst.GetOpCode()
 
 		if op == emitter.OpIdent {
 			id := string(inst.GetLeft())
-			if _, err := t.buildIdentOperation(w, fmt.Sprintf("%s()", id)); err != nil {
-				return 0, err
+			if _, err := t.buildIdentOperation(bs, fmt.Sprintf("%s()", id)); err != nil {
+				return nil, err
 			}
 		}
 
 		if op == emitter.OpAdd {
-			if _, err := t.buildAddOperation(w); err != nil {
-				return 0, err
+			if _, err := t.buildAddOperation(bs); err != nil {
+				return nil, err
 			}
 		}
 
 		if op == emitter.OpMultiply {
-			if _, err := t.buildMultiplyOperation(w); err != nil {
-				return 0, err
+			if _, err := t.buildMultiplyOperation(bs); err != nil {
+				return nil, err
 			}
 		}
 
 		if op == emitter.OpSubtract {
-			if _, err := t.buildSubtractOperation(w); err != nil {
-				return 0, err
+			if _, err := t.buildSubtractOperation(bs); err != nil {
+				return nil, err
 			}
 		}
 
 		if op == emitter.OpDivide {
-			if _, err := t.buildDivideOperation(w); err != nil {
-				return 0, err
+			if _, err := t.buildDivideOperation(bs); err != nil {
+				return nil, err
 			}
 		}
 
 		if op == emitter.OpSave {
-			t.push(inst.GetLeft())
+			t.operands = append(t.operands, inst.GetLeft())
 		}
 	}
-	return 0, nil
+
+	return bs, nil
+}
+
+func (t *Builder) Build(w io.Writer, insts []emitter.Instruction) (int, error) {
+	rc, err := t.buildRuntimeCode(insts)
+	if err != nil {
+		return 0, err
+	}
+
+	ic, err := t.buildInitCode(byte(rc.Len()))
+	if err != nil {
+		return 0, err
+	}
+
+	return w.Write(append(ic.Bytes(), rc.Bytes()...))
 }
 
 func NewBuilder() *Builder {

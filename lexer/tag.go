@@ -96,7 +96,6 @@ var (
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 )
 
-// tagsWithDescription contains only tags that have descriptions (for LSP autocompletion)
 var tagsWithDescription = []Tag{
 	TagCallPrint,
 	TagEcho,

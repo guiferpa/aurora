@@ -187,13 +187,13 @@ func TestIsHexDigit(t *testing.T) {
 }
 
 func TestIsIdentChar(t *testing.T) {
-	valid := "abcABC123_"
+	valid := "abcABC123_-?!><"
 	for _, c := range valid {
 		if !isIdentChar(byte(c)) {
 			t.Errorf("isIdentChar(%q) = false, want true", c)
 		}
 	}
-	invalid := "+-*/(){}[]"
+	invalid := "+*/(){}[]"
 	for _, c := range invalid {
 		if isIdentChar(byte(c)) {
 			t.Errorf("isIdentChar(%q) = true, want false", c)

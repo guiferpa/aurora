@@ -60,7 +60,10 @@ func isNewline(c byte) bool {
 }
 
 func isIdentChar(c byte) bool {
-	return isLowercaseLetter(c) || isUppercaseLetter(c) || isDigit(c) || c == '_'
+	return isLowercaseLetter(c) || isUppercaseLetter(c) || isDigit(c) ||
+		c == '_' || c == '-' ||
+		c == '?' || c == '!' ||
+		c == '>' || c == '<'
 }
 
 func scanOneChar(c byte) (Tag, bool) {

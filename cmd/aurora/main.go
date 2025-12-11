@@ -52,8 +52,8 @@ var buildCmd = &cobra.Command{
 				}
 			}()
 		}
-		builder := evm.NewBuilder()
-		logger.MustError(builder.Build(fd, insts))
+		builder := evm.NewBuilder(insts)
+		logger.MustError(builder.Build(fd))
 	},
 }
 

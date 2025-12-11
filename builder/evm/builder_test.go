@@ -76,8 +76,6 @@ func TestBuildRuntimeCode(t *testing.T) {
 		},
 	}
 
-	builder := NewBuilder()
-
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
 		tokens, err := lexer.GetFilledTokens(bs)
@@ -95,7 +93,9 @@ func TestBuildRuntimeCode(t *testing.T) {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		bfr, err := builder.buildRuntimeCode(insts)
+
+		builder := NewBuilder(insts)
+		bfr, err := builder.buildRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -113,7 +113,7 @@ func TestBuildRuntimeCode(t *testing.T) {
 }
 
 func TestBuildInitCode(t *testing.T) {
-	builder := NewBuilder()
+	builder := NewBuilder(make([]emitter.Instruction, 0))
 	bfr, err := builder.buildInitCode(5)
 	if err != nil {
 		t.Errorf("Error building init code: %v", err)

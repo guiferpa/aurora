@@ -23,6 +23,8 @@ func ToOpByte(op uint32) []byte {
 }
 
 type Builder struct {
+	cursor   int
+	insts    []emitter.Instruction
 	operands [][]byte
 }
 
@@ -151,19 +153,13 @@ func (t *Builder) buildJumpDestinyOperation(w io.Writer) (int, error) {
 	if _, err := w.Write([]byte{OpJumpDestiny}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpPush1}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write([]byte{GetCalldataArgsIndex(0)}); err != nil {
+	if _, err := w.Write([]byte{OpPush1, GetCalldataArgsIndex(0)}); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpPush1}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write([]byte{GetCalldataArgsIndex(1)}); err != nil {
+	if _, err := w.Write([]byte{OpPush1, GetCalldataArgsIndex(1)}); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
@@ -215,10 +211,11 @@ func (t *Builder) buildIdentOperation(w io.Writer, id string) (int, error) {
 	return bs.Len(), nil
 }
 
-func (t *Builder) buildRuntimeCode(insts []emitter.Instruction) (*bytes.Buffer, error) {
+func (t *Builder) buildRuntimeCode() (*bytes.Buffer, error) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 
-	for _, inst := range insts {
+	for t.cursor < len(t.insts) {
+		inst := t.insts[t.cursor]
 		op := inst.GetOpCode()
 
 		if op == emitter.OpIdent {
@@ -255,13 +252,14 @@ func (t *Builder) buildRuntimeCode(insts []emitter.Instruction) (*bytes.Buffer, 
 		if op == emitter.OpSave {
 			t.operands = append(t.operands, inst.GetLeft())
 		}
-	}
 
+		t.cursor++
+	}
 	return bs, nil
 }
 
-func (t *Builder) Build(w io.Writer, insts []emitter.Instruction) (int, error) {
-	rc, err := t.buildRuntimeCode(insts)
+func (t *Builder) Build(w io.Writer) (int, error) {
+	rc, err := t.buildRuntimeCode()
 	if err != nil {
 		return 0, err
 	}
@@ -274,8 +272,10 @@ func (t *Builder) Build(w io.Writer, insts []emitter.Instruction) (int, error) {
 	return w.Write(append(ic.Bytes(), rc.Bytes()...))
 }
 
-func NewBuilder() *Builder {
+func NewBuilder(insts []emitter.Instruction) *Builder {
 	return &Builder{
 		operands: make([][]byte, 0),
+		cursor:   0,
+		insts:    insts,
 	}
 }

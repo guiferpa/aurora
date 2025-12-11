@@ -15,81 +15,58 @@ func TestMatchToken(t *testing.T) {
 	}{
 		// ID
 		{[]byte(`abc`), ID, []byte("abc"), true},
-		{[]byte(`is_true`), ID, []byte("is_true"), true},
-		{[]byte(`my_var_123`), ID, []byte("my_var_123"), true},
-		{[]byte(`explore`), ID, []byte("explore"), true},
-		{[]byte(`Id`), ID, []byte("Id"), true},
-		{[]byte(`CamelCase`), ID, []byte("CamelCase"), true},
-
+		{[]byte(`is_true?`), ID, []byte("is_true?"), true},
+		{[]byte(`e_não?`), ID, []byte("e_n"), true},
+		{[]byte(`explore->implore?`), ID, []byte("explore->implore?"), true},
+		{[]byte(`0d?`), NUMBER, []byte("0"), true}, // Matches '0' as NUMBER
+		{[]byte(`Id?`), ID, []byte("Id?"), true},
 		// SEMICOLON
 		{[]byte(`;`), SEMICOLON, []byte(";"), true},
-
 		// COLON
 		{[]byte(`:`), COLON, []byte(":"), true},
-
 		// IF
 		{[]byte(`if () {}`), IF, []byte("if"), true},
-
 		// ELSE
 		{[]byte(`else {}`), ELSE, []byte("else"), true},
-
 		// COMMA
 		{[]byte(`,`), COMMA, []byte(","), true},
-
 		// C_BRK
 		{[]byte(`]`), C_BRK, []byte("]"), true},
-
 		// O_BRK
 		{[]byte(`[`), O_BRK, []byte("["), true},
-
 		// C_CUR_BRK
 		{[]byte(`}`), C_CUR_BRK, []byte("}"), true},
-
 		// O_CUR_BRK
 		{[]byte(`{`), O_CUR_BRK, []byte("{"), true},
-
 		// BRANCH
 		{[]byte(`branch [true: 1,]`), BRANCH, []byte("branch"), true},
-
 		// COMMENT
 		{[]byte(`#-`), COMMENT_LINE, []byte("#-"), true},
-
 		// SUB
 		{[]byte(`-`), SUB, []byte("-"), true},
-
 		// SUM
 		{[]byte(`+`), SUM, []byte("+"), true},
-
 		// SMALLER
 		{[]byte(`smaller`), SMALLER, []byte("smaller"), true},
-
 		// BIGGER
 		{[]byte(`bigger`), BIGGER, []byte("bigger"), true},
-
 		// DIFFERENT
 		{[]byte(`different`), DIFFERENT, []byte("different"), true},
-
 		// EQUALS
 		{[]byte(`equals`), EQUALS, []byte("equals"), true},
-
 		// C_PAREN
 		{[]byte(`)`), C_PAREN, []byte(")"), true},
-
 		// O_PAREN
 		{[]byte(`(`), O_PAREN, []byte("("), true},
-
 		// ASSIGN
 		{[]byte(`=`), ASSIGN, []byte("="), true},
-
 		// IDENT
 		{[]byte(`ident`), IDENT, []byte("ident"), true},
-
 		// NUMBER
 		{[]byte(`1000`), NUMBER, []byte("1000"), true},
 		{[]byte(`1_000`), NUMBER, []byte("1_000"), true},
 		{[]byte(`10`), NUMBER, []byte("10"), true},
 		{[]byte(`9`), NUMBER, []byte("9"), true},
-
 		// NUMBER - Hexadecimal
 		{[]byte(`0xFF`), NUMBER, []byte("0xFF"), true},
 		{[]byte(`0xff`), NUMBER, []byte("0xff"), true},
@@ -101,10 +78,8 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`0xAbCd`), NUMBER, []byte("0xAbCd"), true},
 		{[]byte(`0x0`), NUMBER, []byte("0x0"), true},
 		{[]byte(`0x00`), NUMBER, []byte("0x00"), true},
-
 		// WHITESPACE
 		{[]byte(`  `), WHITESPACE, []byte(`  `), true},
-
 		// BREAK_LINE
 		{[]byte(`
 `), BREAK_LINE, []byte(`

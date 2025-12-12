@@ -95,7 +95,7 @@ func TestBuildRuntimeCode(t *testing.T) {
 		}
 
 		builder := NewBuilder(insts)
-		bfr, err := builder.buildRuntimeCode()
+		bfr, err := builder.writeRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -109,19 +109,5 @@ func TestBuildRuntimeCode(t *testing.T) {
 				t.Logf("EVM transformer: name: %v, result: %v", c.Name, ToString(got))
 			}
 		})
-	}
-}
-
-func TestBuildInitCode(t *testing.T) {
-	builder := NewBuilder(make([]emitter.Instruction, 0))
-	bfr, err := builder.buildInitCode(5)
-	if err != nil {
-		t.Errorf("Error building init code: %v", err)
-		return
-	}
-	got := bfr.Bytes()
-	expected := []byte{OpPush1, 5, OpPush1, 0x0c, OpPush1, 0x00, OpCodeCopy, OpPush1, 5, OpPush1, 0x00, OpReturn}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Init code: got: %v, expected: %v", ToString(got), ToString(expected))
 	}
 }

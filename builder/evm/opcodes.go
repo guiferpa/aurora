@@ -1,5 +1,7 @@
 package evm
 
+import "github.com/guiferpa/aurora/byteutil"
+
 // https://www.evm.codes/
 
 const (
@@ -118,3 +120,7 @@ const (
 )
 
 const OpReturn byte = 0xf3 // Halt execution returning output data from the last call
+
+func ToOpByte(op uint32) []byte {
+	return byteutil.NoPadding(byteutil.FromUint32(op))
+}

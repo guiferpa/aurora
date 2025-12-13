@@ -44,7 +44,7 @@ func GetTokens(bs []byte) ([]Token, error) {
 	tokens := make([]Token, 0)
 	isComment := false
 	for cursor < length {
-		matched, tag, match := MatchTagRule(bs[cursor:])
+		matched, tag, match := MatchToken(bs[cursor:])
 		if !matched && !isComment {
 			return tokens, fmt.Errorf("unexpected character at line %d, column %d", line, col)
 		}

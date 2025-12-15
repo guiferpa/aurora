@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -116,11 +115,12 @@ var deployCmd = &cobra.Command{
 }
 
 var callCmd = &cobra.Command{
-	Use:   "call [calldata] [contract address] [address]",
+	Use:   "call [function] [contract address] [address]",
 	Short: "Call program on a blockchain",
 	Args:  cobra.MinimumNArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		calldata := logger.MustError(hex.DecodeString(args[0]))
+		fn := args[0]
+		selector := crypto.Keccak256([]byte(fn))[:4]
 		contract := common.HexToAddress(args[1])
 
 		address := args[2]
@@ -128,7 +128,7 @@ var callCmd = &cobra.Command{
 
 		message := ethereum.CallMsg{
 			To:   &contract,
-			Data: calldata,
+			Data: selector,
 		}
 
 		result := logger.MustError(client.CallContract(context.Background(), message, nil))

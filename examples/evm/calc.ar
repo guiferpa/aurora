@@ -1,0 +1,7 @@
+ident sum = {
+    1 + 2;
+};
+
+ident sub = {
+    2 - 1;
+};

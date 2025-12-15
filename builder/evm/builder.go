@@ -19,7 +19,7 @@ type Builder struct {
 	operands [][]byte
 }
 
-func (t *Builder) buildPush8SafeFromOperands(w io.Writer) (int, error) {
+func (t *Builder) writePush8SafeFromOperands(w io.Writer) (int, error) {
 	if len(t.operands) == 0 {
 		return 0, nil
 	}
@@ -35,7 +35,7 @@ func (t *Builder) buildPush8SafeFromOperands(w io.Writer) (int, error) {
 }
 
 func (t *Builder) Build(w io.Writer) (int, error) {
-	rc, err := t.writeRuntimeCode()
+	rc, err := t.buildRuntimeCode()
 	if err != nil {
 		return 0, err
 	}

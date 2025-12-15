@@ -7,7 +7,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 )
 
-func TestBuildInitCode(t *testing.T) {
+func TestBuildInstantiateCode(t *testing.T) {
 	builder := NewBuilder(make([]emitter.Instruction, 0))
 	bfr, err := builder.buildInstantiateCode(5)
 	if err != nil {

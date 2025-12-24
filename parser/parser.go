@@ -18,9 +18,10 @@ type Parser interface {
 }
 
 type pr struct {
-	cursor   int
-	tokens   []lexer.Token
-	filename string
+	cursor        int
+	tokens        []lexer.Token
+	filename      string
+	enableLogging bool
 }
 
 // Helper functions to validate node types for tape operations
@@ -808,10 +809,11 @@ func (p *pr) Parse() (AST, error) {
 	return AST{module}, nil
 }
 
-func New(tokens []lexer.Token) Parser {
-	return &pr{cursor: 0, tokens: tokens, filename: ""}
+type NewParserOptions struct {
+	Filename      string
+	EnableLogging bool
 }
 
-func NewWithFilename(tokens []lexer.Token, filename string) Parser {
-	return &pr{cursor: 0, tokens: tokens, filename: filename}
+func New(tokens []lexer.Token, options NewParserOptions) Parser {
+	return &pr{cursor: 0, tokens: tokens, filename: options.Filename, enableLogging: options.EnableLogging}
 }

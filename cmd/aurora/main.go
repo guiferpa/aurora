@@ -32,27 +32,52 @@ var (
 	output string
 )
 
+var loggers []string
+
 var buildCmd = &cobra.Command{
 	Use:   "build [file]",
 	Short: "Build binary from source code",
 	Args:  cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := args[0]
-		bs := logger.MustError(os.ReadFile(filename))
-		tokens := logger.MustError(lexer.GetFilledTokens(bs))
-		ast := logger.MustError(parser.NewWithFilename(tokens, filename).Parse())
-		insts := logger.MustError(emitter.New().Emit(ast))
+
+		bs, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		tokens, err := lexer.GetFilledTokens(bs)
+		if err != nil {
+			return err
+		}
+
+		ast, err := parser.New(tokens, parser.NewParserOptions{
+			Filename:      filename,
+			EnableLogging: logger.IsParserLogger(loggers),
+		}).Parse()
+		if err != nil {
+			return err
+		}
+
+		insts, err := emitter.New().Emit(ast)
+		if err != nil {
+			return err
+		}
+
 		fd := os.Stdout
 		if strings.Compare(output, "") != 0 {
-			fd = logger.MustError(os.Create(output))
+			fd, err = os.Create(output)
 			defer func() {
-				if err := fd.Close(); err != nil {
-					logger.MustError(0, err)
-				}
+				err = fd.Close()
 			}()
+			if err != nil {
+				return err
+			}
 		}
-		builder := evm.NewBuilder(insts)
-		logger.MustError(builder.Build(fd))
+		if _, err := evm.NewBuilder(insts).Build(fd); err != nil {
+			return err
+		}
+		return nil
 	},
 }
 
@@ -72,7 +97,10 @@ var runCmd = &cobra.Command{
 		filename := args[0]
 		bs := logger.MustError(os.ReadFile(filename))
 		tokens := logger.MustError(lexer.GetFilledTokens(bs))
-		ast := logger.MustError(parser.NewWithFilename(tokens, filename).Parse())
+		ast := logger.MustError(parser.New(tokens, parser.NewParserOptions{
+			Filename:      filename,
+			EnableLogging: logger.IsParserLogger(loggers),
+		}).Parse())
 		insts := logger.MustError(emitter.New().Emit(ast))
 		logger.MustError(0, emitter.Print(insts, debug))
 		ev := evaluator.New(debug)
@@ -150,10 +178,9 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	runCmd.Flags().BoolVarP(&player, "player", "p", false, "enable player for evaluator phase")
-	runCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
+	runCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
 
-	replCmd.Flags().BoolVarP(&debug, "debug", "b", false, "enable debug for show deep dive logs from all phases")
+	replCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
 	replCmd.Flags().BoolVarP(&raw, "raw", "r", false, "enable raw mode for show raw output")
 
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")

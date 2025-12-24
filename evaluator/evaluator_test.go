@@ -624,7 +624,10 @@ func TestEvaluate(t *testing.T) {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		ast, err := parser.New(tokens).Parse()
+		ast, err := parser.New(tokens, parser.NewParserOptions{
+			Filename:      "",
+			EnableLogging: false,
+		}).Parse()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -760,7 +763,10 @@ func TestAssert(t *testing.T) {
 				return
 			}
 			// Use .test.ar filename to allow assert
-			ast, err := parser.NewWithFilename(tokens, "test.test.ar").Parse()
+			ast, err := parser.New(tokens, parser.NewParserOptions{
+				Filename:      "test.test.ar",
+				EnableLogging: false,
+			}).Parse()
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return

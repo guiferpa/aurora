@@ -73,7 +73,10 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 			continue
 		}
 
-		ast, err := parser.New(tokens).Parse()
+		ast, err := parser.New(tokens, parser.NewParserOptions{
+			Filename:      "",
+			EnableLogging: false,
+		}).Parse()
 		if err != nil {
 			fmt.Println(err)
 			continue

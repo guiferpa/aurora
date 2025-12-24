@@ -46,7 +46,10 @@ func ValidateCode(source string) Diagnostics {
 	}
 
 	// Parse the tokens
-	p := parser.New(tokens)
+	p := parser.New(tokens, parser.NewParserOptions{
+		Filename:      "",
+		EnableLogging: false,
+	})
 	_, err = p.Parse()
 	if err != nil {
 		// Parse parser error to extract line and column
@@ -165,7 +168,10 @@ func GetHoverInfo(source string, pos lsp.Position) string {
 		if err != nil {
 			return ""
 		}
-		p := parser.New(tokens)
+		p := parser.New(tokens, parser.NewParserOptions{
+			Filename:      "",
+			EnableLogging: false,
+		})
 		ast, err := p.Parse()
 		if err != nil {
 			return ""
@@ -287,7 +293,10 @@ func FindIdentifierDefinition(source string, name string) (lsp.Position, bool) {
 		return lsp.Position{}, false
 	}
 
-	p := parser.New(tokens)
+	p := parser.New(tokens, parser.NewParserOptions{
+		Filename:      "",
+		EnableLogging: false,
+	})
 	ast, err := p.Parse()
 	if err != nil {
 		return lsp.Position{}, false

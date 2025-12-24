@@ -46,7 +46,10 @@ false;
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		ast, err := parser.New(tokens).Parse()
+		ast, err := parser.New(tokens, parser.NewParserOptions{
+			Filename:      "",
+			EnableLogging: false,
+		}).Parse()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -150,7 +153,10 @@ ident bcde = { true; };`,
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		ast, err := parser.New(tokens).Parse()
+		ast, err := parser.New(tokens, parser.NewParserOptions{
+			Filename:      "",
+			EnableLogging: false,
+		}).Parse()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -284,7 +290,10 @@ func TestBuildRuntimeCode(t *testing.T) {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		ast, err := parser.New(tokens).Parse()
+		ast, err := parser.New(tokens, parser.NewParserOptions{
+			Filename:      "",
+			EnableLogging: false,
+		}).Parse()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return

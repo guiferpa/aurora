@@ -117,8 +117,22 @@ func scanTwoChars(bs []byte) (bool, Tag, []byte) {
 
 func scanWord(bs []byte) (bool, Tag, []byte) {
 	i := 0
-	for i < len(bs) && isIdentChar(bs[i]) {
-		i++
+	for i < len(bs) {
+		c := bs[i]
+
+		if isIdentChar(c) {
+			i++
+			continue
+		}
+
+		if c == '=' && i > 0 {
+			prevChar := bs[i-1]
+			if prevChar == '>' || prevChar == '<' || prevChar == '!' {
+				return false, Tag{}, nil
+			}
+		}
+
+		break
 	}
 
 	if i == 0 {
@@ -134,8 +148,22 @@ func scanWord(bs []byte) (bool, Tag, []byte) {
 
 func scanIdentifier(bs []byte) (bool, Tag, []byte) {
 	i := 0
-	for i < len(bs) && isIdentChar(bs[i]) {
-		i++
+	for i < len(bs) {
+		c := bs[i]
+
+		if isIdentChar(c) {
+			i++
+			continue
+		}
+
+		if c == '=' && i > 0 {
+			prevChar := bs[i-1]
+			if prevChar == '>' || prevChar == '<' || prevChar == '!' {
+				return false, Tag{}, nil
+			}
+		}
+
+		break
 	}
 
 	if i == 0 {

@@ -46,7 +46,9 @@ var buildCmd = &cobra.Command{
 			return err
 		}
 
-		tokens, err := lexer.GetFilledTokens(bs)
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: logger.IsLexerLogger(loggers),
+		}).GetFilledTokens(bs)
 		if err != nil {
 			return err
 		}
@@ -59,7 +61,9 @@ var buildCmd = &cobra.Command{
 			return err
 		}
 
-		insts, err := emitter.New().Emit(ast)
+		insts, err := emitter.New(emitter.NewEmitterOptions{
+			EnableLogging: logger.IsEmitterLogger(loggers),
+		}).Emit(ast)
 		if err != nil {
 			return err
 		}
@@ -93,22 +97,46 @@ var runCmd = &cobra.Command{
 	Use:   "run [file]",
 	Short: "Run program directly from source code",
 	Args:  cobra.MinimumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := args[0]
-		bs := logger.MustError(os.ReadFile(filename))
-		tokens := logger.MustError(lexer.GetFilledTokens(bs))
-		ast := logger.MustError(parser.New(tokens, parser.NewParserOptions{
+		bs, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: logger.IsLexerLogger(loggers),
+		}).GetFilledTokens(bs)
+		if err != nil {
+			return err
+		}
+
+		ast, err := parser.New(tokens, parser.NewParserOptions{
 			Filename:      filename,
 			EnableLogging: logger.IsParserLogger(loggers),
-		}).Parse())
-		insts := logger.MustError(emitter.New().Emit(ast))
-		logger.MustError(0, emitter.Print(insts, debug))
+		}).Parse()
+		if err != nil {
+			return err
+		}
+
+		insts, err := emitter.New(emitter.NewEmitterOptions{
+			EnableLogging: logger.IsEmitterLogger(loggers),
+		}).Emit(ast)
+		if err != nil {
+			return err
+		}
+		if err := emitter.Print(insts, debug); err != nil {
+			return err
+		}
 		ev := evaluator.New(debug)
 		if player && debug {
 			ev = evaluator.NewWithPlayer(true, evaluator.NewPlayer(os.Stdin))
 		}
-		logger.MustError(ev.Evaluate(insts))
+		if _, err := ev.Evaluate(insts); err != nil {
+			return err
+		}
 		logger.AssertError(ev.GetAssertErrors(), filename)
+		return nil
 	},
 }
 

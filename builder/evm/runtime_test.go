@@ -41,7 +41,9 @@ false;
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
-		tokens, err := lexer.GetFilledTokens(bs)
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: false,
+		}).GetFilledTokens(bs)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -54,7 +56,9 @@ false;
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		insts, err := emitter.New().Emit(ast)
+		insts, err := emitter.New(emitter.NewEmitterOptions{
+			EnableLogging: false,
+		}).Emit(ast)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -148,7 +152,9 @@ ident bcde = { true; };`,
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
-		tokens, err := lexer.GetFilledTokens(bs)
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: false,
+		}).GetFilledTokens(bs)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -161,7 +167,9 @@ ident bcde = { true; };`,
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		insts, err := emitter.New().Emit(ast)
+		insts, err := emitter.New(emitter.NewEmitterOptions{
+			EnableLogging: false,
+		}).Emit(ast)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -285,7 +293,9 @@ func TestBuildRuntimeCode(t *testing.T) {
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
-		tokens, err := lexer.GetFilledTokens(bs)
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: false,
+		}).GetFilledTokens(bs)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -298,7 +308,9 @@ func TestBuildRuntimeCode(t *testing.T) {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		insts, err := emitter.New().Emit(ast)
+		insts, err := emitter.New(emitter.NewEmitterOptions{
+			EnableLogging: false,
+		}).Emit(ast)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return

@@ -144,29 +144,53 @@ var deployCmd = &cobra.Command{
 	Use:   "deploy [file] [address] [private key]",
 	Short: "Deploy program to a blockchain",
 	Args:  cobra.MinimumNArgs(3),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		filename := args[0]
-		bs := logger.MustError(os.ReadFile(filename))
+		bs, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
 
-		privateKey := logger.MustError(crypto.HexToECDSA(args[2]))
+		privateKey, err := crypto.HexToECDSA(args[2])
+		if err != nil {
+			return err
+		}
 		from := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 		address := args[1]
-		client := logger.MustError(ethclient.Dial(address))
+		client, err := ethclient.Dial(address)
+		if err != nil {
+			return err
+		}
 
-		nonce := logger.MustError(client.PendingNonceAt(context.Background(), from))
-		gasPrice := logger.MustError(client.SuggestGasPrice(context.Background()))
+		nonce, err := client.PendingNonceAt(context.Background(), from)
+		if err != nil {
+			return err
+		}
+		gasPrice, err := client.SuggestGasPrice(context.Background())
+		if err != nil {
+			return err
+		}
 
 		tx := types.NewContractCreation(nonce, big.NewInt(0), 3_000_000, gasPrice, bs)
 
-		chainID := logger.MustError(client.NetworkID(context.Background()))
-		signedTx := logger.MustError(types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey))
-		logger.MustError(0, client.SendTransaction(context.Background(), signedTx))
+		chainID, err := client.NetworkID(context.Background())
+		if err != nil {
+			return err
+		}
+		signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), privateKey)
+		if err != nil {
+			return err
+		}
+		if err := client.SendTransaction(context.Background(), signedTx); err != nil {
+			return err
+		}
 
 		log.Println("Deploy TX:", signedTx.Hash().Hex())
 
 		contractAddr := crypto.CreateAddress(from, nonce)
-		logger.MustError(fmt.Println("Contract deployed at:", contractAddr.Hex()))
+		fmt.Println("Contract deployed at:", contractAddr.Hex())
+		return nil
 	},
 }
 
@@ -174,22 +198,29 @@ var callCmd = &cobra.Command{
 	Use:   "call [function] [contract address] [address]",
 	Short: "Call program on a blockchain",
 	Args:  cobra.MinimumNArgs(3),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		fn := args[0]
 		selector := crypto.Keccak256([]byte(fn))[:4]
 		contract := common.HexToAddress(args[1])
 
 		address := args[2]
-		client := logger.MustError(ethclient.Dial(address))
+		client, err := ethclient.Dial(address)
+		if err != nil {
+			return err
+		}
 
 		message := ethereum.CallMsg{
 			To:   &contract,
 			Data: selector,
 		}
 
-		result := logger.MustError(client.CallContract(context.Background(), message, nil))
+		result, err := client.CallContract(context.Background(), message, nil)
+		if err != nil {
+			return err
+		}
 
 		fmt.Printf("Result: %v\n", result)
+		return nil
 	},
 }
 

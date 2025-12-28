@@ -1,7 +1,7 @@
 package lexer
 
 type Lexer struct {
-	enableLogging bool
+	logger *Logger
 }
 
 type NewLexerOptions struct {
@@ -9,5 +9,5 @@ type NewLexerOptions struct {
 }
 
 func New(options NewLexerOptions) *Lexer {
-	return &Lexer{enableLogging: options.EnableLogging}
+	return &Lexer{logger: NewLogger(options.EnableLogging)}
 }

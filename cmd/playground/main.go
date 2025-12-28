@@ -26,23 +26,29 @@ func main() {
 			editor := js.Global().Get("editor")
 			value := editor.Call("getValue").String()
 			bs := bytes.NewBufferString(value)
-			tokens, err := lexer.GetFilledTokens(bs.Bytes())
+			tokens, err := lexer.New(lexer.NewLexerOptions{
+				EnableLogging: false,
+			}).GetFilledTokens(bs.Bytes())
 			if err != nil {
 				fmt.Println(err)
 				return nil
 			}
-			ast, err := parser.New(tokens).Parse()
+			ast, err := parser.New(tokens, parser.NewParserOptions{
+				Filename:      "",
+				EnableLogging: false,
+			}).Parse()
 			if err != nil {
 				fmt.Println(err)
 				return nil
 			}
-			insts, err := emitter.New().Emit(ast)
+			insts, err := emitter.New(emitter.NewEmitterOptions{
+				EnableLogging: false,
+			}).Emit(ast)
 			if err != nil {
 				fmt.Println(err)
 				return nil
 			}
 
-			emitter.Print(insts, debug)
 			temps, err := evaluator.New(debug).Evaluate(insts)
 			if err != nil {
 				fmt.Println(err)

@@ -47,7 +47,9 @@ func printRaw(w io.Writer, temps map[string][]byte) {
 }
 
 func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
-	ev := evaluator.New(debug)
+	ev := evaluator.New(evaluator.NewEvaluatorOptions{
+		EnableLogging: debug,
+	})
 
 	csig := make(chan os.Signal, 1)
 	signal.Notify(csig, os.Interrupt)
@@ -88,11 +90,6 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 			EnableLogging: false,
 		}).Emit(ast)
 		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		if err := emitter.Print(insts, debug); err != nil {
 			fmt.Println(err)
 			continue
 		}

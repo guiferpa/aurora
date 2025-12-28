@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
@@ -47,7 +48,7 @@ var buildCmd = &cobra.Command{
 		}
 
 		tokens, err := lexer.New(lexer.NewLexerOptions{
-			EnableLogging: logger.IsLexerLogger(loggers),
+			EnableLogging: slices.Contains(loggers, "lexer"),
 		}).GetFilledTokens(bs)
 		if err != nil {
 			return err
@@ -55,14 +56,14 @@ var buildCmd = &cobra.Command{
 
 		ast, err := parser.New(tokens, parser.NewParserOptions{
 			Filename:      filename,
-			EnableLogging: logger.IsParserLogger(loggers),
+			EnableLogging: slices.Contains(loggers, "parser"),
 		}).Parse()
 		if err != nil {
 			return err
 		}
 
 		insts, err := emitter.New(emitter.NewEmitterOptions{
-			EnableLogging: logger.IsEmitterLogger(loggers),
+			EnableLogging: slices.Contains(loggers, "emitter"),
 		}).Emit(ast)
 		if err != nil {
 			return err
@@ -105,7 +106,7 @@ var runCmd = &cobra.Command{
 		}
 
 		tokens, err := lexer.New(lexer.NewLexerOptions{
-			EnableLogging: logger.IsLexerLogger(loggers),
+			EnableLogging: slices.Contains(loggers, "lexer"),
 		}).GetFilledTokens(bs)
 		if err != nil {
 			return err
@@ -113,24 +114,23 @@ var runCmd = &cobra.Command{
 
 		ast, err := parser.New(tokens, parser.NewParserOptions{
 			Filename:      filename,
-			EnableLogging: logger.IsParserLogger(loggers),
+			EnableLogging: slices.Contains(loggers, "parser"),
 		}).Parse()
 		if err != nil {
 			return err
 		}
 
 		insts, err := emitter.New(emitter.NewEmitterOptions{
-			EnableLogging: logger.IsEmitterLogger(loggers),
+			EnableLogging: slices.Contains(loggers, "emitter"),
 		}).Emit(ast)
 		if err != nil {
 			return err
 		}
-		if err := emitter.Print(insts, debug); err != nil {
-			return err
-		}
-		ev := evaluator.New(debug)
-		if player && debug {
-			ev = evaluator.NewWithPlayer(true, evaluator.NewPlayer(os.Stdin))
+		ev := evaluator.New(evaluator.NewEvaluatorOptions{
+			EnableLogging: slices.Contains(loggers, "evaluator"),
+		})
+		if player {
+			ev.SetPlayer(evaluator.NewPlayer(os.Stdin))
 		}
 		if _, err := ev.Evaluate(insts); err != nil {
 			return err

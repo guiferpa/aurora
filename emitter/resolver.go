@@ -1,0 +1,67 @@
+package emitter
+
+func ResolveOpCode(op byte) string {
+	switch op {
+	case OpMultiply:
+		return "OpMultiply"
+	case OpAdd:
+		return "OpAdd"
+	case OpSubtract:
+		return "OpSubtract"
+	case OpDivide:
+		return "OpDivide"
+	case OpExponential:
+		return "OpExponential"
+	case OpIdent:
+		return "OpIdent"
+	case OpLoad:
+		return "OpLoad"
+	case OpBigger:
+		return "OpBigger"
+	case OpDiff:
+		return "OpDiff"
+	case OpEquals:
+		return "OpEquals"
+	case OpSmaller:
+		return "OpSmaller"
+	case OpBeginScope:
+		return "OpBeginScope"
+	case OpEndScope:
+		return "OpEndScope"
+	case OpSave:
+		return "OpSave"
+	case OpPreCall:
+		return "OpPreCall"
+	case OpCall:
+		return "OpCall"
+	case OpPrint:
+		return "OpPrint"
+	case OpReturn:
+		return "OpReturn"
+	case OpResult:
+		return "OpResult"
+	case OpIf:
+		return "OpIf"
+	case OpOr:
+		return "OpOr"
+	case OpAnd:
+		return "OpAnd"
+	case OpPull:
+		return "OpPull"
+	case OpHead:
+		return "OpHead"
+	case OpTail:
+		return "OpTail"
+	case OpPush:
+		return "OpPush"
+	case OpPushArg:
+		return "OpPushArg"
+	case OpGetArg:
+		return "OpGetArg"
+	case OpAssert:
+		return "OpAssert"
+	case OpEcho:
+		return "OpEcho"
+	}
+	return "Unknown"
+}

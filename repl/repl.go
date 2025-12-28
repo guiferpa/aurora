@@ -67,7 +67,9 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 
 		line := bytes.NewBufferString(scanner.Text())
 
-		tokens, err := lexer.GetFilledTokens(line.Bytes())
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: false,
+		}).GetFilledTokens(line.Bytes())
 		if err != nil {
 			fmt.Println(err)
 			continue
@@ -82,7 +84,9 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 			continue
 		}
 
-		insts, err := emitter.New().Emit(ast)
+		insts, err := emitter.New(emitter.NewEmitterOptions{
+			EnableLogging: false,
+		}).Emit(ast)
 		if err != nil {
 			fmt.Println(err)
 			continue

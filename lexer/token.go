@@ -36,7 +36,7 @@ func (t tok) GetCursor() int {
 	return t.c
 }
 
-func GetTokens(bs []byte) ([]Token, error) {
+func (l *Lexer) GetTokens(bs []byte) ([]Token, error) {
 	cursor := 0
 	col := cursor + 1
 	line := 1
@@ -71,8 +71,8 @@ func GetTokens(bs []byte) ([]Token, error) {
 	return append(tokens, tok{line, col, cursor, TagEOF, []byte{}}), nil
 }
 
-func GetFilledTokens(bs []byte) ([]Token, error) {
-	toks, err := GetTokens(bs)
+func (l *Lexer) GetFilledTokens(bs []byte) ([]Token, error) {
+	toks, err := l.GetTokens(bs)
 	if err != nil {
 		return toks, err
 	}

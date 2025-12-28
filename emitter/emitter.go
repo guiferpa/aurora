@@ -11,7 +11,9 @@ type Emitter interface {
 	Emit(ast parser.AST) ([]Instruction, error)
 }
 
-type emt struct{}
+type emt struct {
+	enableLogging bool
+}
 
 func GenerateLabel(tc *int) []byte {
 	t := []byte(fmt.Sprintf("0%d", *tc))
@@ -268,6 +270,10 @@ func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {
 	return insts, nil
 }
 
-func New() *emt {
-	return &emt{}
+type NewEmitterOptions struct {
+	EnableLogging bool
+}
+
+func New(options NewEmitterOptions) *emt {
+	return &emt{enableLogging: options.EnableLogging}
 }

@@ -23,7 +23,9 @@ func ValidateCode(source string) Diagnostics {
 	diagnostics := Diagnostics{}
 
 	// Tokenize the source code
-	tokens, err := lexer.GetFilledTokens([]byte(source))
+	tokens, err := lexer.New(lexer.NewLexerOptions{
+		EnableLogging: false,
+	}).GetFilledTokens([]byte(source))
 	if err != nil {
 		// Parse lexer error to extract line and column
 		line, col := parseErrorPosition(err.Error())
@@ -112,7 +114,9 @@ func parseErrorPosition(errMsg string) (line, col int) {
 
 // GetTokenAtPosition finds the token at a given position in the source
 func GetTokenAtPosition(source string, pos lsp.Position) (lexer.Token, error) {
-	tokens, err := lexer.GetFilledTokens([]byte(source))
+	tokens, err := lexer.New(lexer.NewLexerOptions{
+		EnableLogging: false,
+	}).GetFilledTokens([]byte(source))
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +168,9 @@ func GetHoverInfo(source string, pos lsp.Position) string {
 	// Handle identifiers - try to find their definition
 	if tag.Id == lexer.ID {
 		// Try to parse and find the identifier definition
-		tokens, err := lexer.GetFilledTokens([]byte(source))
+		tokens, err := lexer.New(lexer.NewLexerOptions{
+			EnableLogging: false,
+		}).GetFilledTokens([]byte(source))
 		if err != nil {
 			return ""
 		}
@@ -288,7 +294,9 @@ func getExpressionType(expr parser.Node) string {
 
 // FindIdentifierDefinition finds the definition location of an identifier
 func FindIdentifierDefinition(source string, name string) (lsp.Position, bool) {
-	tokens, err := lexer.GetFilledTokens([]byte(source))
+	tokens, err := lexer.New(lexer.NewLexerOptions{
+		EnableLogging: false,
+	}).GetFilledTokens([]byte(source))
 	if err != nil {
 		return lsp.Position{}, false
 	}

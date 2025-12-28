@@ -19,9 +19,9 @@ func ToHexBloom(bs []byte) string {
 	nbs := bytes.NewBufferString("")
 	for i := 0; i < len(bs); i++ {
 		if i > 0 {
-			nbs.WriteString(" ")
+			fmt.Fprintf(nbs, " ")
 		}
-		nbs.WriteString(fmt.Sprintf("%02X", bs[i]))
+		fmt.Fprintf(nbs, "%02X", bs[i])
 	}
 	return nbs.String()
 }

@@ -641,7 +641,9 @@ func TestEvaluate(t *testing.T) {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		m, err := New(false).Evaluate(insts)
+		m, err := New(NewEvaluatorOptions{
+			EnableLogging: false,
+		}).Evaluate(insts)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -784,7 +786,9 @@ func TestAssert(t *testing.T) {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			ev := New(false)
+			ev := New(NewEvaluatorOptions{
+				EnableLogging: false,
+			})
 			_, err = ev.Evaluate(insts)
 			assertErrors := ev.GetAssertErrors()
 

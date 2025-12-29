@@ -1,6 +1,8 @@
 package parser
 
-import "github.com/guiferpa/aurora/lexer"
+import (
+	"github.com/guiferpa/aurora/lexer"
+)
 
 type Node interface {
 	Next() Node
@@ -61,7 +63,7 @@ type ReelLiteralNode struct {
 }
 
 type VoidLiteralNode struct {
-	Token lexer.Token
+	Token lexer.Token `json:"-"`
 }
 
 func (vln VoidLiteralNode) Next() Node {
@@ -211,7 +213,7 @@ func (en ExpressionNode) Next() Node {
 }
 
 type PrintStatementNode struct {
-	Param Node `json:"param"`
+	Param Node `json:"parameter"`
 }
 
 func (cpsn PrintStatementNode) Next() Node {
@@ -264,4 +266,8 @@ func (sn StatementNode) Next() Node {
 type ModuleNode struct {
 	Name       string `json:"name"`
 	Statements []Node `json:"statements"`
+}
+
+func (mn ModuleNode) Next() Node {
+	return nil
 }

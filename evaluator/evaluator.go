@@ -43,8 +43,6 @@ func (e *Evaluator) walkTemps(bs []byte) []byte {
 }
 
 func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
-	e.logger.Println(op)
-
 	// For OpAssert, left is a label reference, don't resolve it
 	if op != emitter.OpAssert {
 		if isTemp(left) {
@@ -469,6 +467,9 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, er
 			}
 		}
 		inst := e.insts[e.cursor]
+		if err := e.logger.Println(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()); err != nil {
+			return nil, err
+		}
 		err = e.exec(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight())
 		if err != nil {
 			break
@@ -478,6 +479,10 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, er
 	e.cursor = 0
 	temps := e.envpool.Current().Temps()
 	e.envpool.Current().ClearTemps()
+
+	if err := e.logger.Close(); err != nil {
+		return nil, err
+	}
 
 	return temps, err
 }

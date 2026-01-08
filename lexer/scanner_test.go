@@ -117,7 +117,6 @@ func TestScanToken(t *testing.T) {
 		{"id with greater than or equal to", "my>=var", false, ID, "my>=var"},
 		{"id with less than or equal to", "my<=var", false, ID, "my<=var"},
 		{"id with not equal to", "my!=var", false, ID, "my!=var"},
-		// {"id starts with digit", "123foo", false, ID, "123foo"},
 		{"id with arrow symbol", "my->var", true, ID, "my->var"},
 		{"id with inverted arrow symbol", "my<-var", true, ID, "my<-var"},
 	}

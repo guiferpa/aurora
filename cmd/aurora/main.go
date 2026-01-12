@@ -95,7 +95,7 @@ var replCmd = &cobra.Command{
 	Use:   "repl",
 	Short: "Enter in Read-Eval-Print Loop mode",
 	Run: func(cmd *cobra.Command, args []string) {
-		repl.Start(os.Stdin, os.Stdout, debug, raw)
+		repl.Start(os.Stdin, os.Stdout, debug, raw, loggers)
 	},
 }
 
@@ -242,12 +242,12 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	runCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
+	runCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
 
-	replCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
+	replCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
 	replCmd.Flags().BoolVarP(&raw, "raw", "r", false, "enable raw mode for show raw output")
 
-	buildCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
+	buildCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), builder)")
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
 
 	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd)

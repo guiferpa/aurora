@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildInstantiateCode(t *testing.T) {
-	builder := NewBuilder(make([]emitter.Instruction, 0))
+	builder := NewBuilder(make([]emitter.Instruction, 0), NewBuilderOptions{EnableLogging: false})
 	bfr, err := builder.buildInstantiateCode(5)
 	if err != nil {
 		t.Errorf("Error building init code: %v", err)

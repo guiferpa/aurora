@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/fatih/color"
@@ -46,9 +47,9 @@ func printRaw(w io.Writer, temps map[string][]byte) {
 	}
 }
 
-func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
+func Start(in io.Reader, out io.Writer, debug bool, raw bool, loggers []string) {
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		EnableLogging: debug,
+		EnableLogging: slices.Contains(loggers, "evaluator"),
 	})
 
 	csig := make(chan os.Signal, 1)
@@ -70,7 +71,7 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 		line := bytes.NewBufferString(scanner.Text())
 
 		tokens, err := lexer.New(lexer.NewLexerOptions{
-			EnableLogging: false,
+			EnableLogging: slices.Contains(loggers, "lexer"),
 		}).GetFilledTokens(line.Bytes())
 		if err != nil {
 			fmt.Println(err)
@@ -79,7 +80,7 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 
 		ast, err := parser.New(tokens, parser.NewParserOptions{
 			Filename:      "",
-			EnableLogging: false,
+			EnableLogging: slices.Contains(loggers, "parser"),
 		}).Parse()
 		if err != nil {
 			fmt.Println(err)
@@ -87,7 +88,7 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool) {
 		}
 
 		insts, err := emitter.New(emitter.NewEmitterOptions{
-			EnableLogging: false,
+			EnableLogging: slices.Contains(loggers, "emitter"),
 		}).Emit(ast)
 		if err != nil {
 			fmt.Println(err)

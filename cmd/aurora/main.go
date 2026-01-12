@@ -79,7 +79,12 @@ var buildCmd = &cobra.Command{
 				return err
 			}
 		}
-		if _, err := evm.NewBuilder(insts).Build(fd); err != nil {
+		if _, err := evm.NewBuilder(
+			insts,
+			evm.NewBuilderOptions{
+				EnableLogging: slices.Contains(loggers, "builder"),
+			},
+		).Build(fd); err != nil {
 			return err
 		}
 		return nil
@@ -242,6 +247,7 @@ func main() {
 	replCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
 	replCmd.Flags().BoolVarP(&raw, "raw", "r", false, "enable raw mode for show raw output")
 
+	buildCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases")
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
 
 	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd)

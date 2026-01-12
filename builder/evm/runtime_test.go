@@ -64,7 +64,7 @@ false;
 			return
 		}
 
-		builder := NewBuilder(insts)
+		builder := NewBuilder(insts, NewBuilderOptions{EnableLogging: false})
 		rc, err := builder.pickRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
@@ -175,7 +175,7 @@ ident bcde = { true; };`,
 			return
 		}
 
-		builder := NewBuilder(insts)
+		builder := NewBuilder(insts, NewBuilderOptions{EnableLogging: false})
 		rc, err := builder.pickRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
@@ -316,7 +316,7 @@ func TestBuildRuntimeCode(t *testing.T) {
 			return
 		}
 
-		builder := NewBuilder(insts)
+		builder := NewBuilder(insts, NewBuilderOptions{EnableLogging: false})
 		bfw, err := builder.buildRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)

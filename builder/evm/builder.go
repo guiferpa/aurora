@@ -17,6 +17,7 @@ type Builder struct {
 	cursor   int
 	insts    []emitter.Instruction
 	operands [][]byte
+	logger   *Logger
 }
 
 func (t *Builder) writePush8SafeFromOperands(w io.Writer) (int, error) {
@@ -45,13 +46,22 @@ func (t *Builder) Build(w io.Writer) (int, error) {
 		return 0, err
 	}
 
-	return w.Write(append(ic.Bytes(), rc.Bytes()...))
+	bs := append(ic.Bytes(), rc.Bytes()...)
+	if err := t.logger.Scanln(bs); err != nil {
+		return 0, err
+	}
+	return w.Write(bs)
 }
 
-func NewBuilder(insts []emitter.Instruction) *Builder {
+type NewBuilderOptions struct {
+	EnableLogging bool
+}
+
+func NewBuilder(insts []emitter.Instruction, options NewBuilderOptions) *Builder {
 	return &Builder{
 		operands: make([][]byte, 0),
 		cursor:   0,
 		insts:    insts,
+		logger:   NewLogger(options.EnableLogging),
 	}
 }

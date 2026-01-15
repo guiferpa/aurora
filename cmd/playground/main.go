@@ -49,7 +49,9 @@ func main() {
 				return nil
 			}
 
-			temps, err := evaluator.New(debug).Evaluate(insts)
+			temps, err := evaluator.New(evaluator.NewEvaluatorOptions{
+				EnableLogging: false,
+			}).Evaluate(insts)
 			if err != nil {
 				fmt.Println(err)
 				return nil

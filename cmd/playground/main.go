@@ -21,7 +21,7 @@ func init() {
 }
 
 func main() {
-	eval := func(debug bool) js.Func {
+	eval := func() js.Func {
 		return js.FuncOf(func(this js.Value, args []js.Value) any {
 			editor := js.Global().Get("editor")
 			value := editor.Call("getValue").String()
@@ -56,24 +56,20 @@ func main() {
 				fmt.Println(err)
 				return nil
 			}
-			preview := document.Call("getElementById", "preview")
+			output := document.Call("getElementById", "output")
 			for _, temp := range temps {
 				li := document.Call("createElement", "li")
 				li.Set("innerHTML", fmt.Sprintf("= %v", temp))
-				preview.Call("appendChild", li)
+				output.Call("appendChild", li)
 			}
 			return nil
 		})
 	}
-	evalrunner := eval(false)
+	evalrunner := eval()
 	defer evalrunner.Release()
-
-	evaldebugger := eval(true)
-	defer evaldebugger.Release()
 
 	document.Call("getElementById", "version").Set("innerText", fmt.Sprintf("Aurora version: %s", version.VERSION))
 	document.Call("getElementById", "runner").Call("addEventListener", "click", evalrunner)
-	document.Call("getElementById", "debugger").Call("addEventListener", "click", evaldebugger)
 
 	select {}
 }

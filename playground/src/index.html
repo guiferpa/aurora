@@ -10,16 +10,29 @@ license that can be found in the LICENSE file.
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Aurora Playground</title>
     <style>
+      html, body {
+        height: 100%;
+        width: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
       .container {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         gap: 10px;
+        height: 100vh;
+        width: 100vw;
+        padding: 8px;
       }
       #editor {
-        padding: 10px;
-        position: relative;
+        background-color: #1e1e1e;
+        flex: 2;
       }
-      #editor-loading {
+      #loading {
         position: absolute;
         top: 50%;
         left: 50%;
@@ -30,7 +43,7 @@ license that can be found in the LICENSE file.
         gap: 16px;
         z-index: 10;
       }
-      #editor-loading.hidden {
+      #loading.hidden {
         display: none;
       }
       .spinner {
@@ -45,31 +58,46 @@ license that can be found in the LICENSE file.
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
-      .loading-text {
+      .text {
         color: #666;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         font-size: 14px;
-      }
-      #runner,
-      #debugger {
-        padding: 8px 4px;
       }
       button:hover {
         cursor: pointer;
       }
-      ul {
-        padding: 0px;
-        list-style: none;
+      #actions {
         display: flex;
+        flex-direction: column;
+        height: 100%;
         gap: 10px;
-        flex-direction: column-reverse;
+        flex: 1;
       }
-      ul > li {
+      #info {
+        border-bottom: 1px solid #ccc;
+        flex: 1;
         padding: 10px;
       }
-      ul > li:hover {
+      #output {
+        display: flex;
+        list-style: none;
+        flex: 21;
+        padding: 4px;
+        overflow-y: auto;
+        flex-direction: column;
+      }
+      #output > li {
+        padding: 4px;
+      }
+      #output > li:hover {
         cursor: pointer;
-        background-color: #cdcdcd;
+        background-color: #F2F2F2;
+      }
+      #controls {
+        flex: 2;
+      }
+      #runner {
+        width: 100%;
+        height: 100%;
       }
     </style>
   </head>
@@ -99,60 +127,33 @@ license that can be found in the LICENSE file.
           },
         });
         
-        // Esconde o loading quando o editor estiver pronto
-        const loadingElement = document.getElementById('editor-loading');
-        if (loadingElement) {
-          loadingElement.classList.add('hidden');
+        const $loading  = document.getElementById('loading');
+        if ($loading) {
+          $loading.classList.add('hidden');
         }
       });
 
       monaco.languages.register({ id: "aurora" });
-
-      monaco.languages.setMonarchTokensProvider("aurora", {
-        comments: {
-          lineComment: "#-",
-        },
-
-        brackets: [
-          ["{", "}", "curly"],
-            ["[", "]", "bracket"],
-            ["(", ")", "paren"],
-        ],
-
-        tokenizer: {
-          root: [
-            { regex: /[ \t\r\n]+/, action: "white" },
-
-            [/#-.*/, "comment"],
-
-            [/\"[^\"]*\"/, "string"],
-
-            [/(0[xX][0-9A-Fa-f]+|[0-9][0-9_]*)\b/, "number"],
-
-            [/\b(print|echo|arguments|assert|ident|equals|different|bigger|smaller|or|and|if|else|branch|true|false|head|tail|push|pull)\b/, "keyword"],
-
-            [/[{}()\[\]]/, "@brackets"],
-
-            [/[A-Za-z][A-Za-z0-9-_?!><]*/, "identifier"],
-          ],
-        },
-      });
-
     </script>
     <script src="wasm_exec.js"></script>
     <script type="module" src="main.js"></script>
 
     <div class="container">
-      <span id="version"></span>
-      <div id="editor" style="height: 500px;">
-        <div id="editor-loading">
+      <div id="editor">
+        <div id="loading">
           <div class="spinner"></div>
-          <div class="loading-text">Loading editor...</div>
+          <div class="text">Loading editor...</div>
         </div>
       </div>
-      <button id="runner" disabled>Run</button>
-      <button id="debugger" disabled>Debug</button>
-      <ul id="preview"></ul>
+      <div id="actions">
+        <div id="info">
+          <span id="version"></span>
+        </div>
+        <ul id="output"></ul>
+        <div id="controls">
+          <button id="runner" disabled>Run</button>
+        </div>
+      </div>
     </div>
   </body>
 </html>

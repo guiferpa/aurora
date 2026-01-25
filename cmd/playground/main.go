@@ -14,14 +14,15 @@ import (
 	"github.com/guiferpa/aurora/version"
 )
 
-var document js.Value
+var (
+	document js.Value
+	eval     func() js.Func
+)
 
 func init() {
 	document = js.Global().Get("document")
-}
 
-func main() {
-	eval := func() js.Func {
+	eval = func() js.Func {
 		return js.FuncOf(func(this js.Value, args []js.Value) any {
 			editor := js.Global().Get("editor")
 			value := editor.Call("getValue").String()
@@ -57,14 +58,26 @@ func main() {
 				return nil
 			}
 			output := document.Call("getElementById", "output")
+			fmt.Println(output)
 			for _, temp := range temps {
-				li := document.Call("createElement", "li")
-				li.Set("innerHTML", fmt.Sprintf("= %v", temp))
-				output.Call("appendChild", li)
+				u8 := js.Global().Get("Uint8Array").New(len(temp))
+				js.CopyBytesToJS(u8, temp)
+				js.Global().Call("evalResultHandler", u8)
+
+				/*
+					code := document.Call("createElement", "code")
+					code.Set("innerHTML", fmt.Sprintf("= %v", temp))
+					li := document.Call("createElement", "li")
+					li.Call("appendChild", code)
+					output.Call("appendChild", li)
+				*/
 			}
 			return nil
 		})
 	}
+}
+
+func main() {
 	evalrunner := eval()
 	defer evalrunner.Release()
 

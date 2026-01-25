@@ -95,7 +95,7 @@ var replCmd = &cobra.Command{
 	Use:   "repl",
 	Short: "Enter in Read-Eval-Print Loop mode",
 	Run: func(cmd *cobra.Command, args []string) {
-		repl.Start(os.Stdin, os.Stdout, debug, raw, loggers)
+		repl.Start(os.Stdin, ToMainWriter(), debug, raw, loggers)
 	},
 }
 
@@ -133,8 +133,8 @@ var runCmd = &cobra.Command{
 		}
 		ev := evaluator.New(evaluator.NewEvaluatorOptions{
 			EnableLogging: slices.Contains(loggers, "evaluator"),
-			EchoWriter:    os.Stdout,
-			PrintWriter:   os.Stdout,
+			EchoWriter:    ToMainWriter(),
+			PrintWriter:   ToMainWriter(),
 		})
 		if player {
 			ev.SetPlayer(evaluator.NewPlayer(os.Stdin))

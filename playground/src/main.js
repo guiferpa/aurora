@@ -1,9 +1,9 @@
 function print(result) {
-  console.log("PRINT", result);
+  return `(print) ${toHex(result)}`;
 }
 
 function echo(result) {
-  console.log("ECHO", result);
+  return `(echo) ${toText(result)}`;
 }
 
 const builtins = {
@@ -34,8 +34,17 @@ async function init() {
   }
 }
 
+function toText(result) {
+  const decoder = new TextDecoder('utf-8');
+  return decoder.decode(result);
+}
+
+function toHex(result) {
+  return Array.from(result).map(b => b.toString(16).padStart(2, '0')).join(' ');
+}
+
 function resultToText(result) {
-  const body = Array.from(result).map(b => b.toString(16).padStart(2, '0')).join(' ');
+  const body = toHex(result);
   const len = result.length;
   return `= (${len / 8}) ${body}`;
 }
@@ -50,6 +59,7 @@ function renderOutput(text) {
 }
 
 window.evalResultHandler = (result, builtin) => {
+  console.log(result, builtin);
   const fn = builtins[builtin];
   const text = (!fn) ? resultToText(result) : fn(result);
   renderOutput(text);

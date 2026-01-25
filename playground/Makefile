@@ -17,7 +17,7 @@ assets:
 
 build:
 	@rm -rf ./dist/
-	@GOOS=js GOARCH=wasm go build -o ./dist/main.wasm ../cmd/playground/main.go
+	@GOOS=js GOARCH=wasm go build -o ./dist/main.wasm ../cmd/playground/*.go
 
 # --------------------------------------------------------------------
 

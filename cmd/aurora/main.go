@@ -133,6 +133,8 @@ var runCmd = &cobra.Command{
 		}
 		ev := evaluator.New(evaluator.NewEvaluatorOptions{
 			EnableLogging: slices.Contains(loggers, "evaluator"),
+			EchoWriter:    os.Stdout,
+			PrintWriter:   os.Stdout,
 		})
 		if player {
 			ev.SetPlayer(evaluator.NewPlayer(os.Stdin))

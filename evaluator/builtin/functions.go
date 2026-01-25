@@ -2,17 +2,18 @@ package builtin
 
 import (
 	"fmt"
+	"io"
 )
 
-func PrintFunction(bs []byte) {
-	_, _ = fmt.Printf("%v\n", bs)
+func PrintFunction(w io.Writer, bs []byte) {
+	_, _ = w.Write(bs)
 }
 
 // EchoFunction converts bytes to text and prints it
 // If bytes represent a reel (array of tapes), it prints each tape in sequence
 // If bytes represent a tape (8 bytes), it prints the tape as a character
 // If bytes represent a number, it encodes it as text (ASCII character)
-func EchoFunction(bs []byte) {
+func EchoFunction(w io.Writer, bs []byte) {
 	// Check if this is a reel (array of tapes)
 	// A reel is a concatenation of multiple 8-byte tapes
 	// If the length is a multiple of 8 and greater than 8, it's likely a reel
@@ -32,9 +33,9 @@ func EchoFunction(bs []byte) {
 			}
 		}
 		if result != "" {
-			fmt.Println(result)
+			_, _ = w.Write([]byte(result))
 		} else {
-			fmt.Println()
+			_, _ = w.Write([]byte("\n"))
 		}
 		return
 	}
@@ -53,10 +54,10 @@ func EchoFunction(bs []byte) {
 	char := rune(significant[len(significant)-1])
 	if char >= 32 && char <= 126 {
 		// Printable ASCII character
-		fmt.Println(string(char))
+		_, _ = w.Write([]byte(string(char)))
 	} else {
 		// Non-printable, print as-is
-		fmt.Println(string(significant))
+		_, _ = w.Write([]byte(string(significant)))
 	}
 }
 

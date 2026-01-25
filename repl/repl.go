@@ -50,6 +50,8 @@ func printRaw(w io.Writer, temps map[string][]byte) {
 func Start(in io.Reader, out io.Writer, debug bool, raw bool, loggers []string) {
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
+		EchoWriter:    out,
+		PrintWriter:   out,
 	})
 
 	csig := make(chan os.Signal, 1)

@@ -52,25 +52,17 @@ func init() {
 
 			temps, err := evaluator.New(evaluator.NewEvaluatorOptions{
 				EnableLogging: false,
+				EchoWriter:    ToPlaygroundWriter("echo"),
+				PrintWriter:   ToPlaygroundWriter("print"),
 			}).Evaluate(insts)
 			if err != nil {
 				fmt.Println(err)
 				return nil
 			}
-			output := document.Call("getElementById", "output")
-			fmt.Println(output)
 			for _, temp := range temps {
 				u8 := js.Global().Get("Uint8Array").New(len(temp))
 				js.CopyBytesToJS(u8, temp)
 				js.Global().Call("evalResultHandler", u8)
-
-				/*
-					code := document.Call("createElement", "code")
-					code.Set("innerHTML", fmt.Sprintf("= %v", temp))
-					li := document.Call("createElement", "li")
-					li.Call("appendChild", code)
-					output.Call("appendChild", li)
-				*/
 			}
 			return nil
 		})

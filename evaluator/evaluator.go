@@ -3,6 +3,7 @@ package evaluator
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -21,6 +22,8 @@ type Evaluator struct {
 	result       [][]byte
 	counter      *uint64
 	assertErrors []string // Buffer to collect assert errors
+	echoWriter   io.Writer
+	printWriter  io.Writer
 }
 
 func isTemp(bs []byte) bool {
@@ -251,13 +254,13 @@ func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
 	}
 
 	if op == emitter.OpPrint {
-		builtin.PrintFunction(left)
+		builtin.PrintFunction(e.printWriter, left)
 		e.cursor++
 		return nil
 	}
 
 	if op == emitter.OpEcho {
-		builtin.EchoFunction(left)
+		builtin.EchoFunction(e.echoWriter, left)
 		e.cursor++
 		return nil
 	}
@@ -498,6 +501,8 @@ func (e *Evaluator) SetPlayer(player *Player) {
 type NewEvaluatorOptions struct {
 	EnableLogging bool
 	Player        *Player
+	EchoWriter    io.Writer
+	PrintWriter   io.Writer
 }
 
 func New(options NewEvaluatorOptions) *Evaluator {
@@ -510,5 +515,7 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		result:       make([][]byte, 0),
 		counter:      new(uint64),
 		assertErrors: make([]string, 0),
+		echoWriter:   options.EchoWriter,
+		printWriter:  options.PrintWriter,
 	}
 }

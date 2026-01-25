@@ -46,7 +46,7 @@ function toHex(result) {
 function resultToText(result) {
   const body = toHex(result);
   const len = result.length;
-  return `= (${len / 8}) ${body}`;
+  return `= (${len}) ${body}`;
 }
 
 function renderOutput(text) {

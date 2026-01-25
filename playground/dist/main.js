@@ -59,7 +59,6 @@ function renderOutput(text) {
 }
 
 window.evalResultHandler = (result, builtin) => {
-  console.log(result, builtin);
   const fn = builtins[builtin];
   const text = (!fn) ? resultToText(result) : fn(result);
   renderOutput(text);

@@ -1,6 +1,5 @@
 function print(result) {
-  console.log("PRINT", result);
-  return `(print) ${toHex(result)}`;
+  return `(print) ${toDecimal(result)}`;
 }
 
 function echo(result) {
@@ -35,6 +34,10 @@ async function init() {
   }
 }
 
+function toDecimal(result) {
+  return Array.from(result).map(b => b.toString(10)).join(' ');
+}
+
 function toText(result) {
   const decoder = new TextDecoder('utf-8');
   return decoder.decode(result);
@@ -45,7 +48,7 @@ function toHex(result) {
 }
 
 function fromResult(result) {
-  const body = toHex(result);
+  const body = toDecimal(result);
   const len = result.length;
   return `= (${len}) ${body}`;
 }

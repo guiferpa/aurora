@@ -321,7 +321,7 @@ print false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 
 
 ### Playground
 > 🚀 Feel free to try Aurora with [playground](https://guiferpa.github.io/aurora) built with WebAssembly + Go (Aurora source code)
-<img width="942" alt="Screenshot 2025-01-12 at 12 27 41 AM" src="https://github.com/user-attachments/assets/51f073de-1fde-4a68-9cf8-b608b5b83032" />
+<img width="942" alt="Playground demo" src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/playground_demo.gif" />
 
 ## Extra options
 

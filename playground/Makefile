@@ -10,7 +10,7 @@ install: build assets
 
 assets:
 	@cp ./src/index.html ./dist/index.html
-	@cp ./src/main.js ./dist/main.js
+	@cp ./src/*.js ./dist/
 	@cp $(WASM_JS) ./dist/wasm_exec.js
 
 # --------------------------------------------------------------------

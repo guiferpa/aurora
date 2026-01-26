@@ -28,10 +28,6 @@ license that can be found in the LICENSE file.
         width: 100vw;
         padding: 8px;
       }
-      #editor {
-        background-color: #1e1e1e;
-        flex: 2;
-      }
       #loading {
         position: absolute;
         top: 50%;
@@ -65,12 +61,16 @@ license that can be found in the LICENSE file.
       button:hover {
         cursor: pointer;
       }
+      #editor {
+        background-color: #1e1e1e;
+        width: 70%;
+      }
       #actions {
         display: flex;
         flex-direction: column;
         height: 100%;
+        width: 30%;
         gap: 10px;
-        flex: 1;
       }
       #info {
         display: flex;
@@ -124,6 +124,14 @@ license that can be found in the LICENSE file.
       #debug-mode-label:hover {
         cursor: pointer;
       }
+      #divider {
+        width: 1px;
+        cursor: col-resize;
+        background-color: #ccc;
+      }
+      #divider:hover {
+        background-color: #444;
+      }
     </style>
   </head>
 
@@ -151,16 +159,17 @@ license that can be found in the LICENSE file.
             enabled: false,
           },
         });
-        
-        const $loading  = document.getElementById('loading');
+
+        const $loading = document.getElementById('loading');
         if ($loading) {
-          $loading.classList.add('hidden');
+            $loading.classList.add('hidden');
         }
       });
 
       monaco.languages.register({ id: "aurora" });
     </script>
     <script src="wasm_exec.js"></script>
+    <script type="module" src="resize.js"></script>
     <script type="module" src="main.js"></script>
 
     <div class="container">
@@ -170,6 +179,7 @@ license that can be found in the LICENSE file.
           <div class="text">Loading editor...</div>
         </div>
       </div>
+      <div id="divider"></div>
       <div id="actions">
         <div id="info">
           <span id="version"></span>

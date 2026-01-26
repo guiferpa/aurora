@@ -73,6 +73,9 @@ license that can be found in the LICENSE file.
         flex: 1;
       }
       #info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         border-bottom: 1px solid #ccc;
         flex: 1;
         padding: 10px;
@@ -111,6 +114,15 @@ license that can be found in the LICENSE file.
       }
       #output > li.error {
         color: #ff0000;
+      }
+      #debug-mode-label {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+      }
+      #debug-mode-label:hover {
+        cursor: pointer;
       }
     </style>
   </head>
@@ -161,6 +173,10 @@ license that can be found in the LICENSE file.
       <div id="actions">
         <div id="info">
           <span id="version"></span>
+            <label id="debug-mode-label" for="debug-mode">
+              <input type="checkbox" id="debug-mode">
+              <span id="debug-mode-text">Debug</span>
+            </label>
         </div>
         <ul id="output"></ul>
         <div id="controls">

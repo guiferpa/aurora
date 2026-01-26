@@ -29,8 +29,9 @@ func init() {
 			editor := js.Global().Get("editor")
 			value := editor.Call("getValue").String()
 			bs := bytes.NewBufferString(value)
+			debug := document.Call("getElementById", "debug-mode").Get("checked").Bool()
 			tokens, err := lexer.New(lexer.NewLexerOptions{
-				EnableLogging: false,
+				EnableLogging: debug,
 			}).GetFilledTokens(bs.Bytes())
 			if err != nil {
 				fmt.Println(err)
@@ -38,14 +39,14 @@ func init() {
 			}
 			ast, err := parser.New(tokens, parser.NewParserOptions{
 				Filename:      "",
-				EnableLogging: false,
+				EnableLogging: debug,
 			}).Parse()
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
 			insts, err := emitter.New(emitter.NewEmitterOptions{
-				EnableLogging: false,
+				EnableLogging: debug,
 			}).Emit(ast)
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
@@ -53,7 +54,7 @@ func init() {
 			}
 
 			temps, err := evaluator.New(evaluator.NewEvaluatorOptions{
-				EnableLogging: false,
+				EnableLogging: debug,
 				EchoWriter:    ToPlaygroundWriter("echo"),
 				PrintWriter:   ToPlaygroundWriter("print"),
 			}).Evaluate(insts)

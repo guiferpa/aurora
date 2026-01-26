@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/mascot.png" width="224px" height="280px">
+
 # aurora
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/guiferpa/aurora.svg)](https://pkg.go.dev/github.com/guiferpa/aurora)

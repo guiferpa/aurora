@@ -47,11 +47,11 @@ func printRaw(w io.Writer, temps map[string][]byte) {
 	}
 }
 
-func Start(in io.Reader, out io.Writer, debug bool, raw bool, loggers []string) {
+func Start(in io.Reader, debug bool, raw bool, loggers []string) {
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
-		EchoWriter:    out,
-		PrintWriter:   out,
+		EchoWriter:    &EchoWriter{},
+		PrintWriter:   &PrintWriter{},
 	})
 
 	csig := make(chan os.Signal, 1)
@@ -64,7 +64,7 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool, loggers []string) 
 
 	scanner := bufio.NewScanner(in)
 	for {
-		_, _ = fmt.Fprintf(out, ">> ")
+		_, _ = fmt.Fprintf(os.Stdout, ">> ")
 		scanned := scanner.Scan()
 		if !scanned {
 			return
@@ -103,9 +103,9 @@ func Start(in io.Reader, out io.Writer, debug bool, raw bool, loggers []string) 
 			continue
 		}
 		if raw {
-			printRaw(out, temps)
+			printRaw(os.Stdout, temps)
 			continue
 		}
-		printReadable(out, temps)
+		printReadable(os.Stdout, temps)
 	}
 }

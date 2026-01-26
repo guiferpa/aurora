@@ -6,7 +6,7 @@ import (
 )
 
 func PrintFunction(w io.Writer, bs []byte) {
-	_, _ = fmt.Fprintf(w, "%v", bs)
+	_, _ = w.Write(bs)
 }
 
 // EchoFunction converts bytes to text and prints it

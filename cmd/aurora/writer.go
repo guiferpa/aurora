@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 )
 
 type w struct{}
 
 func (w *w) Write(bs []byte) (int, error) {
-	return fmt.Fprintf(os.Stdout, "%s\n", bs)
+	return fmt.Printf("%v\n", bs)
 }
 
 func ToMainWriter() io.Writer {

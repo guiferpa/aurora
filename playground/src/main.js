@@ -1,4 +1,5 @@
 function print(result) {
+  console.log("PRINT", result);
   return `(print) ${toHex(result)}`;
 }
 
@@ -43,7 +44,7 @@ function toHex(result) {
   return Array.from(result).map(b => b.toString(16).padStart(2, '0')).join(' ');
 }
 
-function resultToText(result) {
+function fromResult(result) {
   const body = toHex(result);
   const len = result.length;
   return `= (${len}) ${body}`;
@@ -59,8 +60,8 @@ function renderOutput(text) {
 }
 
 window.evalResultHandler = (result, builtin) => {
-  const fn = builtins[builtin];
-  const text = (!fn) ? resultToText(result) : fn(result);
+  const fromBuiltin = builtins[builtin];
+  const text = (!fromBuiltin) ? fromResult(result) : fromBuiltin(result);
   renderOutput(text);
 }
 

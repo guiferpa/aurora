@@ -71,6 +71,12 @@ window.evalResultHandler = (result, builtin) => {
 const outputMutationsHandler = (ref) => (muts) => {
   for (const mut of muts) {
     if (mut.type === 'childList') {
+
+      const $clear = document.getElementById('clear');
+      if (ref.children.length > 0) {
+        $clear.disabled = false;
+      }
+
       for (const node of mut.addedNodes) {
         if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'LI') {
           ref.scrollTo(0, ref.scrollHeight);
@@ -86,6 +92,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const $output = document.getElementById('output');
   const mob = new MutationObserver(outputMutationsHandler($output));
   mob.observe($output, { childList: true });
+
+  const $clear = document.getElementById('clear');
+  $clear.addEventListener('click', () => {
+    $output.innerHTML = '';
+    $clear.disabled = true;
+  });
 
   init();
 });

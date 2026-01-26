@@ -93,11 +93,21 @@ license that can be found in the LICENSE file.
         background-color: #F2F2F2;
       }
       #controls {
+        display: flex;
+        gap: 4px;
         flex: 2;
       }
-      #runner {
+      #runner, #clear {
         width: 100%;
         height: 100%;
+      }
+
+      #runner {
+        flex: 3;
+      }
+
+      #clear {
+        flex: 1;
       }
     </style>
   </head>
@@ -152,6 +162,7 @@ license that can be found in the LICENSE file.
         <ul id="output"></ul>
         <div id="controls">
           <button id="runner" disabled>Run</button>
+          <button id="clear" disabled>Clear</button>
         </div>
       </div>
     </div>

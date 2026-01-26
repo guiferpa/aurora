@@ -22,6 +22,8 @@ var (
 func init() {
 	document = js.Global().Get("document")
 
+	errorWriter := ToPlaygroundErrorWriter()
+
 	eval = func() js.Func {
 		return js.FuncOf(func(this js.Value, args []js.Value) any {
 			editor := js.Global().Get("editor")
@@ -39,14 +41,14 @@ func init() {
 				EnableLogging: false,
 			}).Parse()
 			if err != nil {
-				fmt.Println(err)
+				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
 			insts, err := emitter.New(emitter.NewEmitterOptions{
 				EnableLogging: false,
 			}).Emit(ast)
 			if err != nil {
-				fmt.Println(err)
+				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
 
@@ -56,7 +58,7 @@ func init() {
 				PrintWriter:   ToPlaygroundWriter("print"),
 			}).Evaluate(insts)
 			if err != nil {
-				fmt.Println(err)
+				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
 			for _, temp := range temps {

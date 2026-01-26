@@ -62,10 +62,25 @@ function renderOutput(text) {
   $output.appendChild(li);
 }
 
+function renderError(text) {
+  const $output = document.getElementById('output');
+  const code = document.createElement('code');
+  code.innerText = text;
+  const li = document.createElement('li');
+  li.classList.add('error');
+  li.appendChild(code);
+  $output.appendChild(li);
+}
+
 window.evalResultHandler = (result, builtin) => {
   const fromBuiltin = builtins[builtin];
   const text = (!fromBuiltin) ? fromResult(result) : fromBuiltin(result);
   renderOutput(text);
+}
+
+window.evalErrorHandler = (error) => {
+  const text = `(error) ${toText(error)}`;
+  renderError(text);
 }
 
 const outputMutationsHandler = (ref) => (muts) => {

@@ -8,8 +8,6 @@
 ![Pipeline workflow](https://github.com/guiferpa/aurora/actions/workflows/pipeline.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/guiferpa/aurora/badge.svg?branch=main)](https://coveralls.io/github/guiferpa/aurora?branch=main)
 
-🌌 Aurora's just for studying programming language concepts
-
 > ⚠ Don't use it to develop something that'll go to production environment
 
 ## Development Goal

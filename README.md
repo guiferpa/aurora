@@ -18,6 +18,7 @@ Aurora is a study-focused programming language whose main goal is to compile sou
 
 - [Get started](#get-started)
   - [Install CLI](#install-cli)
+  - [Project manifest](#project-manifest)
   - [Using REPL mode](#using-repl-mode)
   - [Execute from file](#execute-from-file)
   - [Writing some code](#writing-some-code)
@@ -38,6 +39,25 @@ Aurora is a study-focused programming language whose main goal is to compile sou
 go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD
 ```
 > 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
+
+### Project manifest
+
+Most Aurora CLI commands (**build**, **run**, **deploy**, **call**) require a project manifest. The manifest is a file named `aurora.toml` at the root of your project (or in any parent directory). It defines the project metadata and the default entrypoint and build output paths.
+
+If you run a command without a manifest, the CLI will exit with:
+
+```
+aurora.toml not found in current directory or any parent (run 'aurora init' to create a project manifest)
+```
+
+**Create a new project with a manifest:**
+
+```sh
+mkdir my-project && cd my-project
+aurora init
+```
+
+This creates `aurora.toml` with a `[project]` section (name is taken from the current folder) and a default `[profiles.main]` with `entrypoint` and `target`. You can then run `aurora run`, `aurora build`, and other commands. The only commands that do **not** require a manifest are `aurora init`, `aurora version`, `aurora help`, and `aurora repl`.
 
 ### Using REPL mode
 
@@ -323,6 +343,8 @@ print false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 
 
 ## Commands
 
+All commands except **init**, **version**, **help**, and **repl** require an `aurora.toml` manifest in the current directory (or a parent). Use `aurora init` to create one.
+
 ```sh
 aurora help
 
@@ -335,6 +357,7 @@ Available Commands:
   completion  Generate the autocompletion script for the specified shell
   deploy      Deploy program to a blockchain
   help        Help about any command
+  init        Create an aurora.toml manifest in the current directory
   repl        Enter in Read-Eval-Print Loop mode
   run         Run program directly from source code
   version     Show toolbox version

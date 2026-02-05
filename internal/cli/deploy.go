@@ -15,21 +15,21 @@ import (
 
 // DeployInput is the input for the Deploy handler.
 type DeployInput struct {
-	BytecodePath   string // path to compiled bytecode
-	RPCURL         string
-	PrivateKeyPath string // path to file containing hex private key
+	BinaryPath string // path to compiled binary
+	RPC       string
+	Privkey   string // path to file containing hex private key
 }
 
 // Deploy sends the bytecode to the chain and prints the contract address.
 func Deploy(ctx context.Context, in DeployInput) error {
-	bs, err := os.ReadFile(in.BytecodePath)
+	bs, err := os.ReadFile(in.BinaryPath)
 	if err != nil {
-		return fmt.Errorf("read bytecode from %s: %w", in.BytecodePath, err)
+		return fmt.Errorf("read binary from %s: %w", in.BinaryPath, err)
 	}
 
-	keyHex, err := os.ReadFile(in.PrivateKeyPath)
+	keyHex, err := os.ReadFile(in.Privkey)
 	if err != nil {
-		return fmt.Errorf("read private key from %s: %w", in.PrivateKeyPath, err)
+		return fmt.Errorf("read private key from %s: %w", in.Privkey, err)
 	}
 	privateKey, err := crypto.HexToECDSA(strings.TrimSpace(string(keyHex)))
 	if err != nil {
@@ -37,7 +37,7 @@ func Deploy(ctx context.Context, in DeployInput) error {
 	}
 	from := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	client, err := ethclient.Dial(in.RPCURL)
+	client, err := ethclient.Dial(in.RPC)
 	if err != nil {
 		return err
 	}

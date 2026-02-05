@@ -26,8 +26,8 @@ type Project struct {
 type Profile struct {
 	Entrypoint      string `toml:"entrypoint"`
 	Target          string `toml:"target"`
-	RPCURL          string `toml:"rpc_url"`
-	PrivateKeyPath  string `toml:"private_key_path"`
+	RPC             string `toml:"rpc"`
+	Privkey         string `toml:"privkey"`
 	ContractAddress string `toml:"contract_address"`
 }
 
@@ -72,7 +72,7 @@ func (m *Manifest) Profile(name string) (Profile, error) {
 	return p, nil
 }
 
-// AbsPath returns path joined with project root (for entrypoint, target, private_key_path).
+// AbsPath returns path joined with project root (for entrypoint, target, privkey).
 func AbsPath(projectRoot, path string) string {
 	if filepath.IsAbs(path) {
 		return path

@@ -16,9 +16,9 @@ func TestDeploy_failsWhenBytecodeMissing(t *testing.T) {
 	}
 	ctx := context.Background()
 	err := Deploy(ctx, DeployInput{
-		BytecodePath:   filepath.Join(dir, "nonexistent.bin"),
-		RPCURL:        "http://127.0.0.1:8545",
-		PrivateKeyPath: keyPath,
+		BinaryPath: filepath.Join(dir, "nonexistent.bin"),
+		RPC:        "http://127.0.0.1:8545",
+		Privkey:    keyPath,
 	})
 	if err == nil {
 		t.Error("Deploy() with missing bytecode file should return error")
@@ -27,15 +27,15 @@ func TestDeploy_failsWhenBytecodeMissing(t *testing.T) {
 
 func TestDeploy_failsWhenPrivateKeyFileMissing(t *testing.T) {
 	dir := t.TempDir()
-	bytecodePath := filepath.Join(dir, "contract.bin")
-	if err := os.WriteFile(bytecodePath, []byte{0x00, 0x01}, 0o644); err != nil {
+	binaryPath := filepath.Join(dir, "contract.bin")
+	if err := os.WriteFile(binaryPath, []byte{0x00, 0x01}, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
 	err := Deploy(ctx, DeployInput{
-		BytecodePath:   bytecodePath,
-		RPCURL:        "http://127.0.0.1:8545",
-		PrivateKeyPath: filepath.Join(dir, "missing.key"),
+		BinaryPath: binaryPath,
+		RPC:        "http://127.0.0.1:8545",
+		Privkey:    filepath.Join(dir, "missing.key"),
 	})
 	if err == nil {
 		t.Error("Deploy() with missing private key file should return error")

@@ -29,7 +29,7 @@ func LoadEnviron(profileName string) (*Environ, error) {
 	return &Environ{Root: root, Manifest: m, Profile: prof}, nil
 }
 
-// AbsPath returns path joined with the project root (for entrypoint, target, private_key_path).
+// AbsPath returns path joined with the project root (for entrypoint, target, privkey).
 func (e *Environ) AbsPath(path string) string {
 	return manifest.AbsPath(e.Root, path)
 }

@@ -73,7 +73,7 @@ Deploy e Call na mesma linha:
 
 ```go
 type DeployInput struct {
-    BytecodePath   string
+    BinaryPath     string
     RPCURL         string
     PrivateKeyPath string
 }

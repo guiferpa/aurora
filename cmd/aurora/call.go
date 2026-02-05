@@ -10,7 +10,7 @@ import (
 
 var callCmd = &cobra.Command{
 	Use:   "call <function> [profile]",
-	Short: "Call program on a blockchain (reads contract_address, rpc_url from manifest)",
+	Short: "Call program on a blockchain",
 	Args:  cobra.MinimumNArgs(1),
 	RunE:  runCall,
 }
@@ -25,8 +25,8 @@ func runCall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if env.Profile.RPCURL == "" {
-		return fmt.Errorf("profile %s: rpc_url is required for call", profileName)
+	if env.Profile.RPC == "" {
+		return fmt.Errorf("profile %s: rpc is required for call", profileName)
 	}
 	if env.Profile.ContractAddress == "" {
 		return fmt.Errorf("profile %s: contract_address is required for call", profileName)
@@ -34,6 +34,6 @@ func runCall(cmd *cobra.Command, args []string) error {
 	return cli.Call(cmd.Context(), cli.CallInput{
 		Function:        fn,
 		ContractAddress: env.Profile.ContractAddress,
-		RPCURL:          env.Profile.RPCURL,
+		RPC:             env.Profile.RPC,
 	})
 }

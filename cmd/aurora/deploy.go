@@ -10,7 +10,7 @@ import (
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "Deploy program to a blockchain (reads target, rpc_url, private_key_path from manifest)",
+	Short: "Deploy program to a blockchain",
 	Args:  cobra.NoArgs,
 	RunE:  runDeploy,
 }
@@ -20,15 +20,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if env.Profile.RPCURL == "" {
-		return fmt.Errorf("profile main: rpc_url is required for deploy")
+	if env.Profile.RPC == "" {
+		return fmt.Errorf("profile main: rpc is required for deploy")
 	}
-	if env.Profile.PrivateKeyPath == "" {
-		return fmt.Errorf("profile main: private_key_path is required for deploy")
+	if env.Profile.Privkey == "" {
+		return fmt.Errorf("profile main: privkey is required for deploy")
 	}
 	return cli.Deploy(cmd.Context(), cli.DeployInput{
-		BytecodePath:   env.AbsPath(env.Profile.Target),
-		RPCURL:         env.Profile.RPCURL,
-		PrivateKeyPath: env.AbsPath(env.Profile.PrivateKeyPath),
+		BinaryPath: env.AbsPath(env.Profile.Target),
+		RPC:        env.Profile.RPC,
+		Privkey:    env.AbsPath(env.Profile.Privkey),
 	})
 }

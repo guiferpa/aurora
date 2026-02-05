@@ -14,7 +14,7 @@ import (
 type CallInput struct {
 	Function        string // function name (selector = Keccak256(function)[:4])
 	ContractAddress string
-	RPCURL          string
+	RPC             string
 }
 
 // Call performs an eth_call and prints the result.
@@ -22,7 +22,7 @@ func Call(ctx context.Context, in CallInput) error {
 	selector := crypto.Keccak256([]byte(in.Function))[:4]
 	contract := common.HexToAddress(in.ContractAddress)
 
-	client, err := ethclient.Dial(in.RPCURL)
+	client, err := ethclient.Dial(in.RPC)
 	if err != nil {
 		return err
 	}

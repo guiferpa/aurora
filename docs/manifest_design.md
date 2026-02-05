@@ -76,19 +76,19 @@ Cada profile agrupa configuração de rede e identidade para deploy/call.
 
 ```toml
 [profile.local]
-rpc_url = "http://127.0.0.1:8545"
-private_key_path = ".env.local"   # arquivo com uma linha: hex da chave (sem 0x)
+rpc = "http://127.0.0.1:8545"
+privkey = ".env.local"   # arquivo com uma linha: hex da chave (sem 0x)
 # Opcional: após primeiro deploy, pode ser preenchido para call
 # contract_address = "0x..."
 
 [profile.sepolia]
-rpc_url = "https://eth-sepolia.g.alchemy.com/v2/MY_KEY"
-private_key_path = ".sepolia.key"
+rpc = "https://eth-sepolia.g.alchemy.com/v2/MY_KEY"
+privkey = ".sepolia.key"
 gas_limit = 3_000_000
 
 [profile.mainnet]
-rpc_url = "https://eth-mainnet.g.alchemy.com/v2/MY_KEY"
-private_key_path = ".mainnet.key"
+rpc = "https://eth-mainnet.g.alchemy.com/v2/MY_KEY"
+privkey = ".mainnet.key"
 gas_limit = 5_000_000
 ```
 
@@ -96,15 +96,15 @@ Campos por profile:
 
 | Campo               | Obrigatório | Descrição |
 |---------------------|------------|-----------|
-| `rpc_url`           | sim        | URL do nó RPC (HTTP/WebSocket) |
-| `private_key_path` | sim (deploy) | Caminho para arquivo que contém a chave privada em hex (uma linha, sem `0x`) |
+| `rpc`     | sim        | URL do nó RPC (HTTP/WebSocket) |
+| `privkey` | sim (deploy) | Caminho para arquivo que contém a chave privada em hex (uma linha, sem `0x`) |
 | `contract_address`  | não        | Endereço do contrato já deployado; usado por `call` quando não passado na CLI |
 | `gas_limit`         | não        | Override do gas limit no deploy (default: 3_000_000) |
 | `chain_id`          | não        | Override; se omitido, usa o da rede via `eth_chainId` |
 
 Boas práticas:
 
-- Manter `aurora.toml` **sem** chaves privadas; só referência via `private_key_path`.
+- Manter `aurora.toml` **sem** chaves privadas; só referência via `privkey`.
 - Colocar `*.key`, `.env*` (ou o que guardar chaves) no `.gitignore`.
 
 ### Profile padrão: `main`
@@ -158,7 +158,7 @@ Profile é **parâmetro posicional opcional**, não `--profile <nome>`:
   - Sem args: usa `package.entry` + profile default (`main` ou único).
   - Um arg: file ou profile (heurística: termina em `.ar` ou tem `/` → file; senão → profile).
   - Dois args: file e profile, nessa ordem.
-  - Lê `rpc_url` e `private_key_path` do profile; opcionalmente `gas_limit` e `chain_id`.
+  - Lê `rpc` e `privkey` do profile; opcionalmente `gas_limit` e `chain_id`.
 - **Sem manifest:**  
   `aurora deploy [file] [address] [private key]` (comportamento atual).
 
@@ -205,8 +205,8 @@ entry = "examples/evm/calc.ar"
 output = "dist/calc.bin"
 
 [profile.main]
-rpc_url = "http://127.0.0.1:8545"
-private_key_path = ".aurora/local.key"
+rpc = "http://127.0.0.1:8545"
+privkey = ".aurora/local.key"
 # contract_address = "0x..."  # após deploy, para call sem passar endereço
 ```
 
@@ -222,12 +222,12 @@ entry = "examples/evm/calc.ar"
 output = "dist/calc.bin"
 
 [profile.main]
-rpc_url = "http://127.0.0.1:8545"
-private_key_path = ".aurora/local.key"
+rpc = "http://127.0.0.1:8545"
+privkey = ".aurora/local.key"
 
 [profile.sepolia]
-rpc_url = "https://eth-sepolia.g.alchemy.com/v2/..."
-private_key_path = ".aurora/sepolia.key"
+rpc = "https://eth-sepolia.g.alchemy.com/v2/..."
+privkey = ".aurora/sepolia.key"
 gas_limit = 3_000_000
 ```
 
@@ -241,6 +241,6 @@ Nota: expansão de variáveis de ambiente (`${ALCHEMY_KEY}`) pode ser uma fase 2
 - **CLI enxuta:** `aurora deploy` (com `main`) ou `aurora deploy sepolia`; profile como parâmetro, não flag.
 - **Segurança:** chaves fora do manifest, em arquivos ignorados pelo git.
 - **Compatibilidade:** sem manifest, a CLI continua recebendo todos os parâmetros como hoje.
-- **Profiles reutilizáveis** entre máquinas (cada uma com seu `private_key_path` ou mesmo path diferente no mesmo profile).
+- **Profiles reutilizáveis** entre máquinas (cada uma com seu `privkey` ou mesmo path diferente no mesmo profile).
 
 Se quiser, o próximo passo é implementar a leitura do `aurora.toml` e a resolução de profiles no `cmd/aurora`, e então adaptar `deploy` e `call` para usá-los.

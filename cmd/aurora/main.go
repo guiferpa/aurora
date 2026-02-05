@@ -242,12 +242,12 @@ var versionCmd = &cobra.Command{
 
 const manifestFilename = "aurora.toml"
 
-const initManifestContent = `# Aurora project manifest.
+const initManifestTemplate = `# Aurora project manifest.
 # See https://github.com/guiferpa/aurora for more information.
 
 [project]
-# Project identifier (e.g. for future registry or tooling).
-name = "project"
+# Project identifier (inherited from the root folder name where 'aurora init' was run).
+name = %q
 # Project version (semantic version recommended).
 version = "0.1.0"
 
@@ -255,8 +255,8 @@ version = "0.1.0"
 # Default profile. Commands like 'aurora build' or 'aurora run' use these paths when no file is given.
 # Path to the main source file (entrypoint). Used by build, run, and deploy when no file argument is passed.
 entrypoint = "src/main.ar"
-# Path where the compiled binary (bytecode) is written. Used by 'aurora build' when no -o output is passed.
-target = "dist/main.bin"
+# Path where the compiled binary is written. Name matches the entrypoint filename (without extension). Used by 'aurora build' when no -o output is passed.
+target = "dist/main"
 `
 
 var initCmd = &cobra.Command{
@@ -267,7 +267,13 @@ var initCmd = &cobra.Command{
 		if _, err := os.Stat(manifestFilename); err == nil {
 			return fmt.Errorf("%s already exists", manifestFilename)
 		}
-		return os.WriteFile(manifestFilename, []byte(initManifestContent), 0o644)
+		dir, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		projectName := filepath.Base(dir)
+		content := fmt.Sprintf(initManifestTemplate, projectName)
+		return os.WriteFile(manifestFilename, []byte(content), 0o644)
 	},
 }
 

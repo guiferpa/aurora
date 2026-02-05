@@ -45,6 +45,7 @@ func Init(in InitInput) error {
 	if name == "" {
 		name = filepath.Base(in.Dir)
 	}
+	fmt.Println("✨ aurora.toml created — dawn has broken on your project.")
 	content := fmt.Sprintf(InitManifestTemplate, name)
 	return os.WriteFile(path, []byte(content), 0o644)
 }

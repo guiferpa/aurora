@@ -321,7 +321,7 @@ print false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 
 > 🚀 Feel free to try Aurora with [playground](https://guiferpa.github.io/aurora) built with WebAssembly + Go (Aurora source code)
 <img width="942" alt="Playground demo" src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/playground_demo.gif" />
 
-## Extra options
+## Commands
 
 ```sh
 aurora help
@@ -331,7 +331,9 @@ Usage:
 
 Available Commands:
   build       Build binary from source code
+  call        Call program on a blockchain
   completion  Generate the autocompletion script for the specified shell
+  deploy      Deploy program to a blockchain
   help        Help about any command
   repl        Enter in Read-Eval-Print Loop mode
   run         Run program directly from source code
@@ -342,10 +344,3 @@ Flags:
 
 Use "aurora [command] --help" for more information about a command.
 ```
-
-### Debug flag
-
-All commands it'll show deep dive in instructions and evaluating
-
-`$ aurora repl --debug`
-`$ aurora run --debug ...`

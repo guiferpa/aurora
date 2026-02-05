@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -272,6 +273,36 @@ var initCmd = &cobra.Command{
 
 var rootCmd = &cobra.Command{
 	Use: "aurora",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return nil
+		}
+		switch args[0] {
+		case "init", "version", "help":
+			return nil
+		}
+		return requireManifest()
+	},
+}
+
+// requireManifest ensures aurora.toml exists in the current directory or any parent.
+// Must be called before commands that need a project (all except init and version).
+func requireManifest() error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	for {
+		path := filepath.Join(dir, manifestFilename)
+		if _, err := os.Stat(path); err == nil {
+			return nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return fmt.Errorf("%s not found in current directory or any parent (run 'aurora init' to create a project manifest)", manifestFilename)
+		}
+		dir = parent
+	}
 }
 
 func main() {

@@ -284,7 +284,7 @@ var rootCmd = &cobra.Command{
 			return nil
 		}
 		switch args[0] {
-		case "init", "version", "help":
+		case "init", "version", "help", "repl":
 			return nil
 		}
 		return requireManifest()

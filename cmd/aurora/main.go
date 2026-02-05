@@ -239,6 +239,37 @@ var versionCmd = &cobra.Command{
 	},
 }
 
+const manifestFilename = "aurora.toml"
+
+const initManifestContent = `# Aurora project manifest.
+# See https://github.com/guiferpa/aurora for more information.
+
+[project]
+# Project identifier (e.g. for future registry or tooling).
+name = "project"
+# Project version (semantic version recommended).
+version = "0.1.0"
+
+[profiles.main]
+# Default profile. Commands like 'aurora build' or 'aurora run' use these paths when no file is given.
+# Path to the main source file (entrypoint). Used by build, run, and deploy when no file argument is passed.
+entrypoint = "src/main.ar"
+# Path where the compiled binary (bytecode) is written. Used by 'aurora build' when no -o output is passed.
+target = "dist/main.bin"
+`
+
+var initCmd = &cobra.Command{
+	Use:   "init",
+	Short: "Create an aurora.toml manifest in the current directory",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if _, err := os.Stat(manifestFilename); err == nil {
+			return fmt.Errorf("%s already exists", manifestFilename)
+		}
+		return os.WriteFile(manifestFilename, []byte(initManifestContent), 0o644)
+	},
+}
+
 var rootCmd = &cobra.Command{
 	Use: "aurora",
 }
@@ -252,7 +283,7 @@ func main() {
 	buildCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), builder)")
 	buildCmd.Flags().StringVarP(&output, "output", "o", "", "set an output filename")
 
-	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd, initCmd)
 
 	logger.CommandError(rootCmd.Execute())
 }

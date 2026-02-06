@@ -63,6 +63,8 @@ func Deploy(ctx context.Context, in DeployInput) (address string, deployTxHash s
 
 	fmt.Println("Binary deployed is:", in.BinaryPath)
 
+	fmt.Println("Contract deployed by:", from.Hex())
+
 	txHash := signedTx.Hash().Hex()
 	fmt.Println("Deploy TX:", txHash)
 

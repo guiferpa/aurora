@@ -18,11 +18,11 @@ func TestRun_executesAndWritesToStdout(t *testing.T) {
 	var stdout bytes.Buffer
 	ctx := context.Background()
 	err := Run(ctx, RunInput{
-		Entrypoint: entry,
-		Loggers:    nil,
-		Stdin:      nil,
-		Stdout:     &stdout,
-		Player:     nil,
+		Source:  entry,
+		Loggers: nil,
+		Stdin:   nil,
+		Stdout:  &stdout,
+		Player:  nil,
 	})
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -32,15 +32,15 @@ func TestRun_executesAndWritesToStdout(t *testing.T) {
 	}
 }
 
-func TestRun_failsWhenEntrypointMissing(t *testing.T) {
+func TestRun_failsWhenSourceMissing(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
 	err := Run(ctx, RunInput{
-		Entrypoint: filepath.Join(dir, "nonexistent.ar"),
-		Stdout:     os.Stdout,
+		Source: filepath.Join(dir, "nonexistent.ar"),
+		Stdout: os.Stdout,
 	})
 	if err == nil {
-		t.Error("Run() with missing entrypoint should return error")
+		t.Error("Run() with missing source should return error")
 	}
 }
 
@@ -53,8 +53,8 @@ func TestRun_failsWhenSourceInvalid(t *testing.T) {
 	var stdout bytes.Buffer
 	ctx := context.Background()
 	err := Run(ctx, RunInput{
-		Entrypoint: entry,
-		Stdout:     &stdout,
+		Source: entry,
+		Stdout: &stdout,
 	})
 	if err == nil {
 		t.Error("Run() with invalid source should return error")

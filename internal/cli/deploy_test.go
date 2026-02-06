@@ -15,7 +15,7 @@ func TestDeploy_failsWhenBytecodeMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	err := Deploy(ctx, DeployInput{
+	_, _, err := Deploy(ctx, DeployInput{
 		BinaryPath: filepath.Join(dir, "nonexistent.bin"),
 		RPC:        "http://127.0.0.1:8545",
 		Privkey:    keyPath,
@@ -32,7 +32,7 @@ func TestDeploy_failsWhenPrivateKeyFileMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	err := Deploy(ctx, DeployInput{
+	_, _, err := Deploy(ctx, DeployInput{
 		BinaryPath: binaryPath,
 		RPC:        "http://127.0.0.1:8545",
 		Privkey:    filepath.Join(dir, "missing.key"),

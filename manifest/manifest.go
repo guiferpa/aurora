@@ -12,8 +12,15 @@ const Filename = "aurora.toml"
 
 // Manifest is the parsed aurora.toml structure.
 type Manifest struct {
-	Project  Project             `toml:"project"`
-	Profiles map[string]Profile  `toml:"profiles"`
+	Project  Project                `toml:"project"`
+	Profiles map[string]Profile     `toml:"profiles"`
+	Deploys  map[string]DeployState `toml:"deploys"`
+}
+
+// DeployState holds the last deploy result for a profile. Written by the CLI on each deploy; do not edit by hand.
+type DeployState struct {
+	ContractAddress string `toml:"contract_address"`
+	DeployedAt      string `toml:"deployed_at"` // RFC3339
 }
 
 // Project holds [project] section.
@@ -24,11 +31,10 @@ type Project struct {
 
 // Profile holds a profile section (e.g. [profiles.main]).
 type Profile struct {
-	Entrypoint      string `toml:"entrypoint"`
-	Target          string `toml:"target"`
-	RPC             string `toml:"rpc"`
-	Privkey         string `toml:"privkey"`
-	ContractAddress string `toml:"contract_address"`
+	Source  string `toml:"source"`
+	Binary  string `toml:"binary"`
+	RPC     string `toml:"rpc"`
+	Privkey string `toml:"privkey"`
 }
 
 // FindProjectRoot returns the directory that contains aurora.toml, starting from the current directory and walking up. Returns an error if not found.
@@ -60,6 +66,9 @@ func Load(projectRoot string) (*Manifest, error) {
 	if m.Profiles == nil {
 		m.Profiles = make(map[string]Profile)
 	}
+	if m.Deploys == nil {
+		m.Deploys = make(map[string]DeployState)
+	}
 	return &m, nil
 }
 
@@ -72,10 +81,36 @@ func (m *Manifest) Profile(name string) (Profile, error) {
 	return p, nil
 }
 
-// AbsPath returns path joined with project root (for entrypoint, target, privkey).
+// AbsPath returns path joined with project root (for source, binary, privkey).
 func AbsPath(projectRoot, path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
 	return filepath.Join(projectRoot, path)
+}
+
+// PersistDeploy updates the manifest with the latest deploy for the given profile. Overwrites [deploys.<profileName>] with address and deployedAt (RFC3339). Call after a successful deploy.
+func PersistDeploy(projectRoot, profileName, address, deployedAt string) error {
+	m, err := Load(projectRoot)
+	if err != nil {
+		return err
+	}
+	if m.Deploys == nil {
+		m.Deploys = make(map[string]DeployState)
+	}
+	m.Deploys[profileName] = DeployState{ContractAddress: address, DeployedAt: deployedAt}
+	path := filepath.Join(projectRoot, Filename)
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("open manifest for write: %w", err)
+	}
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close manifest file: %w", cerr)
+		}
+	}()
+	if err := toml.NewEncoder(f).Encode(m); err != nil {
+		return fmt.Errorf("encode manifest: %w", err)
+	}
+	return nil
 }

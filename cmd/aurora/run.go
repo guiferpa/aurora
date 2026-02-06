@@ -21,19 +21,19 @@ func runRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	entrypoint := env.AbsPath(env.Profile.Entrypoint)
+	source := env.AbsPath(env.Profile.Source)
 	if len(args) > 0 {
-		entrypoint = args[0]
+		source = args[0]
 	}
 	var pl *evaluator.Player
 	if player {
 		pl = evaluator.NewPlayer(os.Stdin)
 	}
 	return cli.Run(cmd.Context(), cli.RunInput{
-		Entrypoint: entrypoint,
-		Loggers:    loggers,
-		Stdin:      os.Stdin,
-		Stdout:     ToMainWriter(),
-		Player:     pl,
+		Source:  source,
+		Loggers: loggers,
+		Stdin:   os.Stdin,
+		Stdout:  ToMainWriter(),
+		Player:  pl,
 	})
 }

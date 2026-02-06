@@ -65,7 +65,7 @@ entry = "src/calc.ar"   # arquivo principal (default para build/run/deploy)
 
 ```toml
 [build]
-output = "dist/contract.bin"   # default do -o quando em projeto com manifest
+output = "bin/contract.bin"   # default do -o quando em projeto com manifest
 ```
 
 - **output:** caminho padrão do bytecode gerado por `aurora build` quando não se passa `-o`.
@@ -202,7 +202,7 @@ version = "0.1.0"
 entry = "examples/evm/calc.ar"
 
 [build]
-output = "dist/calc.bin"
+output = "bin/calc.bin"
 
 [profile.main]
 rpc = "http://127.0.0.1:8545"
@@ -219,7 +219,7 @@ version = "0.1.0"
 entry = "examples/evm/calc.ar"
 
 [build]
-output = "dist/calc.bin"
+output = "bin/calc.bin"
 
 [profile.main]
 rpc = "http://127.0.0.1:8545"

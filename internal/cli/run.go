@@ -15,16 +15,16 @@ import (
 
 // RunInput is the input for the Run handler.
 type RunInput struct {
-	Entrypoint string   // path to .ar source
-	Loggers    []string // enabled loggers
-	Stdin      io.Reader
-	Stdout     io.Writer // used for both Echo and Print
-	Player     *evaluator.Player
+	Source  string   // path to .ar source
+	Loggers []string // enabled loggers
+	Stdin   io.Reader
+	Stdout  io.Writer // used for both Echo and Print
+	Player  *evaluator.Player
 }
 
-// Run compiles and evaluates the Aurora source at Entrypoint.
+// Run compiles and evaluates the Aurora source at Source.
 func Run(ctx context.Context, in RunInput) error {
-	bs, err := os.ReadFile(in.Entrypoint)
+	bs, err := os.ReadFile(in.Source)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func Run(ctx context.Context, in RunInput) error {
 	}
 
 	ast, err := parser.New(tokens, parser.NewParserOptions{
-		Filename:      in.Entrypoint,
+		Filename:      in.Source,
 		EnableLogging: slices.Contains(in.Loggers, "parser"),
 	}).Parse()
 	if err != nil {
@@ -62,6 +62,6 @@ func Run(ctx context.Context, in RunInput) error {
 	if _, err := ev.Evaluate(insts); err != nil {
 		return err
 	}
-	logger.AssertError(ev.GetAssertErrors(), in.Entrypoint)
+	logger.AssertError(ev.GetAssertErrors(), in.Source)
 	return nil
 }

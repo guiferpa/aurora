@@ -20,10 +20,10 @@ version = "0.1.0"
 
 [profiles.main]
 # Default profile. Commands like 'aurora build' or 'aurora run' use these paths when no file is given.
-# Path to the main source file (entrypoint). Used by build, run, and deploy when no file argument is passed.
-entrypoint = "src/main.ar"
-# Path where the compiled binary is written. Name matches the entrypoint filename (without extension). Used by 'aurora build' when no -o output is passed.
-target = "dist/main"
+# Path to the main source file. Used by build, run, and deploy when no file argument is passed.
+source = "src/main.ar"
+# Path where the compiled binary is written. Name matches the source filename (without extension). Used by 'aurora build' when no -o output is passed.
+binary = "bin/main"
 `
 
 // InitInput is the input for the Init handler.

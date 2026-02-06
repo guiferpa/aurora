@@ -18,9 +18,9 @@ func TestBuild_producesOutputFile(t *testing.T) {
 	out := filepath.Join(dir, "out", "main.bin")
 	ctx := context.Background()
 	err := Build(ctx, BuildInput{
-		Entrypoint: entry,
+		Source:    entry,
 		OutputPath: out,
-		Loggers:    nil,
+		Loggers:   nil,
 	})
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
@@ -34,16 +34,16 @@ func TestBuild_producesOutputFile(t *testing.T) {
 	}
 }
 
-func TestBuild_failsWhenEntrypointMissing(t *testing.T) {
+func TestBuild_failsWhenSourceMissing(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out.bin")
 	ctx := context.Background()
 	err := Build(ctx, BuildInput{
-		Entrypoint: filepath.Join(dir, "nonexistent.ar"),
+		Source:    filepath.Join(dir, "nonexistent.ar"),
 		OutputPath: out,
 	})
 	if err == nil {
-		t.Error("Build() with missing entrypoint should return error")
+		t.Error("Build() with missing source should return error")
 	}
 }
 
@@ -55,7 +55,7 @@ func TestBuild_failsWhenSourceInvalid(t *testing.T) {
 	}
 	out := filepath.Join(dir, "out.bin")
 	ctx := context.Background()
-	err := Build(ctx, BuildInput{Entrypoint: entry, OutputPath: out})
+	err := Build(ctx, BuildInput{Source: entry, OutputPath: out})
 	if err == nil {
 		t.Error("Build() with invalid source should return error")
 	}

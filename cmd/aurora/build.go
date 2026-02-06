@@ -18,17 +18,17 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	entrypoint := env.AbsPath(env.Profile.Entrypoint)
+	source := env.AbsPath(env.Profile.Source)
 	if len(args) > 0 {
-		entrypoint = args[0]
+		source = args[0]
 	}
 	outPath := output
 	if outPath == "" {
-		outPath = env.AbsPath(env.Profile.Target)
+		outPath = env.AbsPath(env.Profile.Binary)
 	}
 	return cli.Build(cmd.Context(), cli.BuildInput{
-		Entrypoint: entrypoint,
+		Source:    source,
 		OutputPath: outPath,
-		Loggers:    loggers,
+		Loggers:   loggers,
 	})
 }

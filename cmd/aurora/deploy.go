@@ -2,33 +2,40 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/guiferpa/aurora/internal/cli"
+	"github.com/guiferpa/aurora/manifest"
 )
 
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
-	Short: "Deploy program to a blockchain",
+	Short: "Deploy program to a blockchain (uses binary, rpc, and privkey from aurora.toml)",
 	Args:  cobra.NoArgs,
 	RunE:  runDeploy,
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
-	env, err := cli.LoadEnviron("main")
+	profileName := "main"
+	env, err := cli.LoadEnviron(profileName)
 	if err != nil {
 		return err
 	}
 	if env.Profile.RPC == "" {
-		return fmt.Errorf("profile main: rpc is required for deploy")
+		return fmt.Errorf("profile %s: rpc is required for deploy", profileName)
 	}
 	if env.Profile.Privkey == "" {
-		return fmt.Errorf("profile main: privkey is required for deploy")
+		return fmt.Errorf("profile %s: privkey is required for deploy", profileName)
 	}
-	return cli.Deploy(cmd.Context(), cli.DeployInput{
-		BinaryPath: env.AbsPath(env.Profile.Target),
+	address, deployedAt, err := cli.Deploy(cmd.Context(), cli.DeployInput{
+		BinaryPath: env.AbsPath(env.Profile.Binary),
 		RPC:        env.Profile.RPC,
 		Privkey:    env.AbsPath(env.Profile.Privkey),
 	})
+	if err != nil {
+		return err
+	}
+	return manifest.PersistDeploy(env.Root, profileName, address, deployedAt.Format(time.RFC3339))
 }

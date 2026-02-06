@@ -36,7 +36,7 @@ func main() {
 	replCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
 	replCmd.Flags().BoolVarP(&raw, "raw", "r", false, "enable raw mode for show raw output")
 	buildCmd.Flags().StringSliceVarP(&loggers, "loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), builder)")
-	buildCmd.Flags().StringVarP(&output, "output", "o", "", "output path for compiled binary (default: target from manifest)")
+	buildCmd.Flags().StringVarP(&output, "output", "o", "", "output path for compiled binary (default: binary from aurora.toml)")
 
 	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd, initCmd)
 

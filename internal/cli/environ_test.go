@@ -13,8 +13,8 @@ func TestEnviron_AbsPath(t *testing.T) {
 	env := &Environ{
 		Root: root,
 		Profile: manifest.Profile{
-			Entrypoint: "src/main.ar",
-			Target:     "dist/main",
+			Source: "src/main.ar",
+			Binary: "bin/main",
 		},
 	}
 
@@ -23,7 +23,7 @@ func TestEnviron_AbsPath(t *testing.T) {
 		want string
 	}{
 		{"src/main.ar", filepath.Join(root, "src", "main.ar")},
-		{"dist/main", filepath.Join(root, "dist", "main")},
+		{"bin/main", filepath.Join(root, "bin", "main")},
 		{".aurora/key", filepath.Join(root, ".aurora", "key")},
 	}
 	for _, tt := range tests {
@@ -60,7 +60,7 @@ func TestRequireManifest_failsWhenNoManifest(t *testing.T) {
 func TestRequireManifest_succeedsWhenManifestExists(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, manifest.Filename)
-	if err := os.WriteFile(path, []byte("[project]\nname = \"x\"\nversion = \"0.1.0\"\n[profiles.main]\nentrypoint = \"src/main.ar\"\ntarget = \"dist/main\""), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("[project]\nname = \"x\"\nversion = \"0.1.0\"\n[profiles.main]\nsource = \"src/main.ar\"\nbinary = \"bin/main\""), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	orig, _ := os.Getwd()

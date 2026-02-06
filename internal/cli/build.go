@@ -14,14 +14,14 @@ import (
 
 // BuildInput is the input for the Build handler.
 type BuildInput struct {
-	Entrypoint string   // path to .ar source
+	Source    string   // path to .ar source
 	OutputPath string   // path to write bytecode
-	Loggers    []string // enabled loggers (lexer, parser, emitter, builder)
+	Loggers   []string // enabled loggers (lexer, parser, emitter, builder)
 }
 
-// Build compiles the Aurora source at Entrypoint and writes bytecode to OutputPath.
+// Build compiles the Aurora source at Source and writes bytecode to OutputPath.
 func Build(ctx context.Context, in BuildInput) error {
-	bs, err := os.ReadFile(in.Entrypoint)
+	bs, err := os.ReadFile(in.Source)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func Build(ctx context.Context, in BuildInput) error {
 	}
 
 	ast, err := parser.New(tokens, parser.NewParserOptions{
-		Filename:      in.Entrypoint,
+		Filename:      in.Source,
 		EnableLogging: slices.Contains(in.Loggers, "parser"),
 	}).Parse()
 	if err != nil {

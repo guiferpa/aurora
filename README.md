@@ -19,6 +19,7 @@ Aurora is a study-focused programming language whose main goal is to compile sou
 - [Get started](#get-started)
   - [Install CLI](#install-cli)
   - [Project manifest](#project-manifest)
+  - [Manifest reference (aurora.toml)](docs/manifest.md)
   - [Using REPL mode](#using-repl-mode)
   - [Execute from file](#execute-from-file)
   - [Writing some code](#writing-some-code)
@@ -42,7 +43,7 @@ go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD
 
 ### Project manifest
 
-Most Aurora CLI commands (**build**, **run**, **deploy**, **call**) require a project manifest. The manifest is a file named `aurora.toml` at the root of your project (or in any parent directory). It defines the project metadata and the default entrypoint and build output paths.
+Most Aurora CLI commands (**build**, **run**, **deploy**, **call**) require a project manifest. The manifest is a file named `aurora.toml` at the root of your project (or in any parent directory). It defines the project metadata and the default source and binary paths.
 
 If you run a command without a manifest, the CLI will exit with:
 
@@ -57,7 +58,9 @@ mkdir my-project && cd my-project
 aurora init
 ```
 
-This creates `aurora.toml` with a `[project]` section (name is taken from the current folder) and a default `[profiles.main]` with `entrypoint` and `target`. You can then run `aurora run`, `aurora build`, and other commands. The only commands that do **not** require a manifest are `aurora init`, `aurora version`, `aurora help`, and `aurora repl`.
+This creates `aurora.toml` with a `[project]` section (name is taken from the current folder) and a default `[profiles.main]` with `source` and `binary`. You can then run `aurora run`, `aurora build`, and other commands. The only commands that do **not** require a manifest are `aurora init`, `aurora version`, `aurora help`, and `aurora repl`.
+
+For a full reference of every manifest field (including optional on-chain settings), see the [Manifest reference](docs/manifest.md).
 
 ### Using REPL mode
 

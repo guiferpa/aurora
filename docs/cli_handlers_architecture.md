@@ -56,13 +56,13 @@ Cada comando tem uma função que recebe um struct de parâmetros e executa a l�
 // cmd/aurora/handlers/build.go ou internal/cli/build.go
 
 type BuildInput struct {
-    Entrypoint string // path to .ar (from arg or manifest)
-    OutputPath string // path to write bytecode (from -o or manifest target)
-    Loggers    []string
+    Source    string   // path to .ar (from arg or manifest)
+    OutputPath string   // path to write bytecode (from -o or manifest binary)
+    Loggers   []string
 }
 
 func Build(ctx context.Context, in BuildInput) error {
-    bs, err := os.ReadFile(in.Entrypoint)
+    bs, err := os.ReadFile(in.Source)
     if err != nil { return err }
     // ... lexer → parser → emitter → builder, write to in.OutputPath
     return nil
@@ -74,8 +74,8 @@ Deploy e Call na mesma linha:
 ```go
 type DeployInput struct {
     BinaryPath     string
-    RPCURL         string
-    PrivateKeyPath string
+    RPC     string
+    Privkey string
 }
 
 func Deploy(ctx context.Context, in DeployInput) error { ... }
@@ -83,7 +83,7 @@ func Deploy(ctx context.Context, in DeployInput) error { ... }
 type CallInput struct {
     Function        string
     ContractAddress string
-    RPCURL          string
+    RPC             string
 }
 
 func Call(ctx context.Context, in CallInput) error { ... }
@@ -114,14 +114,14 @@ var buildCmd = &cobra.Command{
 func runBuild(cmd *cobra.Command, args []string) error {
     env, err := cli.LoadEnviron("main")
     if err != nil { return err }
-    entrypoint := env.AbsPath(env.Profile.Entrypoint)
-    if len(args) > 0 { entrypoint = args[0] }
+    source := env.AbsPath(env.Profile.Source)
+    if len(args) > 0 { source = args[0] }
     outPath := output
-    if outPath == "" { outPath = env.AbsPath(env.Profile.Target) }
+    if outPath == "" { outPath = env.AbsPath(env.Profile.Binary) }
     return cli.Build(cmd.Context(), cli.BuildInput{
-        Entrypoint: entrypoint,
+        Source:    source,
         OutputPath: outPath,
-        Loggers:    loggers,
+        Loggers:   loggers,
     })
 }
 ```

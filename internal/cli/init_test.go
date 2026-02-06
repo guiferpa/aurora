@@ -24,11 +24,11 @@ func TestInit_createsManifest(t *testing.T) {
 	if !strings.Contains(content, `name = "myproj"`) {
 		t.Errorf("manifest should contain name = \"myproj\", got:\n%s", content)
 	}
-	if !strings.Contains(content, "entrypoint = \"src/main.ar\"") {
-		t.Errorf("manifest should contain entrypoint")
+	if !strings.Contains(content, "source = \"src/main.ar\"") {
+		t.Errorf("manifest should contain source")
 	}
-	if !strings.Contains(content, "target = \"dist/main\"") {
-		t.Errorf("manifest should contain target")
+	if !strings.Contains(content, "binary = \"bin/main\"") {
+		t.Errorf("manifest should contain binary")
 	}
 }
 

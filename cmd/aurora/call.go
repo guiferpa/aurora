@@ -28,12 +28,18 @@ func runCall(cmd *cobra.Command, args []string) error {
 	if env.Profile.RPC == "" {
 		return fmt.Errorf("profile %s: rpc is required for call", profileName)
 	}
-	if env.Profile.ContractAddress == "" {
-		return fmt.Errorf("profile %s: contract_address is required for call", profileName)
+	contractAddr := ""
+	if env.Manifest.Deploys != nil {
+		if d, ok := env.Manifest.Deploys[profileName]; ok {
+			contractAddr = d.ContractAddress
+		}
+	}
+	if contractAddr == "" {
+		return fmt.Errorf("profile %s: no deploy found (run 'aurora deploy' first)", profileName)
 	}
 	return cli.Call(cmd.Context(), cli.CallInput{
 		Function:        fn,
-		ContractAddress: env.Profile.ContractAddress,
+		ContractAddress: contractAddr,
 		RPC:             env.Profile.RPC,
 	})
 }

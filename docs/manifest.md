@@ -2,7 +2,9 @@
 
 The Aurora manifest is a TOML file named `aurora.toml` that describes your project and how the CLI should build, run, deploy, and call your program. It is created by `aurora init` and must live at the root of your project (or in a parent directory of where you run Aurora commands).
 
-The manifest has three scopes: **`[project]`**, **`[profiles.<name>]`**, and **`[deploys.<name>]`**. This document describes every section and field, including those not created by default.
+Deploy state (contract address, tx hash, deployed-at per profile) is stored in a **separate hidden file** (`.aurora.deploys.toml`) so that `aurora.toml` stays clean and editable.
+
+The manifest has two scopes in `aurora.toml`: **`[project]`** and **`[profiles.<name>]`**. This document also describes the deploy state file.
 
 ---
 
@@ -48,35 +50,37 @@ These are written by `aurora init` and are enough for **build** and **run**.
 
 These are **not** created by `aurora init`. Add them when you want to use **deploy** or **call** on a network.
 
+To **deploy**, you need a **wallet** (to sign the deploy transaction) and an **RPC** endpoint. Configure them in the profile:
+
 | Field         | Required for      | Description |
 |---------------|-------------------|-------------|
 | **`rpc`**     | **deploy**, **call** | URL of the Ethereum (or compatible) node RPC endpoint. Examples: `http://127.0.0.1:8545` (local), `https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY` (Sepolia). Used to send transactions (deploy) and to perform read-only calls (call). |
-| **`privkey`** | **deploy**        | Path to a file that contains the deployer’s private key in hex (one line, no `0x` prefix), relative to the project root. The CLI reads this file to sign deploy transactions. **Never** put the key directly in `aurora.toml`; use a path and add that file to `.gitignore`. |
+| **`privkey`** | **deploy**        | **Wallet private key** in hex (no `0x` prefix). This is the key of the wallet that will pay for gas and own the deploy transaction. Used to sign deploy transactions. **Keep `aurora.toml` out of version control** if it contains `privkey`, or use environment variable substitution / a secrets manager. |
 
 **Why:**  
-- **`rpc`** and **`privkey`** keep deploy configuration in one place per profile (e.g. main, sepolia) instead of long CLI arguments.
+- **`rpc`** and **`privkey`** (wallet key) keep deploy configuration in one place per profile (e.g. main, sepolia) instead of long CLI arguments.
 
 **Security:**  
-- Do not commit files referenced by `privkey`. Add them (e.g. `*.key`, `.aurora/`) to `.gitignore`.  
-- Prefer environment-specific paths or env vars for RPC URLs if they contain secrets.
+- If `aurora.toml` contains `privkey`, do not commit it. Add `aurora.toml` to `.gitignore` for sensitive profiles, or use env vars / a secrets manager for the key value.  
+- Prefer environment-specific values or env vars for `rpc` if the URL contains secrets.
 
 ---
 
-## `[deploys.<name>]`
+## Deploy state file (`.aurora.deploys.toml`)
 
-Deploy state for each profile. **Do not edit this section by hand.** It is written and overwritten by the CLI whenever you run **`aurora deploy`** for that profile.
+Deploy state is stored in a **hidden file** at the project root: **`.aurora.deploys.toml`**. This file is **generated and managed by the Aurora CLI; do not edit it.**
 
-The section name matches the profile name (e.g. `[deploys.main]` for profile `main`). After a deploy, the CLI updates the corresponding `[deploys.<name>]` with the new contract address and the exact time of the deploy. Every new deploy of a binary overwrites these values.
+**Purpose:** It stores the last deploy result per profile (contract address, transaction hash, deployed-at timestamp). The CLI uses it so that **`aurora call`** knows which contract to target for each profile. On every **`aurora deploy`**, the file is regenerated with the updated state for the profile you deployed, **while keeping the state for other profiles** unchanged.
 
-| Field           | Written by   | Description |
-|-----------------|--------------|-------------|
-| **`contract_address`** | CLI (deploy) | Contract address (e.g. `0x...`) of the last deployment. Used by **`aurora call`** to target the contract for this profile. Overwritten on each deploy. |
-| **`deployed_at`**       | CLI (deploy) | Timestamp of the exact moment of the deploy (e.g. RFC3339). Overwritten on each deploy. |
+| Field               | Written by   | Description |
+|---------------------|--------------|-------------|
+| **`contract_address`** | CLI (deploy) | Contract address (e.g. `0x...`) of the last deployment. Used by **`aurora call`** to target the contract for this profile. Overwritten on each deploy for that profile. |
+| **`tx_hash`**         | CLI (deploy) | Transaction hash (e.g. `0x...`) of the deploy transaction. Useful for looking up the deploy on an explorer. |
+| **`deployed_at`**     | CLI (deploy) | Timestamp of the exact moment of the deploy (RFC3339). |
 
-**Why:**  
-- The contract address for **call** comes from **`[deploys.<name>].contract_address`**, not from the profile.  
-- You should **not** add or maintain a contract address manually; the CLI keeps it in sync with the last deploy.  
-- **`deployed_at`** gives you an audit trail of when the current address was deployed.
+**Why a separate file:**  
+- **`aurora.toml`** stays clean and fully editable (comments, formatting) and is not rewritten on deploy.  
+- Deploy state is isolated and regenerated only when you run deploy; other profiles’ state is preserved.
 
 ---
 
@@ -94,7 +98,9 @@ binary = "bin/main"
 
 ---
 
-## Example: after deploy (CLI has written `[deploys.main]`)
+## Example: after deploy
+
+Your **`aurora.toml`** stays as below (deploy state is not written here):
 
 ```toml
 [project]
@@ -105,20 +111,16 @@ version = "0.1.0"
 source = "src/main.ar"
 binary = "bin/main"
 rpc = "http://127.0.0.1:8545"
-privkey = ".aurora/local.key"
-
-[deploys.main]
-contract_address = "0x1234567890abcdef..."
-deployed_at = "2025-02-05T14:30:00Z"
+privkey = "<hex private key, no 0x>"
 ```
 
-The **`[deploys.main]`** block is created or overwritten by **`aurora deploy`**. Use **`aurora call <function>`** and the CLI will use **`deploys.main.contract_address`** as the contract.
+After **`aurora deploy`**, the CLI creates or updates **`.aurora.deploys.toml`** (at the project root) with the contract address, tx hash, and deployed-at for that profile. Use **`aurora call <function>`** and the CLI will read the contract address from the deploy state file.
 
 ---
 
 ## Example: multiple profiles
 
-You can define several profiles and, after deploying for each, have separate `[deploys.<name>]` entries.
+You can define several profiles and, after deploying for each, have separate deploy state entries in `.aurora.deploys.toml`.
 
 ```toml
 [project]
@@ -129,34 +131,28 @@ version = "0.1.0"
 source = "src/main.ar"
 binary = "bin/main"
 rpc = "http://127.0.0.1:8545"
-privkey = ".aurora/local.key"
+privkey = "<hex private key, no 0x>"
 
 [profiles.sepolia]
 source = "src/main.ar"
 binary = "bin/main"
 rpc = "https://eth-sepolia.g.alchemy.com/v2/..."
-privkey = ".aurora/sepolia.key"
-
-[deploys.main]
-contract_address = "0x..."
-deployed_at = "2025-02-05T14:30:00Z"
-
-[deploys.sepolia]
-contract_address = "0x..."
-deployed_at = "2025-02-05T15:00:00Z"
+privkey = "<hex private key, no 0x>"
 ```
+
+Deploy state for each profile lives in **`.aurora.deploys.toml`** (created/updated by the CLI on deploy).
 
 ---
 
 ## Summary
 
-| Scope                | Purpose |
-|----------------------|---------|
-| **`[project]`**      | Project identity: `name`, `version`. |
-| **`[profiles.<name>]`** | Build and chain config per environment: `source`, `binary`, and optionally `rpc`, `privkey`. Do **not** put contract address here. |
-| **`[deploys.<name>]`**  | Last deploy state per profile: `contract_address`, `deployed_at`. Written and overwritten by the CLI on each deploy; do not maintain by hand. |
+| Scope / file              | Purpose |
+|---------------------------|---------|
+| **`[project]`**            | Project identity: `name`, `version`. |
+| **`[profiles.<name>]`**    | Build and chain config per environment: `source`, `binary`, and optionally `rpc`, `privkey`. Do **not** put contract address here. |
+| **`.aurora.deploys.toml`** | Last deploy state per profile: `contract_address`, `tx_hash`, `deployed_at`. Generated by the CLI on deploy; do not edit. Used by **call** for the contract address. |
 
 **Profile fields:** `source`, `binary` (default from init); `rpc`, `privkey` (optional, for on-chain).  
-**Deploy fields:** `contract_address`, `deployed_at` (CLI-only; used by **call** for the contract address).
+**Deploy state file:** `.aurora.deploys.toml` holds `contract_address`, `tx_hash`, `deployed_at` per profile (CLI-only).
 
 For the main project README and getting started, see the [Project manifest](../README.md#project-manifest) section.

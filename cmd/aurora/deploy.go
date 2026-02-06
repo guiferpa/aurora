@@ -29,13 +29,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	if env.Profile.Privkey == "" {
 		return fmt.Errorf("profile %s: privkey is required for deploy", profileName)
 	}
-	address, deployedAt, err := cli.Deploy(cmd.Context(), cli.DeployInput{
+	address, deployTxHash, deployedAt, err := cli.Deploy(cmd.Context(), cli.DeployInput{
 		BinaryPath: env.AbsPath(env.Profile.Binary),
 		RPC:        env.Profile.RPC,
-		Privkey:    env.AbsPath(env.Profile.Privkey),
+		Privkey:    env.Profile.Privkey,
 	})
 	if err != nil {
 		return err
 	}
-	return manifest.PersistDeploy(env.Root, profileName, address, deployedAt.Format(time.RFC3339))
+	return manifest.PersistDeploy(env.Root, profileName, address, deployTxHash, deployedAt.Format(time.RFC3339))
 }

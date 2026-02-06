@@ -1,3 +1,4 @@
-target/
 coverage.out
 aurora.toml
+.aurora.deploys.toml
+bin/

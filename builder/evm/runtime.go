@@ -7,7 +7,11 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 )
 
-const DISPATCHER_BYTES_SIZE = 15
+const (
+	DISPATCHER_BYTES_SIZE = 15
+	// NO_MATCH_DISPATCHER_SIZE is the bytecode size for "selector not found": just STOP (1 byte).
+	NO_MATCH_DISPATCHER_SIZE = 1
+)
 
 type RuntimeCodeReferenced struct {
 	Selector []byte
@@ -179,12 +183,21 @@ func buildDispatcher(id string, jumpTo int) (*bytes.Buffer, error) {
 	return bs, nil
 }
 
+// buildNoMatchDispatcher returns bytecode for when no dispatcher matched (invalid selector): just STOP.
+func buildNoMatchDispatcher() []byte {
+	return []byte{OpStop}
+}
+
 func buildDispatchers(rfs []RuntimeCodeReferenced) (*bytes.Buffer, error) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 
+	dispatcherLen := DISPATCHER_BYTES_SIZE * len(rfs)
+	// After dispatchers we have the no-match dispatcher (STOP); referenced code starts after it.
+	referencedStart := dispatcherLen + NO_MATCH_DISPATCHER_SIZE
+
 	for _, rf := range rfs {
-		offset := (rf.Offset + (DISPATCHER_BYTES_SIZE * len(rfs)))
-		dispatcher, err := buildDispatcher(string(rf.Selector), offset)
+		jumpTo := referencedStart + rf.Offset
+		dispatcher, err := buildDispatcher(string(rf.Selector), jumpTo)
 		if err != nil {
 			return nil, err
 		}
@@ -208,6 +221,7 @@ func (t *Builder) buildRuntimeCode() (*bytes.Buffer, error) {
 		return nil, err
 	}
 	built = append(built, dispatchers.Bytes()...)
+	built = append(built, buildNoMatchDispatcher()...)
 
 	referenced := make([]byte, 0)
 	for _, rf := range rc.Referenced {

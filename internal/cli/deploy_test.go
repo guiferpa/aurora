@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -23,10 +24,33 @@ func TestDeploy_failsWhenBytecodeMissing(t *testing.T) {
 	}
 }
 
+func TestDeploy_failsWhenBytecodeTooShort(t *testing.T) {
+	dir := t.TempDir()
+	binaryPath := filepath.Join(dir, "short.bin")
+	if err := os.WriteFile(binaryPath, []byte{0x60, 0x00}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	_, _, _, err := Deploy(ctx, DeployInput{
+		BinaryPath: binaryPath,
+		RPC:        "http://127.0.0.1:8545",
+		Privkey:    testPrivkeyHex,
+	})
+	if err == nil {
+		t.Error("Deploy() with bytecode shorter than 12 bytes should return error")
+	}
+	if err != nil && !strings.Contains(err.Error(), "too short") {
+		t.Errorf("Deploy() error should mention too short, got: %v", err)
+	}
+}
+
 func TestDeploy_failsWhenPrivkeyInvalid(t *testing.T) {
 	dir := t.TempDir()
 	binaryPath := filepath.Join(dir, "contract.bin")
-	if err := os.WriteFile(binaryPath, []byte{0x00, 0x01}, 0o644); err != nil {
+	// Min 12 bytes so deploy passes length check and fails on privkey
+	minBytecode := make([]byte, 12)
+	minBytecode[0], minBytecode[1] = 0x60, 0x0c
+	if err := os.WriteFile(binaryPath, minBytecode, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()

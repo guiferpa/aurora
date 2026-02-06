@@ -129,7 +129,8 @@ func (t *Builder) pickRuntimeCode() (*RuntimeCode, error) {
 				Offset: offset,
 				Length: code.Len(),
 			})
-			offset += code.Len()
+			// +1: each block in "referenced" is prefixed by OpJumpDestiny (1 byte)
+			offset += 1 + code.Len()
 		} else {
 			rootinsts = append(rootinsts, inst)
 		}

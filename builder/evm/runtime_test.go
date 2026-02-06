@@ -141,7 +141,7 @@ ident bcde = { true; };`,
 					},
 					{
 						Selector:     []byte("bcde"),
-						Offset:       28,
+						Offset:       29, // 1 (JUMPDEST) + 28 (first block code length)
 						Length:       8,
 						Instructions: insts2,
 					},

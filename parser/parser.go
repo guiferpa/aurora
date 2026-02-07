@@ -153,6 +153,9 @@ func (p *pr) getReel() (ReelLiteralNode, error) {
 
 func (p *pr) getPriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.ARGUMENTS {
+		return p.getArgs()
+	}
 	if lookahead.GetTag().Id == lexer.O_PAREN {
 		if _, err := p.EatToken(lexer.O_PAREN); err != nil {
 			return nil, err
@@ -583,7 +586,7 @@ func (p *pr) getBlockExpr() (Node, error) {
 		return nil, err
 	}
 	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
-	return BlockExpressionNode{ref, stmts}, nil
+	return BlockExpressionNode{Ref: ref, Body: stmts}, nil
 }
 
 func (p *pr) getIf() (Node, error) {
@@ -651,9 +654,6 @@ func (p *pr) getIdent() (Node, error) {
 
 func (p *pr) getExpr() (Node, error) {
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.ARGUMENTS {
-		return p.getArgs()
-	}
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.getBlockExpr()
 	}

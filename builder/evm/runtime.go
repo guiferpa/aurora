@@ -4,6 +4,7 @@ import (
 	"bytes"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 )
 
@@ -69,6 +70,29 @@ func (t *Builder) buildCode(insts []emitter.Instruction) (*bytes.Buffer, error) 
 				}
 			}
 			t.operands = append(t.operands, inst.GetLeft())
+		}
+
+		if op == emitter.OpGetArg {
+			// arguments N -> load from calldata at offset 4 + N*32 (ABI: selector then 32-byte slots)
+			left := inst.GetLeft()
+			if len(left) < 8 {
+				continue
+			}
+			idx := byteutil.ToUint64(left)
+			offset := 4 + idx*32
+			if offset < 256 {
+				if _, err := bs.Write([]byte{OpPush1, byte(offset)}); err != nil {
+					return nil, err
+				}
+			} else {
+				if _, err := bs.Write([]byte{OpPush2, byte(offset >> 8), byte(offset)}); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := bs.Write([]byte{OpCallDataLoad}); err != nil {
+				return nil, err
+			}
+			// Value is on stack; add/sub/etc use writePush8SafeFromOperands which is no-op when operands empty, so the next op will use this value.
 		}
 	}
 

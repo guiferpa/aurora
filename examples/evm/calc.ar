@@ -9,3 +9,7 @@ ident sub = {
 ident mult = {
   2 * 10;
 };
+
+ident sum2 = {
+  arguments 0 + arguments 1;
+};

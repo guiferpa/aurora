@@ -16,11 +16,12 @@ var callCmd = &cobra.Command{
 }
 
 func runCall(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: call <function> [arg0 [arg1 ...]]")
+	}
 	fn := args[0]
 	profileName := "main"
-	if len(args) > 1 {
-		profileName = args[1]
-	}
+	callArgs := args[1:]
 	env, err := cli.LoadEnviron(profileName)
 	if err != nil {
 		return err
@@ -41,5 +42,6 @@ func runCall(cmd *cobra.Command, args []string) error {
 		Function:        fn,
 		ContractAddress: contractAddr,
 		RPC:             env.Profile.RPC,
+		Args:            callArgs,
 	})
 }

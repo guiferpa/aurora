@@ -21,11 +21,71 @@ type RuntimeCodeReferenced struct {
 	Code     *bytes.Buffer
 }
 
+const LOCAL_SLOT_START = 0x20 // first local at 32; 0x00 used for return value
+
 func (t *Builder) buildCode(insts []emitter.Instruction) (*bytes.Buffer, error) {
 	bs := bytes.NewBuffer(make([]byte, 0))
+	locals := make(map[string]int)
+	slot := LOCAL_SLOT_START
 
 	for _, inst := range insts {
 		op := inst.GetOpCode()
+
+		if op == emitter.OpIdent {
+			// Store top of stack (or pop from operands) to a named slot for later OpLoad.
+			name := string(inst.GetLeft())
+			if len(t.operands) > 0 {
+				operand := t.operands[len(t.operands)-1]
+				t.operands = t.operands[:len(t.operands)-1]
+				if _, err := bs.Write([]byte{OpPush8}); err != nil {
+					return nil, err
+				}
+				if _, err := bs.Write(operand); err != nil {
+					return nil, err
+				}
+			}
+			// Stack has value; store at slot: PUSH1 slot SWAP1 MSTORE
+			if slot > 255 {
+				if _, err := bs.Write([]byte{OpPush2, byte(slot >> 8), byte(slot)}); err != nil {
+					return nil, err
+				}
+			} else {
+				if _, err := bs.Write([]byte{OpPush1, byte(slot)}); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := bs.Write([]byte{OpSwap1, OpMemoryStore}); err != nil {
+				return nil, err
+			}
+			locals[name] = slot
+			slot += 32
+			continue
+		}
+
+		if op == emitter.OpLoad {
+			name := string(inst.GetLeft())
+			off, ok := locals[name]
+			if !ok {
+				// undefined ident: push 0
+				if _, err := bs.Write([]byte{OpPush0}); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			if off > 255 {
+				if _, err := bs.Write([]byte{OpPush2, byte(off >> 8), byte(off)}); err != nil {
+					return nil, err
+				}
+			} else {
+				if _, err := bs.Write([]byte{OpPush1, byte(off)}); err != nil {
+					return nil, err
+				}
+			}
+			if _, err := bs.Write([]byte{OpMemoryLoad}); err != nil {
+				return nil, err
+			}
+			continue
+		}
 
 		if op == emitter.OpAdd {
 			if _, err := t.writeAdd(bs); err != nil {

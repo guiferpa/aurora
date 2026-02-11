@@ -17,15 +17,27 @@ var runCmd = &cobra.Command{
 
 func init() {
 	runCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
-	runCmd.Flags().BoolP("player", "p", false, "enable player mode (stdin)")
+	runCmd.Flags().BoolP("player", "r", false, "enable player mode (stdin)")
+	runCmd.Flags().StringP("source", "s", "", "custom source code to run")
+	runCmd.Flags().StringP("profile", "p", "main", "profile to run")
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
-	env, err := cli.LoadEnviron("main")
+	profile, err := cmd.Flags().GetString("profile")
 	if err != nil {
 		return err
 	}
-	source := env.AbsPath(env.Profile.Source)
+	env, err := cli.LoadEnviron(profile)
+	if err != nil {
+		return err
+	}
+	source, err := cmd.Flags().GetString("source")
+	if err != nil {
+		return err
+	}
+	if source == "" {
+		source = env.AbsPath(env.Profile.Source)
+	}
 	var pl *evaluator.Player
 	if player, _ := cmd.Flags().GetBool("player"); player {
 		pl = evaluator.NewPlayer(os.Stdin)

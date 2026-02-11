@@ -17,6 +17,7 @@ var callCmd = &cobra.Command{
 
 func init() {
 	callCmd.Flags().Bool("pretend", false, "pretend/simulate the call (dry run)")
+	callCmd.Flags().StringP("profile", "p", "main", "profile to call")
 }
 
 func runCall(cmd *cobra.Command, args []string) error {
@@ -24,30 +25,33 @@ func runCall(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("usage: call <function> [arg0 [arg1 ...]]")
 	}
 	fn := args[0]
-	profileName := "main"
-	callArgs := args[1:]
-	env, err := cli.LoadEnviron(profileName)
+	profile, err := cmd.Flags().GetString("profile")
+	if err != nil {
+		return err
+	}
+	env, err := cli.LoadEnviron(profile)
 	if err != nil {
 		return err
 	}
 	if env.Profile.RPC == "" {
-		return fmt.Errorf("profile %s: rpc is required for call", profileName)
+		return fmt.Errorf("profile %s: rpc is required for call", profile)
 	}
-	contractAddr := ""
-	if env.Manifest.Deploys != nil {
-		if d, ok := env.Manifest.Deploys[profileName]; ok {
-			contractAddr = d.ContractAddress
-		}
+	if len(env.Manifest.Deploys) < 1 {
+		return fmt.Errorf("no deploys found (run 'aurora deploy' first)")
 	}
-	if contractAddr == "" {
-		return fmt.Errorf("profile %s: no deploy found (run 'aurora deploy' first)", profileName)
+	d, ok := env.Manifest.Deploys[profile]
+	if !ok {
+		return fmt.Errorf("profile %s: no deploy found (run 'aurora deploy' first)", profile)
 	}
-	pretend, _ := cmd.Flags().GetBool("pretend")
+	pretend, err := cmd.Flags().GetBool("pretend")
+	if err != nil {
+		return err
+	}
 	return cli.Call(cmd.Context(), cli.CallInput{
 		Function:        fn,
-		ContractAddress: contractAddr,
+		ContractAddress: d.ContractAddress,
 		RPC:             env.Profile.RPC,
-		Args:            callArgs,
+		Args:            args[1:],
 		Pretend:         pretend,
 	})
 }

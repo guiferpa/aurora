@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	deployMinTipGwei   int
+	deployMinTipGwei    int
 	deployMinMaxFeeGwei int
 )
 
@@ -25,29 +25,34 @@ var deployCmd = &cobra.Command{
 func init() {
 	deployCmd.Flags().IntVar(&deployMinTipGwei, "min-tip", 0, "minimum priority fee in Gwei (overrides default when RPC suggests too low)")
 	deployCmd.Flags().IntVar(&deployMinMaxFeeGwei, "min-max-fee", 0, "minimum max fee per gas in Gwei (overrides default when RPC suggests too low)")
+	deployCmd.Flags().StringP("source", "s", "", "custom source code to deploy")
+	deployCmd.Flags().StringP("profile", "p", "main", "profile to deploy")
 }
 
 func runDeploy(cmd *cobra.Command, args []string) error {
-	profileName := "main"
-	env, err := cli.LoadEnviron(profileName)
+	profile, err := cmd.Flags().GetString("profile")
+	if err != nil {
+		return err
+	}
+	env, err := cli.LoadEnviron(profile)
 	if err != nil {
 		return err
 	}
 	if env.Profile.RPC == "" {
-		return fmt.Errorf("profile %s: rpc is required for deploy", profileName)
+		return fmt.Errorf("profile %s: rpc is required for deploy", profile)
 	}
 	if env.Profile.Privkey == "" {
-		return fmt.Errorf("profile %s: privkey is required for deploy", profileName)
+		return fmt.Errorf("profile %s: privkey is required for deploy", profile)
 	}
 	address, deployTxHash, deployedAt, err := cli.Deploy(cmd.Context(), cli.DeployInput{
-		BinaryPath:     env.AbsPath(env.Profile.Binary),
-		RPC:            env.Profile.RPC,
-		Privkey:        env.Profile.Privkey,
-		MinTipGwei:     deployMinTipGwei,
-		MinMaxFeeGwei:  deployMinMaxFeeGwei,
+		BinaryPath:    env.AbsPath(env.Profile.Binary),
+		RPC:           env.Profile.RPC,
+		Privkey:       env.Profile.Privkey,
+		MinTipGwei:    deployMinTipGwei,
+		MinMaxFeeGwei: deployMinMaxFeeGwei,
 	})
 	if err != nil {
 		return err
 	}
-	return manifest.PersistDeploy(env.Root, profileName, address, deployTxHash, deployedAt.Format(time.RFC3339))
+	return manifest.PersistDeploy(env.Root, profile, address, deployTxHash, deployedAt.Format(time.RFC3339))
 }

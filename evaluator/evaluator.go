@@ -24,6 +24,7 @@ type Evaluator struct {
 	assertErrors []string // Buffer to collect assert errors
 	echoWriter   io.Writer
 	printWriter  io.Writer
+	args         []byte
 }
 
 func isTemp(bs []byte) bool {
@@ -503,12 +504,13 @@ type NewEvaluatorOptions struct {
 	Player        *Player
 	EchoWriter    io.Writer
 	PrintWriter   io.Writer
+	Args          []byte
 }
 
 func New(options NewEvaluatorOptions) *Evaluator {
 	return &Evaluator{
 		player:       options.Player,
-		envpool:      environ.NewPool(environ.New(nil)),
+		envpool:      environ.NewPool(environ.NewWithArgs(options.Args)),
 		cursor:       0,
 		logger:       NewLogger(options.EnableLogging),
 		insts:        make([]emitter.Instruction, 0),
@@ -517,5 +519,6 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		assertErrors: make([]string, 0),
 		echoWriter:   options.EchoWriter,
 		printWriter:  options.PrintWriter,
+		args:         options.Args,
 	}
 }

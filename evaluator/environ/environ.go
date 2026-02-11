@@ -69,8 +69,7 @@ func (env *Environ) PushArgument(arg []byte) {
 }
 
 func (env *Environ) GetArgument(index uint64) []byte {
-	args := env.args
-	if arg, ok := args[index]; ok {
+	if arg, ok := env.args[index]; ok {
 		return arg
 	}
 	return nil
@@ -79,6 +78,22 @@ func (env *Environ) GetArgument(index uint64) []byte {
 func (env *Environ) PrintTable(w io.Writer) {
 	for k, v := range env.table {
 		fmt.Printf("%s: %v\n", k, v)
+	}
+}
+
+func NewWithArgs(args []byte) *Environ {
+	argsMap := make(map[uint64][]byte, 0)
+	for i := 0; i < len(args); i += 32 {
+		argsMap[uint64(i/32)] = args[i : i+32]
+	}
+
+	return &Environ{
+		args:  argsMap,
+		table: make(map[string][]byte, 0),
+		scs:   make(map[string]*ScopeCallable, 0),
+		temps: make(map[string][]byte, 0),
+		ctx:   nil,
+		prev:  nil,
 	}
 }
 

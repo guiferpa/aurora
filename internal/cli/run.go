@@ -20,6 +20,7 @@ type RunInput struct {
 	Stdin   io.Reader
 	Stdout  io.Writer // used for both Echo and Print
 	Player  *evaluator.Player
+	Args    []string
 }
 
 // Run compiles and evaluates the Aurora source at Source.
@@ -55,6 +56,7 @@ func Run(ctx context.Context, in RunInput) error {
 		EnableLogging: slices.Contains(in.Loggers, "evaluator"),
 		EchoWriter:    in.Stdout,
 		PrintWriter:   in.Stdout,
+		Args:          ParseArgs(in.Args),
 	})
 	if in.Player != nil {
 		ev.SetPlayer(in.Player)

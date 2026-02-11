@@ -21,3 +21,33 @@ func TestPadding64Bits(t *testing.T) {
 		}
 	}
 }
+
+func TestPadding32Bytes(t *testing.T) {
+	cases := []struct {
+		Value    []byte
+		Expected []byte
+	}{
+		{
+			[]byte{10},
+			[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10},
+		},
+		{
+			[]byte{10, 20},
+			[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 20},
+		},
+		{
+			[]byte{10, 20, 30},
+			[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 20, 30},
+		},
+		{
+			[]byte{10, 20, 30, 40},
+			[]byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 20, 30, 40},
+		},
+	}
+	for _, c := range cases {
+		got := Padding32Bytes(c.Value)
+		if expected := c.Expected; !bytes.Equal(got, expected) {
+			t.Errorf("Unexpected padding: got %v, expected: %v", got, expected)
+		}
+	}
+}

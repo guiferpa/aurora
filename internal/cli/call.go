@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strings"
@@ -11,54 +10,98 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/guiferpa/aurora/byteutil"
 )
-
-const ABI_WORD_BYTES = 32
 
 // CallInput is the input for the Call handler.
 type CallInput struct {
-	Function        string   // function name (selector = Keccak256(function)[:4])
+	Function        string // function name (selector = Keccak256(function))
 	ContractAddress string
 	RPC             string
 	Args            []string // optional arguments (decimal or 0x-prefixed hex), ABI-encoded as uint256 each
+	Pretend         bool
 }
 
-// encodeCallData returns selector + args as ABI-encoded (each arg 32 bytes, big-endian).
-func encodeCallData(selector []byte, args []string) ([]byte, error) {
-	data := append([]byte(nil), selector...)
-	for _, a := range args {
-		a = strings.TrimSpace(a)
-		var n *big.Int
-		if strings.HasPrefix(a, "0x") || strings.HasPrefix(a, "0X") {
-			a = strings.TrimPrefix(strings.TrimPrefix(a, "0x"), "0X")
-			b, err := hex.DecodeString(a)
-			if err != nil {
-				return nil, fmt.Errorf("invalid hex arg %q: %w", a, err)
-			}
-			n = new(big.Int).SetBytes(b)
-		} else {
-			var ok bool
-			n, ok = new(big.Int).SetString(a, 10)
-			if !ok {
-				return nil, fmt.Errorf("invalid number arg %q", a)
-			}
-		}
-		word := make([]byte, ABI_WORD_BYTES)
-		b := n.Bytes()
-		copy(word[ABI_WORD_BYTES-len(b):], b)
-		data = append(data, word...)
+func EncodeSelector(selector string) []byte {
+	return byteutil.Padding32Bytes(crypto.Keccak256([]byte(selector)))
+}
+
+func EncodeArgs(args []string) []byte {
+	data := make([]byte, 0)
+	for _, arg := range args {
+		data = append(data, byteutil.Padding32Bytes([]byte(arg))...)
 	}
-	return data, nil
+	return data
+}
+
+// ParseArgs encodes each argument as a 32-byte ABI word, inferring type from the string:
+// - bool: "true" / "false" (case-insensitive) → 0 or 1 right-padded to 32 bytes
+// - number: decimal ("42") or hex ("0x2a") → uint256 big-endian
+// - string: anything else; use "" for empty string; quoted strings have quotes stripped
+func ParseArgs(args []string) []byte {
+	data := make([]byte, 0)
+	for _, arg := range args {
+		data = append(data, parseArg(arg)...)
+	}
+	return data
+}
+
+func parseArg(arg string) []byte {
+	// bool
+	switch strings.ToLower(strings.TrimSpace(arg)) {
+	case "true":
+		return byteutil.Padding32Bytes([]byte{1})
+	case "false":
+		return byteutil.Padding32Bytes([]byte{0})
+	}
+	// number (decimal or 0x-prefixed hex)
+	if n := parseNumber(arg); n != nil {
+		b := make([]byte, 32)
+		nb := n.Bytes()
+		if len(nb) > 32 {
+			copy(b, nb[len(nb)-32:])
+		} else {
+			copy(b[32-len(nb):], nb)
+		}
+		return b
+	}
+	// string (strip surrounding double quotes; "" → empty)
+	s := strings.TrimSpace(arg)
+	if strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`) && len(s) >= 2 {
+		s = s[1 : len(s)-1]
+	}
+	return byteutil.Padding32Bytes([]byte(s))
+}
+
+func parseNumber(s string) *big.Int {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		n := new(big.Int)
+		if _, ok := n.SetString(s[2:], 16); !ok {
+			return nil
+		}
+		return n
+	}
+	n := new(big.Int)
+	if _, ok := n.SetString(s, 10); !ok {
+		return nil
+	}
+	return n
 }
 
 // Call performs an eth_call and prints the result.
 func Call(ctx context.Context, in CallInput) error {
-	selector := crypto.Keccak256([]byte(in.Function))[:4]
-	data, err := encodeCallData(selector, in.Args)
-	if err != nil {
-		return err
-	}
+	selector := EncodeSelector(in.Function)
+	args := ParseArgs(in.Args)
 	contract := common.HexToAddress(in.ContractAddress)
+	data := append(selector, args...)
+
+	if in.Pretend {
+		fmt.Printf("Contract:   0x%x (%d bytes)\n", contract, len(contract.Bytes()))
+		fmt.Printf("Function:   0x%x (%d bytes)\n", selector, len(selector))
+		fmt.Printf("Arguments:  0x%x (%d bytes)\n", args, len(args))
+		return nil
+	}
 
 	client, err := ethclient.Dial(in.RPC)
 	if err != nil {

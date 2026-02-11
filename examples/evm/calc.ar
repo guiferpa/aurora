@@ -1,15 +1,3 @@
 ident sum = {
-  1 + 2;
-};
-
-ident sub = {
-  2 - 1;
-};
-
-ident mult = {
-  2 * 10;
-};
-
-ident sum2 = {
   arguments 0 + arguments 1;
 };

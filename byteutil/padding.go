@@ -43,3 +43,12 @@ func NoPadding(bfs []byte) []byte {
 	}
 	return bfs
 }
+
+func Padding32Bytes(bfs []byte) []byte {
+	const size = 32
+	bs := make([]byte, size)
+	for i := 0; i < len(bfs); i++ {
+		bs[(size-len(bfs))+i] = bfs[i]
+	}
+	return bs
+}

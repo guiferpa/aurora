@@ -15,6 +15,10 @@ var callCmd = &cobra.Command{
 	RunE:  runCall,
 }
 
+func init() {
+	callCmd.Flags().Bool("pretend", false, "pretend/simulate the call (dry run)")
+}
+
 func runCall(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("usage: call <function> [arg0 [arg1 ...]]")
@@ -38,10 +42,12 @@ func runCall(cmd *cobra.Command, args []string) error {
 	if contractAddr == "" {
 		return fmt.Errorf("profile %s: no deploy found (run 'aurora deploy' first)", profileName)
 	}
+	pretend, _ := cmd.Flags().GetBool("pretend")
 	return cli.Call(cmd.Context(), cli.CallInput{
 		Function:        fn,
 		ContractAddress: contractAddr,
 		RPC:             env.Profile.RPC,
 		Args:            callArgs,
+		Pretend:         pretend,
 	})
 }

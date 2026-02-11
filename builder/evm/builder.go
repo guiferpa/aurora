@@ -6,12 +6,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 )
 
-const CALLDATA_SLOT_READABLE = 32 // bytes
 const BYTE_SIZE = 8
-
-func GetCalldataArgsIndex(index int) byte {
-	return CALLDATA_SLOT_READABLE << index
-}
 
 type Builder struct {
 	cursor   int

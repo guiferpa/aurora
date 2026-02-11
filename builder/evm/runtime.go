@@ -9,10 +9,16 @@ import (
 )
 
 const (
-	DISPATCHER_BYTES_SIZE = 15
+	DISPATCHER_BYTES_SIZE         = 15
+	DISPATCHER_SELECTOR_NAME_SIZE = 4
 	// NO_MATCH_DISPATCHER_SIZE is the bytecode size for "selector not found": just STOP (1 byte).
 	NO_MATCH_DISPATCHER_SIZE = 1
+	CALLDATA_SLOT_READABLE   = 32
 )
+
+func GetCalldataArgsOffset(index uint64) byte {
+	return CALLDATA_SLOT_READABLE << index
+}
 
 type RuntimeCodeReferenced struct {
 	Selector []byte
@@ -74,20 +80,10 @@ func (t *Builder) buildCode(insts []emitter.Instruction) (*bytes.Buffer, error) 
 
 		if op == emitter.OpGetArg {
 			// arguments N -> load from calldata at offset 4 + N*32 (ABI: selector then 32-byte slots)
-			left := inst.GetLeft()
-			if len(left) < 8 {
-				continue
-			}
-			idx := byteutil.ToUint64(left)
-			offset := 4 + idx*32
-			if offset < 256 {
-				if _, err := bs.Write([]byte{OpPush1, byte(offset)}); err != nil {
-					return nil, err
-				}
-			} else {
-				if _, err := bs.Write([]byte{OpPush2, byte(offset >> 8), byte(offset)}); err != nil {
-					return nil, err
-				}
+			index := byteutil.ToUint64(inst.GetLeft())
+			offset := GetCalldataArgsOffset(index)
+			if _, err := bs.Write([]byte{OpPush1, offset}); err != nil {
+				return nil, err
 			}
 			if _, err := bs.Write([]byte{OpCallDataLoad}); err != nil {
 				return nil, err

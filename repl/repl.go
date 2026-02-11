@@ -47,7 +47,7 @@ func printRaw(w io.Writer, temps map[string][]byte) {
 	}
 }
 
-func Start(in io.Reader, debug bool, raw bool, loggers []string) {
+func Start(in io.Reader, raw bool, loggers []string) {
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
 		EchoWriter:    &EchoWriter{},

@@ -16,6 +16,11 @@ var runCmd = &cobra.Command{
 	RunE:  runRun,
 }
 
+func init() {
+	runCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
+	runCmd.Flags().BoolP("player", "p", false, "enable player mode (stdin)")
+}
+
 func runRun(cmd *cobra.Command, args []string) error {
 	env, err := cli.LoadEnviron("main")
 	if err != nil {
@@ -26,8 +31,12 @@ func runRun(cmd *cobra.Command, args []string) error {
 		source = args[0]
 	}
 	var pl *evaluator.Player
-	if player {
+	if player, _ := cmd.Flags().GetBool("player"); player {
 		pl = evaluator.NewPlayer(os.Stdin)
+	}
+	loggers, err := cmd.Flags().GetStringSlice("loggers")
+	if err != nil {
+		return err
 	}
 	return cli.Run(cmd.Context(), cli.RunInput{
 		Source:  source,

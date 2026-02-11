@@ -8,10 +8,24 @@ import (
 	"github.com/guiferpa/aurora/repl"
 )
 
+func init() {
+	replCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
+	replCmd.Flags().BoolP("raw", "r", false, "enable raw mode for show raw output")
+}
+
 var replCmd = &cobra.Command{
 	Use:   "repl",
 	Short: "Enter in Read-Eval-Print Loop mode",
-	Run: func(cmd *cobra.Command, args []string) {
-		repl.Start(os.Stdin, debug, raw, loggers)
+	RunE: func(cmd *cobra.Command, args []string) error {
+		raw, err := cmd.Flags().GetBool("raw")
+		if err != nil {
+			return err
+		}
+		loggers, err := cmd.Flags().GetStringSlice("loggers")
+		if err != nil {
+			return err
+		}
+		repl.Start(os.Stdin, raw, loggers)
+		return nil
 	},
 }

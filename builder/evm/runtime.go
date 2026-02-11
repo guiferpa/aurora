@@ -69,6 +69,7 @@ func (t *Builder) buildCode(insts []emitter.Instruction) (*bytes.Buffer, error) 
 			}
 		}
 
+		// Push to stack
 		if op == emitter.OpSave {
 			if left := inst.GetLeft(); len(left) == 1 {
 				if _, err := t.writeBool(bs, left[0]); err != nil {

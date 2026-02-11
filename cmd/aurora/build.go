@@ -13,6 +13,11 @@ var buildCmd = &cobra.Command{
 	RunE:  runBuild,
 }
 
+func init() {
+	buildCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), builder)")
+	buildCmd.Flags().StringP("output", "o", "", "output path for compiled binary (default: binary from aurora.toml)")
+}
+
 func runBuild(cmd *cobra.Command, args []string) error {
 	env, err := cli.LoadEnviron("main")
 	if err != nil {
@@ -22,13 +27,20 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		source = args[0]
 	}
-	outPath := output
-	if outPath == "" {
-		outPath = env.AbsPath(env.Profile.Binary)
+	output, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return err
+	}
+	if output == "" {
+		output = env.AbsPath(env.Profile.Binary)
+	}
+	loggers, err := cmd.Flags().GetStringSlice("loggers")
+	if err != nil {
+		return err
 	}
 	return cli.Build(cmd.Context(), cli.BuildInput{
-		Source:    source,
-		OutputPath: outPath,
-		Loggers:   loggers,
+		Source:     source,
+		OutputPath: output,
+		Loggers:    loggers,
 	})
 }

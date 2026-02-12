@@ -4,7 +4,6 @@ import (
 	"bytes"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 )
 
@@ -71,25 +70,27 @@ func (t *Builder) buildCode(insts []emitter.Instruction) (*bytes.Buffer, error) 
 
 		// Push to stack
 		if op == emitter.OpSave {
-			if left := inst.GetLeft(); len(left) == 1 {
-				if _, err := t.writeBool(bs, left[0]); err != nil {
-					return nil, err
-				}
+			if _, err := t.writeSave(bs, inst.GetLeft()); err != nil {
+				return nil, err
 			}
-			t.operands = append(t.operands, inst.GetLeft())
+		}
+
+		if op == emitter.OpIdent {
+			if _, err := t.writeIdent(bs, inst.GetLeft()); err != nil {
+				return nil, err
+			}
+		}
+
+		if op == emitter.OpLoad {
+			if _, err := t.writeLoad(bs, inst.GetLeft()); err != nil {
+				return nil, err
+			}
 		}
 
 		if op == emitter.OpGetArg {
-			// arguments N -> load from calldata at offset 4 + N*32 (ABI: selector then 32-byte slots)
-			index := byteutil.ToUint64(inst.GetLeft())
-			offset := GetCalldataArgsOffset(index)
-			if _, err := bs.Write([]byte{OpPush1, offset}); err != nil {
+			if _, err := t.writeGetArg(bs, inst.GetLeft()); err != nil {
 				return nil, err
 			}
-			if _, err := bs.Write([]byte{OpCallDataLoad}); err != nil {
-				return nil, err
-			}
-			// Value is on stack; add/sub/etc use writePush8SafeFromOperands which is no-op when operands empty, so the next op will use this value.
 		}
 	}
 
@@ -242,7 +243,10 @@ func (t *Builder) buildRuntimeCode() (*bytes.Buffer, error) {
 		return nil, err
 	}
 	built = append(built, dispatchers.Bytes()...)
-	built = append(built, buildNoMatchDispatcher()...)
+	// No-match STOP only when we have selectors; otherwise runtime starts with root code.
+	if len(rc.Referenced) > 0 {
+		built = append(built, buildNoMatchDispatcher()...)
+	}
 
 	referenced := make([]byte, 0)
 	for _, rf := range rc.Referenced {

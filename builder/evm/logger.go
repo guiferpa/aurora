@@ -32,6 +32,10 @@ func (l *Logger) printMemoryStore(w *tabwriter.Writer) (int, error) {
 	return fmt.Fprintf(w, "%s\t%s\n", yellow("MSTORE"), "")
 }
 
+func (l *Logger) printMemoryLoad(w *tabwriter.Writer) (int, error) {
+	return fmt.Fprintf(w, "%s\t%s\n", yellow("MLOAD"), "")
+}
+
 func (l *Logger) printStop(w *tabwriter.Writer) (int, error) {
 	return fmt.Fprintf(w, "%s\t%s\n", yellow("STOP"), "")
 }
@@ -211,6 +215,13 @@ func (l *Logger) Scanln(bs []byte) error {
 			}
 			if opcode == OpJumpDestiny {
 				if _, err := l.printJumpDestiny(l.w); err != nil {
+					return err
+				}
+				i += 1
+				continue
+			}
+			if opcode == OpMemoryLoad {
+				if _, err := l.printMemoryLoad(l.w); err != nil {
 					return err
 				}
 				i += 1

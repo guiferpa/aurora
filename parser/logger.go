@@ -55,6 +55,9 @@ func WrapNodeLogging(n Node) any {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 		v = v.Elem()
+		if !v.IsValid() {
+			return nil
+		}
 	}
 
 	// percorre campos e reembrulha Nodes internos

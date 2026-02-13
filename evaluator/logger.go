@@ -25,7 +25,11 @@ func NewLogger(enableLogging bool) *Logger {
 	}
 }
 
-func (l *Logger) Println(label []byte, opcode byte, left, right []byte) error {
+func (l *Logger) Println(inst emitter.Instruction) error {
+	label := inst.GetLabel()
+	opcode := inst.GetOpCode()
+	left := inst.GetLeft()
+	right := inst.GetRight()
 	if l.enableLogging {
 		resolveOpcode := color.New(color.FgHiCyan).Sprint(emitter.ResolveOpCode(opcode))
 		colorizedLeft := magenta("<empty>")

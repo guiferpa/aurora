@@ -1,109 +1,111 @@
 package environ
 
-import (
-	"fmt"
-	"io"
-
-	"github.com/guiferpa/aurora/emitter"
-)
-
 type Environ struct {
-	args  map[uint64][]byte // Arguments for environment
-	table map[string][]byte
-	scs   map[string]*ScopeCallable // Segments of functions
-	temps map[string][]byte         // Temporaries of environment
-	ctx   *Context
-	prev  *Environ // Previous environment
+	args   map[uint64][]byte
+	idents map[string][]byte
+	defers map[string][]byte
+	temps  map[string][]byte
+	prev   *Environ
 }
 
-func (env *Environ) SetTemp(key string, value []byte) {
+func (e *Environ) Ahead(next *Environ) *Environ {
+	next.prev = e
+	return next
+}
+
+func (e *Environ) GetPrevious() *Environ {
+	return e.prev
+}
+
+func (e *Environ) SetTemp(key string, value []byte) {
 	if len(value) > 0 {
-		env.temps[key] = value
+		e.temps[key] = value
 	}
 }
 
-func (env *Environ) GetTemp(key string) []byte {
-	t := env.temps[key]
-	delete(env.temps, key)
+func (e *Environ) GetTemp(key string) []byte {
+	t := e.temps[key]
+	delete(e.temps, key)
 	return t
 }
 
-func (env *Environ) Temps() map[string][]byte {
-	return env.temps
+func (e *Environ) GetTemps() map[string][]byte {
+	return e.temps
 }
 
-func (env *Environ) ClearTemps() {
-	env.temps = make(map[string][]byte, 0)
+func (e *Environ) ClearTemps() {
+	e.temps = make(map[string][]byte, 0)
 }
 
-func (env *Environ) SetLocaL(key string, value []byte) {
-	env.table[key] = value
+func (e *Environ) SetIdent(key string, value []byte) {
+	e.idents[key] = value
 }
 
-func (env *Environ) GetLocal(key string) []byte {
-	if c, ok := env.table[key]; ok {
-		return c
+func (e *Environ) GetIdent(key string) []byte {
+	curr := e
+	for curr != nil {
+		if c, ok := curr.idents[key]; ok {
+			return c
+		}
+		curr = curr.prev
 	}
 	return nil
 }
 
-func (env *Environ) SetScopeCallable(key string, insts []emitter.Instruction, begin, end uint64) {
-	env.scs[key] = &ScopeCallable{insts, begin, end}
+func (e *Environ) GetLocalIdent(key string) []byte {
+	return e.idents[key]
 }
 
-func (env *Environ) GetScopeCallable(key string) *ScopeCallable {
-	return env.scs[key]
+func (e *Environ) SetDefer(key string, value []byte) {
+	e.defers[key] = value
 }
 
-func (env *Environ) SetContext(ctx *Context) {
-	env.ctx = ctx
+func (e *Environ) GetDefer(key string) []byte {
+	return e.defers[key]
 }
 
-func (env *Environ) GetContext() *Context {
-	return env.ctx
+func (e *Environ) SetArgument(key uint64, value []byte) {
+	e.args[key] = value
 }
 
-func (env *Environ) PushArgument(arg []byte) {
-	index := uint64(len(env.args))
-	env.args[index] = arg
+func (e *Environ) SetArguments(args map[uint64][]byte) {
+	e.args = args
 }
 
-func (env *Environ) GetArgument(index uint64) []byte {
-	if arg, ok := env.args[index]; ok {
+func (e *Environ) GetArgument(key uint64) []byte {
+	if arg, ok := e.args[key]; ok {
 		return arg
 	}
 	return nil
 }
 
-func (env *Environ) PrintTable(w io.Writer) {
-	for k, v := range env.table {
-		fmt.Printf("%s: %v\n", k, v)
-	}
+func (e *Environ) GetArguments() map[uint64][]byte {
+	return e.args
 }
 
-func NewWithArgs(args []byte) *Environ {
-	argsMap := make(map[uint64][]byte, 0)
-	for i := 0; i < len(args); i += 32 {
-		argsMap[uint64(i/32)] = args[i : i+32]
-	}
-
-	return &Environ{
-		args:  argsMap,
-		table: make(map[string][]byte, 0),
-		scs:   make(map[string]*ScopeCallable, 0),
-		temps: make(map[string][]byte, 0),
-		ctx:   nil,
-		prev:  nil,
-	}
+func (e *Environ) GetArgumentsLength() uint64 {
+	return uint64(len(e.args))
 }
 
-func New(prev *Environ) *Environ {
+type NewEnvironOptions struct {
+	Idents map[string][]byte
+	Args   []byte
+	Prev   *Environ
+}
+
+func NewEnviron(opts NewEnvironOptions) *Environ {
+	args := make(map[uint64][]byte, 0)
+	for i := 0; i < len(opts.Args); i += 32 {
+		args[uint64(i/32)] = opts.Args[i : i+32]
+	}
+	idents := make(map[string][]byte, 0)
+	if opts.Idents != nil {
+		idents = opts.Idents
+	}
 	return &Environ{
-		args:  make(map[uint64][]byte, 0),
-		table: make(map[string][]byte, 0),
-		scs:   make(map[string]*ScopeCallable, 0),
-		temps: make(map[string][]byte, 0),
-		ctx:   nil,
-		prev:  prev,
+		args:   args,
+		idents: idents,
+		temps:  make(map[string][]byte),
+		prev:   opts.Prev,
 	}
 }

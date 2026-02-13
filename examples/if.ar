@@ -1,9 +1,6 @@
 ident a = if 10 bigger 9 { 
-  10; 
+  32; 
 };
 
 print a;
 
-if 11 bigger 10 {
-  print 20;
-};

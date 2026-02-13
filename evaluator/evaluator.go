@@ -12,483 +12,18 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 )
 
+type ReturnsPerLabel map[string][]byte
+
 type Evaluator struct {
 	player       *Player
-	envpool      *environ.Pool
 	cursor       uint64
+	end          uint64
 	logger       *Logger
 	insts        []emitter.Instruction
-	currseg      *environ.ScopeCallable
-	result       [][]byte
-	counter      *uint64
 	assertErrors []string // Buffer to collect assert errors
 	echoWriter   io.Writer
 	printWriter  io.Writer
-	args         []byte
-}
-
-func isTemp(bs []byte) bool {
-	if len(bs) == 0 {
-		return false
-	}
-	if bs[0] == 0x30 { // 0
-		return true
-	}
-	return false
-}
-
-func (e *Evaluator) walkTemps(bs []byte) []byte {
-	l := byteutil.ToHex(bs)
-	bs = e.envpool.GetTemp(l)
-	if isTemp(bs) {
-		return e.walkTemps(bs)
-	}
-	return bs
-}
-
-func (e *Evaluator) exec(label []byte, op byte, left, right []byte) error {
-	// For OpAssert, left is a label reference, don't resolve it
-	if op != emitter.OpAssert {
-		if isTemp(left) {
-			left = e.walkTemps(left)
-		}
-	}
-
-	if isTemp(right) {
-		right = e.walkTemps(right)
-	}
-
-	if op == emitter.OpSave {
-		l := byteutil.ToHex(label)
-		e.envpool.SetTemp(l, left)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpPull {
-		l := byteutil.ToHex(label)
-
-		// Ensure right is exactly 8 bytes (handles both uint64 and direct bytes)
-		rightDirect := byteutil.Padding64Bits(right)
-
-		// Ensure left is exactly 8 bytes
-		leftDirect := byteutil.Padding64Bits(left)
-
-		// Extract significant bytes from right (bytes from first non-zero to end)
-		rightSignificantBytes := byteutil.ExtractSignificantBytes(rightDirect)
-
-		// Extract significant bytes from left (bytes from first non-zero to end)
-		leftSignificantBytes := byteutil.ExtractSignificantBytes(leftDirect)
-
-		// pull: remove bytes from beginning of left, add bytes from right at the end
-		// Concatenate: left bytes + right bytes
-		result := append(leftSignificantBytes, rightSignificantBytes...)
-
-		// If result exceeds 8 bytes, keep only the last 8 bytes
-		if len(result) > 8 {
-			result = result[len(result)-8:]
-		}
-
-		// Pad to exactly 8 bytes with right-alignment
-		result = byteutil.Padding64Bits(result)
-
-		e.envpool.SetTemp(l, result)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpPush {
-		l := byteutil.ToHex(label)
-
-		// Ensure right is exactly 8 bytes (handles both uint64 and direct bytes)
-		rightDirect := byteutil.Padding64Bits(right)
-
-		// Ensure left is exactly 8 bytes
-		leftDirect := byteutil.Padding64Bits(left)
-
-		// Extract significant bytes from right (bytes from first non-zero to end)
-		rightSignificantBytes := byteutil.ExtractSignificantBytes(rightDirect)
-
-		// Extract significant bytes from left (bytes from first non-zero to end)
-		leftSignificantBytes := byteutil.ExtractSignificantBytes(leftDirect)
-
-		// push: add bytes from right at the beginning, remove bytes from end of left
-		// Concatenate: right bytes + left bytes
-		result := append(rightSignificantBytes, leftSignificantBytes...)
-
-		// If result exceeds 8 bytes, keep only the first 8 bytes
-		if len(result) > 8 {
-			result = result[:8]
-		}
-
-		// Pad to exactly 8 bytes with right-alignment
-		result = byteutil.Padding64Bits(result)
-
-		e.envpool.SetTemp(l, result)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpHead {
-		l := byteutil.ToHex(label)
-
-		// Ensure left is exactly 8 bytes
-		leftDirect := byteutil.Padding64Bits(left)
-
-		// Get index in bytes (not in 8-byte slots)
-		index := int(byteutil.ToUint64(right))
-
-		// Apply modulo 8 to handle any index value (handles negative values too)
-		index = (index%8 + 8) % 8
-
-		// Extract first 'index' bytes
-		result := leftDirect[:index]
-
-		// Pad to 8 bytes with right-alignment
-		result = byteutil.Padding64Bits(result)
-
-		e.envpool.SetTemp(l, result)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpTail {
-		l := byteutil.ToHex(label)
-
-		// Ensure left is exactly 8 bytes
-		leftDirect := byteutil.Padding64Bits(left)
-
-		// Get index in bytes (not in 8-byte slots)
-		index := int(byteutil.ToUint64(right))
-
-		// Apply modulo 8 to handle any index value (handles negative values too)
-		index = (index%8 + 8) % 8
-
-		// Extract bytes from index to end
-		result := leftDirect[index:]
-
-		// Pad to 8 bytes with right-alignment
-		result = byteutil.Padding64Bits(result)
-
-		e.envpool.SetTemp(l, result)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpResult {
-		l := byteutil.ToHex(label)
-		if len(e.result) > 0 {
-			tr := e.result
-			tv := tr[len(tr)-1]
-			e.envpool.SetTemp(l, tv)
-			e.result = tr[:len(tr)-1]
-		}
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpGetArg {
-		index := byteutil.ToUint64(left)
-		v := e.envpool.QueryArgument(index)
-		l := byteutil.ToHex(label)
-		e.envpool.SetTemp(l, v)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpPushArg {
-		e.envpool.Current().PushArgument(left)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpIdent {
-		k := byteutil.ToHex(left)
-		if v := e.envpool.GetLocal(k); v != nil {
-			return fmt.Errorf("conflict between identifiers named %s", left)
-		}
-		if len(right) > 0 {
-			e.envpool.SetLocal(k, right)
-			e.cursor++
-			return nil
-		}
-		return fmt.Errorf("identifier %s cannot be void", left)
-	}
-
-	if op == emitter.OpIf {
-		e.envpool.Ahead()
-		test := byteutil.ToBoolean(left)
-		if test {
-			e.cursor++
-			return nil
-		}
-		e.cursor = e.cursor + byteutil.ToUint64(right) + 1
-		return nil
-	}
-
-	if op == emitter.OpJump {
-		e.cursor = e.cursor + byteutil.ToUint64(left) + 1
-		return nil
-	}
-
-	if op == emitter.OpLoad {
-		k := byteutil.ToHex(left)
-		l := byteutil.ToHex(label)
-		if v := e.envpool.QueryLocal(k); v != nil {
-			e.envpool.SetTemp(l, v)
-			e.cursor++
-			return nil
-		}
-		return fmt.Errorf("identifier %s not defined", left)
-	}
-
-	if op == emitter.OpBeginScope { // Open scope for block
-		key := byteutil.ToHex(left)
-		start := uint64(e.cursor) + 1
-		end := byteutil.ToUint64(right)
-		if curr := e.envpool.Current(); curr != nil {
-			insts := e.insts[start : start+end]
-			curr.SetScopeCallable(key, insts, start, end)
-		}
-		e.cursor = e.cursor + end + 1
-		return nil
-	}
-
-	if op == emitter.OpPrint {
-		builtin.PrintFunction(e.printWriter, left)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpEcho {
-		builtin.EchoFunction(e.echoWriter, left)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpAssert {
-		// OpAssert receives the label of the comparison result
-		// We need to get the result from the temp storage
-		// left is the label (e.g., "3032"), we need to convert it to hex and get from temp
-		// right contains the line number (stored as uint64 bytes)
-		l := byteutil.ToHex(left)
-		r := e.envpool.GetTemp(l)
-		line := byteutil.ToUint64(right)
-
-		if r == nil {
-			// Collect error instead of returning immediately
-			e.assertErrors = append(e.assertErrors, fmt.Sprintf("assertion failed: could not find comparison result on line %d", line))
-			e.cursor++
-			return nil
-		}
-
-		isTrue := byteutil.ToBoolean(r)
-		if !isTrue {
-			// Collect error instead of returning immediately
-			e.assertErrors = append(e.assertErrors, fmt.Sprintf("assertion failed: expected condition to be true on line %d", line))
-		}
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpPreCall {
-		k := byteutil.ToHex(left)
-		v := e.envpool.QueryLocal(k)
-
-		if v == nil {
-			return fmt.Errorf("identifier %s not defined", left)
-		}
-
-		k = byteutil.ToHex(v)
-		currseg := e.envpool.QueryScopeCallable(k)
-		if currseg == nil {
-			return fmt.Errorf("identifier %s is not callable segment", left)
-		}
-		e.currseg = currseg
-
-		e.envpool.Ahead()
-
-		e.cursor++
-
-		return nil
-	}
-
-	if op == emitter.OpCall {
-		e.envpool.SetContext(e.cursor+1, e.insts)
-		e.cursor = 0
-		e.insts = e.currseg.GetInstructions() // Retrieve instructions from function segment
-		return nil
-	}
-
-	if op == emitter.OpReturn {
-		if len(left) > 0 {
-			e.result = append(e.result, left)
-		}
-		ctx := e.envpool.GetContext()
-		e.envpool.Back()
-		if ctx != nil {
-			e.currseg = nil
-			e.insts = ctx.GetInstructions()
-			e.cursor = ctx.GetCursor()
-		} else {
-			e.cursor++
-		}
-		return nil
-	}
-
-	if op == emitter.OpOr {
-		a := byteutil.ToBoolean(left)
-		b := byteutil.ToBoolean(right)
-		test := a || b
-		l := byteutil.ToHex(label)
-		if test {
-			e.envpool.SetTemp(l, byteutil.True)
-		} else {
-			e.envpool.SetTemp(l, byteutil.False)
-		}
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpAnd {
-		a := byteutil.ToBoolean(left)
-		b := byteutil.ToBoolean(right)
-		test := a && b
-		l := byteutil.ToHex(label)
-		if test {
-			e.envpool.SetTemp(l, byteutil.True)
-		} else {
-			e.envpool.SetTemp(l, byteutil.False)
-		}
-		e.cursor++
-		return nil
-	}
-
-	// Convert byte arrays to uint64 for arithmetic/comparison operations
-	// Note: Only first 8 bytes are used; larger arrays are truncated
-	a := byteutil.ToUint64(left)
-	b := byteutil.ToUint64(right)
-
-	if op == emitter.OpEquals {
-		r := byteutil.False
-		test := a == b
-		if test {
-			r = byteutil.True
-		}
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpDiff {
-		r := byteutil.False
-		test := a != b
-		if test {
-			r = byteutil.True
-		}
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpBigger {
-		r := byteutil.False
-		test := a > b
-		if test {
-			r = byteutil.True
-		}
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpSmaller {
-		r := byteutil.False
-		test := a < b
-		if test {
-			r = byteutil.True
-		}
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpMultiply {
-		r := make([]byte, 8)
-		binary.BigEndian.PutUint64(r, a*b)
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpAdd {
-		r := make([]byte, 8)
-		binary.BigEndian.PutUint64(r, a+b)
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpSubtract {
-		r := make([]byte, 8)
-		binary.BigEndian.PutUint64(r, a-b)
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpDivide {
-		r := make([]byte, 8)
-		binary.BigEndian.PutUint64(r, a/b)
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	if op == emitter.OpExponential {
-		r := make([]byte, 8)
-		v := math.Pow(float64(a), float64(b))
-		binary.BigEndian.PutUint64(r, uint64(v))
-		e.result = append(e.result, r)
-		e.cursor++
-		return nil
-	}
-
-	e.cursor++
-	return nil
-}
-
-func (e *Evaluator) Evaluate(insts []emitter.Instruction) (map[string][]byte, error) {
-	var err error
-	e.insts = insts
-	e.assertErrors = make([]string, 0) // Reset assert errors buffer
-
-	for int(e.cursor) < len(e.insts) {
-		if e.player != nil {
-			for e.player.scanner.Scan() {
-				fmt.Printf("[Cursor]: %v\n", e.cursor)
-				break
-			}
-		}
-		inst := e.insts[e.cursor]
-		if err := e.logger.Println(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight()); err != nil {
-			return nil, err
-		}
-		err = e.exec(inst.GetLabel(), inst.GetOpCode(), inst.GetLeft(), inst.GetRight())
-		if err != nil {
-			break
-		}
-	}
-
-	e.cursor = 0
-	temps := e.envpool.Current().Temps()
-	e.envpool.Current().ClearTemps()
-
-	if err := e.logger.Close(); err != nil {
-		return nil, err
-	}
-
-	return temps, err
+	environ      *environ.Environ
 }
 
 func (e *Evaluator) GetAssertErrors() []string {
@@ -497,6 +32,369 @@ func (e *Evaluator) GetAssertErrors() []string {
 
 func (e *Evaluator) SetPlayer(player *Player) {
 	e.player = player
+}
+
+func (e *Evaluator) EvaluateAdd(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := make([]byte, 8)
+	binary.BigEndian.PutUint64(r, x+y)
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateSubtract(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := make([]byte, 8)
+	binary.BigEndian.PutUint64(r, x-y)
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateMultiply(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := make([]byte, 8)
+	binary.BigEndian.PutUint64(r, x*y)
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateDivide(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	if y == 0 {
+		return fmt.Errorf("integer divide by zero")
+	}
+	r := make([]byte, 8)
+	binary.BigEndian.PutUint64(r, x/y)
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateExponential(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	v := math.Pow(float64(x), float64(y))
+	r := make([]byte, 8)
+	binary.BigEndian.PutUint64(r, uint64(v))
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateDiff(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := byteutil.False
+	if x != y {
+		r = byteutil.True
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateEquals(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := byteutil.False
+	if x == y {
+		r = byteutil.True
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateBigger(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := byteutil.False
+	if x > y {
+		r = byteutil.True
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateSmaller(label, left, right []byte) error {
+	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := byteutil.False
+	if x < y {
+		r = byteutil.True
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateAnd(label, left, right []byte) error {
+	x := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := byteutil.False
+	if x && y {
+		r = byteutil.True
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateOr(label, left, right []byte) error {
+	x := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
+	y := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(right)))
+	r := byteutil.False
+	if x || y {
+		r = byteutil.True
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluatePrint(label, left []byte) error {
+	val := e.environ.GetTemp(byteutil.ToHex(left))
+	builtin.PrintFunction(e.printWriter, val)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateEcho(label, left []byte) error {
+	val := e.environ.GetTemp(byteutil.ToHex(left))
+	builtin.EchoFunction(e.echoWriter, val)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateSave(label, left, right []byte) error {
+	e.environ.SetTemp(byteutil.ToHex(label), left)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateLoad(label, left, right []byte) error {
+	val := e.environ.GetIdent(byteutil.ToHex(left))
+	if len(val) > 0 {
+		e.environ.SetTemp(byteutil.ToHex(label), val)
+	}
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateIf(label, left, right []byte) error {
+	test := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
+	next := environ.NewEnviron(environ.NewEnvironOptions{})
+	next.SetArguments(e.environ.GetArguments())
+	e.environ = e.environ.Ahead(next)
+	if test {
+		e.cursor++
+		return nil
+	}
+	e.AddCursor(byteutil.ToUint64(right) + 1)
+	return nil
+}
+
+func (e *Evaluator) EvaluateJump(label, left, right []byte) error {
+	e.AddCursor(byteutil.ToUint64(left) + 1)
+	return nil
+}
+
+func (e *Evaluator) EvaluateBeginScope(label, left, right []byte) error {
+	next := environ.NewEnviron(environ.NewEnvironOptions{})
+	next.SetArguments(e.environ.GetArguments())
+	e.environ = e.environ.Ahead(next)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateReturn(_, left, right []byte) error {
+	label := byteutil.ToHex(left)
+	value := e.environ.GetTemp(byteutil.ToHex(right))
+	if len(value) > 0 {
+		e.environ = e.environ.GetPrevious()
+		e.environ.SetTemp(label, value)
+	}
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
+	k := byteutil.ToHex(left)
+	if v := e.environ.GetLocalIdent(k); v != nil {
+		return fmt.Errorf("conflict between identifiers named %s", left)
+	}
+	val := e.environ.GetTemp(byteutil.ToHex(right))
+	if len(val) > 0 {
+		e.environ.SetIdent(k, val)
+		e.IncrementCursor()
+		return nil
+	}
+	return fmt.Errorf("identifier %s cannot be void", left)
+}
+
+func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {
+	val := e.environ.GetTemp(byteutil.ToHex(right))
+	index := e.environ.GetArgumentsLength()
+	e.environ.SetArgument(index, val)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
+	index := byteutil.ToUint64(left)
+	v := e.environ.GetArgument(index)
+	l := byteutil.ToHex(label)
+	e.environ.SetTemp(l, v)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) CanReadInstructions() bool {
+	return e.cursor < e.end
+}
+
+func (e *Evaluator) GetInstruction() emitter.Instruction {
+	return e.insts[e.cursor]
+}
+
+func (e *Evaluator) SetInstructions(insts []emitter.Instruction) {
+	e.insts = insts
+}
+
+func (e *Evaluator) SetInstructionsOffset(begin, end uint64) {
+	e.cursor = begin
+	e.end = end
+}
+
+func (e *Evaluator) GetInstructionsOffset() (uint64, uint64) {
+	return e.cursor, e.end
+}
+
+func (e *Evaluator) IncrementCursor() {
+	e.cursor++
+}
+
+func (e *Evaluator) AddCursor(offset uint64) {
+	e.cursor += offset
+}
+
+func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
+	// Arithmetic operations
+	if inst.GetOpCode() == emitter.OpAdd {
+		return e.EvaluateAdd(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpSubtract {
+		return e.EvaluateSubtract(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpMultiply {
+		return e.EvaluateMultiply(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpDivide {
+		return e.EvaluateDivide(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpExponential {
+		return e.EvaluateExponential(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Comparison operations
+	if inst.GetOpCode() == emitter.OpDiff {
+		return e.EvaluateDiff(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpEquals {
+		return e.EvaluateEquals(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpBigger {
+		return e.EvaluateBigger(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpSmaller {
+		return e.EvaluateSmaller(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Logical operations
+	if inst.GetOpCode() == emitter.OpAnd {
+		return e.EvaluateAnd(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpOr {
+		return e.EvaluateOr(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Builtins operations
+	if inst.GetOpCode() == emitter.OpPrint {
+		return e.EvaluatePrint(inst.GetLabel(), inst.GetLeft())
+	}
+	if inst.GetOpCode() == emitter.OpEcho {
+		return e.EvaluateEcho(inst.GetLabel(), inst.GetLeft())
+	}
+
+	// Memory operations
+	if inst.GetOpCode() == emitter.OpSave {
+		return e.EvaluateSave(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpLoad {
+		return e.EvaluateLoad(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpIdent {
+		return e.EvaluateIdent(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Control flow operations
+	if inst.GetOpCode() == emitter.OpIf {
+		return e.EvaluateIf(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpJump {
+		return e.EvaluateJump(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpBeginScope {
+		return e.EvaluateBeginScope(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpReturn {
+		return e.EvaluateReturn(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Arguments operations
+	if inst.GetOpCode() == emitter.OpPushArg {
+		return e.EvaluatePushArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpGetArg {
+		return e.EvaluateGetArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	e.IncrementCursor()
+
+	return nil
+}
+
+func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error) {
+	e.SetInstructionsOffset(from, to)
+
+	for e.CanReadInstructions() {
+		inst := e.GetInstruction()
+		if err := e.logger.Println(inst); err != nil {
+			return nil, err
+		}
+		if err := e.ExecuteInstruction(inst); err != nil {
+			return nil, err
+		}
+	}
+
+	return e.environ.GetTemps(), nil
+}
+
+func (e *Evaluator) Evaluate(insts []emitter.Instruction) (ReturnsPerLabel, error) {
+	e.SetInstructions(insts)
+	returns, err := e.ExecuteInstructions(0, uint64(len(e.insts)))
+	if err := e.logger.Close(); err != nil {
+		return nil, err
+	}
+	return returns, err
 }
 
 type NewEvaluatorOptions struct {
@@ -510,15 +408,15 @@ type NewEvaluatorOptions struct {
 func New(options NewEvaluatorOptions) *Evaluator {
 	return &Evaluator{
 		player:       options.Player,
-		envpool:      environ.NewPool(environ.NewWithArgs(options.Args)),
 		cursor:       0,
+		end:          0,
 		logger:       NewLogger(options.EnableLogging),
 		insts:        make([]emitter.Instruction, 0),
-		result:       make([][]byte, 0),
-		counter:      new(uint64),
 		assertErrors: make([]string, 0),
 		echoWriter:   options.EchoWriter,
 		printWriter:  options.PrintWriter,
-		args:         options.Args,
+		environ: environ.NewEnviron(environ.NewEnvironOptions{
+			Args: options.Args,
+		}),
 	}
 }

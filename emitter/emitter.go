@@ -21,7 +21,9 @@ func GenerateLabel(tc *int) []byte {
 	return t
 }
 
-func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
+type Label []byte
+
+func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 	if n, ok := stmt.(parser.StatementNode); ok {
 		return EmitInstruction(tc, insts, n.Node)
 	}
@@ -37,16 +39,16 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		for _, ins := range n.Body {
 			l = EmitInstruction(tc, &body, ins)
 		}
-		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
 
-		length := uint64(len(body)) // Length of function
-		*insts = append(*insts, NewInstruction(GenerateLabel(tc), OpBeginScope, n.Ref, byteutil.FromUint64(length)))
+		bodylength := byteutil.FromUint64(uint64(len(body)) + 1)
+
+		lsc := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(lsc, OpBeginScope, n.Ref, bodylength))
+
+		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, lsc, l))
 		*insts = append(*insts, body...)
 
-		l = GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpSave, n.Ref, nil))
-
-		return l
+		return lsc
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return EmitInstruction(tc, insts, n.Expression)
@@ -68,10 +70,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 
-		rl := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(rl, OpResult, nil, nil))
-
-		return rl
+		return l
 	}
 	if n, ok := stmt.(parser.BooleanExpression); ok {
 		ll := EmitInstruction(tc, insts, n.Left)
@@ -131,37 +130,36 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		return l
 	}
 	if n, ok := stmt.(parser.IfExpressionNode); ok {
-		var l []byte
+		var bl, eul []byte
 
 		/*Extract Else body*/
 		euze := make([]Instruction, 0)
 		if n.Else != nil {
 			for _, inst := range n.Else.Body {
-				l = EmitInstruction(tc, &euze, inst)
+				eul = EmitInstruction(tc, &euze, inst)
 			}
 		}
-		euze = append(euze, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
-		euzelen := byteutil.FromUint64(uint64(len(euze)))
+		euzelen := byteutil.FromUint64(uint64(len(euze)) + 1)
 
 		/*Extract Condition body*/
 		body := make([]Instruction, 0)
 		for _, inst := range n.Body {
-			l = EmitInstruction(tc, &body, inst)
+			bl = EmitInstruction(tc, &body, inst)
 		}
-		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, l, nil))
-		body = append(body, NewInstruction(GenerateLabel(tc), OpJump, euzelen, nil))
-		bodylen := byteutil.FromUint64(uint64(len(body)))
+		bodylen := byteutil.FromUint64(uint64(len(body)) + 2)
 
 		lt := EmitInstruction(tc, insts, n.Test)
 		inl := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(inl, OpIf, lt, bodylen))
+
+		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, inl, bl))
+		body = append(body, NewInstruction(GenerateLabel(tc), OpJump, euzelen, nil))
 		*insts = append(*insts, body...)
+
+		euze = append(euze, NewInstruction(GenerateLabel(tc), OpReturn, inl, eul))
 		*insts = append(*insts, euze...)
 
-		rl := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(rl, OpResult, nil, nil))
-
-		return rl
+		return inl
 	}
 	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
 		l := GenerateLabel(tc)
@@ -175,9 +173,6 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 
 		l = GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
-
-		l = GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpResult, nil, nil))
 
 		return l
 	}
@@ -226,10 +221,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) []byte {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, op, ll, lr))
 
-		rl := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(rl, OpResult, nil, nil))
-
-		return rl
+		return l
 	}
 	if n, ok := stmt.(parser.NumberLiteralNode); ok {
 		l := GenerateLabel(tc)

@@ -192,6 +192,9 @@ func (p *pr) getPriExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.FALSE {
 		return p.getFalse()
 	}
+	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
+		return p.getBlockExpr()
+	}
 	id, err := p.getId()
 	if err != nil {
 		return nil, err

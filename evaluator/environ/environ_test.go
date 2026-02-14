@@ -178,3 +178,92 @@ func TestGetArgumentsLength(t *testing.T) {
 		}
 	})
 }
+
+func TestDefersLength(t *testing.T) {
+	env := NewEnviron(NewEnvironOptions{})
+
+	t.Run("empty", func(t *testing.T) {
+		if got := env.DefersLength(); got != 0 {
+			t.Errorf("expected 0 defers, got: %d", got)
+		}
+	})
+
+	t.Run("after_one_SetDefer", func(t *testing.T) {
+		env.SetDefer("0", []byte("blob1"))
+		if got := env.DefersLength(); got != 1 {
+			t.Errorf("expected 1 defer, got: %d", got)
+		}
+	})
+
+	t.Run("after_two_SetDefer", func(t *testing.T) {
+		env.SetDefer("1", []byte("blob2"))
+		if got := env.DefersLength(); got != 2 {
+			t.Errorf("expected 2 defers, got: %d", got)
+		}
+	})
+}
+
+func TestSetDefer(t *testing.T) {
+	env := NewEnviron(NewEnvironOptions{})
+
+	t.Run("store_and_retrieve", func(t *testing.T) {
+		blob := []byte("defer-blob-data")
+		env.SetDefer("0", blob)
+		got := env.GetDefer("0")
+		if !bytes.Equal(got, blob) {
+			t.Errorf("unexpected result: got: %v, expected: %v", got, blob)
+		}
+	})
+
+	t.Run("empty_blob_not_stored", func(t *testing.T) {
+		env.SetDefer("empty", []byte{})
+		got := env.GetDefer("empty")
+		if got != nil {
+			t.Errorf("empty blob should not be stored, got: %v", got)
+		}
+	})
+}
+
+func TestGetDefer(t *testing.T) {
+	env0 := NewEnviron(NewEnvironOptions{})
+	env0.SetDefer("0", []byte("from-env0"))
+	env1 := NewEnviron(NewEnvironOptions{
+		Prev: env0,
+	})
+	env1.SetDefer("1", []byte("from-env1"))
+	env2 := NewEnviron(NewEnvironOptions{
+		Prev: env1,
+	})
+	env2.SetDefer("0", []byte("from-env2-override"))
+
+	t.Run("key_not_exists", func(t *testing.T) {
+		got := env1.GetDefer("missing")
+		if got != nil {
+			t.Errorf("expected nil for missing key, got: %v", got)
+		}
+	})
+
+	t.Run("key_in_current_env", func(t *testing.T) {
+		got := env1.GetDefer("1")
+		expected := []byte("from-env1")
+		if !bytes.Equal(got, expected) {
+			t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
+		}
+	})
+
+	t.Run("key_in_prev_env", func(t *testing.T) {
+		got := env1.GetDefer("0")
+		expected := []byte("from-env0")
+		if !bytes.Equal(got, expected) {
+			t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
+		}
+	})
+
+	t.Run("inner_shadows_outer", func(t *testing.T) {
+		got := env2.GetDefer("0")
+		expected := []byte("from-env2-override")
+		if !bytes.Equal(got, expected) {
+			t.Errorf("inner env should shadow outer: got: %v, expected: %v", got, expected)
+		}
+	})
+}

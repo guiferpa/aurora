@@ -3,7 +3,7 @@ package environ
 type Environ struct {
 	args   map[uint64][]byte
 	idents map[string][]byte
-	defers map[string][]byte
+	defers map[string][]byte // key = hex(len at store time), value = blob (from, to, returnKey)
 	temps  map[string][]byte
 	prev   *Environ
 }
@@ -56,12 +56,27 @@ func (e *Environ) GetLocalIdent(key string) []byte {
 	return e.idents[key]
 }
 
-func (e *Environ) SetDefer(key string, value []byte) {
-	e.defers[key] = value
+// DefersLength returns the number of defers in this environ (used to build the next incremental key).
+func (e *Environ) DefersLength() int {
+	return len(e.defers)
 }
 
+func (e *Environ) SetDefer(key string, blob []byte) {
+	if len(blob) > 0 {
+		e.defers[key] = blob
+	}
+}
+
+// GetDefer returns the defer blob for key, walking the environ chain (inner to outer).
 func (e *Environ) GetDefer(key string) []byte {
-	return e.defers[key]
+	curr := e
+	for curr != nil {
+		if b, ok := curr.defers[key]; ok {
+			return b
+		}
+		curr = curr.prev
+	}
+	return nil
 }
 
 func (e *Environ) SetArgument(key uint64, value []byte) {

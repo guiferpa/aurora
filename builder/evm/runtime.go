@@ -56,12 +56,6 @@ func (t *Builder) buildCode(insts []emitter.Instruction) (*bytes.Buffer, error) 
 			}
 		}
 
-		if op == emitter.OpResult {
-			if _, err := bs.Write([]byte{OpPush1, 0x00, OpMemoryStore}); err != nil {
-				return nil, err
-			}
-		}
-
 		if op == emitter.OpReturn {
 			if _, err := bs.Write([]byte{OpPush1, 0x20, OpPush1, 0x00, OpReturn}); err != nil {
 				return nil, err

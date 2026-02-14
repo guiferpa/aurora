@@ -24,7 +24,6 @@ const (
 	OpIf                            // Operation logical to decide an condition
 	OpJump                          // Operation just for jump to another instruction
 	OpReturn                        // Operation to save an value with max of 64 bits (uint64) to work thought by different scopes
-	OpResult                        // Operation to get the result persisted in return stack
 	OpPrint                         // Operation to print slice of bytes
 	OpPull                          // Operation to pull value in slice of byte
 	OpHead                          // Operation to head values in slice of byte

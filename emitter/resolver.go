@@ -38,8 +38,6 @@ func ResolveOpCode(op byte) string {
 		return "OpPrint"
 	case OpReturn:
 		return "OpReturn"
-	case OpResult:
-		return "OpResult"
 	case OpIf:
 		return "OpIf"
 	case OpJump:

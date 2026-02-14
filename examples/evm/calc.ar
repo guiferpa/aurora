@@ -1,7 +1,7 @@
 ident sum = defer {
-  ident a = arguments(0);
-  ident b = arguments(1);
-  a + b;
+  arguments(0) + arguments(1);
 };
 
-print(sum(10, 10));
+ident sub = defer {
+  arguments(0) - arguments(1) - arguments(2);
+};

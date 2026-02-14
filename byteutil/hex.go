@@ -25,3 +25,11 @@ func ToHexBloom(bs []byte) string {
 	}
 	return nbs.String()
 }
+
+func ToHexPretty(bs []byte) string {
+	nbs := bytes.NewBufferString("")
+	for i := 0; i < len(bs); i++ {
+		fmt.Fprintf(nbs, "%02X", bs[i])
+	}
+	return fmt.Sprintf("0x%s", nbs.String())
+}

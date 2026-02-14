@@ -89,15 +89,15 @@ func (l *Logger) printSwap1(w *tabwriter.Writer) (int, error) {
 }
 
 func (l *Logger) printPush1(w *tabwriter.Writer, param []byte) (int, error) {
-	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH1"), magenta(byteutil.ToHexBloom(param)))
+	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH1"), magenta(byteutil.ToHexPretty(param)))
 }
 
 func (l *Logger) printPush4(w *tabwriter.Writer, param []byte) (int, error) {
-	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH4"), magenta(byteutil.ToHexBloom(param)))
+	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH4"), magenta(byteutil.ToHexPretty(param)))
 }
 
 func (l *Logger) printPush8(w *tabwriter.Writer, param []byte) (int, error) {
-	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH8"), magenta(byteutil.ToHexBloom(param)))
+	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH8"), magenta(byteutil.ToHexPretty(param)))
 }
 
 func (l *Logger) Scanln(bs []byte) error {

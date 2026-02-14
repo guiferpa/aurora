@@ -63,6 +63,15 @@ func EchoFunction(w io.Writer, bs []byte) {
 	}
 }
 
+// ArgumentsFunction returns the argument at the given index from the current scope's arguments.
+// It is the builtin for the "arguments(index)" call.
+func ArgumentsFunction(args map[uint64][]byte, index uint64) []byte {
+	if args == nil {
+		return nil
+	}
+	return args[index]
+}
+
 // AssertFunction evaluates an assert: condition (bytes as boolean) and message (reel bytes for error display).
 // Returns (passed, errMessage). When passed is false, errMessage is the decoded message to show.
 func AssertFunction(cond, msg []byte) (bool, error) {

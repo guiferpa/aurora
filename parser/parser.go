@@ -763,9 +763,23 @@ func (p *pr) getAssert() (Node, error) {
 	}, nil
 }
 
+// getArgs parses the builtin "arguments" as a function call: arguments(index) or arguments index (legacy).
 func (p *pr) getArgs() (Node, error) {
 	if _, err := p.EatToken(lexer.ARGUMENTS); err != nil {
 		return nil, err
+	}
+	if p.GetLookahead().GetTag().Id == lexer.O_PAREN {
+		if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+			return nil, err
+		}
+		nth, err := p.getNum()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+			return nil, err
+		}
+		return ArgumentsExpressionNode{nth}, nil
 	}
 	nth, err := p.getNum()
 	if err != nil {

@@ -1,5 +1,5 @@
 ident fib = {
-  ident n = arguments 0;
+  ident n = arguments(0);
   branch {
     n smaller 1 or n equals 1: n,
     fib(n - 1) + fib(n - 2);

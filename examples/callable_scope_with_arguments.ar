@@ -1,6 +1,6 @@
 ident sum = {
-  ident x = arguments 0;
-  ident y = arguments 1;
+  ident x = arguments(0);
+  ident y = arguments(1);
   x + y;
 };
 

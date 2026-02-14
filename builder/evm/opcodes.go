@@ -119,7 +119,10 @@ const (
 	OpPush32                            // Place value 32 on stack
 )
 
-const OpReturn byte = 0xf3 // Halt execution returning output data from the last call
+const (
+	OpReturn byte = 0xf3 // Halt execution returning output data from the last call
+	OpSwap1  byte = 0x90 // Swap 1st and 2nd stack items
+)
 
 func ToOpByte(op uint32) []byte {
 	return byteutil.NoPadding(byteutil.FromUint32(op))
@@ -334,6 +337,8 @@ func ResolveOpCode(op byte) string {
 		return "PUSH32"
 	case OpReturn:
 		return "RETURN"
+	case OpSwap1:
+		return "SWAP1"
 	}
 	return "Unknown"
 }

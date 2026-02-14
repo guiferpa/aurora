@@ -84,6 +84,10 @@ func (l *Logger) printDiv(w *tabwriter.Writer) (int, error) {
 	return fmt.Fprintf(w, "%s\t%s\n", yellow("DIV"), "")
 }
 
+func (l *Logger) printSwap1(w *tabwriter.Writer) (int, error) {
+	return fmt.Fprintf(w, "%s\t%s\n", yellow("SWAP1"), "")
+}
+
 func (l *Logger) printPush1(w *tabwriter.Writer, param []byte) (int, error) {
 	return fmt.Fprintf(w, "%s\t%s\n", yellow("PUSH1"), magenta(byteutil.ToHexBloom(param)))
 }
@@ -101,6 +105,13 @@ func (l *Logger) Scanln(bs []byte) error {
 		i := 0
 		for len(bs) > i {
 			opcode := bs[i]
+			if opcode == OpSwap1 {
+				if _, err := l.printSwap1(l.w); err != nil {
+					return err
+				}
+				i += 1
+				continue
+			}
 			if opcode == OpPush1 {
 				if _, err := l.printPush1(l.w, []byte{bs[i+1]}); err != nil {
 					return err

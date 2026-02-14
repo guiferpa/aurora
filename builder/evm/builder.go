@@ -23,14 +23,16 @@ func (t *Builder) writeSave(w io.Writer, left []byte) (int, error) {
 			return 0, err
 		}
 	}
-	t.operands = append(t.operands, left)
+	if _, err := w.Write([]byte{OpPush8}); err != nil {
+		return 0, err
+	}
+	if _, err := w.Write(left); err != nil {
+		return 0, err
+	}
 	return 0, nil
 }
 
 func (t *Builder) writeIdent(w io.Writer, ident []byte) (int, error) {
-	if _, err := t.writePush8SafeFromOperands(w); err != nil {
-		return 0, err
-	}
 	offset := byte(len(t.offsetIdents) * 32)
 	if _, err := w.Write([]byte{OpPush1, offset}); err != nil {
 		return 0, err
@@ -60,21 +62,6 @@ func (t *Builder) writeGetArg(w io.Writer, left []byte) (int, error) {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
-		return 0, err
-	}
-	return 0, nil
-}
-
-func (t *Builder) writePush8SafeFromOperands(w io.Writer) (int, error) {
-	if len(t.operands) == 0 {
-		return 0, nil
-	}
-	if _, err := w.Write([]byte{OpPush8}); err != nil {
-		return 0, err
-	}
-	operand := t.operands[len(t.operands)-1]
-	t.operands = t.operands[:len(t.operands)-1]
-	if _, err := w.Write(operand); err != nil {
 		return 0, err
 	}
 	return 0, nil

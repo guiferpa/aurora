@@ -12,12 +12,12 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 )
 
-const deferMagic byte = 0xDF
-
-func encodeDeferScope(from, to uint64, returnKey string) []byte {
+// encodeDeferBlob serializes a deferred scope into a blob for storage in environ.defers.
+// Layout: [0:8] from (uint64 BE), [8:16] to (uint64 BE), [16] keyLen, [17:17+N] returnKey.
+// Total length: 17 + len(returnKey).
+func encodeDeferBlob(from, to uint64, returnKey string) []byte {
 	key := []byte(returnKey)
-	b := make([]byte, 0, 18+len(key))
-	b = append(b, deferMagic)
+	b := make([]byte, 0, 17+len(key))
 	b = append(b, byteutil.FromUint64(from)...)
 	b = append(b, byteutil.FromUint64(to)...)
 	b = append(b, byte(len(key)))
@@ -25,17 +25,20 @@ func encodeDeferScope(from, to uint64, returnKey string) []byte {
 	return b
 }
 
-func decodeDeferScope(val []byte) (from, to uint64, returnKey string, ok bool) {
-	if len(val) < 18 || val[0] != deferMagic {
+// decodeDeferBlob parses a blob from encodeDeferBlob.
+// Returns (from, to, returnKey, true) or (0, 0, "", false) if val is too short or invalid.
+func decodeDeferBlob(val []byte) (from, to uint64, returnKey string, ok bool) {
+	const minLen = 17
+	if len(val) < minLen {
 		return 0, 0, "", false
 	}
-	from = binary.BigEndian.Uint64(val[1:9])
-	to = binary.BigEndian.Uint64(val[9:17])
-	keyLen := int(val[17])
-	if 18+keyLen > len(val) {
+	from = binary.BigEndian.Uint64(val[0:8])
+	to = binary.BigEndian.Uint64(val[8:16])
+	keyLen := int(val[16])
+	if 17+keyLen > len(val) {
 		return 0, 0, "", false
 	}
-	return from, to, string(val[18 : 18+keyLen]), true
+	return from, to, string(val[17 : 17+keyLen]), true
 }
 
 type ReturnsPerLabel map[string][]byte
@@ -283,13 +286,16 @@ func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 }
 
 func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
-	scopeLen := byteutil.ToUint64(right)
+	bodylength := byteutil.ToUint64(right)
+	// e.cursor is the index of this OpDefer; the next instruction is the start of the deferred block (OpBeginScope).
 	from := e.cursor + 1
-	to := from + scopeLen
+	to := from + bodylength // index of OpReturn (last instruction of the block)
 	returnKey := byteutil.ToHex(left)
-	encoded := encodeDeferScope(from, to, returnKey)
-	e.environ.SetTemp(byteutil.ToHex(label), encoded)
-	e.AddCursor(1 + scopeLen)
+	blob := encodeDeferBlob(from, to, returnKey)
+	ref := byteutil.ToHex(byteutil.FromUint64(uint64(e.environ.DefersLength())))
+	e.environ.SetDefer(ref, blob)
+	e.environ.SetTemp(byteutil.ToHex(label), []byte(ref))
+	e.AddCursor(1 + bodylength)
 	return nil
 }
 
@@ -298,9 +304,14 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 	if val == nil {
 		return fmt.Errorf("call: identifier not found")
 	}
-	from, to, returnKey, ok := decodeDeferScope(val)
-	if !ok {
+	refKey := string(val)
+	blob := e.environ.GetDefer(refKey)
+	if blob == nil {
 		return fmt.Errorf("call: value is not a deferred scope")
+	}
+	from, to, returnKey, ok := decodeDeferBlob(blob)
+	if !ok {
+		return fmt.Errorf("call: invalid deferred scope data")
 	}
 	args := e.environ.GetArguments()
 	next := environ.NewEnviron(environ.NewEnvironOptions{})

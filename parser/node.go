@@ -178,7 +178,6 @@ func (be BooleanExpression) Next() Node {
 }
 
 type BlockExpressionNode struct {
-	Ref  []byte `json:"id"`
 	Body []Node `json:"body"`
 }
 
@@ -188,9 +187,10 @@ func (ben BlockExpressionNode) Next() Node {
 
 // DeferExpressionNode is "defer { ... }". It produces a value that is a pointer to the scope
 // (executable later via invocation, e.g. r(1, 2)). No signature or arity.
+// Block is the body of the defer; it is a BlockExpressionNode so the emitter can treat it
+// as a normal scope (BeginScope + body + Return) without duplicating scope logic.
 type DeferExpressionNode struct {
-	Ref  []byte `json:"id"`
-	Body []Node `json:"body"`
+	Block BlockExpressionNode `json:"block"`
 }
 
 func (den DeferExpressionNode) Next() Node {

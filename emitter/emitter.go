@@ -40,10 +40,8 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 			l = EmitInstruction(tc, &body, ins)
 		}
 
-		bodylength := byteutil.FromUint64(uint64(len(body)) + 1)
-
 		lsc := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(lsc, OpBeginScope, n.Ref, bodylength))
+		*insts = append(*insts, NewInstruction(lsc, OpBeginScope, nil, nil))
 
 		body = append(body, NewInstruction(GenerateLabel(tc), OpReturn, lsc, l))
 		*insts = append(*insts, body...)
@@ -51,20 +49,13 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		return lsc
 	}
 	if n, ok := stmt.(parser.DeferExpressionNode); ok {
-		var l []byte
 		body := make([]Instruction, 0)
-		for _, ins := range n.Body {
-			l = EmitInstruction(tc, &body, ins)
-		}
-		bodylength := byteutil.FromUint64(uint64(len(body)) + 1)
-		lsc := GenerateLabel(tc)
-		scopeBody := append([]Instruction{NewInstruction(lsc, OpBeginScope, n.Ref, bodylength)}, body...)
-		scopeBody = append(scopeBody, NewInstruction(GenerateLabel(tc), OpReturn, lsc, l))
-		scopeLen := uint64(len(scopeBody))
-		lout := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(lout, OpDefer, lsc, byteutil.FromUint64(scopeLen)))
-		*insts = append(*insts, scopeBody...)
-		return lout
+		l := EmitInstruction(tc, &body, n.Block)
+		bodylength := uint64(len(body))
+		lo := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(lo, OpDefer, l, byteutil.FromUint64(bodylength)))
+		*insts = append(*insts, body...)
+		return lo
 	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return EmitInstruction(tc, insts, n.Expression)

@@ -239,6 +239,8 @@ func findIdentifierInNode(node parser.Node, name string) *parser.IdentStatementN
 	switch n := node.(type) {
 	case parser.BlockExpressionNode:
 		return findIdentifierInStatements(n.Body, name)
+	case parser.DeferExpressionNode:
+		return findIdentifierInStatements(n.Block.Body, name)
 	case parser.IfExpressionNode:
 		if result := findIdentifierInStatements(n.Body, name); result != nil {
 			return result

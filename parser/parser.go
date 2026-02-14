@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
@@ -588,8 +587,7 @@ func (p *pr) getBlockExpr() (Node, error) {
 	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
-	return BlockExpressionNode{Ref: ref, Body: stmts}, nil
+	return BlockExpressionNode{Body: stmts}, nil
 }
 
 func (p *pr) getDefer() (Node, error) {
@@ -606,8 +604,8 @@ func (p *pr) getDefer() (Node, error) {
 	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
-	return DeferExpressionNode{Ref: ref, Body: stmts}, nil
+	block := BlockExpressionNode{Body: stmts}
+	return DeferExpressionNode{Block: block}, nil
 }
 
 func (p *pr) getIf() (Node, error) {

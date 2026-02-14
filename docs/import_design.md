@@ -12,14 +12,14 @@ Permitir que arquivos Aurora importem código de outros arquivos, facilitando:
 ```aurora
 # math.ar
 ident sum = {
-  ident x = arguments 0;
-  ident y = arguments 1;
+  ident x = arguments(0);
+  ident y = arguments(1);
   x + y;
 };
 
 ident multiply = {
-  ident x = arguments 0;
-  ident y = arguments 1;
+  ident x = arguments(0);
+  ident y = arguments(1);
   x * y;
 };
 ```
@@ -429,14 +429,14 @@ func (e *Emitter) EmitWithNamespace(ast AST, namespace string) ([]Instruction, e
 ```aurora
 # utils/math.ar
 ident add = {
-  ident a = arguments 0;
-  ident b = arguments 1;
+  ident a = arguments(0);
+  ident b = arguments(1);
   a + b;
 };
 
 ident subtract = {
-  ident a = arguments 0;
-  ident b = arguments 1;
+  ident a = arguments(0);
+  ident b = arguments(1);
   a - b;
 };
 ```
@@ -444,8 +444,8 @@ ident subtract = {
 ```aurora
 # utils/string.ar
 ident concat = {
-  ident a = arguments 0;
-  ident b = arguments 1;
+  ident a = arguments(0);
+  ident b = arguments(1);
   # ... implementação
 };
 ```

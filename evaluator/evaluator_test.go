@@ -1063,7 +1063,7 @@ func TestDefer(t *testing.T) {
 		{
 			"defer_1",
 			`ident r = defer {
-  arguments 0 + arguments 1;
+  arguments(0) + arguments(1);
 };
 
 r(1, 2);
@@ -1098,7 +1098,7 @@ func TestDeferRecursivity(t *testing.T) {
 		{
 			"fibonacci_1",
 			`ident fib = defer {
-  ident n = arguments 0;
+  ident n = arguments(0);
   if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
 };
 
@@ -1119,7 +1119,7 @@ fib(11);`,
 		{
 			"fibonacci_2",
 			`ident fib = defer {
-  ident n = arguments 0;
+  ident n = arguments(0);
   branch {
     n smaller 1 or n equals 1: n,
     fib(n - 1) + fib(n - 2);
@@ -1143,7 +1143,7 @@ fib(11);`,
 		{
 			"factorial_1",
 			`ident factorial = defer {
-  ident n = arguments 0;
+  ident n = arguments(0);
   if n smaller 1 or n equals 1 { 1; } else { n * factorial(n - 1); };
 };
 
@@ -1266,8 +1266,8 @@ assert(a equals 11, "a should be 10");`,
 		{
 			"assert_with_function_call",
 			`ident sum = defer {
-  ident x = arguments 0;
-  ident y = arguments 1;
+  ident x = arguments(0);
+  ident y = arguments(1);
   x + y;
 };
 

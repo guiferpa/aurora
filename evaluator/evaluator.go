@@ -275,7 +275,7 @@ func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {
 
 func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 	index := byteutil.ToUint64(left)
-	v := e.environ.GetArgument(index)
+	v := builtin.ArgumentsFunction(e.environ.GetArguments(), index)
 	l := byteutil.ToHex(label)
 	e.environ.SetTemp(l, v)
 	e.IncrementCursor()

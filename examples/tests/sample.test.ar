@@ -4,21 +4,21 @@ group "sum" {
    
    #- Example 1: Single function declaration
    ident sum = {
-     ident x = arguments 0;
-     ident y = arguments 1;
+     ident x = arguments(0);
+     ident y = arguments(1);
      x + y;
    };
    
    #- Example 2: Multiple function declarations (all executed sequentially)
    ident multiply = {
-     ident x = arguments 0;
-     ident y = arguments 1;
+     ident x = arguments(0);
+     ident y = arguments(1);
      x * y;
    };
    
    ident subtract = {
-     ident x = arguments 0;
-     ident y = arguments 1;
+     ident x = arguments(0);
+     ident y = arguments(1);
      x - y;
    };
    
@@ -28,7 +28,7 @@ group "sum" {
    
    #- Example 4: Helper function for test setup
    ident double = {
-     ident n = arguments 0;
+     ident n = arguments(0);
      n * 2;
    };
    
@@ -77,8 +77,8 @@ group "sum" {
    #- The order within root matters for dependencies (calculate uses sum and test_multiplier),
    #- but everything in root is available to all cases regardless of position
    ident calculate = {
-     ident a = arguments 0;
-     ident b = arguments 1;
+     ident a = arguments(0);
+     ident b = arguments(1);
      sum(a, b) * test_multiplier;
    };
 

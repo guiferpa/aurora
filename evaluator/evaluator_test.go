@@ -13,7 +13,7 @@ import (
 )
 
 func TestEvaluateAdd(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(1))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(2))
 	if err := ev.EvaluateAdd([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -28,7 +28,7 @@ func TestEvaluateAdd(t *testing.T) {
 }
 
 func TestEvaluateSubtract(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateSubtract([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -43,7 +43,7 @@ func TestEvaluateSubtract(t *testing.T) {
 }
 
 func TestEvaluateMultiply(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateMultiply([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -58,7 +58,7 @@ func TestEvaluateMultiply(t *testing.T) {
 }
 
 func TestEvaluateDivide(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateDivide([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -73,7 +73,7 @@ func TestEvaluateDivide(t *testing.T) {
 }
 
 func TestEvaluateExponential(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(3))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(3))
 	if err := ev.EvaluateExponential([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -88,7 +88,7 @@ func TestEvaluateExponential(t *testing.T) {
 }
 
 func TestEvaluateDiff(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateDiff([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -103,7 +103,7 @@ func TestEvaluateDiff(t *testing.T) {
 }
 
 func TestEvaluateEquals(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateEquals([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -118,7 +118,7 @@ func TestEvaluateEquals(t *testing.T) {
 }
 
 func TestEvaluateBigger(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateBigger([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -133,7 +133,7 @@ func TestEvaluateBigger(t *testing.T) {
 }
 
 func TestEvaluateSmaller(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
 	if err := ev.EvaluateSmaller([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -148,7 +148,7 @@ func TestEvaluateSmaller(t *testing.T) {
 }
 
 func TestEvaluateAnd(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.True)
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.True)
 	if err := ev.EvaluateAnd([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -163,7 +163,7 @@ func TestEvaluateAnd(t *testing.T) {
 }
 
 func TestEvaluateAnd_False(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.True)
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.False)
 	if err := ev.EvaluateAnd([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -178,7 +178,7 @@ func TestEvaluateAnd_False(t *testing.T) {
 }
 
 func TestEvaluateOr(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.False)
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.True)
 	if err := ev.EvaluateOr([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -193,7 +193,7 @@ func TestEvaluateOr(t *testing.T) {
 }
 
 func TestEvaluateOr_False(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.False)
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.False)
 	if err := ev.EvaluateOr([]byte("02"), []byte("00"), []byte("01")); err != nil {
@@ -280,9 +280,10 @@ func TestEvaluatePushArg(t *testing.T) {
 		EnableLogging: false,
 		Args:          make([]byte, 0),
 	})
+	label := []byte("00")
 	val := byteutil.FromUint64(99)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), val)
-	if err := ev.EvaluatePushArg([]byte("01"), byteutil.FromUint64(0), []byte("00")); err != nil {
+	ev.environ.SetTemp(byteutil.ToHex(label), val)
+	if err := ev.EvaluatePushArg([]byte("01"), byteutil.FromUint64(0), label); err != nil {
 		t.Errorf("Error evaluating push arg: %v", err)
 		return
 	}
@@ -466,7 +467,7 @@ func TestIncrementCursor(t *testing.T) {
 }
 
 func TestAddCursor(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructionsOffset(0, 10)
 
 	ev.AddCursor(3)
@@ -484,7 +485,7 @@ func TestAddCursor(t *testing.T) {
 type EvaluateCase struct {
 	Name       string
 	SourceCode string
-	TestFn     func(t *testing.T, returns ReturnsPerLabel)
+	TestFn     func(t *testing.T, returns ReturnsPerLabel, err error)
 }
 
 type RunEvaluateCaseOptions struct {
@@ -526,13 +527,11 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 				EnableLogging: options.EnableLogging,
 			})
 			m, err := ev.Evaluate(insts)
-			if err != nil {
-				t.Errorf("%v: %v", c.Name, err)
-				return
-			}
 
 			if c.TestFn != nil {
-				c.TestFn(t, m)
+				c.TestFn(t, m, err)
+			} else if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
 			}
 		})
 	}
@@ -543,7 +542,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_1",
 			`1 different 2;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 different 2" the emitter generates Save(00), Save(01), Different(02). The Different stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -559,7 +562,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_2",
 			`1 equals 2;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 equals 2" the emitter generates Save(00), Save(01), Equals(02). The Equals stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -575,7 +582,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_3",
 			`1 smaller 2;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 smaller 2" the emitter generates Save(00), Save(01), Smaller(02). The Smaller stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -591,7 +602,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_4",
 			`1 bigger 2;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 bigger 2" the emitter generates Save(00), Save(01), Bigger(02). The Bigger stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -607,7 +622,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_5",
 			`1 equals 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 equals 1" the emitter generates Save(00), Save(01), Equals(02). The Equals stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -623,7 +642,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_6",
 			`1 different 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 different 1" the emitter generates Save(00), Save(01), Different(02). The Different stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -639,7 +662,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_7",
 			`1 smaller 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 smaller 1" the emitter generates Save(00), Save(01), Smaller(02). The Smaller stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -659,7 +686,11 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_8",
 			`1 bigger 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 bigger 1" the emitter generates Save(00), Save(01), Bigger(02). The Bigger stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -681,7 +712,11 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_1",
 			`1 + 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 + 1" the emitter generates Save(00), Save(01), Add(02). The Add stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -694,7 +729,11 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_2",
 			`1 - 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 - 1" the emitter generates Save(00), Save(01), Sub(02). The Sub stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -707,7 +746,11 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_3",
 			`1 * 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 * 1" the emitter generates Save(00), Save(01), Mul(02). The Mul stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -720,7 +763,11 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_4",
 			`1 / 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 / 1" the emitter generates Save(00), Save(01), Div(02). The Div stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -733,7 +780,11 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_5",
 			`1 ^ 1;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "1 ^ 1" the emitter generates Save(00), Save(01), Exp(02). The Exp stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -753,7 +804,11 @@ func TestBoolean(t *testing.T) {
 		{
 			"boolean_1",
 			`true or false;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "true or false" the emitter generates Save(00), Save(01), Or(02). The Or stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -770,7 +825,11 @@ func TestBoolean(t *testing.T) {
 			"boolean_2",
 			`false or false;
       true and true;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 02: for "false or false" the emitter generates Save(00), Save(01), Or(02). The Or stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
@@ -805,7 +864,11 @@ func TestIfAndElse(t *testing.T) {
 			"if_1",
 			`if 10 bigger 9 { 10; };
 if 11 bigger 10 { 20; };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
 				label := byteutil.ToHex([]byte("04"))
 				got := returns[label]
@@ -826,7 +889,11 @@ if 11 bigger 10 { 20; };`,
 		{
 			"if_with_else_1",
 			`if 10 bigger 9 { 10; } else { 20; };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("05"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 10}
@@ -838,7 +905,11 @@ if 11 bigger 10 { 20; };`,
 		{
 			"if_with_else_2",
 			`if 10 bigger 11 { 10; } else { 20; };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("05"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 20}
@@ -865,7 +936,11 @@ branch {
   op equals 2: 64, 
   128;
 };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("015"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 64}
@@ -883,7 +958,11 @@ ident r = branch {
   128;
 };
 r;`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("020"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 64}
@@ -902,7 +981,11 @@ func TestCallableScope(t *testing.T) {
 		{
 			"callable_scope_1",
 			`{ 1 + 2; };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("03"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 3}
@@ -914,7 +997,11 @@ func TestCallableScope(t *testing.T) {
 		{
 			"callable_scope_2",
 			`{ 1 + { 2 + 3; }; };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("07"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 6}
@@ -932,7 +1019,11 @@ func TestCallableScope(t *testing.T) {
     a * 2;
   };
 };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("09"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 4}
@@ -949,7 +1040,11 @@ func TestCallableScope(t *testing.T) {
     a * 2;
   };
 };`,
-			func(t *testing.T, returns ReturnsPerLabel) {
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
 				label := byteutil.ToHex([]byte("07"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 2}
@@ -963,135 +1058,228 @@ func TestCallableScope(t *testing.T) {
 	runEvaluateCase(t, cases, RunEvaluateCaseOptions{})
 }
 
-func TestRecursivity(t *testing.T) {
-	t.Skip()
+func TestDefer(t *testing.T) {
 	cases := []EvaluateCase{
 		{
-			"fibonacci_1",
-			`ident fib = {
-        ident n = arguments 0;
-        if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
-      };
+			"defer_1",
+			`ident r = defer {
+  arguments 0 + arguments 1;
+};
 
-      fib(11);`,
-			nil,
-		},
-		{
-			"fibonacci_2",
-			`ident fib = {
-        ident n = arguments 0;
-        branch {
-          n smaller 1 or n equals 1: n,
-          fib(n - 1) + fib(n - 2);
-        };
-      };
+r(1, 2);
+r(3, 4);`,
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
+				label := byteutil.ToHex([]byte("011"))
+				got := returns[label]
+				expected := []byte{0, 0, 0, 0, 0, 0, 0, 3}
+				if !bytes.Equal(got, expected) {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
 
-      fib(11);`,
-			nil,
-		},
-		{
-			"factorial_1",
-			`ident factorial = {
-        ident n = arguments 0;
-        if n smaller 1 or n equals 1 { 1; } else { n * factorial(n - 1); };
-      };
-
-      factorial(4);`,
-			nil,
+				label = byteutil.ToHex([]byte("016"))
+				got = returns[label]
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 7}
+				if !bytes.Equal(got, expected) {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+			},
 		},
 	}
 
 	runEvaluateCase(t, cases, RunEvaluateCaseOptions{})
 }
 
-func TestAssert(t *testing.T) {
-	t.Skip()
+func TestDeferRecursivity(t *testing.T) {
 	cases := []EvaluateCase{
 		{
+			"fibonacci_1",
+			`ident fib = defer {
+  ident n = arguments 0;
+  if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
+};
+
+fib(11);`,
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
+				label := byteutil.ToHex([]byte("031"))
+				got := returns[label]
+				expected := []byte{0, 0, 0, 0, 0, 0, 0, 89}
+				if !bytes.Equal(got, expected) {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+			},
+		},
+		{
+			"fibonacci_2",
+			`ident fib = defer {
+  ident n = arguments 0;
+  branch {
+    n smaller 1 or n equals 1: n,
+    fib(n - 1) + fib(n - 2);
+  };
+};
+
+fib(11);`,
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
+				label := byteutil.ToHex([]byte("031"))
+				got := returns[label]
+				expected := []byte{0, 0, 0, 0, 0, 0, 0, 89}
+				if !bytes.Equal(got, expected) {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+			},
+		},
+		{
+			"factorial_1",
+			`ident factorial = defer {
+  ident n = arguments 0;
+  if n smaller 1 or n equals 1 { 1; } else { n * factorial(n - 1); };
+};
+
+factorial(4);`,
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
+				label := byteutil.ToHex([]byte("027"))
+				got := returns[label]
+				expected := []byte{0, 0, 0, 0, 0, 0, 0, 24}
+				if !bytes.Equal(got, expected) {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+			},
+		},
+	}
+
+	runEvaluateCase(t, cases, RunEvaluateCaseOptions{})
+}
+
+type AssertCase struct {
+	Name       string
+	SourceCode string
+	TestFn     func(t *testing.T, errors []error)
+}
+
+func runAssertCase(t *testing.T, cases []AssertCase) {
+	for _, c := range cases {
+		t.Run(c.Name, func(t *testing.T) {
+			bs := bytes.NewBufferString(c.SourceCode).Bytes()
+			tokens, err := lexer.New(lexer.NewLexerOptions{
+				EnableLogging: false,
+			}).GetFilledTokens(bs)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			ast, err := parser.New(tokens, parser.NewParserOptions{
+				Filename:      ".test.ar",
+				EnableLogging: false,
+			}).Parse()
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			insts, err := emitter.New(emitter.NewEmitterOptions{
+				EnableLogging: false,
+			}).Emit(ast)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			ev := New(NewEvaluatorOptions{
+				EnableLogging: false,
+			})
+			ev.Evaluate(insts)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			if c.TestFn != nil {
+				c.TestFn(t, ev.GetAssertErrors())
+			}
+		})
+	}
+}
+
+func TestAssert(t *testing.T) {
+	cases := []AssertCase{
+		{
 			"assert_equals_pass",
-			`assert 2 equals 2;`,
-			nil,
+			`assert(2 equals 2, "expected 2 to equal 2");`,
+			func(t *testing.T, errors []error) {
+				if len(errors) != 0 {
+					t.Errorf("expected no errors, got: %v", errors)
+				}
+			},
 		},
 		{
 			"assert_equals_fail",
-			`assert 1 equals 2;`,
-			nil,
-		},
-		{
-			"assert_different_pass",
-			`assert 1 different 2;`,
-			nil,
-		},
-		{
-			"assert_different_fail",
-			`assert 2 different 2;`,
-			nil,
-		},
-		{
-			"assert_bigger_pass",
-			`assert 5 bigger 3;`,
-			nil,
-		},
-		{
-			"assert_bigger_fail",
-			`assert 3 bigger 5;`,
-			nil,
-		},
-		{
-			"assert_smaller_pass",
-			`assert 3 smaller 5;`,
-			nil,
-		},
-		{
-			"assert_smaller_fail",
-			`assert 5 smaller 3;`,
-			nil,
+			`assert(1 equals 2, "expected 1 to equal 2");`,
+			func(t *testing.T, errors []error) {
+				if len(errors) != 1 {
+					t.Errorf("expected 1 error, got: %v", errors)
+				}
+				err := errors[0]
+				if err.Error() != "assertion failed: expected 1 to equal 2" {
+					t.Errorf("expected error message to contain custom message, got: %v", errors[0])
+				}
+			},
 		},
 		{
 			"assert_with_variable",
 			`ident a = 10;
-      assert a equals 10;`,
-			nil,
+assert(a equals 11, "a should be 10");`,
+			func(t *testing.T, errors []error) {
+				if len(errors) != 1 {
+					t.Errorf("expected 1 error, got: %v", errors)
+				}
+				err := errors[0]
+				if err.Error() != "assertion failed: a should be 10" {
+					t.Errorf("expected error message to contain custom message, got: %v", errors[0])
+				}
+			},
 		},
 		{
 			"assert_with_expression",
-			`assert 2 + 2 equals 4;`,
-			nil,
+			`assert(2 + 4 equals 4, "2 + 4 = 6");`,
+			func(t *testing.T, errors []error) {
+				if len(errors) != 1 {
+					t.Errorf("expected 1 error, got: %v", errors)
+				}
+				err := errors[0]
+				if err.Error() != "assertion failed: 2 + 4 = 6" {
+					t.Errorf("expected error message to contain custom message, got: %v", errors[0])
+				}
+			},
 		},
 		{
 			"assert_with_function_call",
-			`ident sum = {
-        ident x = arguments 0;
-        ident y = arguments 1;
-        x + y;
-      };
-      assert sum(2, 3) equals 5;`,
-			nil,
-		},
-		{
-			"assert_multiple_asserts",
-			`assert 1 equals 1;
-      assert 2 bigger 1;
-      assert 3 smaller 10;`,
-			nil,
-		},
-		{
-			"assert_fails_on_first",
-			`assert 1 equals 2;
-      assert 3 equals 3;`,
-			nil,
-		},
-		{
-			"assert_multiple_failures",
-			`assert 1 equals 2;
-      assert 3 equals 4;
-      assert 5 equals 6;`,
-			nil,
+			`ident sum = defer {
+  ident x = arguments 0;
+  ident y = arguments 1;
+  x + y;
+};
+
+assert(sum(2, 3) equals 5, "sum(2, 3) should be 5");`,
+			func(t *testing.T, errors []error) {
+				if len(errors) != 0 {
+					t.Errorf("expected no errors, got: %v", errors)
+				}
+			},
 		},
 	}
 
-	runEvaluateCase(t, cases, RunEvaluateCaseOptions{
-		Filename:      ".test.ar",
-		EnableLogging: false,
-	})
+	runAssertCase(t, cases)
 }

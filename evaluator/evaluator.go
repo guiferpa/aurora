@@ -12,6 +12,32 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 )
 
+const deferMagic byte = 0xDF
+
+func encodeDeferScope(from, to uint64, returnKey string) []byte {
+	key := []byte(returnKey)
+	b := make([]byte, 0, 18+len(key))
+	b = append(b, deferMagic)
+	b = append(b, byteutil.FromUint64(from)...)
+	b = append(b, byteutil.FromUint64(to)...)
+	b = append(b, byte(len(key)))
+	b = append(b, key...)
+	return b
+}
+
+func decodeDeferScope(val []byte) (from, to uint64, returnKey string, ok bool) {
+	if len(val) < 18 || val[0] != deferMagic {
+		return 0, 0, "", false
+	}
+	from = binary.BigEndian.Uint64(val[1:9])
+	to = binary.BigEndian.Uint64(val[9:17])
+	keyLen := int(val[17])
+	if 18+keyLen > len(val) {
+		return 0, 0, "", false
+	}
+	return from, to, string(val[18 : 18+keyLen]), true
+}
+
 type ReturnsPerLabel map[string][]byte
 
 type Evaluator struct {
@@ -20,13 +46,13 @@ type Evaluator struct {
 	end          uint64
 	logger       *Logger
 	insts        []emitter.Instruction
-	assertErrors []string // Buffer to collect assert errors
+	assertErrors []error // Buffer to collect assert errors
 	echoWriter   io.Writer
 	printWriter  io.Writer
 	environ      *environ.Environ
 }
 
-func (e *Evaluator) GetAssertErrors() []string {
+func (e *Evaluator) GetAssertErrors() []error {
 	return e.assertErrors
 }
 
@@ -209,7 +235,6 @@ func (e *Evaluator) EvaluateJump(label, left, right []byte) error {
 
 func (e *Evaluator) EvaluateBeginScope(label, left, right []byte) error {
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
-	next.SetArguments(e.environ.GetArguments())
 	e.environ = e.environ.Ahead(next)
 	e.IncrementCursor()
 	return nil
@@ -241,8 +266,8 @@ func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
 }
 
 func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {
+	index := byteutil.ToUint64(left)
 	val := e.environ.GetTemp(byteutil.ToHex(right))
-	index := e.environ.GetArgumentsLength()
 	e.environ.SetArgument(index, val)
 	e.IncrementCursor()
 	return nil
@@ -254,6 +279,56 @@ func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 	l := byteutil.ToHex(label)
 	e.environ.SetTemp(l, v)
 	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
+	scopeLen := byteutil.ToUint64(right)
+	from := e.cursor + 1
+	to := from + scopeLen
+	returnKey := byteutil.ToHex(left)
+	encoded := encodeDeferScope(from, to, returnKey)
+	e.environ.SetTemp(byteutil.ToHex(label), encoded)
+	e.AddCursor(1 + scopeLen)
+	return nil
+}
+
+func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
+	val := e.environ.GetIdent(byteutil.ToHex(left))
+	if val == nil {
+		return fmt.Errorf("call: identifier not found")
+	}
+	from, to, returnKey, ok := decodeDeferScope(val)
+	if !ok {
+		return fmt.Errorf("call: value is not a deferred scope")
+	}
+	args := e.environ.GetArguments()
+	next := environ.NewEnviron(environ.NewEnvironOptions{})
+	next.SetArguments(args)
+	e.environ = e.environ.Ahead(next)
+	savedCursor, savedEnd := e.cursor, e.end
+	_, err := e.ExecuteInstructions(from+1, to)
+	e.cursor, e.end = savedCursor, savedEnd
+	if err != nil {
+		return err
+	}
+	retVal := e.environ.GetTemp(returnKey)
+	if len(retVal) > 0 {
+		e.environ.SetTemp(byteutil.ToHex(label), retVal)
+	}
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
+	cond := e.environ.GetTemp(byteutil.ToHex(left))
+	msg := e.environ.GetTemp(byteutil.ToHex(right))
+	passed, errMsg := builtin.AssertFunction(cond, msg)
+	e.IncrementCursor()
+	if !passed {
+		e.assertErrors = append(e.assertErrors, errMsg)
+		return fmt.Errorf("assert: %s", errMsg)
+	}
 	return nil
 }
 
@@ -367,6 +442,19 @@ func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
 		return e.EvaluateGetArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 	}
 
+	// Defer and call
+	if inst.GetOpCode() == emitter.OpDefer {
+		return e.EvaluateDefer(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpCall {
+		return e.EvaluateCall(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Assertions
+	if inst.GetOpCode() == emitter.OpAssert {
+		return e.EvaluateAssert(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
 	e.IncrementCursor()
 
 	return nil
@@ -412,7 +500,7 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		end:          0,
 		logger:       NewLogger(options.EnableLogging),
 		insts:        make([]emitter.Instruction, 0),
-		assertErrors: make([]string, 0),
+		assertErrors: make([]error, 0),
 		echoWriter:   options.EchoWriter,
 		printWriter:  options.PrintWriter,
 		environ: environ.NewEnviron(environ.NewEnvironOptions{

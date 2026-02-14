@@ -40,6 +40,8 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`{`), O_CUR_BRK, []byte("{"), true},
 		// BRANCH
 		{[]byte(`branch [true: 1,]`), BRANCH, []byte("branch"), true},
+		// DEFER
+		{[]byte(`defer`), DEFER, []byte("defer"), true},
 		// COMMENT
 		{[]byte(`#-`), COMMENT_LINE, []byte("#-"), true},
 		// SUB

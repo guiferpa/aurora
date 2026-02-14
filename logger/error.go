@@ -15,7 +15,7 @@ func CommandError(err error) {
 	os.Exit(2)
 }
 
-func AssertError(errs []string, filename string) {
+func AssertError(errs []error, filename string) {
 	if len(errs) == 0 {
 		return
 	}

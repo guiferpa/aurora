@@ -29,6 +29,7 @@ const (
 	IF           = "IF"        // if
 	ELSE         = "ELSE"      // else
 	BRANCH       = "BRANCH"    // branch
+	DEFER        = "DEFER"     // defer - delayed scope execution
 	COLON        = "COLON"     // :
 	SEMICOLON    = "SEMICOLON" // ;
 	ID           = "ID"
@@ -83,6 +84,7 @@ var (
 	TagElse       = Tag{ELSE, "else", "Make else for conditions with If"}
 	TagColon      = Tag{COLON, ":", ""}
 	TagBranch     = Tag{BRANCH, "branch", "Make possible many branches"}
+	TagDefer      = Tag{DEFER, "defer", "Defer scope execution (pointer to scope)"}
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagTrue       = Tag{TRUE, "true", ""}
 	TagFalse      = Tag{FALSE, "false", ""}
@@ -105,6 +107,7 @@ var processableTags = []Tag{
 	TagIf,
 	TagElse,
 	TagBranch,
+	TagDefer,
 	TagHead,
 	TagTail,
 	TagPush,

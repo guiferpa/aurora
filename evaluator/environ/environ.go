@@ -105,6 +105,7 @@ func NewEnviron(opts NewEnvironOptions) *Environ {
 	return &Environ{
 		args:   args,
 		idents: idents,
+		defers: make(map[string][]byte),
 		temps:  make(map[string][]byte),
 		prev:   opts.Prev,
 	}

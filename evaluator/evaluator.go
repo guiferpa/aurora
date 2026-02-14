@@ -324,11 +324,10 @@ func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
 	cond := e.environ.GetTemp(byteutil.ToHex(left))
 	msg := e.environ.GetTemp(byteutil.ToHex(right))
 	passed, errMsg := builtin.AssertFunction(cond, msg)
-	e.IncrementCursor()
 	if !passed {
 		e.assertErrors = append(e.assertErrors, errMsg)
-		return fmt.Errorf("assert: %s", errMsg)
 	}
+	e.IncrementCursor()
 	return nil
 }
 

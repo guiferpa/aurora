@@ -18,7 +18,6 @@ const (
 	OpPushArg                       // Operation to push arguments to next scope
 	OpGetArg                        // Operation to get arguments from higher scopes
 	OpBeginScope                    // Starts a new scope in stack evaluate time
-	OpEndScope                      // Ends the current scope started in stack evalute time
 	OpDefer                         // Defer: store scope range in temp, skip body (value = pointer to scope)
 	OpPreCall                       // It's a pre call operation, main goal is push all scope arguments
 	OpCall                          // Call a scope with parameters, it'll works like function

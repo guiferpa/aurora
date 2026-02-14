@@ -592,6 +592,24 @@ func (p *pr) getBlockExpr() (Node, error) {
 	return BlockExpressionNode{Ref: ref, Body: stmts}, nil
 }
 
+func (p *pr) getDefer() (Node, error) {
+	if _, err := p.EatToken(lexer.DEFER); err != nil {
+		return nil, err
+	}
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+		return nil, err
+	}
+	stmts, err := p.getStmts(lexer.TagCCurBrk)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+		return nil, err
+	}
+	ref := byteutil.FromUint64(uint64(time.Now().Nanosecond()))
+	return DeferExpressionNode{Ref: ref, Body: stmts}, nil
+}
+
 func (p *pr) getIf() (Node, error) {
 	if _, err := p.EatToken(lexer.IF); err != nil {
 		return nil, err
@@ -666,6 +684,9 @@ func (p *pr) getExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.BRANCH {
 		return p.getBranch()
 	}
+	if lookahead.GetTag().Id == lexer.DEFER {
+		return p.getDefer()
+	}
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.getIdent()
 	}
@@ -717,15 +738,28 @@ func (p *pr) getAssert() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	expr, err := p.getExpr()
+	if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+		return nil, err
+	}
+	condition, err := p.getExpr()
 	if err != nil {
+		return nil, err
+	}
+	if _, err := p.EatToken(lexer.COMMA); err != nil {
+		return nil, err
+	}
+	message, err := p.getExpr()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.EatToken(lexer.C_PAREN); err != nil {
 		return nil, err
 	}
 
 	return AssertStatementNode{
-		Expression: expr,
-		Token:      t,
+		Condition: condition,
+		Message:   message,
+		Token:     t,
 	}, nil
 }
 

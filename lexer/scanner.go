@@ -5,6 +5,7 @@ var keywordTags = []Tag{
 	TagIf,
 	TagElse,
 	TagBranch,
+	TagDefer,
 	TagCallPrint,
 	TagEcho,
 	TagTrue,

@@ -50,6 +50,22 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 
 		return lsc
 	}
+	if n, ok := stmt.(parser.DeferExpressionNode); ok {
+		var l []byte
+		body := make([]Instruction, 0)
+		for _, ins := range n.Body {
+			l = EmitInstruction(tc, &body, ins)
+		}
+		bodylength := byteutil.FromUint64(uint64(len(body)) + 1)
+		lsc := GenerateLabel(tc)
+		scopeBody := append([]Instruction{NewInstruction(lsc, OpBeginScope, n.Ref, bodylength)}, body...)
+		scopeBody = append(scopeBody, NewInstruction(GenerateLabel(tc), OpReturn, lsc, l))
+		scopeLen := uint64(len(scopeBody))
+		lout := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(lout, OpDefer, lsc, byteutil.FromUint64(scopeLen)))
+		*insts = append(*insts, scopeBody...)
+		return lout
+	}
 	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
 		return EmitInstruction(tc, insts, n.Expression)
 	}
@@ -162,18 +178,13 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		return inl
 	}
 	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
-		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpPreCall, n.Id.Token.GetMatch(), nil))
-
-		for _, p := range n.Params {
+		for i, p := range n.Params {
 			ll := EmitInstruction(tc, insts, p.Expression)
 			l := GenerateLabel(tc)
-			*insts = append(*insts, NewInstruction(l, OpPushArg, ll, nil))
+			*insts = append(*insts, NewInstruction(l, OpPushArg, byteutil.FromUint64(uint64(i)), ll))
 		}
-
-		l = GenerateLabel(tc)
+		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
-
 		return l
 	}
 	if n, ok := stmt.(parser.PrintStatementNode); ok {
@@ -189,11 +200,10 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		return l
 	}
 	if n, ok := stmt.(parser.AssertStatementNode); ok {
-		expr := EmitInstruction(tc, insts, n.Expression)
+		cond := EmitInstruction(tc, insts, n.Condition)
+		msg := EmitInstruction(tc, insts, n.Message)
 		l := GenerateLabel(tc)
-
-		line := byteutil.FromUint64(uint64(n.Token.GetLine()))
-		*insts = append(*insts, NewInstruction(l, OpAssert, expr, line))
+		*insts = append(*insts, NewInstruction(l, OpAssert, cond, msg))
 		return l
 	}
 	if n, ok := stmt.(parser.ArgumentsExpressionNode); ok {

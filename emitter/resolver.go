@@ -28,6 +28,8 @@ func ResolveOpCode(op byte) string {
 		return "OpBeginScope"
 	case OpEndScope:
 		return "OpEndScope"
+	case OpDefer:
+		return "OpDefer"
 	case OpSave:
 		return "OpSave"
 	case OpPreCall:

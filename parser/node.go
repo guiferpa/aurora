@@ -186,6 +186,17 @@ func (ben BlockExpressionNode) Next() Node {
 	return nil
 }
 
+// DeferExpressionNode is "defer { ... }". It produces a value that is a pointer to the scope
+// (executable later via invocation, e.g. r(1, 2)). No signature or arity.
+type DeferExpressionNode struct {
+	Ref  []byte `json:"id"`
+	Body []Node `json:"body"`
+}
+
+func (den DeferExpressionNode) Next() Node {
+	return nil
+}
+
 type IfExpressionNode struct {
 	Test Node                `json:"test"`
 	Body []Node              `json:"body"`
@@ -247,8 +258,9 @@ func (isn IdentStatementNode) Next() Node {
 }
 
 type AssertStatementNode struct {
-	Expression Node        `json:"expression"`
-	Token      lexer.Token `json:"-"`
+	Condition Node        `json:"condition"`
+	Message   Node        `json:"message"`
+	Token     lexer.Token `json:"-"`
 }
 
 func (asn AssertStatementNode) Next() Node {

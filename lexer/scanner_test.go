@@ -38,6 +38,7 @@ func TestScanToken(t *testing.T) {
 		{"keyword else", "else", true, ELSE, "else"},
 		{"keyword ident", "ident", true, IDENT, "ident"},
 		{"keyword branch", "branch", true, BRANCH, "branch"},
+		{"keyword defer", "defer", true, DEFER, "defer"},
 		{"keyword print", "print", true, PRINT, "print"},
 		{"keyword echo", "echo", true, ECHO, "echo"},
 		{"keyword true", "true", true, TRUE, "true"},

@@ -96,50 +96,47 @@ func TestEatToken(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	// FIX: Improved this test
-	t.Skip()
-
-	cases := []struct {
-		Tokens   []lexer.Token
-		Expected AST
-	}{
-		// ident a = if 10 bigger 11 { 0; } else { 1; };
-		{
-			[]lexer.Token{
-				tok{[]byte("tok1"), lexer.TagIdent},
-				tok{[]byte("a"), lexer.TagId},
-				tok{[]byte("tok3"), lexer.TagAssign},
-				tok{[]byte("tok4"), lexer.TagIf},
-				tok{[]byte("10"), lexer.TagNumber},
-				tok{[]byte("tok6"), lexer.TagBigger},
-				tok{[]byte("11"), lexer.TagNumber},
-				tok{[]byte("tok8"), lexer.TagOCurBrk},
-				tok{[]byte("-1"), lexer.TagNumber},
-				tok{[]byte("tok10"), lexer.TagSemicolon},
-				tok{[]byte("tok11"), lexer.TagCCurBrk},
-				tok{[]byte("tok12"), lexer.TagElse},
-				tok{[]byte("tok13"), lexer.TagOCurBrk},
-				tok{[]byte("1"), lexer.TagNumber},
-				tok{[]byte("tok15"), lexer.TagSemicolon},
-				tok{[]byte("tok16"), lexer.TagCCurBrk},
-				tok{[]byte("tok17"), lexer.TagSemicolon},
-				tok{[]byte("tok18"), lexer.TagEOF},
-			},
-			AST{
-				Module: ModuleNode{
-					Name: "main",
-					Statements: []Node{
-						IdentStatementNode{
-							Id: "a",
-							Expression: IfExpressionNode{
-								Test: RelativeExpression{},
+	// ident a = if 10 bigger 11 { 0; } else { 1; };
+	tokens := []lexer.Token{
+		tok{[]byte("tok1"), lexer.TagIdent},
+		tok{[]byte("a"), lexer.TagId},
+		tok{[]byte("tok3"), lexer.TagAssign},
+		tok{[]byte("tok4"), lexer.TagIf},
+		tok{[]byte("10"), lexer.TagNumber},
+		tok{[]byte("tok6"), lexer.TagBigger},
+		tok{[]byte("11"), lexer.TagNumber},
+		tok{[]byte("tok8"), lexer.TagOCurBrk},
+		tok{[]byte("0"), lexer.TagNumber},
+		tok{[]byte("tok10"), lexer.TagSemicolon},
+		tok{[]byte("tok11"), lexer.TagCCurBrk},
+		tok{[]byte("tok12"), lexer.TagElse},
+		tok{[]byte("tok13"), lexer.TagOCurBrk},
+		tok{[]byte("1"), lexer.TagNumber},
+		tok{[]byte("tok15"), lexer.TagSemicolon},
+		tok{[]byte("tok16"), lexer.TagCCurBrk},
+		tok{[]byte("tok17"), lexer.TagSemicolon},
+		tok{[]byte("tok18"), lexer.TagEOF},
+	}
+	expected := AST{
+		Module: ModuleNode{
+			Name: "main",
+			Statements: []Node{
+				StatementNode{
+					Node: IdentStatementNode{
+						Id:    "a",
+						Token: tokens[1],
+						Expression: IfExpressionNode{
+							Test: RelativeExpression{
+								Left:      NumberLiteralNode{Value: 10, Token: tokens[4]},
+								Right:     NumberLiteralNode{Value: 11, Token: tokens[6]},
+								Operation: OperationLiteralNode{Value: "tok6", Token: tokens[5]},
+							},
+							Body: []Node{
+								StatementNode{Node: NumberLiteralNode{Value: 0, Token: tokens[8]}},
+							},
+							Else: &ElseExpressionNode{
 								Body: []Node{
-									NumberLiteralNode{Value: 0},
-								},
-								Else: &ElseExpressionNode{
-									Body: []Node{
-										NumberLiteralNode{Value: 1},
-									},
+									StatementNode{Node: NumberLiteralNode{Value: 1, Token: tokens[13]}},
 								},
 							},
 						},
@@ -149,14 +146,12 @@ func TestParse(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
-		p := &pr{cursor: 0, tokens: c.Tokens}
-		ast, err := p.Parse()
-		if err != nil {
-			t.Errorf("param: %v, %v", c.Tokens, err)
-		}
-		if !reflect.DeepEqual(ast, c.Expected) {
-			t.Errorf("\nexpected: %v,\ngot: %v", c.Expected, ast)
-		}
+	p := &pr{cursor: 0, tokens: tokens}
+	ast, err := p.Parse()
+	if err != nil {
+		t.Errorf("param: %v, %v", tokens, err)
+	}
+	if !reflect.DeepEqual(ast, expected) {
+		t.Errorf("\nexpected: %v,\ngot: %v", expected, ast)
 	}
 }

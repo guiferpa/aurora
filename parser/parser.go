@@ -859,8 +859,10 @@ func (p *pr) Parse() (AST, error) {
 	if err != nil {
 		return AST{}, err
 	}
-	if _, err := p.logger.JSON(module); err != nil {
-		return AST{}, err
+	if p.logger != nil {
+		if _, err := p.logger.JSON(module); err != nil {
+			return AST{}, err
+		}
 	}
 	return AST{module}, nil
 }

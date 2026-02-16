@@ -250,7 +250,6 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 }
 
 func TestLowering(t *testing.T) {
-	t.Skip()
 	cases := []struct {
 		name  string
 		insts []emitter.Instruction

@@ -30,6 +30,17 @@ func IsAssociativeOperator(op byte) bool {
 	}
 }
 
+// IsBinaryValueConsumer returns true for ops that consume two value operands (left/right) from the operand map.
+// Used so we only reorder for Add/Sub/Mul/Div; OpReturn, OpBeginScope, etc. are left as-is and not merged.
+func IsBinaryValueConsumer(op byte) bool {
+	switch op {
+	case emitter.OpAdd, emitter.OpSubtract, emitter.OpMultiply, emitter.OpDivide:
+		return true
+	default:
+		return false
+	}
+}
+
 func OperandStackDelta(op byte) int {
 	if IsOperand(op) {
 		return 1
@@ -69,7 +80,7 @@ func ResolveOperandsOrder(insts []emitter.Instruction) []emitter.Instruction {
 		ol, okl := operands[ll]
 		or, okr := operands[lr]
 
-		if okl && okr {
+		if IsBinaryValueConsumer(inst.GetOpCode()) && okl && okr {
 			curb := make([]emitter.Instruction, 0)
 
 			if IsAssociativeOperator(inst.GetOpCode()) {
@@ -87,6 +98,15 @@ func ResolveOperandsOrder(insts []emitter.Instruction) []emitter.Instruction {
 
 			out = curb
 		} else {
+			// OpReturn consumes one value (return value); emit it before Return only when not already in out.
+			// (After a binary op we set out = curb, so the result is already last in out; don't duplicate.)
+			if inst.GetOpCode() == emitter.OpReturn && okr {
+				lastIsBinary := len(out) > 0 && IsBinaryValueConsumer(out[len(out)-1].GetOpCode())
+				if !lastIsBinary {
+					out = append(out, or...)
+				}
+				delete(operands, lr)
+			}
 			out = append(out, inst)
 		}
 	}

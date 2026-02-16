@@ -9,7 +9,6 @@ import (
 )
 
 func TestRunExecutesAndWritesToStdout(t *testing.T) {
-	t.Skip()
 	dir := t.TempDir()
 	entry := filepath.Join(dir, "main.ar")
 	source := "ident x = 1 + 10;\nprint x;\n"

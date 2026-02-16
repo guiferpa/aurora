@@ -87,7 +87,6 @@ false;
 }
 
 func TestPickRuntimeCode(t *testing.T) {
-	t.Skip()
 	cases := []struct {
 		Name       string
 		SourceCode string

@@ -25,9 +25,9 @@ $(BIN)/aurorals:
 clean:
 	@rm -rf $(BIN)
 
-# Run tests
+# Run tests (writes coverage.out for make cover-html)
 test: $(TPARSE_BIN)
-	@go test $(PKGS) -v -json -race -buildvcs -cover -test.v | $(TPARSE_BIN) -pass -follow
+	@go test $(PKGS) -v -json -race -buildvcs -cover -covermode=atomic -coverprofile=coverage.out -test.v | $(TPARSE_BIN) -pass -follow
 
 # Run benchmarks of source code
 bench:

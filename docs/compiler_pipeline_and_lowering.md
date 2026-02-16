@@ -9,14 +9,15 @@ O resumo abaixo alinha a arquitetura do compilador Aurora com a separação entr
 ## Pipeline atual
 
 ```
-Source → Lexer → Parser → AST → Emitter (IR) → Builder EVM → Bytecode
+Source → Lexer → Parser → AST → Emitter (IR) → Lowering (builder/evm) → Builder EVM → Bytecode
                                     ↓
                                Evaluator (interpreta IR)
 ```
 
 - **Emitter** gera uma sequência linear de instruções (IR). Ex.: `GetArg(0)`, `GetArg(1)`, `Add`.
 - **Evaluator** consome a mesma IR para executar em memória.
-- **Builder EVM** consome a IR e emite opcodes da EVM.
+- **Lowering** (pacote `builder/evm`) reordena a IR para a stack EVM (Sub/Div left-assoc, RPN). O Builder chama `Lowering(body)` e `Lowering(rootinsts)` antes de escrever bytecode.
+- **Builder EVM** consome a IR já reordenada e emite opcodes da EVM.
 
 ---
 

@@ -392,36 +392,40 @@ func (p *pr) getMultExpr() (Node, error) {
 	return left, nil
 }
 
+// getAddExpr parses additive expressions left-associatively: a - b - c => (a - b) - c, a + b + c => (a + b) + c.
 func (p *pr) getAddExpr() (Node, error) {
 	left, err := p.getMultExpr()
 	if err != nil {
 		return nil, err
 	}
-
-	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.SUM {
-		op, err := p.EatToken(lexer.SUM)
-		if err != nil {
-			return nil, err
+	for {
+		lookahead := p.GetLookahead()
+		if lookahead.GetTag().Id == lexer.SUM {
+			op, err := p.EatToken(lexer.SUM)
+			if err != nil {
+				return nil, err
+			}
+			right, err := p.getMultExpr()
+			if err != nil {
+				return nil, err
+			}
+			left = BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}
+			continue
 		}
-		right, err := p.getAddExpr()
-		if err != nil {
-			return nil, err
+		if lookahead.GetTag().Id == lexer.SUB {
+			op, err := p.EatToken(lexer.SUB)
+			if err != nil {
+				return nil, err
+			}
+			right, err := p.getMultExpr()
+			if err != nil {
+				return nil, err
+			}
+			left = BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}
+			continue
 		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
+		break
 	}
-	if lookahead.GetTag().Id == lexer.SUB {
-		op, err := p.EatToken(lexer.SUB)
-		if err != nil {
-			return nil, err
-		}
-		right, err := p.getAddExpr()
-		if err != nil {
-			return nil, err
-		}
-		return BinaryExpressionNode{left, right, OperationLiteralNode{string(op.GetMatch()), op}}, nil
-	}
-
 	return left, nil
 }
 

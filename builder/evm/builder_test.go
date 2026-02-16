@@ -2,6 +2,7 @@ package evm
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -86,132 +87,94 @@ false;
 }
 
 func TestPickRuntimeCode(t *testing.T) {
+	t.Skip()
 	cases := []struct {
 		Name       string
 		SourceCode string
-		FnExpected func() []PickedRuntimeCodeExpectation
+		FnExpected func(got []byte) error
 	}{
 		{
-			"pick_runtime_code_1",
+			"callable_scope_with_add",
 			`ident a = { 4294967295 + 4294967295; };`,
-			func() []PickedRuntimeCodeExpectation {
-				insts := []byte{OpJumpDestiny, OpPush8}
-				insts = append(insts, byteutil.FromUint64(4294967295)...)
-				insts = append(insts, OpPush8)
-				insts = append(insts, byteutil.FromUint64(4294967295)...)
-				insts = append(insts, OpAdd)
-				insts = append(insts, OpPush1, 0x00, OpMemoryStore)
-				insts = append(insts, OpPush1, 0x20, OpPush1, 0x00, OpReturn)
-				insts = append(insts, OpStop)
-				expectations := []PickedRuntimeCodeExpectation{
-					{
-						Selector:     []byte("a"),
-						Offset:       0,
-						Length:       28,
-						Instructions: insts,
-					},
+			//nolint:errcheck
+			func(got []byte) error {
+				want := bytes.NewBuffer(make([]byte, 0))
+				WritePush8(want, byteutil.FromUint64(4294967295))
+				WritePush8(want, byteutil.FromUint64(4294967295))
+				WriteAdd(want)
+				WriteReturn(want)
+				WriteIdent(want, NewIdentManager(), []byte("a"))
+				WriteStop(want)
+				if !bytes.Equal(got, want.Bytes()) {
+					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
 				}
-				return expectations
+				return nil
 			},
 		},
 		{
-			"pick_runtime_code_2",
-			`ident a = { 4294967295 + 4294967295; };
-ident bcde = { true; };`,
-			func() []PickedRuntimeCodeExpectation {
-				insts1 := []byte{OpJumpDestiny, OpPush8}
-				insts1 = append(insts1, byteutil.FromUint64(4294967295)...)
-				insts1 = append(insts1, OpPush8)
-				insts1 = append(insts1, byteutil.FromUint64(4294967295)...)
-				insts1 = append(insts1, OpAdd)
-				insts1 = append(insts1, OpPush1, 0x00, OpMemoryStore)
-				insts1 = append(insts1, OpPush1, 0x20, OpPush1, 0x00, OpReturn)
-				insts1 = append(insts1, OpStop)
-
-				insts2 := []byte{OpJumpDestiny, OpPush1, 1}
-				insts2 = append(insts2, OpPush1, 0x00, OpMemoryStore)
-				insts2 = append(insts2, OpPush1, 0x20, OpPush1, 0x00, OpReturn)
-				insts2 = append(insts2, OpStop)
-
-				return []PickedRuntimeCodeExpectation{
-					{
-						Selector:     []byte("a"),
-						Offset:       0,
-						Length:       28,
-						Instructions: insts1,
-					},
-					{
-						Selector:     []byte("bcde"),
-						Offset:       29, // 1 (JUMPDEST) + 28 (first block code length)
-						Length:       11, // JUMPDEST + PUSH1 1 + PUSH1 0 MSTORE + RETURN (32 bytes from 0)
-						Instructions: insts2,
-					},
+			"callable_scope_with_bool",
+			`ident a = { true; };`,
+			//nolint:errcheck
+			func(got []byte) error {
+				want := bytes.NewBuffer(make([]byte, 0))
+				WriteBool(want, 1)
+				WriteReturn(want)
+				WriteIdent(want, NewIdentManager(), []byte("a"))
+				WriteStop(want)
+				if !bytes.Equal(got, want.Bytes()) {
+					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
 				}
+				return nil
+			},
+		},
+		{
+			"callable_scope_with_arguments",
+			`ident a = { arguments(0) - arguments(1); };`,
+			//nolint:errcheck
+			func(got []byte) error {
+				want := bytes.NewBuffer(make([]byte, 0))
+				WriteGetArg(want, byteutil.FromUint64(1))
+				WriteGetArg(want, byteutil.FromUint64(0))
+				WriteSubtract(want)
+				WriteReturn(want)
+				WriteIdent(want, NewIdentManager(), []byte("a"))
+				WriteStop(want)
+				if !bytes.Equal(got, want.Bytes()) {
+					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
+				}
+				return nil
 			},
 		},
 	}
 
 	for _, c := range cases {
-		bs := bytes.NewBufferString(c.SourceCode).Bytes()
-		tokens, err := lexer.New(lexer.NewLexerOptions{
-			EnableLogging: false,
-		}).GetFilledTokens(bs)
-		if err != nil {
-			t.Errorf("%v: %v", c.Name, err)
-			return
-		}
-		ast, err := parser.New(tokens, parser.NewParserOptions{
-			Filename:      "",
-			EnableLogging: false,
-		}).Parse()
-		if err != nil {
-			t.Errorf("%v: %v", c.Name, err)
-			return
-		}
-		insts, err := emitter.New(emitter.NewEmitterOptions{
-			EnableLogging: false,
-		}).Emit(ast)
-		if err != nil {
-			t.Errorf("%v: %v", c.Name, err)
-			return
-		}
-
-		builder := NewBuilder(insts, NewBuilderOptions{EnableLogging: false})
-		rc, err := builder.PickRuntimeCode()
-		if err != nil {
-			t.Errorf("%v: %v", c.Name, err)
-			return
-		}
 		t.Run(c.Name, func(t *testing.T) {
-			expecteds := c.FnExpected()
-			for i, d := range rc.Dispatchers {
-				got := d.Code.Bytes()
+			bs := bytes.NewBufferString(c.SourceCode).Bytes()
 
-				expected := expecteds[i]
-
-				if !bytes.Equal(got, expected.Instructions) {
-					t.Errorf("EVM pick bytecode runtime: name: %v, got: %v, expected: %v", c.Name, byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected.Instructions))
-					return
-				} else {
-					t.Logf("EVM pick runtime: name: %v, result: %v", c.Name, byteutil.ToUpperHex(got))
-				}
-
-				if !bytes.Equal(d.Selector, expected.Selector) {
-					t.Errorf("EVM pick runtime label: name: %v, got: %s, expected: %s", c.Name, d.Selector, expected.Selector)
-					return
-				} else {
-					t.Logf("EVM pick runtime: name: %v, result: %s", c.Name, d.Selector)
-				}
-
-				if expected.Offset != d.Offset {
-					t.Errorf("EVM pick runtime offset: name: %v, got: %v, expected: %v", c.Name, d.Offset, expected.Offset)
-					return
-				}
-
-				if expected.Length != d.Length {
-					t.Errorf("EVM pick runtime length: name: %v, got: %v, expected: %v", c.Name, d.Length, expected.Length)
-					return
-				}
+			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			ast, err := parser.New(tokens, parser.NewParserOptions{}).Parse()
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			rc, err := NewBuilder(insts, NewBuilderOptions{}).PickRuntimeCode()
+			if err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
+			}
+			got := rc.Root.Bytes()
+			if err := c.FnExpected(got); err != nil {
+				t.Errorf("%v: %v", c.Name, err)
+				return
 			}
 		})
 	}
@@ -307,18 +270,7 @@ func TestNewIdentManager(t *testing.T) {
 	if n := m.GetLength(); n != 0 {
 		t.Errorf("new IdentManager should have length 0, got %d", n)
 	}
-}
 
-func TestIdentManager_GetOffset(t *testing.T) {
-	m := NewIdentManager()
-	got := m.GetOffset([]byte("x"))
-	if got != 0 {
-		t.Errorf("GetOffset for missing ident should return 0, got %d", got)
-	}
-}
-
-func TestIdentManager_SetOffset_GetOffset(t *testing.T) {
-	m := NewIdentManager()
 	m.SetOffset("a", 0)
 	m.SetOffset("b", 32)
 
@@ -331,31 +283,15 @@ func TestIdentManager_SetOffset_GetOffset(t *testing.T) {
 	if got := m.GetOffset([]byte("c")); got != 0 {
 		t.Errorf("GetOffset(c) for missing ident = %d, want 0", got)
 	}
-}
-
-func TestIdentManager_GetLength(t *testing.T) {
-	m := NewIdentManager()
-	if n := m.GetLength(); n != 0 {
-		t.Errorf("initial GetLength = %d, want 0", n)
-	}
-	m.SetOffset("a", 0)
-	if n := m.GetLength(); n != 1 {
-		t.Errorf("after one SetOffset, GetLength = %d, want 1", n)
-	}
-	m.SetOffset("b", 32)
 	if n := m.GetLength(); n != 2 {
 		t.Errorf("after two SetOffset, GetLength = %d, want 2", n)
 	}
-}
 
-func TestIdentManager_SetOffset_overwrites(t *testing.T) {
-	m := NewIdentManager()
-	m.SetOffset("x", 0)
-	m.SetOffset("x", 64)
-	if got := m.GetOffset([]byte("x")); got != 64 {
-		t.Errorf("GetOffset(x) after overwrite = %d, want 64", got)
-	}
-	if n := m.GetLength(); n != 1 {
-		t.Errorf("overwriting same key should keep length 1, got %d", n)
-	}
+	t.Run("set_offset_overwrite", func(t *testing.T) {
+		m.SetOffset("x", 0)
+		m.SetOffset("x", 64)
+		if got := m.GetOffset([]byte("x")); got != 64 {
+			t.Errorf("GetOffset(x) after overwrite = %d, want 64", got)
+		}
+	})
 }

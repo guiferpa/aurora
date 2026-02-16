@@ -49,7 +49,7 @@ func TestWriteAdd(t *testing.T) {
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpSwap1, OpAdd}
+	expected := []byte{OpAdd}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Add: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -62,7 +62,7 @@ func TestWriteMultiply(t *testing.T) {
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpSwap1, OpMul}
+	expected := []byte{OpMul}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Multiply: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -75,7 +75,7 @@ func TestWriteSubtract(t *testing.T) {
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpSwap1, OpSub}
+	expected := []byte{OpSub}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Subtract: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -88,7 +88,7 @@ func TestWriteDivide(t *testing.T) {
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpSwap1, OpDiv}
+	expected := []byte{OpDiv}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Divide: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -96,12 +96,13 @@ func TestWriteDivide(t *testing.T) {
 
 func TestWriteSave(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteSave(bs, []byte{1}); err != nil {
+	operand := []byte{1}
+	if _, err := WriteSave(bs, operand); err != nil {
 		t.Errorf("Error writing save: %v", err)
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpPush1, 1, OpPush8, 1}
+	expected := []byte{OpPush1, 1} // single byte: PUSH1 only
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Save: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}

@@ -35,6 +35,7 @@ func Call(ctx context.Context, in CallInput) error {
 		fmt.Printf("Contract:   0x%x (%d bytes)\n", contract, len(contract.Bytes()))
 		fmt.Printf("Function:   0x%x (%d bytes)\n", selector, len(selector))
 		fmt.Printf("Arguments:  0x%x (%d bytes)\n", args, len(args))
+		fmt.Printf("Data:       %s\n", byteutil.ToHexPretty(data))
 		return nil
 	}
 

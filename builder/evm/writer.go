@@ -9,8 +9,16 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 )
 
-const MEMORY_SLOT_SIZE = 32
-const INSTANTIATE_BLOCK_SIZE = 12
+func WritePush8(w io.Writer, operand []byte) (int, error) {
+	if _, err := w.Write([]byte{OpPush8}); err != nil {
+		return 0, err
+	}
+	padded := byteutil.Padding64Bits(operand)
+	if _, err := w.Write(padded); err != nil {
+		return 0, err
+	}
+	return 0, nil
+}
 
 func WriteBool(w io.Writer, v byte) (int, error) {
 	if _, err := w.Write([]byte{OpPush1, v}); err != nil {
@@ -19,56 +27,35 @@ func WriteBool(w io.Writer, v byte) (int, error) {
 	return 0, nil
 }
 
+// WriteAdd emits ADD. Lowering guarantees [left, right] on stack (LIFO); Builder is mechanical.
 func WriteAdd(w io.Writer) (int, error) {
-	if _, err := w.Write([]byte{OpSwap1}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write([]byte{OpAdd}); err != nil {
-		return 0, err
-	}
-	return 0, nil
+	return w.Write([]byte{OpAdd})
 }
 
 func WriteMultiply(w io.Writer) (int, error) {
-	if _, err := w.Write([]byte{OpSwap1}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write([]byte{OpMul}); err != nil {
-		return 0, err
-	}
-	return 0, nil
+	return w.Write([]byte{OpMul})
 }
 
 func WriteSubtract(w io.Writer) (int, error) {
-	if _, err := w.Write([]byte{OpSwap1}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write([]byte{OpSub}); err != nil {
-		return 0, err
-	}
-	return 0, nil
+	return w.Write([]byte{OpSub})
 }
 
 func WriteDivide(w io.Writer) (int, error) {
-	if _, err := w.Write([]byte{OpSwap1}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write([]byte{OpDiv}); err != nil {
-		return 0, err
-	}
-	return 0, nil
+	return w.Write([]byte{OpDiv})
 }
 
+// WriteSave emits the value onto the EVM stack: PUSH1 for single byte, PUSH8 (8-byte padded) otherwise.
 func WriteSave(w io.Writer, left []byte) (int, error) {
 	if len(left) == 1 {
-		if _, err := WriteBool(w, left[0]); err != nil {
+		if _, err := w.Write([]byte{OpPush1, left[0]}); err != nil {
 			return 0, err
 		}
+		return 0, nil
 	}
 	if _, err := w.Write([]byte{OpPush8}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write(left); err != nil {
+	if _, err := w.Write(byteutil.Padding64Bits(left)); err != nil {
 		return 0, err
 	}
 	return 0, nil
@@ -120,6 +107,10 @@ func WriteGetArg(w io.Writer, left []byte) (int, error) {
 		return 0, err
 	}
 	return w.Write([]byte{OpCallDataLoad})
+}
+
+func WriteStop(w io.Writer) (int, error) {
+	return w.Write([]byte{OpStop})
 }
 
 func WriteInstantiateBlock(w io.Writer, runtimeSize byte) (int, error) {
@@ -247,7 +238,6 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []emitter.Instruction) (int
 			}
 		}
 
-		// Push to stack
 		if op == emitter.OpSave {
 			if _, err := WriteSave(bs, inst.GetLeft()); err != nil {
 				return 0, err

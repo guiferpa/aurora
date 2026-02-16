@@ -1,11 +1,14 @@
 package evm
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 )
 
 func TestOperandStackDelta(t *testing.T) {
@@ -134,75 +137,113 @@ func TestIsAsociativeOperator(t *testing.T) {
 	}
 }
 
-func TestReorderLeftAssoc(t *testing.T) {
+func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 	cases := []struct {
-		name  string
-		insts []emitter.Instruction
-		want  []emitter.Instruction
+		name   string
+		source string
+		want   []emitter.Instruction
 	}{
 		{
-			name:  "empty",
-			insts: nil,
-			want:  nil,
-		},
-		{
-			name: "single_inst",
-			insts: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-			},
+			name:   "single_inst",
+			source: "arguments(0);",
 			want: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
+				emitter.NewInstruction([]byte("00"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
 			},
 		},
 		{
-			name: "add_no_reorder",
-			insts: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-				emitter.NewInstruction([]byte("1"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpAdd, []byte("0"), []byte("1")),
-			},
+			name:   "add_no_reorder",
+			source: "arguments(0) + arguments(1);",
 			want: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-				emitter.NewInstruction([]byte("1"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpAdd, []byte("0"), []byte("1")),
+				emitter.NewInstruction([]byte("00"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
+				emitter.NewInstruction([]byte("01"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpAdd, []byte("00"), []byte("01")),
 			},
 		},
 		{
-			name: "sub_reorder",
-			insts: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-				emitter.NewInstruction([]byte("1"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpSubtract, []byte("0"), []byte("1")),
-			},
+			name:   "sub_reorder",
+			source: "arguments(0) - arguments(1);",
 			want: []emitter.Instruction{
-				emitter.NewInstruction([]byte("1"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpSubtract, []byte("0"), []byte("1")),
+				emitter.NewInstruction([]byte("01"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("00"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpSubtract, []byte("00"), []byte("01")),
 			},
 		},
 		{
-			name: "sub_sub_reorder",
-			insts: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-				emitter.NewInstruction([]byte("1"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpSubtract, []byte("0"), []byte("1")),
-				emitter.NewInstruction([]byte("3"), emitter.OpGetArg, byteutil.FromUint64(3), nil),
-				emitter.NewInstruction([]byte("4"), emitter.OpSubtract, []byte("2"), []byte("3")),
-			},
+			name:   "sub_sub_reorder",
+			source: "arguments(0) - arguments(1) - arguments(2) - arguments(3);",
 			want: []emitter.Instruction{
-				emitter.NewInstruction([]byte("3"), emitter.OpGetArg, byteutil.FromUint64(3), nil),
-				emitter.NewInstruction([]byte("1"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
-				emitter.NewInstruction([]byte("0"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpSubtract, []byte("0"), []byte("1")),
-				emitter.NewInstruction([]byte("4"), emitter.OpSubtract, []byte("2"), []byte("3")),
+				emitter.NewInstruction([]byte("05"), emitter.OpGetArg, byteutil.FromUint64(3), nil),
+				emitter.NewInstruction([]byte("03"), emitter.OpGetArg, byteutil.FromUint64(2), nil),
+				emitter.NewInstruction([]byte("01"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("00"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpSubtract, []byte("00"), []byte("01")),
+				emitter.NewInstruction([]byte("04"), emitter.OpSubtract, []byte("02"), []byte("03")),
+				emitter.NewInstruction([]byte("06"), emitter.OpSubtract, []byte("04"), []byte("05")),
+			},
+		},
+		{
+			name:   "div_reorder",
+			source: "arguments(0) / arguments(1);",
+			want: []emitter.Instruction{
+				emitter.NewInstruction([]byte("01"), emitter.OpGetArg, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("00"), emitter.OpGetArg, byteutil.FromUint64(0), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpDivide, []byte("00"), []byte("01")),
+			},
+		},
+		{
+			name:   "div_and_sub_reorder",
+			source: "1 - 2 / 2 - 1;",
+			want: []emitter.Instruction{
+				emitter.NewInstruction([]byte("05"), emitter.OpSave, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpSave, byteutil.FromUint64(2), nil),
+				emitter.NewInstruction([]byte("01"), emitter.OpSave, byteutil.FromUint64(2), nil),
+				emitter.NewInstruction([]byte("03"), emitter.OpDivide, []byte("01"), []byte("02")),
+				emitter.NewInstruction([]byte("00"), emitter.OpSave, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("04"), emitter.OpSubtract, []byte("00"), []byte("03")),
+				emitter.NewInstruction([]byte("06"), emitter.OpSubtract, []byte("04"), []byte("05")),
+			},
+		},
+		{
+			name:   "sub_and_mult_reorder",
+			source: "6 - 2 * 2 - 1;",
+			want: []emitter.Instruction{
+				emitter.NewInstruction([]byte("05"), emitter.OpSave, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("01"), emitter.OpSave, byteutil.FromUint64(2), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpSave, byteutil.FromUint64(2), nil),
+				emitter.NewInstruction([]byte("03"), emitter.OpMultiply, []byte("01"), []byte("02")),
+				emitter.NewInstruction([]byte("00"), emitter.OpSave, byteutil.FromUint64(6), nil),
+				emitter.NewInstruction([]byte("04"), emitter.OpSubtract, []byte("00"), []byte("03")),
+				emitter.NewInstruction([]byte("06"), emitter.OpSubtract, []byte("04"), []byte("05")),
 			},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ReorderLeftAssoc(tc.insts)
+			bs := bytes.NewBufferString(tc.source).Bytes()
+			tokens, err := lexer.New(lexer.NewLexerOptions{
+				EnableLogging: false,
+			}).GetFilledTokens(bs)
+			if err != nil {
+				t.Errorf("%v: %v", tc.name, err)
+				return
+			}
+			ast, err := parser.New(tokens, parser.NewParserOptions{
+				EnableLogging: false,
+			}).Parse()
+			if err != nil {
+				t.Errorf("%v: %v", tc.name, err)
+				return
+			}
+			insts, err := emitter.New(emitter.NewEmitterOptions{
+				EnableLogging: false,
+			}).Emit(ast)
+			if err != nil {
+				t.Errorf("%v: %v", tc.name, err)
+				return
+			}
+			got := ResolveOperandsOrder(insts)
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("reorderLeftAssoc(...) = %v, want %v", got, tc.want)
+				t.Errorf("\ngot =\n%v \nwant =\n%v", emitter.Format(got), emitter.Format(tc.want))
 			}
 		})
 	}

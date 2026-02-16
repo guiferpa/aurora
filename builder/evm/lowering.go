@@ -9,7 +9,7 @@ func Lowering(insts []emitter.Instruction) []emitter.Instruction {
 	if len(insts) == 0 {
 		return insts
 	}
-	return ReorderLeftAssoc(insts)
+	return ResolveOperandsOrder(insts)
 }
 
 func IsOperand(op byte) bool {
@@ -49,7 +49,7 @@ func GetOperandStackDeltaDepth(insts []emitter.Instruction) []int {
 	return depth
 }
 
-func ReorderLeftAssoc(insts []emitter.Instruction) []emitter.Instruction {
+func ResolveOperandsOrder(insts []emitter.Instruction) []emitter.Instruction {
 	if len(insts) < 2 {
 		return insts
 	}

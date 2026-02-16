@@ -8,20 +8,21 @@
 ![Pipeline workflow](https://github.com/guiferpa/aurora/actions/workflows/pipeline.yml/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/guiferpa/aurora/badge.svg?branch=main)](https://coveralls.io/github/guiferpa/aurora?branch=main)
 
-> ⚠ Don't use it to develop something that'll go to production environment
+> ⚠ **Alpha** — don't use in production. Stuff can change. See [CHANGELOG.md](CHANGELOG.md) for known limitations and what's in/out.
 
-## Development Goal
+## What's Aurora?
 
-Aurora is a study-focused programming language whose main goal is to compile source code to the Ethereum Virtual Machine (EVM). Although it already provides basic compilation features, the language is still under active development. Features, syntax, and behaviors may change as the project evolves, and some intended EVM integration capabilities are not yet fully implemented or stabilized.
+Aurora is a **study-focused** language that compiles to the Ethereum Virtual Machine (EVM). It already does basic compilation and runs code via an evaluator, but it's still in the oven: syntax and behavior may shift, and some EVM goodies aren't fully there yet. Perfect for tinkering and learning.
 
 ## Summary
 
 - [Get started](#get-started)
   - [Install CLI](#install-cli)
+  - [Try in 30 seconds](#try-in-30-seconds-no-project-needed) (REPL, no project)
   - [Project manifest](#project-manifest)
   - [Manifest reference (aurora.toml)](docs/manifest.md)
-  - [Using REPL mode](#using-repl-mode)
-  - [Execute from file](#execute-from-file)
+  - [Run from file](#run-from-file)
+  - [Compile to EVM bytecode](#compile-to-evm-bytecode)
   - [Writing some code](#writing-some-code)
 - [Language Design](#language-design)
   - [Untyped Philosophy](#untyped-philosophy)
@@ -39,69 +40,107 @@ Aurora is a study-focused programming language whose main goal is to compile sou
 ```sh
 go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD
 ```
-> 🎈 So far there's no an easier way to download aurora binary. Use Go to install, it's the better way for while.
+> 🎈 You need Go installed. No pre-built binaries yet — this is the way to get the CLI for now.
 
-### Project manifest
+### Try in 30 seconds (no project needed)
 
-Most Aurora CLI commands (**build**, **run**, **deploy**, **call**) require a project manifest. The manifest is a file named `aurora.toml` at the root of your project (or in any parent directory). It defines the project metadata and the default source and binary paths.
-
-If you run a command without a manifest, the CLI will exit with:
-
-```
-aurora.toml not found in current directory or any parent (run 'aurora init' to create a project manifest)
-```
-
-**Create a new project with a manifest:**
-
-```sh
-mkdir my-project && cd my-project
-aurora init
-```
-
-This creates `aurora.toml` with a `[project]` section (name is taken from the current folder) and a default `[profiles.main]` with `source` and `binary`. You can then run `aurora run`, `aurora build`, and other commands. The only commands that do **not** require a manifest are `aurora init`, `aurora version`, `aurora help`, and `aurora repl`.
-
-For a full reference of every manifest field (including optional on-chain settings), see the [Manifest reference](docs/manifest.md).
-
-### Using REPL mode
+Jump straight into the REPL, no project setup:
 
 ```sh
 aurora repl
 ```
 
 ```java
->> ident a = 1_000;
+>> ident a = 1;
 >> a + 1;
-= 1001
+= 2
+>> ident b = true;
+>> print b;
+[0 0 0 0 0 0 0 1]
 ```
 
-### Execute from file
+`Ctrl+D` or `Ctrl+C` to exit. No `aurora.toml` needed for `repl`, `version`, or `help`.
 
-#### Create aurora source code file
+### Project manifest
+
+Most commands (**build**, **run**, **deploy**, **call**) want a project manifest — that's the `aurora.toml` file at your project root (or in a parent folder). It holds stuff like default source and output paths.
+
+If you forget, the CLI will gently remind you:
+
+```
+aurora.toml not found in current directory or any parent (run 'aurora init' to create a project manifest)
+```
+
+**Create a new project:**
+
+```sh
+mkdir my-project && cd my-project
+aurora init
+```
+
+That drops an `aurora.toml` with `[project]` and `[profiles.main]` (defaults: `source` = `src/main.ar`, `binary` = `bin/main`). From there you can `aurora run`, `aurora build`, etc. The only commands that *don't* need a manifest: `aurora init`, `aurora version`, `aurora help`, `aurora repl`.
+
+Full manifest reference (including optional on-chain bits): [docs/manifest.md](docs/manifest.md).
+
+### Run from file
+
+1. **With a project:** Put your code in `src/main.ar` (or whatever path you set in `aurora.toml`), then from the project root:
+
+   ```sh
+   aurora run
+   ```
+
+2. **Run any file:** From a dir that has (or inherits) `aurora.toml`:
+
+   ```sh
+   aurora run -s path/to/your/file.ar
+   ```
+
+Example — save as `src/main.ar`:
 
 ```java
 ident result = 10 * 20;
 print result + 1;
 ```
 
-#### Execute file
+Run `aurora run`. The evaluator prints values as raw bytes (here 201 = 8 bytes): `[0 0 0 0 0 0 0 201]`.
+
+### Compile to EVM bytecode
+
+Want bytecode instead of running in the evaluator?
 
 ```sh
-aurora run ./<file>.ar
+aurora build                              # uses manifest: source -> binary
+aurora build -s src/main.ar -o bin/main   # or point to any file and output
 ```
 
-#### That's the output from evaluator
-```java
-[0 0 0 0 0 0 0 201]
-```
+You get a raw bytecode file — deploy it or feed it to your favorite EVM client. For deploy/call (rpc, privkey, etc.) check the [Manifest reference](docs/manifest.md).
 
 ### Writing some code
-> 🎈 Unfortunately, this project there's are not contributors enough to make this doc better but be my guest to discovery how to write some code looking at [examples folder](/examples).
+
+A few snippets to paste in the REPL or in a file:
+
+```java
+ident x = 10;
+ident y = 20;
+print x + y;           // 30 (as bytes)
+
+ident flag = true;
+if flag bigger 0 then 1 else 0;   // if is an expression, returns a value
+
+ident t = [1, 2, 3];   // tape = 8-byte array
+print head t 2;
+```
+
+For more — tapes, reels, branches, EVM-style callables — dig into the [examples folder](https://github.com/guiferpa/aurora/tree/main/examples) (e.g. `examples/evm/ident.ar`, `examples/simple_math.ar`). What's in and what's not yet: [CHANGELOG.md](CHANGELOG.md).
 
 ## Language Design
 
+How Aurora thinks about values and the cool stuff you can do with them.
+
 ### Untyped Philosophy
 
-Aurora is an **untyped language** where everything is fundamentally an array of bytes. There are no type distinctions at the language level - numbers, booleans, tapes (arrays), and functions are all represented as byte arrays.
+Aurora is **untyped** — everything is just bytes under the hood. There are no type distinctions at the language level - numbers, booleans, tapes (arrays), and functions are all represented as byte arrays.
 
 #### Core Concept
 
@@ -341,12 +380,12 @@ print false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 
 ## Try it out
 
 ### Playground
-> 🚀 Feel free to try Aurora with [playground](https://guiferpa.github.io/aurora) built with WebAssembly + Go (Aurora source code)
+> 🚀 Try Aurora in the browser: [playground](https://guiferpa.github.io/aurora) — WebAssembly + Go, runs Aurora source right there.
 <img width="942" alt="Playground demo" src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/playground_demo.gif" />
 
 ## Commands
 
-All commands except **init**, **version**, **help**, and **repl** require an `aurora.toml` manifest in the current directory (or a parent). Use `aurora init` to create one.
+Quick reference: everything except **init**, **version**, **help**, and **repl** wants an `aurora.toml` in the current dir (or a parent). No manifest? Run `aurora init` and you're good.
 
 ```sh
 aurora help

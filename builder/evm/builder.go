@@ -1,3 +1,9 @@
+// Package evm compiles the emitter's IR to EVM bytecode.
+//
+// Architecture: the Builder is intended to be mechanical (emit opcodes, resolve offsets).
+// Stack order and LIFO semantics should be guaranteed by a separate Lowering phase that
+// consumes IR and produces a stream already in EVM stack order. See
+// docs/compiler_pipeline_and_lowering.md for the target pipeline (IR → Lowering → Builder).
 package evm
 
 import (
@@ -13,6 +19,8 @@ const (
 	DISPATCHER_BYTES_SIZE    = 15
 	NO_MATCH_DISPATCHER_SIZE = 1
 	CALLDATA_SLOT_READABLE   = 32
+	MEMORY_SLOT_SIZE         = 32
+	INSTANTIATE_BLOCK_SIZE   = 12
 )
 
 type Dispatcher struct {
@@ -25,26 +33,6 @@ type Dispatcher struct {
 type RuntimeCode struct {
 	Root        *bytes.Buffer
 	Dispatchers []Dispatcher
-}
-
-type IdentManager struct {
-	offsetIdents map[string]byte
-}
-
-func (m *IdentManager) GetOffset(ident []byte) byte {
-	return m.offsetIdents[string(ident)]
-}
-
-func (m *IdentManager) SetOffset(ident string, offset byte) {
-	m.offsetIdents[ident] = offset
-}
-
-func (m *IdentManager) GetLength() uint {
-	return uint(len(m.offsetIdents))
-}
-
-func NewIdentManager() *IdentManager {
-	return &IdentManager{offsetIdents: make(map[string]byte)}
 }
 
 type Builder struct {
@@ -80,6 +68,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 		return nil, cursor, false
 	}
 	body := b.insts[cursor+1 : end]
+	body = Lowering(body)
 
 	// Emit EVM bytecode for the defer body (OpBeginScope, ...stmts..., OpReturn).
 	code := bytes.NewBuffer(make([]byte, 0))
@@ -126,6 +115,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	}
 
 	if len(rootinsts) > 0 {
+		rootinsts = Lowering(rootinsts)
 		root := bytes.NewBuffer(make([]byte, 0))
 		if _, err := WriteCode(root, b.identManager, rootinsts); err != nil {
 			return nil, err

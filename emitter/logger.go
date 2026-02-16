@@ -8,7 +8,9 @@ type Logger struct {
 
 func (l *Logger) Println(insts []Instruction) {
 	if l.enableLogging {
-		fmt.Println(insts)
+		for _, inst := range insts {
+			fmt.Println(ResolveOpCode(inst.GetOpCode()))
+		}
 	}
 }
 

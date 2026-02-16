@@ -158,7 +158,7 @@ func Benchmark_ScanWord_MaxFlex_Complex_LongArrows(b *testing.B) {
 
 // -- Verification Tests to prove behavior --
 
-func TestScannerVariants_Behavior(t *testing.T) {
+func TestScannerVariants(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
@@ -168,20 +168,20 @@ func TestScannerVariants_Behavior(t *testing.T) {
 		desc        string
 	}{
 		// Current
-		{"Current_Standard", "myVar", scanWordCurrent, "myVar", true, "Standard ID"},
-		{"Current_GTE", "my>=var", scanWordCurrent, "", false, "Should fail explicitly on >="},
-		{"Current_Arrow", "my->var", scanWordCurrent, "my->var", true, "Should allow ->"},
+		{"current_standard", "myVar", scanWordCurrent, "myVar", true, "Standard ID"},
+		{"current_GTE", "my>=var", scanWordCurrent, "", false, "Should fail explicitly on >="},
+		{"current_arrow", "my->var", scanWordCurrent, "my->var", true, "Should allow ->"},
 
 		// Strict
-		{"Strict_Standard", "myVar", scanWordStrict, "myVar", true, "Standard ID"},
-		{"Strict_Underscore", "my_var", scanWordStrict, "my_var", true, "Standard ID"},
-		{"Strict_Arrow", "my->var", scanWordStrict, "my", true, "Should stop at -"},
+		{"strict_standard", "myVar", scanWordStrict, "myVar", true, "Standard ID"},
+		{"strict_underscore", "my_var", scanWordStrict, "my_var", true, "Standard ID"},
+		{"strict_arrow", "my->var", scanWordStrict, "my", true, "Should stop at -"},
 
 		// MaxFlex
-		{"MaxFlex_Standard", "myVar", scanWordMaxFlex, "myVar", true, "Standard ID"},
-		{"MaxFlex_GTE", "my>=var", scanWordMaxFlex, "my>=var", true, "Should consume full ID including >="},
-		{"MaxFlex_GiantArrow", "my>=====var", scanWordMaxFlex, "my>=====var", true, "Should consume arbitrary length symbols"},
-		{"MaxFlex_Arrow", "my->var", scanWordMaxFlex, "my->var", true, "Should allow ->"},
+		{"maxflex_standard", "myVar", scanWordMaxFlex, "myVar", true, "Standard ID"},
+		{"maxflex_GTE", "my>=var", scanWordMaxFlex, "my>=var", true, "Should consume full ID including >="},
+		{"maxflex_giantarrow", "my>=====var", scanWordMaxFlex, "my>=====var", true, "Should consume arbitrary length symbols"},
+		{"maxflex_arrow", "my->var", scanWordMaxFlex, "my->var", true, "Should allow ->"},
 	}
 
 	for _, tt := range tests {

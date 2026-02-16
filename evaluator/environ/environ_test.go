@@ -59,14 +59,14 @@ func TestGetIdent(t *testing.T) {
 		Prev: env1,
 	})
 
-	t.Run("TestGetIdentNotExists", func(t *testing.T) {
+	t.Run("not_exists", func(t *testing.T) {
 		got := env1.GetIdent("Z")
 		if got != nil {
 			t.Errorf("ident Z should not exists, got: %v", got)
 		}
 	})
 
-	t.Run("TestGetIdentExists", func(t *testing.T) {
+	t.Run("exists", func(t *testing.T) {
 		got := env2.GetIdent("A") // from environ 0
 		expected := []byte("B")
 		if !bytes.Equal(got, expected) {
@@ -74,7 +74,7 @@ func TestGetIdent(t *testing.T) {
 		}
 	})
 
-	t.Run("TestGetIdentExistsPriority", func(t *testing.T) {
+	t.Run("exists_priority", func(t *testing.T) {
 		got := env2.GetIdent("E") // from environ 2
 		expected := []byte("F")
 		if !bytes.Equal(got, expected) {
@@ -102,15 +102,12 @@ func TestSetArgument(t *testing.T) {
 	env0 := NewEnviron(NewEnvironOptions{
 		Args: make([]byte, 0),
 	})
-
-	t.Run("TestSetArgument", func(t *testing.T) {
-		env0.SetArgument(0, []byte("G"))
-		got := env0.GetArgument(0)
-		expected := []byte("G")
-		if !bytes.Equal(got, expected) {
-			t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
-		}
-	})
+	env0.SetArgument(0, []byte("G"))
+	got := env0.GetArgument(0)
+	expected := []byte("G")
+	if !bytes.Equal(got, expected) {
+		t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
+	}
 }
 
 func TestGetArgument(t *testing.T) {

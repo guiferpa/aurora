@@ -1,7 +1,7 @@
-ident fib = {
+ident fib = defer {
   ident n = arguments(0);
   if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
 };
 
-print fib(11); #- Result must be 89
+print fib(arguments(0)); #- Result must be 89
 

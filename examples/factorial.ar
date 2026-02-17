@@ -1,4 +1,4 @@
-ident factorial = {
+ident factorial = defer {
   ident n = arguments(0);
   if n smaller 1 or n equals 1 { 1; } else { n * factorial(n - 1); };
 };

@@ -1,10 +1,10 @@
-ident sum = {
+ident sum = defer {
   ident a = arguments(0);
   ident b = arguments(1);
   a + b;
 };
 
-ident sub = {
+ident sub = defer {
   ident a = arguments(0);
   ident b = arguments(1);
   a - b;

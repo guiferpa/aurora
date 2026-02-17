@@ -53,5 +53,47 @@ release:
     name: aurora
   draft: false
 
+# Homebrew: install with `brew tap guiferpa/tap && brew install guiferpa/tap/aurora`
+# Requires a separate tap repo (e.g. guiferpa/homebrew-tap) and HOMEBREW_TAP_TOKEN secret with write access to it.
+homebrew_casks:
+  - name: aurora
+    ids:
+      - aurora
+      - aurorals
+    binaries:
+      - aurora
+      - aurorals
+    url:
+      verified: "github.com/guiferpa/aurora/"
+    homepage: "https://github.com/guiferpa/aurora"
+    description: "Aurora language CLI and LSP"
+    repository:
+      owner: guiferpa
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    # Remove quarantine so unsigned binary runs on macOS (alternative: sign + notarize)
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/aurora", "#{staged_path}/aurorals"]
+          end
+
+# Linux .deb: published to GitHub Release; install with dpkg -i or add an apt repo that points to releases.
+nfpms:
+  - id: aurora-deb
+    package_name: aurora
+    ids:
+      - aurora
+      - aurorals
+    formats:
+      - deb
+    vendor: "Aurora"
+    homepage: "https://github.com/guiferpa/aurora"
+    maintainer: "Aurora <https://github.com/guiferpa/aurora>"
+    description: "Aurora language CLI and LSP server"
+    bindir: /usr/bin
+
 # Optional: sign + notarize macOS binaries to avoid Gatekeeper warning (requires Apple Developer account).
 # See https://goreleaser.com/customization/binary_sign/ and https://goreleaser.com/customization/notarize/

@@ -38,7 +38,19 @@ Aurora is a **study-focused** language that compiles to the Ethereum Virtual Mac
 
 ### Install CLI
 
-**From release (pre-built binaries):**  
+**macOS (Homebrew):**
+```sh
+brew tap guiferpa/tap
+brew install guiferpa/tap/aurora
+```
+
+**Linux (Debian/Ubuntu):**  
+Download the `.deb` from the [latest release](https://github.com/guiferpa/aurora/releases) and install:
+```sh
+sudo dpkg -i aurora_*_linux_*.deb
+```
+
+**Other (pre-built binaries):**  
 Download the [latest release](https://github.com/guiferpa/aurora/releases) and unpack the archive for your OS/arch.
 
 **From source:**
@@ -47,7 +59,7 @@ go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD
 ```
 > You need Go installed.
 
-**macOS:** If you see *"Apple could not verify aurora is free of malware"*, the binary is unsigned. Allow it once: **Right-click → Open → Open**, or in Terminal: `xattr -cr aurora` then run `./aurora`.
+**macOS (Gatekeeper):** If you see *"Apple could not verify aurora is free of malware"*, the binary is unsigned. Allow it once: **Right-click → Open → Open**, or in Terminal: `xattr -cr aurora` then run `./aurora`. The Homebrew cask applies this automatically.
 
 ### Try in 30 seconds (no project needed)
 
@@ -416,3 +428,13 @@ Flags:
 
 Use "aurora [command] --help" for more information about a command.
 ```
+
+## Publishing releases (maintainers)
+
+Releases are built with [GoReleaser](https://goreleaser.com/) on tag push. To enable **Homebrew** distribution:
+
+1. Create a tap repo: `guiferpa/homebrew-tap` (empty or with a README).
+2. Create a GitHub [Personal Access Token](https://github.com/settings/tokens) with `repo` scope.
+3. Add a repository secret: `HOMEBREW_TAP_TOKEN` = that token.
+
+After the next release, users can run `brew tap guiferpa/tap && brew install guiferpa/tap/aurora`. **apt-get** style install is not set up (only `.deb` files on the release page); to offer `apt install aurora` you’d need to host an APT repo (e.g. [Cloudsmith](https://cloudsmith.io/) or a custom repo).

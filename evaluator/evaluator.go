@@ -495,6 +495,19 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (ReturnsPerLabel, erro
 	return returns, err
 }
 
+// EvaluateRange sets the full instruction slice and runs only the range [from, to).
+// Used by the REPL: buffer accumulates all instructions; each line we append and run only the new slice,
+// so defer from/to indices stay valid in the same buffer.
+func (e *Evaluator) EvaluateRange(insts []emitter.Instruction, from, to uint64) (ReturnsPerLabel, error) {
+	e.SetInstructions(insts)
+	e.environ.ClearTemps()
+	returns, err := e.ExecuteInstructions(from, to)
+	if err := e.logger.Close(); err != nil {
+		return nil, err
+	}
+	return returns, err
+}
+
 type NewEvaluatorOptions struct {
 	EnableLogging bool
 	Player        *Player

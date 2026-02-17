@@ -18,7 +18,7 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-func printReadable(w io.Writer, temps map[string][]byte) {
+func render(w io.Writer, temps map[string][]byte) {
 	s := color.New(color.FgWhite, color.Bold).Sprint("=")
 	for _, v := range temps {
 		isBoolean := len(v) == 1 && v[0] == 0
@@ -40,14 +40,7 @@ func printReadable(w io.Writer, temps map[string][]byte) {
 	}
 }
 
-func printRaw(w io.Writer, temps map[string][]byte) {
-	s := color.New(color.FgWhite, color.Bold).Sprint("=")
-	for _, v := range temps {
-		_, _ = fmt.Fprintf(w, "%s %v\n", s, color.New(color.FgHiMagenta).Sprint(v))
-	}
-}
-
-func Start(in io.Reader, raw bool, loggers []string) {
+func Start(in io.Reader, loggers []string) {
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
 		EchoWriter:    &EchoWriter{},
@@ -63,6 +56,7 @@ func Start(in io.Reader, raw bool, loggers []string) {
 	}()
 
 	scanner := bufio.NewScanner(in)
+	var instsBuffer []emitter.Instruction
 	for {
 		_, _ = fmt.Fprintf(os.Stdout, ">> ")
 		scanned := scanner.Scan()
@@ -97,15 +91,16 @@ func Start(in io.Reader, raw bool, loggers []string) {
 			continue
 		}
 
-		temps, err := ev.Evaluate(insts)
+		// Append to buffer so defer from/to indices stay valid when calling later.
+		from := uint64(len(instsBuffer))
+		instsBuffer = append(instsBuffer, insts...)
+		to := uint64(len(instsBuffer))
+
+		temps, err := ev.EvaluateRange(instsBuffer, from, to)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
-		if raw {
-			printRaw(os.Stdout, temps)
-			continue
-		}
-		printReadable(os.Stdout, temps)
+		render(os.Stdout, temps)
 	}
 }

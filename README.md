@@ -37,10 +37,17 @@ Aurora is a **study-focused** language that compiles to the Ethereum Virtual Mac
 ## Get started
 
 ### Install CLI
+
+**From release (pre-built binaries):**  
+Download the [latest release](https://github.com/guiferpa/aurora/releases) and unpack the archive for your OS/arch.
+
+**From source:**
 ```sh
 go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD
 ```
-> 🎈 You need Go installed. No pre-built binaries yet — this is the way to get the CLI for now.
+> You need Go installed.
+
+**macOS:** If you see *"Apple could not verify aurora is free of malware"*, the binary is unsigned. Allow it once: **Right-click → Open → Open**, or in Terminal: `xattr -cr aurora` then run `./aurora`.
 
 ### Try in 30 seconds (no project needed)
 

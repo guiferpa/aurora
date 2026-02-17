@@ -52,3 +52,6 @@ release:
     owner: guiferpa
     name: aurora
   draft: false
+
+# Optional: sign + notarize macOS binaries to avoid Gatekeeper warning (requires Apple Developer account).
+# See https://goreleaser.com/customization/binary_sign/ and https://goreleaser.com/customization/notarize/

@@ -1,3 +1,0 @@
-ident n = 2;
-print if n smaller 1 or n equals 1 { n; } else { 100; };
-

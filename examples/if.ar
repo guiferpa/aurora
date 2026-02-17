@@ -4,3 +4,8 @@ ident a = if 10 bigger 9 {
 
 print a;
 
+ident b = if 9 bigger 9 { 90; } else { 100; };
+
+print b;
+
+

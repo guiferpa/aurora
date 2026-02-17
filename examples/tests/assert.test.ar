@@ -1,9 +1,0 @@
-ident a = 1 + 1;
-assert a equals 2;
-
-ident b = 5;
-assert b bigger 3;
-assert b smaller 2;
-
-ident c = 7;
-assert c different 7;

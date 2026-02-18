@@ -9,5 +9,5 @@ var Nothing = []byte{}
 
 // IsNothing reports whether b is the nothing value (8 zero bytes).
 func IsNothing(b []byte) bool {
-	return bytes.Equal(b, Nothing)
+	return b != nil && bytes.Equal(b, Nothing)
 }

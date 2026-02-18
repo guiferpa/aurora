@@ -374,6 +374,50 @@ func TestParseNothing(t *testing.T) {
 			},
 		},
 		{
+			name: "if_body_empty",
+			tokens: []lexer.Token{
+				tok{[]byte("if"), lexer.TagIf}, tok{[]byte("true"), lexer.TagTrue},
+				tok{[]byte("{"), lexer.TagOCurBrk}, tok{[]byte("}"), lexer.TagCCurBrk},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IfExpression{
+							Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+							Body: []Node{Statement{Node: NewNothingLiteral()}},
+							Else: &ElseExpression{
+								Body: []Node{NewNothingLiteral()}, // parser injects implicit else with nothing
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "if_else_body_empty",
+			tokens: []lexer.Token{
+				tok{[]byte("if"), lexer.TagIf}, tok{[]byte("false"), lexer.TagFalse},
+				tok{[]byte("{"), lexer.TagOCurBrk}, tok{[]byte("}"), lexer.TagCCurBrk},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IfExpression{
+							Test: BooleanLiteral{Value: byteutil.False, Token: tok{[]byte("false"), lexer.TagFalse}},
+							Body: []Node{Statement{Node: NewNothingLiteral()}},
+							Else: &ElseExpression{
+								Body: []Node{NewNothingLiteral()}, // parser injects implicit else with nothing
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "branch_value_nothing",
 			tokens: []lexer.Token{
 				tok{[]byte("branch"), lexer.TagBranch}, tok{[]byte("{"), lexer.TagOCurBrk},
@@ -542,7 +586,7 @@ func TestParseNothing(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(ast.Module, *c.want) {
+			if !ModuleEqual(ast.Module, *c.want) {
 				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
 			}
 		})

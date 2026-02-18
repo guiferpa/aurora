@@ -644,7 +644,9 @@ func (p *pr) ParseIf() (Node, error) {
 		euze, err := p.ParseElse()
 		return IfExpression{test, body, euze}, err
 	}
-	return IfExpression{test, body, nil}, nil
+	nothing := NewNothingLiteral()
+	euze := &ElseExpression{Body: []Node{nothing}}
+	return IfExpression{test, body, euze}, nil
 }
 
 func (p *pr) ParseElse() (*ElseExpression, error) {

@@ -870,7 +870,7 @@ if 11 bigger 10 { 20; };`,
 					return
 				}
 				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
-				label := byteutil.ToHex([]byte("04"))
+				label := byteutil.ToHex([]byte("05"))
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 10}
 				if !bytes.Equal(got, expected) {
@@ -878,11 +878,27 @@ if 11 bigger 10 { 20; };`,
 				}
 
 				// Second if result: the emitter uses a single global label counter; the first if consumes labels 00–07 (or so), so the second if's result lands at label 10, formatted as "010" by GenerateLabel ("0%d").
-				label = byteutil.ToHex([]byte("012"))
+				label = byteutil.ToHex([]byte("014"))
 				got = returns[label]
 				expected = []byte{0, 0, 0, 0, 0, 0, 0, 20}
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+			},
+		},
+		{
+			"if_2",
+			`if 10 smaller 9 { 10; };`,
+			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				if err != nil {
+					t.Errorf("expected no error, got: %v", err)
+					return
+				}
+				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
+				label := byteutil.ToHex([]byte("05"))
+				got := returns[label]
+				if !byteutil.IsNothing(got) {
+					t.Errorf("got: %v, expected: <nothing>", got)
 				}
 			},
 		},

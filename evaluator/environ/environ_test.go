@@ -131,11 +131,21 @@ func TestGetArgument(t *testing.T) {
 func TestSetTemp(t *testing.T) {
 	env0 := NewEnviron(NewEnvironOptions{})
 	env0.SetTemp("A", []byte("G"))
-	got := env0.GetTemp("A")
-	expected := []byte("G")
-	if !bytes.Equal(got, expected) {
-		t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
-	}
+
+	t.Run("exists", func(t *testing.T) {
+		got := env0.GetTemp("A")
+		expected := []byte("G")
+		if !bytes.Equal(got, expected) {
+			t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
+		}
+	})
+
+	t.Run("not_exists", func(t *testing.T) {
+		got := env0.GetTemp("B")
+		if got != nil {
+			t.Errorf("temp B should not exists, got: %v", got)
+		}
+	})
 }
 
 func TestGetArgumentsLength(t *testing.T) {

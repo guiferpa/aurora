@@ -18,9 +18,7 @@ func (e *Environ) GetPrevious() *Environ {
 }
 
 func (e *Environ) SetTemp(key string, value []byte) {
-	if len(value) > 0 {
-		e.temps[key] = value
-	}
+	e.temps[key] = value
 }
 
 func (e *Environ) GetTemp(key string) []byte {

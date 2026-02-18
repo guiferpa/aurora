@@ -18,25 +18,49 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-func render(w io.Writer, temps map[string][]byte) {
-	s := color.New(color.FgWhite, color.Bold).Sprint("=")
+func isString(v []byte) bool {
+	return len(v) > 8 && len(v)%8 == 0 && utf8.Valid(v)
+}
+
+func isBoolean(v []byte) bool {
+	return len(v) == 1 && v[0] == 0
+}
+
+func isNothing(v []byte) bool {
+	return byteutil.IsNothing(v)
+}
+
+func render(w io.Writer, temps map[string][]byte, eerr error) {
+	marker := color.New(color.FgWhite, color.Bold).Sprint("=")
+	literals := color.New(color.FgHiYellow).SprintFunc()
+	internals := color.New(color.FgCyan).SprintFunc()
+	errors := color.New(color.FgRed).SprintFunc()
+	format := "%s %s\n"
+
+	if eerr != nil {
+		_, _ = fmt.Fprintf(w, format, marker, errors(eerr))
+		return
+	}
+
 	for _, v := range temps {
-		isBoolean := len(v) == 1 && v[0] == 0
-		if isBoolean {
-			_, _ = fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(byteutil.ToBoolean(v)))
+		if isNothing(v) {
+			_, _ = fmt.Fprintf(w, format, marker, internals("<nothing>"))
 			continue
 		}
-		isString := len(v) > 8 && len(v)%8 == 0
-		if isString && utf8.Valid(v) {
-			_, _ = fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(string(v)))
+		if isBoolean(v) {
+			_, _ = fmt.Fprintf(w, format, marker, literals(byteutil.ToBoolean(v)))
+			continue
+		}
+		if isString(v) {
+			_, _ = fmt.Fprintf(w, format, marker, literals(string(v)))
 			continue
 		}
 		er, err := byteutil.Encode(v)
 		if err != nil {
-			_, _ = fmt.Fprint(w, color.New(color.FgRed).Sprint(err))
+			_, _ = fmt.Fprint(w, errors(err))
 			break
 		}
-		_, _ = fmt.Fprintf(w, "%s %s\n", s, color.New(color.FgHiYellow).Sprint(er))
+		_, _ = fmt.Fprintf(w, format, marker, internals(er))
 	}
 }
 
@@ -97,10 +121,9 @@ func Start(in io.Reader, loggers []string) {
 		to := uint64(len(instsBuffer))
 
 		temps, err := ev.EvaluateRange(instsBuffer, from, to)
+		render(os.Stdout, temps, err)
 		if err != nil {
-			fmt.Println(err)
 			continue
 		}
-		render(os.Stdout, temps)
 	}
 }

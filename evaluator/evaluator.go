@@ -211,9 +211,10 @@ func (e *Evaluator) EvaluateSave(label, left, right []byte) error {
 
 func (e *Evaluator) EvaluateLoad(label, left, right []byte) error {
 	val := e.environ.GetIdent(byteutil.ToHex(left))
-	if len(val) > 0 {
-		e.environ.SetTemp(byteutil.ToHex(label), val)
+	if val == nil {
+		return fmt.Errorf("identifier %s not found", left)
 	}
+	e.environ.SetTemp(byteutil.ToHex(label), val)
 	e.IncrementCursor()
 	return nil
 }
@@ -260,12 +261,9 @@ func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
 		return fmt.Errorf("conflict between identifiers named %s", left)
 	}
 	val := e.environ.GetTemp(byteutil.ToHex(right))
-	if len(val) > 0 {
-		e.environ.SetIdent(k, val)
-		e.IncrementCursor()
-		return nil
-	}
-	return fmt.Errorf("identifier %s cannot be void", left)
+	e.environ.SetIdent(k, val)
+	e.IncrementCursor()
+	return nil
 }
 
 func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {

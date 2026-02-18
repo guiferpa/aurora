@@ -178,6 +178,11 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
 		return l
 	}
+	if _, ok := stmt.(parser.NothingLiteral); ok {
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.Nothing, nil))
+		return l
+	}
 	if n, ok := stmt.(parser.PrintStatement); ok {
 		ll := EmitInstruction(tc, insts, n.Param)
 		l := GenerateLabel(tc)

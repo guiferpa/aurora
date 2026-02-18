@@ -34,9 +34,10 @@ const (
 	SEMICOLON    = "SEMICOLON" // ;
 	ID           = "ID"
 	NUMBER       = "NUMBER"
-	STRING       = "STRING" // string literal "text" (reel - array of tapes)
-	TRUE         = "TRUE"   // true
-	FALSE        = "FALSE"  // false
+	STRING       = "STRING"  // string literal "text" (reel - array of tapes)
+	NOTHING      = "NOTHING" // nothing
+	TRUE         = "TRUE"    // true
+	FALSE        = "FALSE"   // false
 	WHITESPACE   = "WHITESPACE"
 	BREAK_LINE   = "BREAK_LINE"
 	PRINT        = "PRINT"     // print
@@ -88,6 +89,7 @@ var (
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagTrue       = Tag{TRUE, "true", ""}
 	TagFalse      = Tag{FALSE, "false", ""}
+	TagNothing    = Tag{NOTHING, "nothing", "Universal neutral value (8 zero bytes)"}
 	TagId         = Tag{ID, "", ""}
 	TagHead       = Tag{HEAD, "head", "Get left to right nth items from a tape"}
 	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
@@ -108,6 +110,7 @@ var processableTags = []Tag{
 	TagElse,
 	TagBranch,
 	TagDefer,
+	TagNothing,
 	TagHead,
 	TagTail,
 	TagPush,

@@ -10,6 +10,7 @@ var keywordTags = []Tag{
 	TagEcho,
 	TagTrue,
 	TagFalse,
+	TagNothing,
 	TagEquals,
 	TagDifferent,
 	TagBigger,

@@ -205,6 +205,24 @@ func TestParseNothing(t *testing.T) {
 			},
 		},
 		{
+			name: "block_empty",
+			tokens: []lexer.Token{
+				tok{[]byte("{"), lexer.TagOCurBrk}, tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: BlockExpression{
+							Body: []Node{
+								Statement{Node: NewNothingLiteral()},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "rhs_of_assignment",
 			tokens: []lexer.Token{
 				tok{[]byte("ident"), lexer.TagIdent}, tok{[]byte("x"), lexer.TagId},

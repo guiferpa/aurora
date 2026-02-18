@@ -830,6 +830,9 @@ func (p *pr) ParseStmts(t lexer.Tag) ([]Node, error) {
 		}
 		stmts = append(stmts, stmt)
 	}
+	if len(stmts) == 0 {
+		stmts = append(stmts, Statement{Node: NewNothingLiteral()})
+	}
 	return stmts, nil
 }
 

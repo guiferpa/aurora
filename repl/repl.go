@@ -60,7 +60,7 @@ func render(w io.Writer, temps map[string][]byte, eerr error) {
 			_, _ = fmt.Fprint(w, errors(err))
 			break
 		}
-		_, _ = fmt.Fprintf(w, format, marker, internals(er))
+		_, _ = fmt.Fprintf(w, format, marker, literals(er))
 	}
 }
 

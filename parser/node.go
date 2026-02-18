@@ -62,11 +62,11 @@ type ReelLiteral struct {
 	Token lexer.Token `json:"-"`
 }
 
-type VoidLiteral struct {
+type NothingLiteral struct {
 	Token lexer.Token `json:"-"`
 }
 
-func (vln VoidLiteral) Next() Node {
+func (nln NothingLiteral) Next() Node {
 	return nil
 }
 
@@ -198,9 +198,9 @@ func (den DeferExpression) Next() Node {
 }
 
 type IfExpression struct {
-	Test Node               `json:"test"`
-	Body []Node             `json:"body"`
-	Else *ElseExpression   `json:"else"`
+	Test Node            `json:"test"`
+	Body []Node          `json:"body"`
+	Else *ElseExpression `json:"else"`
 }
 
 func (ien IfExpression) Next() Node {

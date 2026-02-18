@@ -70,6 +70,14 @@ func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 	return CalleeLiteral{id, params}, nil
 }
 
+func (p *pr) ParseNothing() (NothingLiteral, error) {
+	tok, err := p.EatToken(lexer.NOTHING)
+	if err != nil {
+		return NothingLiteral{}, err
+	}
+	return NothingLiteral{tok}, nil
+}
+
 func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
 	tok, err := p.EatToken(lexer.ID)
 	if err != nil {
@@ -192,6 +200,9 @@ func (p *pr) ParsePriExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.ParseBlockExpr()
+	}
+	if lookahead.GetTag().Id == lexer.NOTHING {
+		return p.ParseNothing()
 	}
 	id, err := p.ParseIdentifier()
 	if err != nil {

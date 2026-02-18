@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
 )
 
@@ -153,5 +154,379 @@ func TestParse(t *testing.T) {
 	}
 	if !reflect.DeepEqual(ast, expected) {
 		t.Errorf("\nexpected: %v,\ngot: %v", expected, ast)
+	}
+}
+
+func TestParseNothing(t *testing.T) {
+	semicolon := tok{[]byte(";"), lexer.TagSemicolon}
+	eof := tok{[]byte(""), lexer.TagEOF}
+	nothing := tok{[]byte("nothing"), lexer.TagNothing}
+	sum := tok{[]byte("+"), lexer.TagSum}
+	sub := tok{[]byte("-"), lexer.TagSub}
+	equals := tok{[]byte("equals"), lexer.TagEquals}
+	or := tok{[]byte("or"), lexer.TagOr}
+	zero := tok{[]byte("0"), lexer.TagNumber}
+	one := tok{[]byte("1"), lexer.TagNumber}
+	two := tok{[]byte("2"), lexer.TagNumber}
+	three := tok{[]byte("3"), lexer.TagNumber}
+
+	cases := []struct {
+		name   string
+		tokens []lexer.Token
+		want   *Module
+	}{
+		{
+			name:   "top_level",
+			tokens: []lexer.Token{nothing, semicolon, eof},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{Node: NothingLiteral{Token: nothing}},
+				},
+			},
+		},
+		{
+			name: "inside_block",
+			tokens: []lexer.Token{
+				tok{[]byte("{"), lexer.TagOCurBrk}, nothing, semicolon,
+				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: BlockExpression{
+							Body: []Node{
+								Statement{Node: NothingLiteral{Token: nothing}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "rhs_of_assignment",
+			tokens: []lexer.Token{
+				tok{[]byte("ident"), lexer.TagIdent}, tok{[]byte("x"), lexer.TagId},
+				tok{[]byte("="), lexer.TagAssign}, nothing, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IdentStatement{
+							Id:         "x",
+							Token:      tok{[]byte("x"), lexer.TagId},
+							Expression: NothingLiteral{Token: nothing},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "parenthesized",
+			tokens: []lexer.Token{
+				tok{[]byte("("), lexer.TagOParen}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{Node: NothingLiteral{Token: nothing}},
+				},
+			},
+		},
+		{
+			name: "binary_left_nothing_plus_one",
+			tokens: []lexer.Token{
+				nothing, sum, one, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: BinaryExpression{
+							Left:      NothingLiteral{Token: nothing},
+							Right:     NumberLiteral{Value: 1, Token: one},
+							Operation: OperationLiteral{Value: "+", Token: sum},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "binary_right_one_plus_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("1"), lexer.TagNumber}, sum, nothing, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: BinaryExpression{
+							Left:      NumberLiteral{Value: 1, Token: one},
+							Right:     NothingLiteral{Token: nothing},
+							Operation: OperationLiteral{Value: "+", Token: sum},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "comparison_nothing_equals_zero",
+			tokens: []lexer.Token{
+				nothing, equals, zero, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: RelativeExpression{
+							Left:      NothingLiteral{Token: nothing},
+							Right:     NumberLiteral{Value: 0, Token: zero},
+							Operation: OperationLiteral{Value: "equals", Token: equals},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "boolean_true_or_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("true"), lexer.TagTrue}, or, nothing, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: BooleanExpression{
+							Left:      BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+							Right:     NothingLiteral{Token: nothing},
+							Operation: OperationLiteral{Value: "or", Token: or},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "if_condition_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("if"), lexer.TagIf}, nothing,
+				tok{[]byte("{"), lexer.TagOCurBrk}, one, semicolon, tok{[]byte("}"), lexer.TagCCurBrk},
+				tok{[]byte("else"), lexer.TagElse},
+				tok{[]byte("{"), lexer.TagOCurBrk}, two, semicolon, tok{[]byte("}"), lexer.TagCCurBrk},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IfExpression{
+							Test: NothingLiteral{Token: nothing},
+							Body: []Node{Statement{Node: NumberLiteral{Value: 1, Token: one}}},
+							Else: &ElseExpression{
+								Body: []Node{Statement{Node: NumberLiteral{Value: 2, Token: two}}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "if_body_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("if"), lexer.TagIf}, tok{[]byte("true"), lexer.TagTrue},
+				tok{[]byte("{"), lexer.TagOCurBrk}, nothing, semicolon, tok{[]byte("}"), lexer.TagCCurBrk},
+				tok{[]byte("else"), lexer.TagElse},
+				tok{[]byte("{"), lexer.TagOCurBrk}, two, semicolon, tok{[]byte("}"), lexer.TagCCurBrk},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IfExpression{
+							Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+							Body: []Node{Statement{Node: NothingLiteral{Token: nothing}}},
+							Else: &ElseExpression{
+								Body: []Node{Statement{Node: NumberLiteral{Value: 2, Token: two}}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "branch_value_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("branch"), lexer.TagBranch}, tok{[]byte("{"), lexer.TagOCurBrk},
+				tok{[]byte("true"), lexer.TagTrue}, tok{[]byte(":"), lexer.TagColon}, nothing, tok{[]byte(","), lexer.TagComma},
+				three, semicolon,
+				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IfExpression{
+							Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+							Body: []Node{NothingLiteral{Token: nothing}},
+							Else: &ElseExpression{
+								Body: []Node{NumberLiteral{Value: 3, Token: three}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "print_nothing",
+			tokens: []lexer.Token{tok{[]byte("print"), lexer.TagCallPrint}, nothing, semicolon, eof},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					PrintStatement{Param: NothingLiteral{Token: nothing}},
+				},
+			},
+		},
+		{
+			name:   "echo_nothing",
+			tokens: []lexer.Token{tok{[]byte("echo"), lexer.TagEcho}, nothing, semicolon, eof},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					EchoStatement{Param: NothingLiteral{Token: nothing}},
+				},
+			},
+		},
+		{
+			name: "assert_nothing_condition_and_message",
+			tokens: []lexer.Token{
+				tok{[]byte("assert"), lexer.TagAssert}, tok{[]byte("("), lexer.TagOParen},
+				nothing, tok{[]byte(","), lexer.TagComma}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					AssertStatement{
+						Condition: NothingLiteral{Token: nothing},
+						Message:   NothingLiteral{Token: nothing},
+						Token:     tok{[]byte("assert"), lexer.TagAssert},
+					},
+				},
+			},
+		},
+		{
+			name:   "unary_minus_nothing",
+			tokens: []lexer.Token{tok{[]byte("-"), lexer.TagSub}, nothing, semicolon, eof},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: UnaryExpression{
+							Expression: NothingLiteral{Token: nothing},
+							Operation:  OperationLiteral{Value: "-", Token: sub},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "defer_body_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("defer"), lexer.TagDefer}, tok{[]byte("{"), lexer.TagOCurBrk},
+				nothing, semicolon,
+				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: DeferExpression{
+							Block: BlockExpression{
+								Body: []Node{
+									Statement{Node: NothingLiteral{Token: nothing}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "call_argument_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("ident"), lexer.TagIdent}, tok{[]byte("f"), lexer.TagId},
+				tok{[]byte("="), lexer.TagAssign},
+				tok{[]byte("defer"), lexer.TagDefer}, tok{[]byte("{"), lexer.TagOCurBrk},
+				tok{[]byte("arguments"), lexer.TagArguments}, tok{[]byte("("), lexer.TagOParen}, zero, tok{[]byte(")"), lexer.TagCParen}, semicolon,
+				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon,
+				tok{[]byte("f"), lexer.TagId}, tok{[]byte("("), lexer.TagOParen}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: IdentStatement{
+							Id:    "f",
+							Token: tok{[]byte("f"), lexer.TagId},
+							Expression: DeferExpression{
+								Block: BlockExpression{
+									Body: []Node{
+										Statement{
+											Node: ArgumentsExpression{
+												Nth: NumberLiteral{Value: 0, Token: zero},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					Statement{
+						Node: CalleeLiteral{
+							Id:     IdentifierLiteral{Value: "f", Token: tok{[]byte("f"), lexer.TagId}},
+							Params: []ParameterLiteral{{Expression: NothingLiteral{Token: nothing}}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "tape_item_nothing",
+			tokens: []lexer.Token{
+				tok{[]byte("["), lexer.TagOBrk}, nothing, tok{[]byte(","), lexer.TagComma},
+				one, tok{[]byte("]"), lexer.TagCBrk}, semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Statements: []Node{
+					Statement{
+						Node: TapeBracketExpression{
+							Items: []Node{
+								NothingLiteral{Token: nothing},
+								NumberLiteral{Value: 1, Token: one},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			opts := NewParserOptions{}
+			if c.name == "assert_nothing_condition_and_message" {
+				opts.Filename = "a.test.ar"
+			}
+			p := New(c.tokens, opts)
+			ast, err := p.Parse()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(ast.Module, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
+			}
+		})
 	}
 }

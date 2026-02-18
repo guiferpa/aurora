@@ -8,38 +8,38 @@ type Node interface {
 	Next() Node
 }
 
-type OperationLiteralNode struct {
+type OperationLiteral struct {
 	Value string      `json:"value"`
 	Token lexer.Token `json:"-"`
 }
 
-func (oln OperationLiteralNode) Next() Node {
+func (oln OperationLiteral) Next() Node {
 	return nil
 }
 
-type ParameterLiteralNode struct {
+type ParameterLiteral struct {
 	Expression Node `json:"expression"`
 }
 
-func (pln ParameterLiteralNode) Next() Node {
+func (pln ParameterLiteral) Next() Node {
 	return pln.Expression
 }
 
-type CalleeLiteralNode struct {
-	Id     IdLiteralNode          `json:"id"`
-	Params []ParameterLiteralNode `json:"params"`
+type CalleeLiteral struct {
+	Id     IdentifierLiteral  `json:"identifier"`
+	Params []ParameterLiteral `json:"parameters"`
 }
 
-func (cln CalleeLiteralNode) Next() Node {
+func (cln CalleeLiteral) Next() Node {
 	return nil
 }
 
-type IdLiteralNode struct {
+type IdentifierLiteral struct {
 	Value string      `json:"value"`
 	Token lexer.Token `json:"-"`
 }
 
-func (iln IdLiteralNode) Next() Node {
+func (iln IdentifierLiteral) Next() Node {
 	return nil
 }
 
@@ -52,56 +52,56 @@ func (bln BooleanLiteral) Next() Node {
 	return nil
 }
 
-type NumberLiteralNode struct {
+type NumberLiteral struct {
 	Value uint64      `json:"value"`
 	Token lexer.Token `json:"-"`
 }
 
-type ReelLiteralNode struct {
+type ReelLiteral struct {
 	Value [][]byte    `json:"value"` // Reel as array of tapes: each char is a tape (8 bytes), stored as array of 8-byte arrays
 	Token lexer.Token `json:"-"`
 }
 
-type VoidLiteralNode struct {
+type VoidLiteral struct {
 	Token lexer.Token `json:"-"`
 }
 
-func (vln VoidLiteralNode) Next() Node {
+func (vln VoidLiteral) Next() Node {
 	return nil
 }
 
-func (nln NumberLiteralNode) Next() Node {
+func (nln NumberLiteral) Next() Node {
 	return nil
 }
 
-func (rln ReelLiteralNode) Next() Node {
+func (rln ReelLiteral) Next() Node {
 	return nil
 }
 
-type UnaryExpressionNode struct {
-	Expression Node                 `json:"expression"`
-	Operation  OperationLiteralNode `json:"operation"`
+type UnaryExpression struct {
+	Expression Node             `json:"expression"`
+	Operation  OperationLiteral `json:"operation"`
 }
 
-func (uen UnaryExpressionNode) Next() Node {
+func (uen UnaryExpression) Next() Node {
 	return uen.Expression
 }
 
-type BinaryExpressionNode struct {
-	Left      Node                 `json:"left"`
-	Right     Node                 `json:"right"`
-	Operation OperationLiteralNode `json:"operation"`
+type BinaryExpression struct {
+	Left      Node             `json:"left"`
+	Right     Node             `json:"right"`
+	Operation OperationLiteral `json:"operation"`
 }
 
-func (ben BinaryExpressionNode) Next() Node {
+func (ben BinaryExpression) Next() Node {
 	return nil
 }
 
-type PrimaryExpressionNode struct {
+type PrimaryExpression struct {
 	Expression Node `json:"expression"`
 }
 
-func (pen PrimaryExpressionNode) Next() Node {
+func (pen PrimaryExpression) Next() Node {
 	return pen.Expression
 }
 
@@ -158,9 +158,9 @@ func (PushExpression) Next() Node {
 }
 
 type RelativeExpression struct {
-	Left      Node                 `json:"left"`
-	Right     Node                 `json:"right"`
-	Operation OperationLiteralNode `json:"operation"`
+	Left      Node             `json:"left"`
+	Right     Node             `json:"right"`
+	Operation OperationLiteral `json:"operation"`
 }
 
 func (re RelativeExpression) Next() Node {
@@ -168,118 +168,118 @@ func (re RelativeExpression) Next() Node {
 }
 
 type BooleanExpression struct {
-	Left      Node                 `json:"left"`
-	Right     Node                 `json:"right"`
-	Operation OperationLiteralNode `json:"operation"`
+	Left      Node             `json:"left"`
+	Right     Node             `json:"right"`
+	Operation OperationLiteral `json:"operation"`
 }
 
 func (be BooleanExpression) Next() Node {
 	return nil
 }
 
-type BlockExpressionNode struct {
+type BlockExpression struct {
 	Body []Node `json:"body"`
 }
 
-func (ben BlockExpressionNode) Next() Node {
+func (ben BlockExpression) Next() Node {
 	return nil
 }
 
-// DeferExpressionNode is "defer { ... }". It produces a value that is a pointer to the scope
+// DeferExpression is "defer { ... }". It produces a value that is a pointer to the scope
 // (executable later via invocation, e.g. r(1, 2)). No signature or arity.
-// Block is the body of the defer; it is a BlockExpressionNode so the emitter can treat it
+// Block is the body of the defer; it is a BlockExpression so the emitter can treat it
 // as a normal scope (BeginScope + body + Return) without duplicating scope logic.
-type DeferExpressionNode struct {
-	Block BlockExpressionNode `json:"block"`
+type DeferExpression struct {
+	Block BlockExpression `json:"block"`
 }
 
-func (den DeferExpressionNode) Next() Node {
+func (den DeferExpression) Next() Node {
 	return nil
 }
 
-type IfExpressionNode struct {
-	Test Node                `json:"test"`
-	Body []Node              `json:"body"`
-	Else *ElseExpressionNode `json:"else"`
+type IfExpression struct {
+	Test Node               `json:"test"`
+	Body []Node             `json:"body"`
+	Else *ElseExpression   `json:"else"`
 }
 
-func (ien IfExpressionNode) Next() Node {
+func (ien IfExpression) Next() Node {
 	return nil
 }
 
-type ElseExpressionNode struct {
+type ElseExpression struct {
 	Body []Node `json:"body"`
 }
 
-func (een ElseExpressionNode) Next() Node {
+func (een ElseExpression) Next() Node {
 	return nil
 }
 
-type ExpressionNode struct {
+type Expression struct {
 	Expression Node `json:"expression"`
 }
 
-func (en ExpressionNode) Next() Node {
+func (en Expression) Next() Node {
 	return en.Expression
 }
 
-type PrintStatementNode struct {
+type PrintStatement struct {
 	Param Node `json:"parameter"`
 }
 
-func (cpsn PrintStatementNode) Next() Node {
+func (cpsn PrintStatement) Next() Node {
 	return nil
 }
 
-type EchoStatementNode struct {
+type EchoStatement struct {
 	Param Node `json:"param"`
 }
 
-func (esn EchoStatementNode) Next() Node {
+func (esn EchoStatement) Next() Node {
 	return nil
 }
 
-type ArgumentsExpressionNode struct {
-	Nth NumberLiteralNode `json:"nth"`
+type ArgumentsExpression struct {
+	Nth NumberLiteral `json:"nth"`
 }
 
-func (aen ArgumentsExpressionNode) Next() Node {
+func (aen ArgumentsExpression) Next() Node {
 	return nil
 }
 
-type IdentStatementNode struct {
+type IdentStatement struct {
 	Id         string      `json:"id"`
 	Token      lexer.Token `json:"-"`
 	Expression Node        `json:"expression"`
 }
 
-func (isn IdentStatementNode) Next() Node {
+func (isn IdentStatement) Next() Node {
 	return isn.Expression
 }
 
-type AssertStatementNode struct {
+type AssertStatement struct {
 	Condition Node        `json:"condition"`
 	Message   Node        `json:"message"`
 	Token     lexer.Token `json:"-"`
 }
 
-func (asn AssertStatementNode) Next() Node {
+func (asn AssertStatement) Next() Node {
 	return nil
 }
 
-type StatementNode struct {
+type Statement struct {
 	Node Node `json:"node"`
 }
 
-func (sn StatementNode) Next() Node {
+func (sn Statement) Next() Node {
 	return sn.Node
 }
 
-type ModuleNode struct {
+type Module struct {
 	Name       string `json:"name"`
 	Statements []Node `json:"statements"`
 }
 
-func (mn ModuleNode) Next() Node {
+func (mn Module) Next() Node {
 	return nil
 }

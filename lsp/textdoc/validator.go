@@ -209,19 +209,19 @@ func GetHoverInfo(source string, pos lsp.Position) string {
 }
 
 // findIdentifierDefinition finds the definition of an identifier in the AST
-func findIdentifierDefinition(ast parser.AST, name string) *parser.IdentStatementNode {
+func findIdentifierDefinition(ast parser.AST, name string) *parser.IdentStatement {
 	return findIdentifierInStatements(ast.Module.Statements, name)
 }
 
-func findIdentifierInStatements(stmts []parser.Node, name string) *parser.IdentStatementNode {
+func findIdentifierInStatements(stmts []parser.Node, name string) *parser.IdentStatement {
 	for _, stmt := range stmts {
-		if identStmt, ok := stmt.(parser.IdentStatementNode); ok {
+		if identStmt, ok := stmt.(parser.IdentStatement); ok {
 			if identStmt.Id == name {
 				return &identStmt
 			}
 		}
-		if stmtNode, ok := stmt.(parser.StatementNode); ok {
-			if identStmt, ok := stmtNode.Node.(parser.IdentStatementNode); ok {
+		if stmtNode, ok := stmt.(parser.Statement); ok {
+			if identStmt, ok := stmtNode.Node.(parser.IdentStatement); ok {
 				if identStmt.Id == name {
 					return &identStmt
 				}
@@ -235,13 +235,13 @@ func findIdentifierInStatements(stmts []parser.Node, name string) *parser.IdentS
 	return nil
 }
 
-func findIdentifierInNode(node parser.Node, name string) *parser.IdentStatementNode {
+func findIdentifierInNode(node parser.Node, name string) *parser.IdentStatement {
 	switch n := node.(type) {
-	case parser.BlockExpressionNode:
+	case parser.BlockExpression:
 		return findIdentifierInStatements(n.Body, name)
-	case parser.DeferExpressionNode:
+	case parser.DeferExpression:
 		return findIdentifierInStatements(n.Block.Body, name)
-	case parser.IfExpressionNode:
+	case parser.IfExpression:
 		if result := findIdentifierInStatements(n.Body, name); result != nil {
 			return result
 		}
@@ -253,7 +253,7 @@ func findIdentifierInNode(node parser.Node, name string) *parser.IdentStatementN
 }
 
 // formatIdentifierInfo formats information about an identifier definition
-func formatIdentifierInfo(name string, def *parser.IdentStatementNode) string {
+func formatIdentifierInfo(name string, def *parser.IdentStatement) string {
 	exprType := getExpressionType(def.Expression)
 	return "identifier: " + name + "\n" + "type: " + exprType
 }
@@ -261,11 +261,11 @@ func formatIdentifierInfo(name string, def *parser.IdentStatementNode) string {
 // getExpressionType returns a string representation of the expression type
 func getExpressionType(expr parser.Node) string {
 	switch expr.(type) {
-	case parser.NumberLiteralNode:
+	case parser.NumberLiteral:
 		return "number"
 	case parser.BooleanLiteral:
 		return "boolean"
-	case parser.IdLiteralNode:
+	case parser.IdentifierLiteral:
 		return "identifier"
 	case parser.TapeBracketExpression:
 		return "tape (array)"
@@ -277,17 +277,17 @@ func getExpressionType(expr parser.Node) string {
 		return "tape (head operation)"
 	case parser.TailExpression:
 		return "tape (tail operation)"
-	case parser.BinaryExpressionNode:
+	case parser.BinaryExpression:
 		return "binary expression"
 	case parser.RelativeExpression:
 		return "relative expression"
 	case parser.BooleanExpression:
 		return "boolean expression"
-	case parser.IfExpressionNode:
+	case parser.IfExpression:
 		return "if expression"
-	case parser.BlockExpressionNode:
+	case parser.BlockExpression:
 		return "block expression"
-	case parser.CalleeLiteralNode:
+	case parser.CalleeLiteral:
 		return "function call"
 	default:
 		return "expression"

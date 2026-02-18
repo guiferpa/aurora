@@ -925,7 +925,7 @@ if 11 bigger 10 { 20; };`,
 func TestBranch(t *testing.T) {
 	cases := []EvaluateCase{
 		// Parse: branch is reduced to nested if/else. getBranchItem() parses "cond : value , next"
-		// as IfExpressionNode{ Test: cond, Body: [value], Else: &ElseExpressionNode{ Body: [next] } },
+		// as IfExpression{ Test: cond, Body: [value], Else: &ElseExpression{ Body: [next] } },
 		// and "expr;" as the default (no condition), returning just expr. So this branch becomes:
 		//   if (op equals 1) { 32 } else { if (op equals 2) { 64 } else { 128 } }
 		{

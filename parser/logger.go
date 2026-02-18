@@ -90,7 +90,7 @@ func WrapNodeLogging(n Node) any {
 	}
 }
 
-func (l *Logger) JSON(m ModuleNode) (int, error) {
+func (l *Logger) JSON(m Module) (int, error) {
 	if l.enableLogging {
 		bs, err := json.MarshalIndent(WrapNodeLogging(m), "", "  ")
 		if err != nil {

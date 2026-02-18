@@ -118,25 +118,25 @@ func TestParse(t *testing.T) {
 		tok{[]byte("tok18"), lexer.TagEOF},
 	}
 	expected := AST{
-		Module: ModuleNode{
+		Module: Module{
 			Name: "main",
 			Statements: []Node{
-				StatementNode{
-					Node: IdentStatementNode{
+				Statement{
+					Node: IdentStatement{
 						Id:    "a",
 						Token: tokens[1],
-						Expression: IfExpressionNode{
+						Expression: IfExpression{
 							Test: RelativeExpression{
-								Left:      NumberLiteralNode{Value: 10, Token: tokens[4]},
-								Right:     NumberLiteralNode{Value: 11, Token: tokens[6]},
-								Operation: OperationLiteralNode{Value: "tok6", Token: tokens[5]},
+								Left:      NumberLiteral{Value: 10, Token: tokens[4]},
+								Right:     NumberLiteral{Value: 11, Token: tokens[6]},
+								Operation: OperationLiteral{Value: "tok6", Token: tokens[5]},
 							},
 							Body: []Node{
-								StatementNode{Node: NumberLiteralNode{Value: 0, Token: tokens[8]}},
+								Statement{Node: NumberLiteral{Value: 0, Token: tokens[8]}},
 							},
-							Else: &ElseExpressionNode{
+							Else: &ElseExpression{
 								Body: []Node{
-									StatementNode{Node: NumberLiteralNode{Value: 1, Token: tokens[13]}},
+									Statement{Node: NumberLiteral{Value: 1, Token: tokens[13]}},
 								},
 							},
 						},

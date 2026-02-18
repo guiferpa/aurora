@@ -24,16 +24,16 @@ func GenerateLabel(tc *int) []byte {
 type Label []byte
 
 func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
-	if n, ok := stmt.(parser.StatementNode); ok {
+	if n, ok := stmt.(parser.Statement); ok {
 		return EmitInstruction(tc, insts, n.Node)
 	}
-	if n, ok := stmt.(parser.IdentStatementNode); ok {
+	if n, ok := stmt.(parser.IdentStatement); ok {
 		ll := n.Token.GetMatch()
 		lr := EmitInstruction(tc, insts, n.Expression)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpIdent, ll, lr))
 	}
-	if n, ok := stmt.(parser.BlockExpressionNode); ok {
+	if n, ok := stmt.(parser.BlockExpression); ok {
 		var l []byte
 		body := make([]Instruction, 0)
 		for _, ins := range n.Body {
@@ -48,7 +48,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 
 		return lsc
 	}
-	if n, ok := stmt.(parser.DeferExpressionNode); ok {
+	if n, ok := stmt.(parser.DeferExpression); ok {
 		body := make([]Instruction, 0)
 		l := EmitInstruction(tc, &body, n.Block)
 		bodylength := uint64(len(body))
@@ -57,7 +57,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		*insts = append(*insts, body...)
 		return lo
 	}
-	if n, ok := stmt.(parser.UnaryExpressionNode); ok {
+	if n, ok := stmt.(parser.UnaryExpression); ok {
 		return EmitInstruction(tc, insts, n.Expression)
 	}
 	if n, ok := stmt.(parser.RelativeExpression); ok {
@@ -136,7 +136,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		*insts = append(*insts, NewInstruction(l, OpPush, lt, li))
 		return l
 	}
-	if n, ok := stmt.(parser.IfExpressionNode); ok {
+	if n, ok := stmt.(parser.IfExpression); ok {
 		var bl, eul []byte
 
 		/*Extract Else body*/
@@ -168,7 +168,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 
 		return inl
 	}
-	if n, ok := stmt.(parser.CalleeLiteralNode); ok {
+	if n, ok := stmt.(parser.CalleeLiteral); ok {
 		for i, p := range n.Params {
 			ll := EmitInstruction(tc, insts, p.Expression)
 			l := GenerateLabel(tc)
@@ -178,31 +178,31 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
 		return l
 	}
-	if n, ok := stmt.(parser.PrintStatementNode); ok {
+	if n, ok := stmt.(parser.PrintStatement); ok {
 		ll := EmitInstruction(tc, insts, n.Param)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpPrint, ll, nil))
 		return l
 	}
-	if n, ok := stmt.(parser.EchoStatementNode); ok {
+	if n, ok := stmt.(parser.EchoStatement); ok {
 		ll := EmitInstruction(tc, insts, n.Param)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpEcho, ll, nil))
 		return l
 	}
-	if n, ok := stmt.(parser.AssertStatementNode); ok {
+	if n, ok := stmt.(parser.AssertStatement); ok {
 		cond := EmitInstruction(tc, insts, n.Condition)
 		msg := EmitInstruction(tc, insts, n.Message)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpAssert, cond, msg))
 		return l
 	}
-	if n, ok := stmt.(parser.ArgumentsExpressionNode); ok {
+	if n, ok := stmt.(parser.ArgumentsExpression); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpGetArg, byteutil.FromUint64(n.Nth.Value), nil))
 		return l
 	}
-	if n, ok := stmt.(parser.BinaryExpressionNode); ok {
+	if n, ok := stmt.(parser.BinaryExpression); ok {
 		ll := EmitInstruction(tc, insts, n.Left)
 		lr := EmitInstruction(tc, insts, n.Right)
 		var op byte
@@ -224,12 +224,12 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 
 		return l
 	}
-	if n, ok := stmt.(parser.NumberLiteralNode); ok {
+	if n, ok := stmt.(parser.NumberLiteral); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.FromUint64(n.Value), nil))
 		return l
 	}
-	if n, ok := stmt.(parser.ReelLiteralNode); ok {
+	if n, ok := stmt.(parser.ReelLiteral); ok {
 		// Reel is an array of tapes (each char is a tape of 8 bytes)
 		// Store the complete reel by concatenating all tapes
 		l := GenerateLabel(tc)
@@ -246,7 +246,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
 		*insts = append(*insts, NewInstruction(l, OpSave, n.Value, nil))
 		return l
 	}
-	if n, ok := stmt.(parser.IdLiteralNode); ok {
+	if n, ok := stmt.(parser.IdentifierLiteral); ok {
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
 		return l

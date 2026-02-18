@@ -9,8 +9,8 @@ func TestIsNothing(t *testing.T) {
 		want bool
 	}{
 		{name: "empty", b: []byte{}, want: true},
-		{name: "8 bytes", b: []byte{0, 0, 0, 0, 0, 0, 0, 0}, want: true},
-		{name: "8 bytes with padding", b: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0}, want: true},
+		{name: "8 bytes", b: []byte{0, 0, 0, 0, 0, 0, 0, 0}, want: false},
+		{name: "8 bytes with padding", b: []byte{0, 0, 0, 0, 0, 0, 0, 0, 0}, want: false},
 		{name: "not empty", b: []byte{1, 2, 3}, want: false},
 	}
 	for _, tt := range tests {

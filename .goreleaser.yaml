@@ -5,8 +5,9 @@ version: 2
 
 project_name: aurora
 
+# Single id so one archive per platform contains both binaries (required by homebrew_casks / nfpms).
 builds:
-  - id: aurora
+  - id: default
     main: ./cmd/aurora
     binary: aurora
     ldflags:
@@ -19,7 +20,7 @@ builds:
       - amd64
       - arm64
 
-  - id: aurorals
+  - id: default
     main: ./cmd/aurorals
     binary: aurorals
     ldflags:
@@ -41,8 +42,7 @@ archives:
           - zip
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     ids:
-      - aurora
-      - aurorals
+      - default
 
 checksum:
   name_template: "checksums.txt"
@@ -58,8 +58,7 @@ release:
 homebrew_casks:
   - name: aurora
     ids:
-      - aurora
-      - aurorals
+      - default
     binaries:
       - aurora
       - aurorals
@@ -85,8 +84,7 @@ nfpms:
   - id: aurora-deb
     package_name: aurora
     ids:
-      - aurora
-      - aurorals
+      - default
     formats:
       - deb
     vendor: "Aurora"

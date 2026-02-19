@@ -319,10 +319,8 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 	if err != nil {
 		return err
 	}
-	retVal := e.environ.GetTemp(returnKey)
-	if len(retVal) > 0 {
-		e.environ.SetTemp(byteutil.ToHex(label), retVal)
-	}
+	retval := e.environ.GetTemp(returnKey)
+	e.environ.SetTemp(byteutil.ToHex(label), retval)
 	e.IncrementCursor()
 	return nil
 }

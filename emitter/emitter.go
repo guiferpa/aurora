@@ -24,12 +24,9 @@ func GenerateLabel(tc *int) []byte {
 type Label []byte
 
 func EmitInstruction(tc *int, insts *[]Instruction, stmt parser.Node) Label {
-	if n, ok := stmt.(parser.Statement); ok {
-		return EmitInstruction(tc, insts, n.Node)
-	}
-	if n, ok := stmt.(parser.IdentStatement); ok {
+	if n, ok := stmt.(parser.IdentLiteral); ok {
 		ll := n.Token.GetMatch()
-		lr := EmitInstruction(tc, insts, n.Expression)
+		lr := EmitInstruction(tc, insts, n.Value)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpIdent, ll, lr))
 	}

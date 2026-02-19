@@ -209,22 +209,15 @@ func GetHoverInfo(source string, pos lsp.Position) string {
 }
 
 // findIdentifierDefinition finds the definition of an identifier in the AST
-func findIdentifierDefinition(ast parser.AST, name string) *parser.IdentStatement {
+func findIdentifierDefinition(ast parser.AST, name string) *parser.IdentLiteral {
 	return findIdentifierInStatements(ast.Module.Statements, name)
 }
 
-func findIdentifierInStatements(stmts []parser.Node, name string) *parser.IdentStatement {
+func findIdentifierInStatements(stmts []parser.Node, name string) *parser.IdentLiteral {
 	for _, stmt := range stmts {
-		if identStmt, ok := stmt.(parser.IdentStatement); ok {
+		if identStmt, ok := stmt.(parser.IdentLiteral); ok {
 			if identStmt.Id == name {
 				return &identStmt
-			}
-		}
-		if stmtNode, ok := stmt.(parser.Statement); ok {
-			if identStmt, ok := stmtNode.Node.(parser.IdentStatement); ok {
-				if identStmt.Id == name {
-					return &identStmt
-				}
 			}
 		}
 		// Recursively search in nested structures
@@ -235,7 +228,7 @@ func findIdentifierInStatements(stmts []parser.Node, name string) *parser.IdentS
 	return nil
 }
 
-func findIdentifierInNode(node parser.Node, name string) *parser.IdentStatement {
+func findIdentifierInNode(node parser.Node, name string) *parser.IdentLiteral {
 	switch n := node.(type) {
 	case parser.BlockExpression:
 		return findIdentifierInStatements(n.Body, name)
@@ -253,8 +246,8 @@ func findIdentifierInNode(node parser.Node, name string) *parser.IdentStatement 
 }
 
 // formatIdentifierInfo formats information about an identifier definition
-func formatIdentifierInfo(name string, def *parser.IdentStatement) string {
-	exprType := getExpressionType(def.Expression)
+func formatIdentifierInfo(name string, def *parser.IdentLiteral) string {
+	exprType := getExpressionType(def.Value)
 	return "identifier: " + name + "\n" + "type: " + exprType
 }
 

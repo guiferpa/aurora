@@ -221,14 +221,6 @@ func (een ElseExpression) Next() Node {
 	return nil
 }
 
-type Expression struct {
-	Expression Node `json:"expression"`
-}
-
-func (en Expression) Next() Node {
-	return en.Expression
-}
-
 type PrintStatement struct {
 	Param Node `json:"parameter"`
 }
@@ -253,14 +245,14 @@ func (aen ArgumentsExpression) Next() Node {
 	return nil
 }
 
-type IdentStatement struct {
-	Id         string      `json:"id"`
-	Token      lexer.Token `json:"-"`
-	Expression Node        `json:"expression"`
+type IdentLiteral struct {
+	Id    string      `json:"id"`
+	Token lexer.Token `json:"-"`
+	Value Node        `json:"value"`
 }
 
-func (isn IdentStatement) Next() Node {
-	return isn.Expression
+func (isn IdentLiteral) Next() Node {
+	return isn.Value
 }
 
 type AssertStatement struct {
@@ -271,14 +263,6 @@ type AssertStatement struct {
 
 func (asn AssertStatement) Next() Node {
 	return nil
-}
-
-type Statement struct {
-	Node Node `json:"node"`
-}
-
-func (sn Statement) Next() Node {
-	return sn.Node
 }
 
 type Module struct {

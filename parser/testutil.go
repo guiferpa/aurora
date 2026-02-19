@@ -41,12 +41,6 @@ func nodeEqual(a, b Node) bool {
 		return false
 	}
 	switch va := a.(type) {
-	case Statement:
-		vb, ok := b.(Statement)
-		if !ok {
-			return false
-		}
-		return nodeEqual(va.Node, vb.Node)
 	case NothingLiteral:
 		vb, ok := b.(NothingLiteral)
 		if !ok {
@@ -92,12 +86,12 @@ func nodeEqual(a, b Node) bool {
 			return false
 		}
 		return nodesEqual(va.Body, vb.Body)
-	case IdentStatement:
-		vb, ok := b.(IdentStatement)
+	case IdentLiteral:
+		vb, ok := b.(IdentLiteral)
 		if !ok {
 			return false
 		}
-		return va.Id == vb.Id && TokenEqual(va.Token, vb.Token) && nodeEqual(va.Expression, vb.Expression)
+		return va.Id == vb.Id && TokenEqual(va.Token, vb.Token) && nodeEqual(va.Value, vb.Value)
 	case PrintStatement:
 		vb, ok := b.(PrintStatement)
 		if !ok {

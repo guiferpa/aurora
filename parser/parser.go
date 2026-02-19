@@ -594,14 +594,14 @@ func (p *pr) ParseBlockExpr() (Node, error) {
 	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	stmts, err := p.ParseStmts(lexer.TagCCurBrk)
+	exprs, err := p.ParseExprs(lexer.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	return BlockExpression{Body: stmts}, nil
+	return BlockExpression{Body: exprs}, nil
 }
 
 func (p *pr) ParseDefer() (Node, error) {
@@ -611,14 +611,14 @@ func (p *pr) ParseDefer() (Node, error) {
 	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	stmts, err := p.ParseStmts(lexer.TagCCurBrk)
+	exprs, err := p.ParseExprs(lexer.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	block := BlockExpression{Body: stmts}
+	block := BlockExpression{Body: exprs}
 	return DeferExpression{Block: block}, nil
 }
 
@@ -633,7 +633,7 @@ func (p *pr) ParseIf() (Node, error) {
 	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	body, err := p.ParseStmts(lexer.TagCCurBrk)
+	body, err := p.ParseExprs(lexer.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
@@ -656,7 +656,7 @@ func (p *pr) ParseElse() (*ElseExpression, error) {
 	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	body, err := p.ParseStmts(lexer.TagCCurBrk)
+	body, err := p.ParseExprs(lexer.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
@@ -684,11 +684,20 @@ func (p *pr) ParseIdent() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return IdentStatement{string(id.GetMatch()), id, expr}, nil
+	return IdentLiteral{string(id.GetMatch()), id, expr}, nil
 }
 
 func (p *pr) ParseExpr() (Node, error) {
 	lookahead := p.GetLookahead()
+	if lookahead.GetTag().Id == lexer.PRINT {
+		return p.ParsePrint()
+	}
+	if lookahead.GetTag().Id == lexer.ECHO {
+		return p.ParseEcho()
+	}
+	if lookahead.GetTag().Id == lexer.ASSERT {
+		return p.ParseAssert()
+	}
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.ParseBlockExpr()
 	}
@@ -802,48 +811,30 @@ func (p *pr) ParseArgs() (Node, error) {
 	return ArgumentsExpression{nth}, nil
 }
 
-func (p *pr) ParseStmt() (Node, error) {
-	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.PRINT {
-		return p.ParsePrint()
-	}
-	if lookahead.GetTag().Id == lexer.ECHO {
-		return p.ParseEcho()
-	}
-	if lookahead.GetTag().Id == lexer.ASSERT {
-		return p.ParseAssert()
-	}
-	expr, err := p.ParseExpr()
-	if err != nil {
-		return Statement{}, err
-	}
-	return Statement{expr}, nil
-}
-
-func (p *pr) ParseStmts(t lexer.Tag) ([]Node, error) {
-	stmts := make([]Node, 0)
+func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
+	exprs := make([]Node, 0)
 	for p.GetLookahead().GetTag().Id != t.Id {
-		stmt, err := p.ParseStmt()
+		expr, err := p.ParseExpr()
 		if err != nil {
-			return stmts, err
+			return exprs, err
 		}
 		if _, err := p.EatToken(lexer.SEMICOLON); err != nil {
-			return stmts, err
+			return exprs, err
 		}
-		stmts = append(stmts, stmt)
+		exprs = append(exprs, expr)
 	}
-	if len(stmts) == 0 {
-		stmts = append(stmts, Statement{Node: NewNothingLiteral()})
+	if len(exprs) == 0 {
+		exprs = append(exprs, NewNothingLiteral())
 	}
-	return stmts, nil
+	return exprs, nil
 }
 
 func (p *pr) ParseModule() (Module, error) {
-	stmts, err := p.ParseStmts(lexer.TagEOF)
+	exprs, err := p.ParseExprs(lexer.TagEOF)
 	if err != nil {
 		return Module{}, err
 	}
-	return Module{"main", stmts}, nil
+	return Module{"main", exprs}, nil
 }
 
 func (p *pr) GetLookahead() lexer.Token {

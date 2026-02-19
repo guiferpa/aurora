@@ -259,9 +259,12 @@ func (asn AssertStatement) Next() Node {
 	return nil
 }
 
+// Module is the top-level AST node. Aurora is expression-only: Expressions is
+// the sequence of expressions at top level (e.g. NothingLiteral, IdentStatement,
+// BlockExpression, IfExpression).
 type Module struct {
-	Name       string `json:"name"`
-	Statements []Node `json:"statements"`
+	Name        string `json:"name"`
+	Expressions []Node `json:"expressions"`
 }
 
 func (mn Module) Next() Node {

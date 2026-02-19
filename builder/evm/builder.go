@@ -70,7 +70,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	body := b.insts[cursor+1 : end]
 	body = Lowering(body)
 
-	// Emit EVM bytecode for the defer body (OpBeginScope, ...stmts..., OpReturn).
+	// Emit EVM bytecode for the defer body (OpBeginScope, ...exprs..., OpReturn).
 	code := bytes.NewBuffer(make([]byte, 0))
 	if _, err := WriteCode(code, b.identManager, body); err != nil {
 		return nil, cursor, false

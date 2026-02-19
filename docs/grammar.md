@@ -1,5 +1,7 @@
 # Grammar
 
+Aurora is **expression-only**: the grammar has no separate statement category. Top-level forms and block bodies are sequences of expressions (separated by `;`). `if`/`else` and blocks are expressions that produce a value. The keyword `nothing` denotes the universal neutral value (8 zero bytes).
+
 ## Demand list
 
 - [x] Add block of statements parametrized in grammar `() { ... }` it's like annonymous functions

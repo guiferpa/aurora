@@ -2,6 +2,32 @@
 
 How Aurora thinks about values and the cool stuff you can do with them.
 
+## Expressions only (no Statements)
+
+Aurora is an **expression-only** language: there are no statements. Everything at the top level and inside blocks is an expression that produces a value.
+
+- **Top level**: A "program" is a sequence of expressions separated by semicolons. Each one is evaluated in order; the last value is the result of the program.
+- **Blocks** (`{ ... }`): The body of a block is a sequence of expressions. Blocks are expressions that evaluate their body and produce the value of the last expression.
+- **Control flow**: `if`/`else` and `branch` are expressions — they have a value (the branch that was taken). There is no "statement" form of conditionals.
+
+So when you write `ident a = 3;` or `print x;` or `nothing;`, you are always writing expressions. The parser and the AST reflect this: the module holds a list of expression nodes (often still named "statements" in code for historical reasons), and blocks hold lists of expressions. There is no separate "statement" node type.
+
+## Nothing (universal neutral value)
+
+Aurora has a first-class value called **nothing**, written with the keyword `nothing`. It is the **universal neutral value** of the language.
+
+- **Representation**: Internally it is 8 zero bytes. It is not null, not absence, not an error — it is a normal value that means "neutral" or "no meaningful value."
+- **Where it appears**: Empty blocks `{ }` evaluate to nothing. An `if` without `else` has an implicit else that returns nothing. Any expression that "does nothing" or has no other value yields nothing.
+- **Use**: You can assign it (`ident x = nothing;`), pass it to functions (`print nothing;`), compare it, or use it in arithmetic (it behaves like zero). It compiles to the same 8-byte representation as the number 0.
+
+```javascript
+nothing;              // expression that evaluates to nothing
+ident x = nothing;    // x holds the nothing value (8 zero bytes)
+print nothing;        // prints the nothing value
+if false { 1; } else { nothing; };  // explicit nothing in a branch
+{ };                  // empty block evaluates to nothing
+```
+
 ## Untyped Philosophy
 
 Aurora is **untyped** — everything is just bytes under the hood. There are no type distinctions at the language level - numbers, booleans, tapes (arrays), and functions are all represented as byte arrays.

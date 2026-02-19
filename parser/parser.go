@@ -832,7 +832,7 @@ func (p *pr) ParseModule() (Module, error) {
 	if err != nil {
 		return Module{}, err
 	}
-	return Module{"main", exprs}, nil
+	return Module{Name: "main", Expressions: exprs}, nil
 }
 
 func (p *pr) GetLookahead() lexer.Token {

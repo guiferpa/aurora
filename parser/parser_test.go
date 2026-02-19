@@ -121,7 +121,7 @@ func TestParse(t *testing.T) {
 	expected := AST{
 		Module: Module{
 			Name: "main",
-			Statements: []Node{
+			Expressions: []Node{
 				IdentLiteral{
 					Id:    "a",
 					Token: tokens[1],
@@ -178,7 +178,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{nothing, semicolon, eof},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					NothingLiteral{Token: nothing},
 				},
 			},
@@ -191,7 +191,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					BlockExpression{
 						Body: []Node{
 							NothingLiteral{Token: nothing},
@@ -208,7 +208,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					IdentLiteral{
 						Id:    "x",
 						Token: tok{[]byte("x"), lexer.TagId},
@@ -224,7 +224,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					NothingLiteral{Token: nothing},
 				},
 			},
@@ -236,7 +236,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					BinaryExpression{
 						Left:      NothingLiteral{Token: nothing},
 						Right:     NumberLiteral{Value: 1, Token: one},
@@ -252,7 +252,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					BinaryExpression{
 						Left:      NumberLiteral{Value: 1, Token: one},
 						Right:     NothingLiteral{Token: nothing},
@@ -268,7 +268,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					RelativeExpression{
 						Left:      NothingLiteral{Token: nothing},
 						Right:     NumberLiteral{Value: 0, Token: zero},
@@ -284,7 +284,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					BooleanExpression{
 						Left:      BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
 						Right:     NothingLiteral{Token: nothing},
@@ -304,7 +304,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					IfExpression{
 						Test: NothingLiteral{Token: nothing},
 						Body: []Node{NumberLiteral{Value: 1, Token: one}},
@@ -326,7 +326,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					IfExpression{
 						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
 						Body: []Node{NothingLiteral{Token: nothing}},
@@ -347,7 +347,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					IfExpression{
 						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
 						Body: []Node{NothingLiteral{Token: nothing}},
@@ -363,7 +363,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{tok{[]byte("print"), lexer.TagCallPrint}, nothing, semicolon, eof},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					PrintStatement{Param: NothingLiteral{Token: nothing}},
 				},
 			},
@@ -373,7 +373,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{tok{[]byte("echo"), lexer.TagEcho}, nothing, semicolon, eof},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					EchoStatement{Param: NothingLiteral{Token: nothing}},
 				},
 			},
@@ -386,7 +386,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					AssertStatement{
 						Condition: NothingLiteral{Token: nothing},
 						Message:   NothingLiteral{Token: nothing},
@@ -400,7 +400,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{tok{[]byte("-"), lexer.TagSub}, nothing, semicolon, eof},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					UnaryExpression{
 						Expression: NothingLiteral{Token: nothing},
 						Operation:  OperationLiteral{Value: "-", Token: sub},
@@ -417,7 +417,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					DeferExpression{
 						Block: BlockExpression{
 							Body: []Node{
@@ -440,7 +440,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					IdentLiteral{
 						Id:    "f",
 						Token: tok{[]byte("f"), lexer.TagId},
@@ -469,7 +469,7 @@ func TestParseNothing(t *testing.T) {
 			},
 			want: &Module{
 				Name: "main",
-				Statements: []Node{
+				Expressions: []Node{
 					TapeBracketExpression{
 						Items: []Node{
 							NothingLiteral{Token: nothing},

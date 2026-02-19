@@ -6,6 +6,10 @@ function echo(result) {
   return `(echo) ${toText(result)}`;
 }
 
+function nothing(result) {
+  return "<nothing>";
+}
+
 const builtins = {
   print,
   echo,
@@ -48,6 +52,7 @@ function toHex(result) {
 }
 
 function fromResult(result) {
+  if (result.length === 0) return nothing();
   const body = toDecimal(result);
   const len = result.length;
   return `= (${len}) ${body}`;

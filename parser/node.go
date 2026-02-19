@@ -69,12 +69,6 @@ func (nln NothingLiteral) Next() Node {
 	return nil
 }
 
-func NewNothingLiteral() NothingLiteral {
-	return NothingLiteral{
-		Token: lexer.NewNothingToken(-1, -1, -1),
-	}
-}
-
 type ReelLiteral struct {
 	Value [][]byte    `json:"value"` // Reel as array of tapes: each char is a tape (8 bytes), stored as array of 8-byte arrays
 	Token lexer.Token `json:"-"`

@@ -247,6 +247,9 @@ func (e *Evaluator) EvaluateBeginScope(label, left, right []byte) error {
 func (e *Evaluator) EvaluateReturn(_, left, right []byte) error {
 	label := byteutil.ToHex(left)
 	value := e.environ.GetTemp(byteutil.ToHex(right))
+	if value == nil {
+		value = byteutil.Nothing
+	}
 	e.environ = e.environ.GetPrevious()
 	e.environ.SetTemp(label, value)
 	e.IncrementCursor()
@@ -260,6 +263,7 @@ func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
 	}
 	val := e.environ.GetTemp(byteutil.ToHex(right))
 	e.environ.SetIdent(k, val)
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.Nothing)
 	e.IncrementCursor()
 	return nil
 }

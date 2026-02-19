@@ -201,22 +201,6 @@ func TestParseNothing(t *testing.T) {
 			},
 		},
 		{
-			name: "block_empty",
-			tokens: []lexer.Token{
-				tok{[]byte("{"), lexer.TagOCurBrk}, tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
-			},
-			want: &Module{
-				Name: "main",
-				Statements: []Node{
-					BlockExpression{
-						Body: []Node{
-							NewNothingLiteral(),
-						},
-					},
-				},
-			},
-		},
-		{
 			name: "rhs_of_assignment",
 			tokens: []lexer.Token{
 				tok{[]byte("ident"), lexer.TagIdent}, tok{[]byte("x"), lexer.TagId},
@@ -348,46 +332,6 @@ func TestParseNothing(t *testing.T) {
 						Body: []Node{NothingLiteral{Token: nothing}},
 						Else: &ElseExpression{
 							Body: []Node{NumberLiteral{Value: 2, Token: two}},
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "if_body_empty",
-			tokens: []lexer.Token{
-				tok{[]byte("if"), lexer.TagIf}, tok{[]byte("true"), lexer.TagTrue},
-				tok{[]byte("{"), lexer.TagOCurBrk}, tok{[]byte("}"), lexer.TagCCurBrk},
-				semicolon, eof,
-			},
-			want: &Module{
-				Name: "main",
-				Statements: []Node{
-					IfExpression{
-						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
-						Body: []Node{NewNothingLiteral()},
-						Else: &ElseExpression{
-							Body: []Node{NewNothingLiteral()}, // parser injects implicit else with nothing
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "if_else_body_empty",
-			tokens: []lexer.Token{
-				tok{[]byte("if"), lexer.TagIf}, tok{[]byte("false"), lexer.TagFalse},
-				tok{[]byte("{"), lexer.TagOCurBrk}, tok{[]byte("}"), lexer.TagCCurBrk},
-				semicolon, eof,
-			},
-			want: &Module{
-				Name: "main",
-				Statements: []Node{
-					IfExpression{
-						Test: BooleanLiteral{Value: byteutil.False, Token: tok{[]byte("false"), lexer.TagFalse}},
-						Body: []Node{NewNothingLiteral()},
-						Else: &ElseExpression{
-							Body: []Node{NewNothingLiteral()}, // parser injects implicit else with nothing
 						},
 					},
 				},

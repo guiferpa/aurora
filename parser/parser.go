@@ -204,6 +204,9 @@ func (p *pr) ParsePriExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.NOTHING {
 		return p.ParseNothing()
 	}
+	if lookahead.GetTag().Id == lexer.IDENT {
+		return p.ParseIdent()
+	}
 	id, err := p.ParseIdentifier()
 	if err != nil {
 		return nil, err
@@ -644,9 +647,7 @@ func (p *pr) ParseIf() (Node, error) {
 		euze, err := p.ParseElse()
 		return IfExpression{test, body, euze}, err
 	}
-	nothing := NewNothingLiteral()
-	euze := &ElseExpression{Body: []Node{nothing}}
-	return IfExpression{test, body, euze}, nil
+	return IfExpression{test, body, nil}, nil
 }
 
 func (p *pr) ParseElse() (*ElseExpression, error) {
@@ -822,9 +823,6 @@ func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 			return exprs, err
 		}
 		exprs = append(exprs, expr)
-	}
-	if len(exprs) == 0 {
-		exprs = append(exprs, NewNothingLiteral())
 	}
 	return exprs, nil
 }

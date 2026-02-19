@@ -3,6 +3,10 @@ package evaluator
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
+	"maps"
+	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -11,6 +15,24 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 )
+
+func containsReturn(returns ReturnsPerLabel, index int, want []byte) (bool, []byte) {
+	keys := slices.Collect(maps.Keys(returns))
+	slices.SortFunc(keys, func(a, b string) int {
+		ia, _ := strconv.ParseInt(a, 10, 64)
+		ib, _ := strconv.ParseInt(b, 10, 64)
+		return int(ia - ib)
+	})
+
+	if index >= len(keys) {
+		return false, nil
+	}
+
+	label := keys[index]
+	v := returns[label]
+
+	return bytes.Equal(v, want), v
+}
 
 func TestEvaluateAdd(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
@@ -870,18 +892,14 @@ if 11 bigger 10 { 20; };`,
 					return
 				}
 				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
-				label := byteutil.ToHex([]byte("05"))
-				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 10}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 
 				// Second if result: the emitter uses a single global label counter; the first if consumes labels 00–07 (or so), so the second if's result lands at label 10, formatted as "010" by GenerateLabel ("0%d").
-				label = byteutil.ToHex([]byte("014"))
-				got = returns[label]
 				expected = []byte{0, 0, 0, 0, 0, 0, 0, 20}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 1, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -895,9 +913,7 @@ if 11 bigger 10 { 20; };`,
 					return
 				}
 				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
-				label := byteutil.ToHex([]byte("05"))
-				got := returns[label]
-				if !byteutil.IsNothing(got) {
+				if ok, got := containsReturn(returns, 0, byteutil.Nothing); !ok {
 					t.Errorf("got: %v, expected: <nothing>", got)
 				}
 			},
@@ -910,10 +926,8 @@ if 11 bigger 10 { 20; };`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("05"))
-				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 10}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -957,10 +971,12 @@ branch {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("015"))
-				got := returns[label]
-				expected := []byte{0, 0, 0, 0, 0, 0, 0, 64}
-				if !bytes.Equal(got, expected) {
+				expected := byteutil.Nothing
+				if ok, got := containsReturn(returns, 0, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 64}
+				if ok, got := containsReturn(returns, 1, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -979,10 +995,17 @@ r;`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("020"))
-				got := returns[label]
-				expected := []byte{0, 0, 0, 0, 0, 0, 0, 64}
-				if !bytes.Equal(got, expected) {
+				expected := byteutil.Nothing
+				if ok, got := containsReturn(returns, 0, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+
+				if ok, got := containsReturn(returns, 1, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 64}
+				if ok, got := containsReturn(returns, 2, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1002,10 +1025,8 @@ func TestCallableScope(t *testing.T) {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("03"))
-				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 3}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1018,10 +1039,8 @@ func TestCallableScope(t *testing.T) {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("07"))
-				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 6}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1040,10 +1059,8 @@ func TestCallableScope(t *testing.T) {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("09"))
-				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 4}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1061,10 +1078,8 @@ func TestCallableScope(t *testing.T) {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("07"))
-				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 2}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1085,21 +1100,23 @@ func TestDefer(t *testing.T) {
 r(1, 2);
 r(3, 4);`,
 			func(t *testing.T, returns ReturnsPerLabel, err error) {
+				fmt.Printf("returns: %v\n", returns)
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("011"))
-				got := returns[label]
-				expected := []byte{0, 0, 0, 0, 0, 0, 0, 3}
-				if !bytes.Equal(got, expected) {
+				expected := byteutil.Nothing
+				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 
-				label = byteutil.ToHex([]byte("016"))
-				got = returns[label]
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 3}
+				if ok, got := containsReturn(returns, 1, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+
 				expected = []byte{0, 0, 0, 0, 0, 0, 0, 7}
-				if !bytes.Equal(got, expected) {
+				if ok, got := containsReturn(returns, 2, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1124,10 +1141,14 @@ fib(11);`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("031"))
-				got := returns[label]
-				expected := []byte{0, 0, 0, 0, 0, 0, 0, 89}
-				if !bytes.Equal(got, expected) {
+
+				expected := byteutil.Nothing
+				if ok, got := containsReturn(returns, 0, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 89}
+				if ok, got := containsReturn(returns, 1, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1148,10 +1169,14 @@ fib(11);`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("031"))
-				got := returns[label]
-				expected := []byte{0, 0, 0, 0, 0, 0, 0, 89}
-				if !bytes.Equal(got, expected) {
+
+				expected := byteutil.Nothing
+				if ok, got := containsReturn(returns, 0, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 89}
+				if ok, got := containsReturn(returns, 1, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},
@@ -1169,10 +1194,14 @@ factorial(4);`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("027"))
-				got := returns[label]
-				expected := []byte{0, 0, 0, 0, 0, 0, 0, 24}
-				if !bytes.Equal(got, expected) {
+
+				expected := byteutil.Nothing
+				if ok, got := containsReturn(returns, 0, expected); !ok {
+					t.Errorf("got: %v, expected: %v", got, expected)
+				}
+
+				expected = []byte{0, 0, 0, 0, 0, 0, 0, 24}
+				if ok, got := containsReturn(returns, 1, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
 			},

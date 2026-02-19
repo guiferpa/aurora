@@ -58,9 +58,6 @@ release:
 # Requires a separate tap repo (e.g. guiferpa/homebrew-tap) and HOMEBREW_TAP_TOKEN secret with write access to it.
 homebrew_casks:
   - name: aurora
-    ids:
-      - aurora
-      - aurorals
     binaries:
       - aurora
       - aurorals
@@ -85,9 +82,6 @@ homebrew_casks:
 nfpms:
   - id: aurora-deb
     package_name: aurora
-    ids:
-      - aurora
-      - aurorals
     formats:
       - deb
     vendor: "Aurora"

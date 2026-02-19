@@ -32,10 +32,9 @@ builds:
       - amd64
       - arm64
 
-# One archive per platform containing both binaries; id "release" so homebrew/nfpms can reference it.
+# One archive per platform containing both binaries.
 archives:
-  - id: release
-    formats:
+  - formats:
       - tar.gz
     format_overrides:
       - goos: windows
@@ -60,7 +59,8 @@ release:
 homebrew_casks:
   - name: aurora
     ids:
-      - release
+      - aurora
+      - aurorals
     binaries:
       - aurora
       - aurorals
@@ -86,7 +86,8 @@ nfpms:
   - id: aurora-deb
     package_name: aurora
     ids:
-      - release
+      - aurora
+      - aurorals
     formats:
       - deb
     vendor: "Aurora"

@@ -55,9 +55,11 @@ release:
   draft: false
 
 # Homebrew: install with `brew tap guiferpa/tap && brew install guiferpa/tap/aurora`
-# Requires a separate tap repo (e.g. guiferpa/homebrew-tap) and HOMEBREW_TAP_TOKEN secret with write access to it.
+# Requires repo guiferpa/homebrew-tap and secret HOMEBREW_TAP_TOKEN (PAT with repo scope, write to homebrew-tap).
+# If token is missing, upload is skipped and release still succeeds (cask is only in dist/).
 homebrew_casks:
   - name: aurora
+    skip_upload: "{{ not .Env.HOMEBREW_TAP_TOKEN }}"
     binaries:
       - aurora
       - aurorals

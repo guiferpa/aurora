@@ -45,6 +45,9 @@ func TestMatchToken(t *testing.T) {
 		// NOTHING
 		{[]byte(`nothing`), NOTHING, []byte("nothing"), true},
 		{[]byte(`nothing;`), NOTHING, []byte("nothing"), true},
+		// NS_SCOPE
+		{[]byte(`::`), NS_SCOPE, []byte("::"), true},
+		{[]byte(`::foo`), NS_SCOPE, []byte("::"), true},
 		// COMMENT
 		{[]byte(`#-`), COMMENT_LINE, []byte("#-"), true},
 		// SUB
@@ -63,6 +66,8 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`)`), C_PAREN, []byte(")"), true},
 		// O_PAREN
 		{[]byte(`(`), O_PAREN, []byte("("), true},
+		// AS
+		{[]byte(`as`), AS, []byte("as"), true},
 		// ASSIGN
 		{[]byte(`=`), ASSIGN, []byte("="), true},
 		// IDENT
@@ -89,6 +94,9 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`
 `), BREAK_LINE, []byte(`
 `), true},
+		// USE
+		{[]byte(`use`), USE, []byte("use"), true},
+		{[]byte(`use x`), USE, []byte("use"), true},
 	}
 	for _, c := range cases {
 		matched, tag, match := MatchToken(c.Buffer)

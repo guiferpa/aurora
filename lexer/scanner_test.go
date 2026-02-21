@@ -34,6 +34,10 @@ func TestScanToken(t *testing.T) {
 		{"comment", "#-", true, COMMENT_LINE, "#-"},
 		{"comment with text", "#- this is a comment", true, COMMENT_LINE, "#-"},
 
+		{"namespace scope", "::", true, NS_SCOPE, "::"},
+		{"namespace scope with more", "::foo", true, NS_SCOPE, "::"},
+		{"colon then colon", ": :", true, COLON, ":"},
+
 		{"keyword if", "if", true, IF, "if"},
 		{"keyword else", "else", true, ELSE, "else"},
 		{"keyword ident", "ident", true, IDENT, "ident"},
@@ -56,6 +60,8 @@ func TestScanToken(t *testing.T) {
 		{"keyword pull", "pull", true, PULL, "pull"},
 		{"keyword arguments", "arguments", true, ARGUMENTS, "arguments"},
 		{"keyword assert", "assert", true, ASSERT, "assert"},
+		{"keyword as", "as", true, AS, "as"},
+		{"keyword use", "use", true, USE, "use"},
 
 		{"if with space", "if x", true, IF, "if"},
 		{"if with paren", "if(", true, IF, "if"},

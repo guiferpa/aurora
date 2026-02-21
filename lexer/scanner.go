@@ -23,6 +23,8 @@ var keywordTags = []Tag{
 	TagPull,
 	TagArguments,
 	TagAssert,
+	TagAs,
+	TagUse,
 }
 
 var Keywords = func() map[string]Tag {
@@ -112,6 +114,10 @@ func scanTwoChars(bs []byte) (bool, Tag, []byte) {
 
 	if bs[0] == '#' && bs[1] == '-' {
 		return true, TagComment, bs[:2]
+	}
+
+	if bs[0] == ':' && bs[1] == ':' {
+		return true, TagNsScope, bs[:2]
 	}
 
 	return false, Tag{}, nil
@@ -234,12 +240,12 @@ func ScanToken(bs []byte) (bool, Tag, []byte) {
 
 	c := bs[0]
 
-	if tag, ok := scanOneChar(c); ok {
-		return true, tag, bs[:1]
-	}
-
 	if matched, tag, match := scanTwoChars(bs); matched {
 		return true, tag, match
+	}
+
+	if tag, ok := scanOneChar(c); ok {
+		return true, tag, bs[:1]
 	}
 
 	if isLowercaseLetter(c) {

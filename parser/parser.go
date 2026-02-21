@@ -83,8 +83,33 @@ func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
 	if err != nil {
 		return IdentifierLiteral{}, err
 	}
-	id := IdentifierLiteral{string(tok.GetMatch()), tok}
-	return id, nil
+	return IdentifierLiteral{Value: string(tok.GetMatch()), Token: tok}, nil
+}
+
+// ParseNamespacedIdentifier parses ID or ID (:: ID)+ and returns an IdentifierLiteral.
+// For "a::b::c" the result has Namespace: ["a","b"], Value: "c". For a single "a" the result has Value: "a", Namespace: nil.
+func (p *pr) ParseNamespacedIdentifier() (IdentifierLiteral, error) {
+	tok, err := p.EatToken(lexer.ID)
+	if err != nil {
+		return IdentifierLiteral{}, err
+	}
+	segments := []string{string(tok.GetMatch())}
+	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.NS_SCOPE {
+		if _, err := p.EatToken(lexer.NS_SCOPE); err != nil {
+			return IdentifierLiteral{}, err
+		}
+		nextTok, err := p.EatToken(lexer.ID)
+		if err != nil {
+			return IdentifierLiteral{}, err
+		}
+		segments = append(segments, string(nextTok.GetMatch()))
+	}
+	if len(segments) == 1 {
+		return IdentifierLiteral{Value: segments[0], Token: tok}, nil
+	}
+	namespace := segments[:len(segments)-1]
+	value := segments[len(segments)-1]
+	return IdentifierLiteral{Value: value, Namespace: namespace, Token: tok}, nil
 }
 
 func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
@@ -207,11 +232,11 @@ func (p *pr) ParsePriExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.ParseIdent()
 	}
-	id, err := p.ParseIdentifier()
+	id, err := p.ParseNamespacedIdentifier()
 	if err != nil {
 		return nil, err
 	}
-	if p.GetLookahead().GetTag().Id == lexer.O_PAREN {
+	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_PAREN {
 		return p.ParseCallee(id)
 	}
 	return id, nil
@@ -690,6 +715,12 @@ func (p *pr) ParseIdent() (Node, error) {
 
 func (p *pr) ParseExpr() (Node, error) {
 	lookahead := p.GetLookahead()
+	if lookahead == nil {
+		return nil, fmt.Errorf("unexpected end of input")
+	}
+	if lookahead.GetTag().Id == lexer.USE {
+		return p.ParseUseDeclaration()
+	}
 	if lookahead.GetTag().Id == lexer.PRINT {
 		return p.ParsePrint()
 	}
@@ -727,6 +758,32 @@ func (p *pr) ParseExpr() (Node, error) {
 		return p.ParsePush()
 	}
 	return p.ParseBoolExpr()
+}
+
+// ParseUseDeclaration parses "use path::to::ns as alias".
+func (p *pr) ParseUseDeclaration() (Node, error) {
+	tok, err := p.EatToken(lexer.USE)
+	if err != nil {
+		return nil, err
+	}
+	id, err := p.ParseNamespacedIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	path := id.Namespace
+	if path == nil {
+		path = []string{id.Value}
+	} else {
+		path = append(append([]string{}, id.Namespace...), id.Value)
+	}
+	if _, err := p.EatToken(lexer.AS); err != nil {
+		return nil, err
+	}
+	aliasTok, err := p.EatToken(lexer.ID)
+	if err != nil {
+		return nil, err
+	}
+	return UseDeclaration{Path: path, Alias: string(aliasTok.GetMatch()), Token: tok}, nil
 }
 
 func (p *pr) ParsePrint() (Node, error) {

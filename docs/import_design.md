@@ -1,11 +1,76 @@
-# Design: Sistema de Imports para Aurora
+# Design: Import System for Aurora
 
-## Objetivo
+## Goal
 
-Permitir que arquivos Aurora importem código de outros arquivos, facilitando:
-- Separação de código fonte e testes
-- Reutilização de código
-- Organização modular
+Allow Aurora files to use code from other namespaces, enabling:
+- Separation of source code and tests
+- Code reuse
+- Modular organization
+
+---
+
+## Namespace dependency system (specification)
+
+The following is the canonical specification for how namespace dependencies work in Aurora. Implementation should follow these rules.
+
+### 1. Implicit import at use site
+
+There is **no separate import step**. Import/linking is **implicit**: when you call a symbol from another namespace, that namespace is resolved and linked at the point of use.
+
+In languages where you import first and then use symbols:
+
+```
+import "std/fs/io";
+open_file(...);   // function from the imported namespace
+```
+
+In Aurora it works like this:
+
+```aurora
+std::fs::io::open_file(...);
+```
+
+The compiler resolves the namespace `std::fs::io` and links to the appropriate module when it sees this call. No prior `import` statement is required.
+
+### 2. Optional alias with `use`
+
+Any namespace can be given an **optional alias** via `use ... as` to shorten long names:
+
+```aurora
+use std::fs::io as io;
+io::open_file(...);
+```
+
+- Without alias: use the full path at each call, e.g. `std::fs::io::open_file(...)`.
+- With alias: `use std::fs::io as io;` then `io::open_file(...)`.
+
+The alias is purely for readability and convenience; resolution still follows the same path rules.
+
+### 3. Discovery: namespace path = filesystem path
+
+Source code for a namespace is discovered by **mapping the namespace to a directory path** under the project root. The path used in the namespace (the sequence of segments separated by `::`) is the same as the path of directories and subdirectories on disk.
+
+Rules:
+
+- Namespace `std::fs::io` → compiler looks under `<root>/std/fs/io/` for `*.ar` modules.
+- Namespace `std::fs::io::async` → compiler looks under `<root>/std/fs/io/async/` for `*.ar` modules.
+
+In general: namespace `a::b::c` corresponds to path `<root>/a/b/c/`, and the compiler loads the relevant `*.ar` files from that directory (or subdirectories, depending on the exact discovery rules). The namespace is always at the level of directories and subdirectories under `<root>`.
+
+### 4. Root: entrypoint and manifest
+
+The **root** for resolving all namespaces is defined by the **compilation entrypoint**: by default, all modules are expected to live under the same root as the **file used as the entrypoint** of the compilation. In practice, the root is the **directory that contains the project manifest (`aurora.toml`)** (or the directory of the entrypoint file when no manifest is used).
+
+- For now, this specification applies to **programmer-defined namespaces** only: code organized in directories under the project root for scalability.
+- **Built-in language packages** and **third-party dependencies** will be specified later; they are out of scope for this section.
+
+Summary: `<root>/` is the base for every namespace path. Example: if root is `/project`, then `std::fs::io` is resolved to `/project/std/fs/io/*.ar`.
+
+---
+
+## Legacy / alternative: explicit import (reference)
+
+The sections below describe an alternative design based on **explicit `import`** and path syntax with `/`. That model may be deprecated in favor of the **namespace dependency system** above. Kept for reference and migration.
 
 ## Exemplo de Uso
 

@@ -1,0 +1,9 @@
+#- Namespace demo: implicit import at use site and optional alias.
+#- Namespace path = directory path under root (e.g. math -> <root>/math/*.ar).
+#- Run from repo root: aurora run -s examples/namespace_demo/main.ar
+#- (Resolver not yet implemented; this example parses and shows intended syntax.)
+#- Option 1: full path call (import is implicit when the symbol is used)
+#- print math::add(1, 2);
+#- Option 2: alias to shorten long names
+use math as m;
+print m::add(1, 2);

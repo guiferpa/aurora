@@ -35,8 +35,9 @@ func (cln CalleeLiteral) Next() Node {
 }
 
 type IdentifierLiteral struct {
-	Value string      `json:"value"`
-	Token lexer.Token `json:"-"`
+	Value     string      `json:"value"`               // symbol name (e.g. "open_file")
+	Namespace []string    `json:"namespace,omitempty"` // optional path segments (e.g. ["std","fs","io"]); empty = simple identifier
+	Token     lexer.Token `json:"-"`
 }
 
 func (iln IdentifierLiteral) Next() Node {
@@ -256,6 +257,18 @@ type AssertStatement struct {
 }
 
 func (asn AssertStatement) Next() Node {
+	return nil
+}
+
+// UseDeclaration is "use path::to::ns as alias;". Path is the namespace path segments; Alias is the local name.
+// Resolution and linking are implicit; this node only records the alias for the rest of the compiler.
+type UseDeclaration struct {
+	Path  []string    `json:"path"`  // e.g. ["std","fs","io"]
+	Alias string      `json:"alias"` // e.g. "io"
+	Token lexer.Token `json:"-"`
+}
+
+func (ud UseDeclaration) Next() Node {
 	return nil
 }
 

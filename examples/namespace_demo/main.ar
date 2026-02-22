@@ -6,4 +6,5 @@
 #- print math::add(1, 2);
 #- Option 2: alias to shorten long names
 use math as m;
+
 print m::add(1, 2);

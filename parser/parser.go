@@ -88,27 +88,28 @@ func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
 
 // ParseNamespacedIdentifier parses ID or ID (:: ID)+ and returns an IdentifierLiteral.
 // For "a::b::c" the result has Namespace: ["a","b"], Value: "c". For a single "a" the result has Value: "a", Namespace: nil.
+// Token is always the token of the symbol (the last segment), e.g. "b" in "a::b".
 func (p *pr) ParseNamespacedIdentifier() (IdentifierLiteral, error) {
 	tok, err := p.EatToken(lexer.ID)
 	if err != nil {
 		return IdentifierLiteral{}, err
 	}
-	segments := []string{string(tok.GetMatch())}
+	segments := []lexer.Token{tok}
 	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.NS_SCOPE {
 		if _, err := p.EatToken(lexer.NS_SCOPE); err != nil {
 			return IdentifierLiteral{}, err
 		}
-		nextTok, err := p.EatToken(lexer.ID)
+		tok, err = p.EatToken(lexer.ID)
 		if err != nil {
 			return IdentifierLiteral{}, err
 		}
-		segments = append(segments, string(nextTok.GetMatch()))
+		segments = append(segments, tok)
 	}
-	if len(segments) == 1 {
-		return IdentifierLiteral{Value: segments[0], Token: tok}, nil
+	value := string(tok.GetMatch())
+	namespace := make([]string, 0, len(segments)-1)
+	for _, segment := range segments[:len(segments)-1] {
+		namespace = append(namespace, string(segment.GetMatch()))
 	}
-	namespace := segments[:len(segments)-1]
-	value := segments[len(segments)-1]
 	return IdentifierLiteral{Value: value, Namespace: namespace, Token: tok}, nil
 }
 

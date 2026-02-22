@@ -1,5 +1,5 @@
 #- math/add: callable "add" in namespace math
 #- When resolver is active: <root>/math/add.ar -> math::add
-ident add = {
+ident add = defer {
   arguments(0) + arguments(1);
 };

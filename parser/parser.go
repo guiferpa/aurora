@@ -78,14 +78,6 @@ func (p *pr) ParseNothing() (NothingLiteral, error) {
 	return NothingLiteral{tok}, nil
 }
 
-func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
-	tok, err := p.EatToken(lexer.ID)
-	if err != nil {
-		return IdentifierLiteral{}, err
-	}
-	return IdentifierLiteral{Value: string(tok.GetMatch()), Token: tok}, nil
-}
-
 // ParseNamespacedIdentifier parses ID or ID (:: ID)+ and returns an IdentifierLiteral.
 // For "a::b::c" the result has Namespace: ["a","b"], Value: "c". For a single "a" the result has Value: "a", Namespace: nil.
 // Token is always the token of the symbol (the last segment), e.g. "b" in "a::b".
@@ -110,7 +102,7 @@ func (p *pr) ParseNamespacedIdentifier() (IdentifierLiteral, error) {
 	for _, segment := range segments[:len(segments)-1] {
 		namespace = append(namespace, string(segment.GetMatch()))
 	}
-	return IdentifierLiteral{Value: value, Namespace: namespace, Token: tok}, nil
+	return IdentifierLiteral{Value: value, Namespace: strings.Join(namespace, "::"), Token: tok}, nil
 }
 
 func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
@@ -771,20 +763,18 @@ func (p *pr) ParseUseDeclaration() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	path := id.Namespace
-	if path == nil {
-		path = []string{id.Value}
-	} else {
-		path = append(append([]string{}, id.Namespace...), id.Value)
+	namespace := id.Value
+	if id.Namespace != "" {
+		namespace = strings.Join([]string{id.Namespace, namespace}, "::")
 	}
 	if _, err := p.EatToken(lexer.AS); err != nil {
 		return nil, err
 	}
-	aliasTok, err := p.EatToken(lexer.ID)
+	alias, err := p.EatToken(lexer.ID)
 	if err != nil {
 		return nil, err
 	}
-	return UseDeclaration{Path: path, Alias: string(aliasTok.GetMatch()), Token: tok}, nil
+	return UseDeclaration{Namespace: namespace, Alias: string(alias.GetMatch()), Token: tok}, nil
 }
 
 func (p *pr) ParsePrint() (Node, error) {

@@ -499,6 +499,66 @@ func TestParseNothing(t *testing.T) {
 	}
 }
 
+func TestParseUseDeclaration(t *testing.T) {
+	semicolon := tok{[]byte(";"), lexer.TagSemicolon}
+	eof := tok{[]byte(""), lexer.TagEOF}
+	use := tok{[]byte("use"), lexer.TagUse}
+	as := tok{[]byte("as"), lexer.TagAs}
+
+	cases := []struct {
+		name   string
+		tokens []lexer.Token
+		want   *Module
+	}{
+		{
+			name: "use_single_segment_as_alias",
+			tokens: []lexer.Token{
+				use, tok{[]byte("math"), lexer.TagId},
+				as, tok{[]byte("m"), lexer.TagId},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Expressions: []Node{
+					UseDeclaration{Namespace: "math", Alias: "m", Token: use},
+				},
+			},
+		},
+		{
+			name: "use_namespaced_path_as_alias",
+			tokens: []lexer.Token{
+				use,
+				tok{[]byte("std"), lexer.TagId},
+				tok{[]byte("::"), lexer.TagNsScope},
+				tok{[]byte("fs"), lexer.TagId},
+				tok{[]byte("::"), lexer.TagNsScope},
+				tok{[]byte("io"), lexer.TagId},
+				as,
+				tok{[]byte("io"), lexer.TagId},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Expressions: []Node{
+					UseDeclaration{Namespace: "std::fs::io", Alias: "io", Token: use},
+				},
+			},
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			p := New(c.tokens, NewParserOptions{})
+			ast, err := p.Parse()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !ModuleEqual(ast.Module, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
+			}
+		})
+	}
+}
+
 func TestParseNamespacedIdentifier(t *testing.T) {
 	comma := tok{[]byte(","), lexer.TagComma}
 	semicolon := tok{[]byte(";"), lexer.TagSemicolon}
@@ -533,7 +593,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 			want: &Module{
 				Name: "main",
 				Expressions: []Node{
-					IdentifierLiteral{Value: "b", Namespace: []string{"a"}, Token: tok{[]byte("b"), lexer.TagId}},
+					IdentifierLiteral{Value: "b", Namespace: "a", Token: tok{[]byte("b"), lexer.TagId}},
 				},
 			},
 		},
@@ -551,7 +611,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				Name: "main",
 				Expressions: []Node{
 					CalleeLiteral{
-						Id: IdentifierLiteral{Value: "c", Namespace: []string{"a", "b"}, Token: tok{[]byte("c"), lexer.TagId}},
+						Id: IdentifierLiteral{Value: "c", Namespace: "a::b", Token: tok{[]byte("c"), lexer.TagId}},
 						Params: []ParameterLiteral{
 							{Expression: NumberLiteral{Value: 1, Token: one}},
 							{Expression: NumberLiteral{Value: 2, Token: two}},

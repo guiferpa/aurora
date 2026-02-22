@@ -183,6 +183,12 @@ func nodeEqual(a, b Node) bool {
 			return false
 		}
 		return nodeEqual(va.Left, vb.Left) && nodeEqual(va.Right, vb.Right) && opEqual(va.Operation, vb.Operation)
+	case UseDeclaration:
+		vb, ok := b.(UseDeclaration)
+		if !ok {
+			return false
+		}
+		return va.Namespace == vb.Namespace && va.Alias == vb.Alias && TokenEqual(va.Token, vb.Token)
 	default:
 		return reflect.DeepEqual(a, b)
 	}

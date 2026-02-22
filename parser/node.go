@@ -275,11 +275,12 @@ func (ud UseDeclaration) Next() Node {
 // Module is the top-level AST node. Aurora is expression-only: Expressions is
 // the sequence of expressions at top level (e.g. NothingLiteral, IdentStatement,
 // BlockExpression, IfExpression).
-type Module struct {
-	Name        string `json:"name"`
-	Expressions []Node `json:"expressions"`
+type Namespace struct {
+	Dependencies []string `json:"dependencies"`
+	Name         string   `json:"name"`
+	Expressions  []Node   `json:"expressions"`
 }
 
-func (mn Module) Next() Node {
+func (ns Namespace) Next() Node {
 	return nil
 }

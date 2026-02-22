@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -119,8 +118,9 @@ func TestParse(t *testing.T) {
 		tok{[]byte("tok18"), lexer.TagEOF},
 	}
 	expected := AST{
-		Module: Module{
-			Name: "main",
+		Namespace: Namespace{
+			Name:         "main",
+			Dependencies: []string{},
 			Expressions: []Node{
 				IdentLiteral{
 					Id:    "a",
@@ -150,8 +150,8 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Errorf("param: %v, %v", tokens, err)
 	}
-	if !reflect.DeepEqual(ast, expected) {
-		t.Errorf("\nexpected: %v,\ngot: %v", expected, ast)
+	if !NamespaceEqual(ast.Namespace, expected.Namespace) {
+		t.Errorf("\nexpected: %+v,\ngot: %+v", expected.Namespace, ast.Namespace)
 	}
 }
 
@@ -171,12 +171,12 @@ func TestParseNothing(t *testing.T) {
 	cases := []struct {
 		name   string
 		tokens []lexer.Token
-		want   *Module
+		want   *Namespace
 	}{
 		{
 			name:   "top_level",
 			tokens: []lexer.Token{nothing, semicolon, eof},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					NothingLiteral{Token: nothing},
@@ -189,7 +189,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("{"), lexer.TagOCurBrk}, nothing, semicolon,
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					BlockExpression{
@@ -206,7 +206,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("ident"), lexer.TagIdent}, tok{[]byte("x"), lexer.TagId},
 				tok{[]byte("="), lexer.TagAssign}, nothing, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IdentLiteral{
@@ -222,7 +222,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{
 				tok{[]byte("("), lexer.TagOParen}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					NothingLiteral{Token: nothing},
@@ -234,7 +234,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{
 				nothing, sum, one, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					BinaryExpression{
@@ -250,7 +250,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{
 				tok{[]byte("1"), lexer.TagNumber}, sum, nothing, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					BinaryExpression{
@@ -266,7 +266,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{
 				nothing, equals, zero, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					RelativeExpression{
@@ -282,7 +282,7 @@ func TestParseNothing(t *testing.T) {
 			tokens: []lexer.Token{
 				tok{[]byte("true"), lexer.TagTrue}, or, nothing, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					BooleanExpression{
@@ -302,7 +302,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("{"), lexer.TagOCurBrk}, two, semicolon, tok{[]byte("}"), lexer.TagCCurBrk},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IfExpression{
@@ -324,7 +324,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("{"), lexer.TagOCurBrk}, two, semicolon, tok{[]byte("}"), lexer.TagCCurBrk},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IfExpression{
@@ -345,7 +345,7 @@ func TestParseNothing(t *testing.T) {
 				three, semicolon,
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IfExpression{
@@ -361,7 +361,7 @@ func TestParseNothing(t *testing.T) {
 		{
 			name:   "print_nothing",
 			tokens: []lexer.Token{tok{[]byte("print"), lexer.TagCallPrint}, nothing, semicolon, eof},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					PrintStatement{Param: NothingLiteral{Token: nothing}},
@@ -371,7 +371,7 @@ func TestParseNothing(t *testing.T) {
 		{
 			name:   "echo_nothing",
 			tokens: []lexer.Token{tok{[]byte("echo"), lexer.TagEcho}, nothing, semicolon, eof},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					EchoStatement{Param: NothingLiteral{Token: nothing}},
@@ -384,7 +384,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("assert"), lexer.TagAssert}, tok{[]byte("("), lexer.TagOParen},
 				nothing, tok{[]byte(","), lexer.TagComma}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					AssertStatement{
@@ -398,7 +398,7 @@ func TestParseNothing(t *testing.T) {
 		{
 			name:   "unary_minus_nothing",
 			tokens: []lexer.Token{tok{[]byte("-"), lexer.TagSub}, nothing, semicolon, eof},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					UnaryExpression{
@@ -415,7 +415,7 @@ func TestParseNothing(t *testing.T) {
 				nothing, semicolon,
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					DeferExpression{
@@ -438,7 +438,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon,
 				tok{[]byte("f"), lexer.TagId}, tok{[]byte("("), lexer.TagOParen}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IdentLiteral{
@@ -467,7 +467,7 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("["), lexer.TagOBrk}, nothing, tok{[]byte(","), lexer.TagComma},
 				one, tok{[]byte("]"), lexer.TagCBrk}, semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					TapeBracketExpression{
@@ -492,8 +492,8 @@ func TestParseNothing(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !ModuleEqual(ast.Module, *c.want) {
-				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
+			if !NamespaceEqual(ast.Namespace, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Namespace, *c.want)
 			}
 		})
 	}
@@ -508,7 +508,7 @@ func TestParseUseDeclaration(t *testing.T) {
 	cases := []struct {
 		name   string
 		tokens []lexer.Token
-		want   *Module
+		want   *Namespace
 	}{
 		{
 			name: "use_single_segment_as_alias",
@@ -517,7 +517,7 @@ func TestParseUseDeclaration(t *testing.T) {
 				as, tok{[]byte("m"), lexer.TagId},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					UseDeclaration{Namespace: "math", Alias: "m", Token: use},
@@ -537,7 +537,7 @@ func TestParseUseDeclaration(t *testing.T) {
 				tok{[]byte("io"), lexer.TagId},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					UseDeclaration{Namespace: "std::fs::io", Alias: "io", Token: use},
@@ -552,8 +552,8 @@ func TestParseUseDeclaration(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !ModuleEqual(ast.Module, *c.want) {
-				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
+			if !NamespaceEqual(ast.Namespace, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Namespace, *c.want)
 			}
 		})
 	}
@@ -569,7 +569,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 	cases := []struct {
 		name   string
 		tokens []lexer.Token
-		want   *Module
+		want   *Namespace
 	}{
 		{
 			name: "single_identifier",
@@ -577,7 +577,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				tok{[]byte("a"), lexer.TagId},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IdentifierLiteral{Value: "a", Token: tok{[]byte("a"), lexer.TagId}},
@@ -590,7 +590,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				tok{[]byte("a"), lexer.TagId}, tok{[]byte("::"), lexer.TagNsScope}, tok{[]byte("b"), lexer.TagId},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					IdentifierLiteral{Value: "b", Namespace: "a", Token: tok{[]byte("b"), lexer.TagId}},
@@ -607,7 +607,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				tok{[]byte(")"), lexer.TagCParen},
 				semicolon, eof,
 			},
-			want: &Module{
+			want: &Namespace{
 				Name: "main",
 				Expressions: []Node{
 					CalleeLiteral{
@@ -629,8 +629,8 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !ModuleEqual(ast.Module, *c.want) {
-				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
+			if !NamespaceEqual(ast.Namespace, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Namespace, *c.want)
 			}
 		})
 	}

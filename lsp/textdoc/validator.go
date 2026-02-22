@@ -210,7 +210,7 @@ func GetHoverInfo(source string, pos lsp.Position) string {
 
 // findIdentifierDefinition finds the definition of an identifier in the AST
 func findIdentifierDefinition(ast parser.AST, name string) *parser.IdentLiteral {
-	return findIdentifierInExpressions(ast.Module.Expressions, name)
+	return findIdentifierInExpressions(ast.Namespace.Expressions, name)
 }
 
 func findIdentifierInExpressions(exprs []parser.Node, name string) *parser.IdentLiteral {

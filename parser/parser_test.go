@@ -499,54 +499,79 @@ func TestParseNothing(t *testing.T) {
 	}
 }
 
-func TestParseNamespacedCallAndUse(t *testing.T) {
-	l := lexer.New(lexer.NewLexerOptions{})
-	tokens, err := l.GetFilledTokens([]byte("std::fs::io::open_file(1);"))
-	if err != nil {
-		t.Fatalf("lex: %v", err)
-	}
-	p := New(tokens, NewParserOptions{})
-	ast, err := p.Parse()
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if len(ast.Module.Expressions) != 1 {
-		t.Fatalf("expected 1 expression, got %d", len(ast.Module.Expressions))
-	}
-	call, ok := ast.Module.Expressions[0].(CalleeLiteral)
-	if !ok {
-		t.Fatalf("expected CalleeLiteral, got %T", ast.Module.Expressions[0])
-	}
-	if len(call.Id.Namespace) != 3 || call.Id.Namespace[0] != "std" || call.Id.Namespace[1] != "fs" || call.Id.Namespace[2] != "io" {
-		t.Errorf("expected Id.Namespace [std fs io], got %v", call.Id.Namespace)
-	}
-	if call.Id.Value != "open_file" {
-		t.Errorf("expected Id.Value open_file, got %q", call.Id.Value)
-	}
-	if len(call.Params) != 1 {
-		t.Errorf("expected 1 param, got %d", len(call.Params))
-	}
+func TestParseNamespacedIdentifier(t *testing.T) {
+	comma := tok{[]byte(","), lexer.TagComma}
+	semicolon := tok{[]byte(";"), lexer.TagSemicolon}
+	eof := tok{[]byte(""), lexer.TagEOF}
+	one := tok{[]byte("1"), lexer.TagNumber}
+	two := tok{[]byte("2"), lexer.TagNumber}
 
-	tokens2, err := l.GetFilledTokens([]byte("use std::fs::io as io;"))
-	if err != nil {
-		t.Fatalf("lex use: %v", err)
+	cases := []struct {
+		name   string
+		tokens []lexer.Token
+		want   *Module
+	}{
+		{
+			name: "single_identifier",
+			tokens: []lexer.Token{
+				tok{[]byte("a"), lexer.TagId},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Expressions: []Node{
+					IdentifierLiteral{Value: "a", Token: tok{[]byte("a"), lexer.TagId}},
+				},
+			},
+		},
+		{
+			name: "namespaced_identifier",
+			tokens: []lexer.Token{
+				tok{[]byte("a"), lexer.TagId}, tok{[]byte("::"), lexer.TagNsScope}, tok{[]byte("b"), lexer.TagId},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Expressions: []Node{
+					IdentifierLiteral{Value: "b", Namespace: []string{"a"}, Token: tok{[]byte("b"), lexer.TagId}},
+				},
+			},
+		},
+		{
+			name: "namespaced_identifier_with_defer",
+			tokens: []lexer.Token{
+				tok{[]byte("a"), lexer.TagId}, tok{[]byte("::"), lexer.TagNsScope},
+				tok{[]byte("b"), lexer.TagId}, tok{[]byte("::"), lexer.TagNsScope},
+				tok{[]byte("c"), lexer.TagId}, tok{[]byte("("), lexer.TagOParen},
+				one, comma, two,
+				tok{[]byte(")"), lexer.TagCParen},
+				semicolon, eof,
+			},
+			want: &Module{
+				Name: "main",
+				Expressions: []Node{
+					CalleeLiteral{
+						Id: IdentifierLiteral{Value: "c", Namespace: []string{"a", "b"}, Token: tok{[]byte("c"), lexer.TagId}},
+						Params: []ParameterLiteral{
+							{Expression: NumberLiteral{Value: 1, Token: one}},
+							{Expression: NumberLiteral{Value: 2, Token: two}},
+						},
+					},
+				},
+			},
+		},
 	}
-	p2 := New(tokens2, NewParserOptions{})
-	ast2, err := p2.Parse()
-	if err != nil {
-		t.Fatalf("parse use: %v", err)
-	}
-	if len(ast2.Module.Expressions) != 1 {
-		t.Fatalf("expected 1 expression (use), got %d", len(ast2.Module.Expressions))
-	}
-	use, ok := ast2.Module.Expressions[0].(UseDeclaration)
-	if !ok {
-		t.Fatalf("expected UseDeclaration, got %T", ast2.Module.Expressions[0])
-	}
-	if len(use.Path) != 3 || use.Path[0] != "std" || use.Path[1] != "fs" || use.Path[2] != "io" {
-		t.Errorf("expected Path [std fs io], got %v", use.Path)
-	}
-	if use.Alias != "io" {
-		t.Errorf("expected Alias io, got %q", use.Alias)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			opts := NewParserOptions{}
+			p := New(c.tokens, opts)
+			ast, err := p.Parse()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !ModuleEqual(ast.Module, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Module, *c.want)
+			}
+		})
 	}
 }

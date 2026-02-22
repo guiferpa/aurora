@@ -2,7 +2,6 @@ package emitter
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/parser"
@@ -173,8 +172,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node) Label {
 			*insts = append(*insts, NewInstruction(l, OpPushArg, byteutil.FromUint64(uint64(i)), ll))
 		}
 		l := GenerateLabel(tc)
-		calleeName := identifierSymbolName(n.Id)
-		*insts = append(*insts, NewInstruction(l, OpCall, []byte(calleeName), nil))
+		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
 		return l
 	}
 	if _, ok := expr.(parser.NothingLiteral); ok {
@@ -252,24 +250,10 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node) Label {
 	}
 	if n, ok := expr.(parser.IdentifierLiteral); ok {
 		l := GenerateLabel(tc)
-		name := identifierSymbolName(n)
-		*insts = append(*insts, NewInstruction(l, OpLoad, []byte(name), nil))
-		return l
-	}
-	if _, ok := expr.(parser.UseDeclaration); ok {
-		// use path as alias: no instruction yet; resolution happens at call/load site.
-		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
 		return l
 	}
 	return make([]byte, 8)
-}
-
-// identifierSymbolName returns the full symbol name for resolution: "a::b::c" or "c".
-func identifierSymbolName(id parser.IdentifierLiteral) string {
-	if len(id.Namespace) == 0 {
-		return id.Value
-	}
-	return strings.Join(id.Namespace, "::") + "::" + id.Value
 }
 
 func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {

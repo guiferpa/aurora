@@ -875,12 +875,12 @@ func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 	return exprs, nil
 }
 
-func (p *pr) ParseModule() (Module, error) {
+func (p *pr) ParseNamespace() (Namespace, error) {
 	exprs, err := p.ParseExprs(lexer.TagEOF)
 	if err != nil {
-		return Module{}, err
+		return Namespace{}, err
 	}
-	return Module{Name: "main", Expressions: exprs}, nil
+	return Namespace{Name: "main", Expressions: exprs}, nil
 }
 
 func (p *pr) GetLookahead() lexer.Token {
@@ -907,16 +907,16 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 }
 
 func (p *pr) Parse() (AST, error) {
-	module, err := p.ParseModule()
+	namespace, err := p.ParseNamespace()
 	if err != nil {
 		return AST{}, err
 	}
 	if p.logger != nil {
-		if _, err := p.logger.JSON(module); err != nil {
+		if _, err := p.logger.JSON(namespace); err != nil {
 			return AST{}, err
 		}
 	}
-	return AST{module}, nil
+	return AST{Namespace: namespace}, nil
 }
 
 type NewParserOptions struct {

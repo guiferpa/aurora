@@ -259,7 +259,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node) Label {
 func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {
 	tc := 0
 	insts := make([]Instruction, 0)
-	for _, expr := range ast.Module.Expressions {
+	for _, expr := range ast.Namespace.Expressions {
 		EmitInstruction(&tc, &insts, expr)
 	}
 	return insts, nil

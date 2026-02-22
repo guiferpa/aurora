@@ -21,7 +21,7 @@ func TokenEqual(a, b lexer.Token) bool {
 }
 
 // ModuleEqual compares two Module ASTs by structure and token value (ignores pointer identity).
-func ModuleEqual(got, want Module) bool {
+func NamespaceEqual(got, want Namespace) bool {
 	if got.Name != want.Name || len(got.Expressions) != len(want.Expressions) {
 		return false
 	}

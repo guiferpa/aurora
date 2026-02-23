@@ -20,13 +20,13 @@ func TokenEqual(a, b lexer.Token) bool {
 	return bytes.Equal(a.GetMatch(), b.GetMatch()) && a.GetTag() == b.GetTag()
 }
 
-// ModuleEqual compares two Module ASTs by structure and token value (ignores pointer identity).
+// NamespaceEqual compares two NamespaceUnit ASTs by structure and token value (ignores pointer identity).
 func NamespaceEqual(got, want Namespace) bool {
-	if got.Name != want.Name || len(got.Expressions) != len(want.Expressions) {
+	if got.Name != want.Name || len(got.AST) != len(want.AST) {
 		return false
 	}
-	for i := range got.Expressions {
-		if !nodeEqual(got.Expressions[i], want.Expressions[i]) {
+	for i := range got.AST {
+		if !nodeEqual(got.AST[i], want.AST[i]) {
 			return false
 		}
 	}

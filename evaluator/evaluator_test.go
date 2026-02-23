@@ -3,7 +3,6 @@ package evaluator
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"maps"
 	"slices"
 	"strconv"
@@ -528,8 +527,14 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 				return
 			}
 
-			ast, err := parser.New(tokens, parser.NewParserOptions{
-				Filename:      options.Filename,
+			ast, err := parser.New(parser.NewParserOptions{
+				Units: []parser.ParserUnit{
+					{
+						Filename:  options.Filename,
+						Namespace: "testing",
+						Tokens:    tokens,
+					},
+				},
 				EnableLogging: false,
 			}).Parse()
 			if err != nil {
@@ -1100,7 +1105,6 @@ func TestDefer(t *testing.T) {
 r(1, 2);
 r(3, 4);`,
 			func(t *testing.T, returns ReturnsPerLabel, err error) {
-				fmt.Printf("returns: %v\n", returns)
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1228,8 +1232,14 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			ast, err := parser.New(tokens, parser.NewParserOptions{
-				Filename:      ".test.ar",
+			ast, err := parser.New(parser.NewParserOptions{
+				Units: []parser.ParserUnit{
+					{
+						Filename:  "test.test.ar",
+						Namespace: "testing",
+						Tokens:    tokens,
+					},
+				},
 				EnableLogging: false,
 			}).Parse()
 			if err != nil {

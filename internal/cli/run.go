@@ -37,8 +37,14 @@ func Run(ctx context.Context, in RunInput) error {
 		return err
 	}
 
-	ast, err := parser.New(tokens, parser.NewParserOptions{
-		Filename:      in.Source,
+	ast, err := parser.New(parser.NewParserOptions{
+		Units: []parser.ParserUnit{
+			{
+				Filename:  in.Source,
+				Namespace: "main",
+				Tokens:    tokens,
+			},
+		},
 		EnableLogging: slices.Contains(in.Loggers, "parser"),
 	}).Parse()
 	if err != nil {

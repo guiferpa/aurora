@@ -34,7 +34,14 @@ func (t tok) GetCursor() int {
 
 func TestEatTokenWithEmptySlice(t *testing.T) {
 	tokens := []lexer.Token{}
-	p := &pr{cursor: 0, tokens: tokens}
+	units := []ParserUnit{
+		{
+			Filename:  "test.ar",
+			Namespace: "testing",
+			Tokens:    tokens,
+		},
+	}
+	p := &pr{cursor: 0, units: units}
 	got, err := p.EatToken(lexer.BREAK_LINE)
 	if err != nil {
 		t.Error("unexpected error when eat some token:", err)
@@ -50,7 +57,16 @@ func TestEatTokenWithMismatch(t *testing.T) {
 		tok{nil, lexer.TagAssign},
 		tok{nil, lexer.TagSum},
 	}
-	p := &pr{cursor: 0, tokens: tokens}
+	units := []ParserUnit{
+		{
+			Filename:  "test.ar",
+			Namespace: "testing",
+			Tokens:    tokens,
+		},
+	}
+	p := New(NewParserOptions{
+		Units: units,
+	})
 	expected := lexer.IDENT
 	got, err := p.EatToken(expected)
 	if err == nil {
@@ -82,7 +98,16 @@ func TestEatToken(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		p := &pr{cursor: 0, tokens: c.Tokens}
+		units := []ParserUnit{
+			{
+				Filename:  "test.ar",
+				Namespace: "testing",
+				Tokens:    c.Tokens,
+			},
+		}
+		p := New(NewParserOptions{
+			Units: units,
+		})
 		for _, tid := range c.TokenIds {
 			got, err := p.EatToken(tid)
 			if err != nil {
@@ -92,6 +117,48 @@ func TestEatToken(t *testing.T) {
 				t.Errorf("unexpected token when eat, got: %v, expected: %s", got.GetTag().Id, tid)
 			}
 		}
+	}
+}
+
+func TestSetUnitIndexAndGetCurrentUnit(t *testing.T) {
+	units := []ParserUnit{
+		{Filename: "a.ar", Namespace: "ns_a", Tokens: []lexer.Token{}},
+		{Filename: "b.ar", Namespace: "ns_b", Tokens: []lexer.Token{}},
+		{Filename: "c.ar", Namespace: "ns_c", Tokens: []lexer.Token{}},
+	}
+	p := &pr{units: units, unitindex: 0}
+
+	// GetCurrentUnit with index 0 returns first unit
+	if got := p.GetCurrentUnit(); got == nil || got.Filename != "a.ar" || got.Namespace != "ns_a" {
+		t.Errorf("GetCurrentUnit() at index 0: got %+v, want Filename=a.ar Namespace=ns_a", got)
+	}
+
+	// SetUnitIndex(1) then GetCurrentUnit returns second unit
+	p.SetUnitIndex(1)
+	if got := p.GetCurrentUnit(); got == nil || got.Filename != "b.ar" || got.Namespace != "ns_b" {
+		t.Errorf("GetCurrentUnit() after SetUnitIndex(1): got %+v, want Filename=b.ar Namespace=ns_b", got)
+	}
+
+	// SetUnitIndex(2) then GetCurrentUnit returns third unit
+	p.SetUnitIndex(2)
+	if got := p.GetCurrentUnit(); got == nil || got.Filename != "c.ar" || got.Namespace != "ns_c" {
+		t.Errorf("GetCurrentUnit() after SetUnitIndex(2): got %+v, want Filename=c.ar Namespace=ns_c", got)
+	}
+
+	// SetUnitIndex past end: GetCurrentUnit returns nil
+	p.SetUnitIndex(3)
+	if got := p.GetCurrentUnit(); got != nil {
+		t.Errorf("GetCurrentUnit() with index >= len(units): got %+v, want nil", got)
+	}
+	p.SetUnitIndex(10)
+	if got := p.GetCurrentUnit(); got != nil {
+		t.Errorf("GetCurrentUnit() with index 10: got %+v, want nil", got)
+	}
+
+	// No units: GetCurrentUnit returns nil (unitindex 0 >= len(units)=0)
+	pEmpty := &pr{units: []ParserUnit{}, unitindex: 0}
+	if got := pEmpty.GetCurrentUnit(); got != nil {
+		t.Errorf("GetCurrentUnit() with no units: got %+v, want nil", got)
 	}
 }
 
@@ -117,41 +184,45 @@ func TestParse(t *testing.T) {
 		tok{[]byte("tok17"), lexer.TagSemicolon},
 		tok{[]byte("tok18"), lexer.TagEOF},
 	}
-	expected := AST{
-		Namespace: Namespace{
-			Name:         "main",
-			Dependencies: []string{},
-			Expressions: []Node{
-				IdentLiteral{
-					Id:    "a",
-					Token: tokens[1],
-					Value: IfExpression{
-						Test: RelativeExpression{
-							Left:      NumberLiteral{Value: 10, Token: tokens[4]},
-							Right:     NumberLiteral{Value: 11, Token: tokens[6]},
-							Operation: OperationLiteral{Value: "tok6", Token: tokens[5]},
-						},
+	expected := Namespace{
+		Name:         "testing",
+		Dependencies: []string{},
+		AST: []Node{
+			IdentLiteral{
+				Id:    "a",
+				Token: tokens[1],
+				Value: IfExpression{
+					Test: RelativeExpression{
+						Left:      NumberLiteral{Value: 10, Token: tokens[4]},
+						Right:     NumberLiteral{Value: 11, Token: tokens[6]},
+						Operation: OperationLiteral{Value: "tok6", Token: tokens[5]},
+					},
+					Body: []Node{
+						NumberLiteral{Value: 0, Token: tokens[8]},
+					},
+					Else: &ElseExpression{
 						Body: []Node{
-							NumberLiteral{Value: 0, Token: tokens[8]},
-						},
-						Else: &ElseExpression{
-							Body: []Node{
-								NumberLiteral{Value: 1, Token: tokens[13]},
-							},
+							NumberLiteral{Value: 1, Token: tokens[13]},
 						},
 					},
 				},
 			},
 		},
 	}
-
-	p := &pr{cursor: 0, tokens: tokens}
+	units := []ParserUnit{
+		{
+			Filename:  "test.ar",
+			Namespace: "testing",
+			Tokens:    tokens,
+		},
+	}
+	p := &pr{cursor: 0, units: units}
 	ast, err := p.Parse()
 	if err != nil {
 		t.Errorf("param: %v, %v", tokens, err)
 	}
-	if !NamespaceEqual(ast.Namespace, expected.Namespace) {
-		t.Errorf("\nexpected: %+v,\ngot: %+v", expected.Namespace, ast.Namespace)
+	if !NamespaceEqual(ast, expected) {
+		t.Errorf("\nexpected: %+v,\ngot: %+v", expected, ast)
 	}
 }
 
@@ -177,8 +248,8 @@ func TestParseNothing(t *testing.T) {
 			name:   "top_level",
 			tokens: []lexer.Token{nothing, semicolon, eof},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					NothingLiteral{Token: nothing},
 				},
 			},
@@ -190,8 +261,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					BlockExpression{
 						Body: []Node{
 							NothingLiteral{Token: nothing},
@@ -207,8 +278,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("="), lexer.TagAssign}, nothing, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IdentLiteral{
 						Id:    "x",
 						Token: tok{[]byte("x"), lexer.TagId},
@@ -223,8 +294,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("("), lexer.TagOParen}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					NothingLiteral{Token: nothing},
 				},
 			},
@@ -235,8 +306,8 @@ func TestParseNothing(t *testing.T) {
 				nothing, sum, one, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					BinaryExpression{
 						Left:      NothingLiteral{Token: nothing},
 						Right:     NumberLiteral{Value: 1, Token: one},
@@ -251,8 +322,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("1"), lexer.TagNumber}, sum, nothing, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					BinaryExpression{
 						Left:      NumberLiteral{Value: 1, Token: one},
 						Right:     NothingLiteral{Token: nothing},
@@ -267,8 +338,8 @@ func TestParseNothing(t *testing.T) {
 				nothing, equals, zero, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					RelativeExpression{
 						Left:      NothingLiteral{Token: nothing},
 						Right:     NumberLiteral{Value: 0, Token: zero},
@@ -283,8 +354,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("true"), lexer.TagTrue}, or, nothing, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					BooleanExpression{
 						Left:      BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
 						Right:     NothingLiteral{Token: nothing},
@@ -303,8 +374,8 @@ func TestParseNothing(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IfExpression{
 						Test: NothingLiteral{Token: nothing},
 						Body: []Node{NumberLiteral{Value: 1, Token: one}},
@@ -325,8 +396,8 @@ func TestParseNothing(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IfExpression{
 						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
 						Body: []Node{NothingLiteral{Token: nothing}},
@@ -346,8 +417,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IfExpression{
 						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
 						Body: []Node{NothingLiteral{Token: nothing}},
@@ -362,8 +433,8 @@ func TestParseNothing(t *testing.T) {
 			name:   "print_nothing",
 			tokens: []lexer.Token{tok{[]byte("print"), lexer.TagCallPrint}, nothing, semicolon, eof},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					PrintStatement{Param: NothingLiteral{Token: nothing}},
 				},
 			},
@@ -372,8 +443,8 @@ func TestParseNothing(t *testing.T) {
 			name:   "echo_nothing",
 			tokens: []lexer.Token{tok{[]byte("echo"), lexer.TagEcho}, nothing, semicolon, eof},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					EchoStatement{Param: NothingLiteral{Token: nothing}},
 				},
 			},
@@ -385,8 +456,8 @@ func TestParseNothing(t *testing.T) {
 				nothing, tok{[]byte(","), lexer.TagComma}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					AssertStatement{
 						Condition: NothingLiteral{Token: nothing},
 						Message:   NothingLiteral{Token: nothing},
@@ -399,8 +470,8 @@ func TestParseNothing(t *testing.T) {
 			name:   "unary_minus_nothing",
 			tokens: []lexer.Token{tok{[]byte("-"), lexer.TagSub}, nothing, semicolon, eof},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					UnaryExpression{
 						Expression: NothingLiteral{Token: nothing},
 						Operation:  OperationLiteral{Value: "-", Token: sub},
@@ -416,8 +487,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("}"), lexer.TagCCurBrk}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					DeferExpression{
 						Block: BlockExpression{
 							Body: []Node{
@@ -439,8 +510,8 @@ func TestParseNothing(t *testing.T) {
 				tok{[]byte("f"), lexer.TagId}, tok{[]byte("("), lexer.TagOParen}, nothing, tok{[]byte(")"), lexer.TagCParen}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IdentLiteral{
 						Id:    "f",
 						Token: tok{[]byte("f"), lexer.TagId},
@@ -468,8 +539,8 @@ func TestParseNothing(t *testing.T) {
 				one, tok{[]byte("]"), lexer.TagCBrk}, semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					TapeBracketExpression{
 						Items: []Node{
 							NothingLiteral{Token: nothing},
@@ -483,17 +554,25 @@ func TestParseNothing(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			opts := NewParserOptions{}
-			if c.name == "assert_nothing_condition_and_message" {
-				opts.Filename = "a.test.ar"
+			opts := NewParserOptions{
+				Units: []ParserUnit{
+					{
+						Filename:  "test.ar",
+						Namespace: "testing",
+						Tokens:    c.tokens,
+					},
+				},
 			}
-			p := New(c.tokens, opts)
+			if c.name == "assert_nothing_condition_and_message" {
+				opts.Units[0].Filename = "a.test.ar"
+			}
+			p := New(opts)
 			ast, err := p.Parse()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !NamespaceEqual(ast.Namespace, *c.want) {
-				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Namespace, *c.want)
+			if !NamespaceEqual(ast, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast, *c.want)
 			}
 		})
 	}
@@ -518,8 +597,8 @@ func TestParseUseDeclaration(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					UseDeclaration{Namespace: "math", Alias: "m", Token: use},
 				},
 			},
@@ -538,8 +617,8 @@ func TestParseUseDeclaration(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					UseDeclaration{Namespace: "std::fs::io", Alias: "io", Token: use},
 				},
 			},
@@ -547,13 +626,21 @@ func TestParseUseDeclaration(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			p := New(c.tokens, NewParserOptions{})
-			ast, err := p.Parse()
+			p := New(NewParserOptions{
+				Units: []ParserUnit{
+					{
+						Filename:  "test.ar",
+						Namespace: "testing",
+						Tokens:    c.tokens,
+					},
+				},
+			})
+			got, err := p.Parse()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !NamespaceEqual(ast.Namespace, *c.want) {
-				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Namespace, *c.want)
+			if !NamespaceEqual(got, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", got, *c.want)
 			}
 		})
 	}
@@ -578,8 +665,8 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IdentifierLiteral{Value: "a", Token: tok{[]byte("a"), lexer.TagId}},
 				},
 			},
@@ -591,8 +678,8 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					IdentifierLiteral{Value: "b", Namespace: "a", Token: tok{[]byte("b"), lexer.TagId}},
 				},
 			},
@@ -608,8 +695,8 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 				semicolon, eof,
 			},
 			want: &Namespace{
-				Name: "main",
-				Expressions: []Node{
+				Name: "testing",
+				AST: []Node{
 					CalleeLiteral{
 						Id: IdentifierLiteral{Value: "c", Namespace: "a::b", Token: tok{[]byte("c"), lexer.TagId}},
 						Params: []ParameterLiteral{
@@ -623,14 +710,22 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			opts := NewParserOptions{}
-			p := New(c.tokens, opts)
-			ast, err := p.Parse()
+			opts := NewParserOptions{
+				Units: []ParserUnit{
+					{
+						Filename:  "test.ar",
+						Namespace: "testing",
+						Tokens:    c.tokens,
+					},
+				},
+			}
+			p := New(opts)
+			got, err := p.Parse()
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !NamespaceEqual(ast.Namespace, *c.want) {
-				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", ast.Namespace, *c.want)
+			if !NamespaceEqual(got, *c.want) {
+				t.Errorf("AST mismatch:\ngot  %+v\nwant %+v", got, *c.want)
 			}
 		})
 	}

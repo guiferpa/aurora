@@ -227,7 +227,14 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
-			ast, err := parser.New(tokens, parser.NewParserOptions{
+			ast, err := parser.New(parser.NewParserOptions{
+				Units: []parser.ParserUnit{
+					{
+						Filename:  "",
+						Namespace: "testing",
+						Tokens:    tokens,
+					},
+				},
 				EnableLogging: false,
 			}).Parse()
 			if err != nil {

@@ -7,9 +7,7 @@ import (
 	"slices"
 
 	"github.com/guiferpa/aurora/builder/evm"
-	"github.com/guiferpa/aurora/emitter"
-	"github.com/guiferpa/aurora/lexer"
-	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/linker"
 )
 
 // BuildInput is the input for the Build handler.
@@ -21,35 +19,14 @@ type BuildInput struct {
 
 // Build compiles the Aurora source at Source and writes bytecode to OutputPath.
 func Build(ctx context.Context, in BuildInput) error {
-	bs, err := os.ReadFile(in.Source)
+	l, err := linker.NewLinker(linker.NewLinkerOptions{
+		Source:  in.Source,
+		Loggers: in.Loggers,
+	})
 	if err != nil {
 		return err
 	}
-
-	tokens, err := lexer.New(lexer.NewLexerOptions{
-		EnableLogging: slices.Contains(in.Loggers, "lexer"),
-	}).GetFilledTokens(bs)
-	if err != nil {
-		return err
-	}
-
-	ast, err := parser.New(parser.NewParserOptions{
-		Units: []parser.ParserUnit{
-			{
-				Filename:  in.Source,
-				Namespace: "main",
-				Tokens:    tokens,
-			},
-		},
-		EnableLogging: slices.Contains(in.Loggers, "parser"),
-	}).Parse()
-	if err != nil {
-		return err
-	}
-
-	insts, err := emitter.New(emitter.NewEmitterOptions{
-		EnableLogging: slices.Contains(in.Loggers, "emitter"),
-	}).Emit(ast)
+	insts, err := l.Resolve()
 	if err != nil {
 		return err
 	}

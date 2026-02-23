@@ -302,7 +302,7 @@ func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
 func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 	val := e.environ.GetIdent(byteutil.ToHex(left))
 	if val == nil {
-		return fmt.Errorf("call: identifier not found")
+		return fmt.Errorf("call: %s identifier not found", left)
 	}
 	refKey := string(val)
 	blob := e.environ.GetDefer(refKey)

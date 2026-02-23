@@ -43,13 +43,25 @@ func colorizeJSON(s string) string {
 	return s
 }
 
-func WrapNodeLogging(n Node) any {
+var nodeType = reflect.TypeOf((*Node)(nil)).Elem()
+
+func WrapNodeLogging(n any) any {
 	if n == nil {
 		return nil
 	}
 
 	v := reflect.ValueOf(n)
 	t := reflect.TypeOf(n)
+
+	// slice de Node: reembrulha cada elemento
+	if t.Kind() == reflect.Slice && t.Elem().Implements(nodeType) {
+		length := v.Len()
+		arr := make([]interface{}, 0, length)
+		for i := 0; i < length; i++ {
+			arr = append(arr, WrapNodeLogging(v.Index(i).Interface()))
+		}
+		return arr
+	}
 
 	// unwrap ponteiro
 	if t.Kind() == reflect.Pointer {

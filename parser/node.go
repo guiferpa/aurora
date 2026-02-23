@@ -290,8 +290,6 @@ type Namespace struct {
 	Name         string          `json:"name"`
 	Units        []NamespaceUnit `json:"-"`
 	Dependencies []string        `json:"dependencies"`
-	Definitions  map[string]Node `json:"definitions"`
-	Executions   []Node          `json:"executions"`
 	AST          []Node          `json:"ast"`
 }
 

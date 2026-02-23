@@ -8,7 +8,7 @@ import (
 )
 
 type Emitter interface {
-	Emit(ast parser.AST) ([]Instruction, error)
+	Emit(ast parser.NamespaceUnit) ([]Instruction, error)
 }
 
 type emt struct {
@@ -256,10 +256,10 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node) Label {
 	return make([]byte, 8)
 }
 
-func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {
+func (e *emt) Emit(ast parser.Namespace) ([]Instruction, error) {
 	tc := 0
 	insts := make([]Instruction, 0)
-	for _, expr := range ast.Namespace.Expressions {
+	for _, expr := range ast.AST {
 		EmitInstruction(&tc, &insts, expr)
 	}
 	return insts, nil

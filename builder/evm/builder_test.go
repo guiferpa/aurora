@@ -49,8 +49,14 @@ false;
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		ast, err := parser.New(tokens, parser.NewParserOptions{
-			Filename:      "",
+		ast, err := parser.New(parser.NewParserOptions{
+			Units: []parser.ParserUnit{
+				{
+					Filename:  "",
+					Namespace: "testing",
+					Tokens:    tokens,
+				},
+			},
 			EnableLogging: false,
 		}).Parse()
 		if err != nil {
@@ -155,7 +161,15 @@ func TestPickRuntimeCode(t *testing.T) {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			ast, err := parser.New(tokens, parser.NewParserOptions{}).Parse()
+			ast, err := parser.New(parser.NewParserOptions{
+				Units: []parser.ParserUnit{
+					{
+						Filename:  "",
+						Namespace: "testing",
+						Tokens:    tokens,
+					},
+				},
+			}).Parse()
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return

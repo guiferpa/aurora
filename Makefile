@@ -14,13 +14,8 @@ build-force: clean aurora aurorals
 
 aurora: $(BIN)/aurora
 
-aurorals: $(BIN)/aurorals
-
 $(BIN)/aurora:
 	@CGO_ENABLED=0 go build -race -o $(BIN)/aurora ./cmd/aurora/*.go
-
-$(BIN)/aurorals:
-	@CGO_ENABLED=0 go build -race -o $(BIN)/aurorals ./cmd/aurorals/*.go
 
 clean:
 	@rm -rf $(BIN)

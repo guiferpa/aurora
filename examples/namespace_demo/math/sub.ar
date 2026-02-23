@@ -1,0 +1,3 @@
+ident sub = defer {
+  arguments(0) - arguments(1);
+};

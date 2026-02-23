@@ -98,8 +98,14 @@ func Start(in io.Reader, loggers []string) {
 			continue
 		}
 
-		ast, err := parser.New(tokens, parser.NewParserOptions{
-			Filename:      "",
+		ast, err := parser.New(parser.NewParserOptions{
+			Units: []parser.ParserUnit{
+				{
+					Filename:  "",
+					Namespace: "main",
+					Tokens:    tokens,
+				},
+			},
 			EnableLogging: slices.Contains(loggers, "parser"),
 		}).Parse()
 		if err != nil {

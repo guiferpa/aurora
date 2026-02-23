@@ -13,14 +13,20 @@ import (
 type Parser interface {
 	GetLookahead() lexer.Token
 	EatToken(tokenId string) (lexer.Token, error)
-	Parse() (AST, error)
+	Parse() (Namespace, error)
+}
+
+type ParserUnit struct {
+	Filename  string
+	Namespace string
+	Tokens    []lexer.Token
 }
 
 type pr struct {
-	cursor   int
-	tokens   []lexer.Token
-	filename string
-	logger   *Logger
+	cursor    int
+	units     []ParserUnit
+	unitindex int
+	logger    *Logger
 }
 
 // Helper functions to validate node types for tape operations
@@ -801,7 +807,7 @@ func (p *pr) ParseEcho() (Node, error) {
 
 func (p *pr) ParseAssert() (Node, error) {
 	// Validate that assert can only be used in .test.ar files
-	if !strings.HasSuffix(p.filename, ".test.ar") {
+	if !strings.HasSuffix(p.GetCurrentUnit().Filename, ".test.ar") {
 		lookahead := p.GetLookahead()
 		return nil, fmt.Errorf("assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
 	}
@@ -875,19 +881,20 @@ func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 	return exprs, nil
 }
 
-func (p *pr) ParseNamespace() (Namespace, error) {
+func (p *pr) ParseNamespaceUnit() (NamespaceUnit, error) {
 	exprs, err := p.ParseExprs(lexer.TagEOF)
 	if err != nil {
-		return Namespace{}, err
+		return NamespaceUnit{}, err
 	}
-	return Namespace{Name: "main", Expressions: exprs}, nil
+	currunit := p.GetCurrentUnit()
+	return NamespaceUnit{Name: currunit.Filename, Namespace: currunit.Namespace, AST: exprs}, nil
 }
 
 func (p *pr) GetLookahead() lexer.Token {
-	if p.cursor < len(p.tokens) {
-		return p.tokens[p.cursor]
+	if p.GetCurrentUnit() == nil || p.cursor >= len(p.GetCurrentUnit().Tokens) {
+		return nil
 	}
-	return nil
+	return p.GetCurrentUnit().Tokens[p.cursor]
 }
 
 func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
@@ -906,29 +913,60 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	return currtok, nil
 }
 
-func (p *pr) Parse() (AST, error) {
-	namespace, err := p.ParseNamespace()
-	if err != nil {
-		return AST{}, err
+func (p *pr) Parse() (Namespace, error) {
+	units := make([]NamespaceUnit, 0)
+
+	for i := 0; i < len(p.units); i++ {
+		unit, err := p.ParseNamespaceUnit()
+		if err != nil {
+			return Namespace{}, err
+		}
+		units = append(units, unit)
+		p.SetUnitIndex(i)
 	}
+
+	if len(units) == 0 {
+		return Namespace{}, fmt.Errorf("no units to parse")
+	}
+
+	name := units[0].Namespace
+	ast := make([]Node, 0)
+	for _, unit := range units {
+		ast = append(ast, unit.AST...)
+	}
+
+	namespace := Namespace{Name: name, AST: ast, Units: units}
+
 	if p.logger != nil {
 		if _, err := p.logger.JSON(namespace); err != nil {
-			return AST{}, err
+			return Namespace{}, err
 		}
 	}
-	return AST{Namespace: namespace}, nil
+
+	return namespace, nil
+}
+
+func (p *pr) SetUnitIndex(index int) {
+	p.unitindex = index
+}
+
+func (p *pr) GetCurrentUnit() *ParserUnit {
+	if p.unitindex >= len(p.units) {
+		return nil
+	}
+	return &p.units[p.unitindex]
 }
 
 type NewParserOptions struct {
-	Filename      string
+	Units         []ParserUnit
 	EnableLogging bool
 }
 
-func New(tokens []lexer.Token, options NewParserOptions) Parser {
+func New(opts NewParserOptions) Parser {
 	return &pr{
-		cursor:   0,
-		tokens:   tokens,
-		filename: options.Filename,
-		logger:   NewLogger(options.EnableLogging),
+		cursor:    0,
+		units:     opts.Units,
+		unitindex: 0,
+		logger:    NewLogger(opts.EnableLogging),
 	}
 }

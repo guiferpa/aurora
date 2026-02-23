@@ -216,7 +216,7 @@ func TestParse(t *testing.T) {
 			Tokens:    tokens,
 		},
 	}
-	p := &pr{cursor: 0, units: units}
+	p := &pr{namespace: "testing", cursor: 0, units: units}
 	ast, err := p.Parse()
 	if err != nil {
 		t.Errorf("param: %v, %v", tokens, err)
@@ -555,6 +555,7 @@ func TestParseNothing(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			opts := NewParserOptions{
+				Namespace: "testing",
 				Units: []ParserUnit{
 					{
 						Filename:  "test.ar",
@@ -627,10 +628,11 @@ func TestParseUseDeclaration(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			p := New(NewParserOptions{
+				Namespace: "testing",
 				Units: []ParserUnit{
 					{
-						Filename:  "test.ar",
 						Namespace: "testing",
+						Filename:  "test.ar",
 						Tokens:    c.tokens,
 					},
 				},
@@ -711,6 +713,7 @@ func TestParseNamespacedIdentifier(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			opts := NewParserOptions{
+				Namespace: "testing",
 				Units: []ParserUnit{
 					{
 						Filename:  "test.ar",

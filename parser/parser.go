@@ -3,6 +3,8 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -23,6 +25,7 @@ type ParserUnit struct {
 }
 
 type pr struct {
+	namespace string
 	cursor    int
 	units     []ParserUnit
 	unitindex int
@@ -868,7 +871,11 @@ func (p *pr) ParseArgs() (Node, error) {
 
 func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 	exprs := make([]Node, 0)
-	for p.GetLookahead().GetTag().Id != t.Id {
+	for {
+		lookahead := p.GetLookahead()
+		if lookahead == nil || lookahead.GetTag().Id == t.Id {
+			break
+		}
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return exprs, err
@@ -913,29 +920,46 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	return currtok, nil
 }
 
+func (p *pr) ResetCursor() {
+	p.cursor = 0
+}
+
 func (p *pr) Parse() (Namespace, error) {
 	units := make([]NamespaceUnit, 0)
 
 	for i := 0; i < len(p.units); i++ {
+		p.SetUnitIndex(i)
+		p.ResetCursor()
 		unit, err := p.ParseNamespaceUnit()
 		if err != nil {
 			return Namespace{}, err
 		}
 		units = append(units, unit)
-		p.SetUnitIndex(i)
 	}
 
 	if len(units) == 0 {
 		return Namespace{}, fmt.Errorf("no units to parse")
 	}
 
-	name := units[0].Namespace
 	ast := make([]Node, 0)
+	dependencies := make([]string, 0)
 	for _, unit := range units {
+		for _, node := range unit.AST {
+			if use, ok := node.(UseDeclaration); ok {
+				if !slices.Contains(dependencies, use.Namespace) {
+					dependencies = append(dependencies, use.Namespace)
+				}
+			}
+		}
 		ast = append(ast, unit.AST...)
 	}
 
-	namespace := Namespace{Name: name, AST: ast, Units: units}
+	namespace := Namespace{
+		Name:         p.namespace,
+		AST:          ast,
+		Units:        units,
+		Dependencies: dependencies,
+	}
 
 	if p.logger != nil {
 		if _, err := p.logger.JSON(namespace); err != nil {
@@ -958,12 +982,18 @@ func (p *pr) GetCurrentUnit() *ParserUnit {
 }
 
 type NewParserOptions struct {
+	Namespace     string
 	Units         []ParserUnit
 	EnableLogging bool
 }
 
 func New(opts NewParserOptions) Parser {
+	name := opts.Namespace
+	if name != "" && filepath.IsAbs(name) {
+		name = filepath.Base(name)
+	}
 	return &pr{
+		namespace: name,
 		cursor:    0,
 		units:     opts.Units,
 		unitindex: 0,

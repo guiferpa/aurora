@@ -37,8 +37,14 @@ func init() {
 				fmt.Println(err)
 				return nil
 			}
-			ast, err := parser.New(tokens, parser.NewParserOptions{
-				Filename:      "",
+			ast, err := parser.New(parser.NewParserOptions{
+				Units: []parser.ParserUnit{
+					{
+						Filename:  "",
+						Namespace: "main",
+						Tokens:    tokens,
+					},
+				},
 				EnableLogging: debug,
 			}).Parse()
 			if err != nil {

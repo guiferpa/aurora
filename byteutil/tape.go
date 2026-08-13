@@ -46,6 +46,16 @@ func PaddingTape(bs []byte, size int) []byte {
 	return tape
 }
 
+// LeadingTape returns the first size bytes of bs, zero-padding on the right when shorter.
+// It is the mirror of PaddingTape, which keeps the last ones: a tape is a shift register,
+// so an operation either keeps the left end or the right end and drops the rest.
+func LeadingTape(bs []byte, size int) []byte {
+	size = TapeSize(size)
+	tape := make([]byte, size)
+	copy(tape, bs)
+	return tape
+}
+
 // ToUint256 reads bs as an unsigned big-endian integer, normalizing to a tape first so a
 // reel contributes only its last tape.
 func ToUint256(bs []byte, size int) *uint256.Int {

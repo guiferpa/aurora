@@ -174,6 +174,76 @@ func (e *Evaluator) EvaluateOr(label, left, right []byte) error {
 	return nil
 }
 
+// A tape is a shift register of fixed width. Pull shifts it left, letting the item in from
+// the right; push shifts it right, letting the item in from the left. Whatever reaches the
+// far end is discarded — the width never changes.
+//
+// The item contributes only its significant bytes (from its first non-zero byte on), so
+// pulling 4 into a tape moves it one byte, not a whole tape width.
+
+// EvaluatePull shifts the tape left and lets the item in at the right end.
+func (e *Evaluator) EvaluatePull(label, left, right []byte) error {
+	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
+	item := byteutil.ExtractSignificantBytes(e.environ.GetTemp(byteutil.ToHex(right)))
+
+	shifted := make([]byte, 0, len(tape)+len(item))
+	shifted = append(shifted, tape...)
+	shifted = append(shifted, item...)
+
+	// Keeping the last bytes drops what was shifted out on the left.
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(shifted, e.tapeSize))
+	e.IncrementCursor()
+	return nil
+}
+
+// EvaluatePush shifts the tape right and lets the item in at the left end.
+func (e *Evaluator) EvaluatePush(label, left, right []byte) error {
+	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
+	item := byteutil.ExtractSignificantBytes(e.environ.GetTemp(byteutil.ToHex(right)))
+
+	shifted := make([]byte, 0, len(tape)+len(item))
+	shifted = append(shifted, item...)
+	shifted = append(shifted, tape...)
+
+	// Keeping the first bytes drops what was shifted out on the right.
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.LeadingTape(shifted, e.tapeSize))
+	e.IncrementCursor()
+	return nil
+}
+
+// EvaluateHead keeps the first n significant bytes of the tape.
+//
+// The index is taken modulo the tape width, so it can never be out of bounds: with
+// one-byte tapes every index is 0.
+func (e *Evaluator) EvaluateHead(label, left, right []byte) error {
+	significant, n := e.tapeSlice(left, right)
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[:n], e.tapeSize))
+	e.IncrementCursor()
+	return nil
+}
+
+// EvaluateTail drops the first n significant bytes of the tape and keeps the rest.
+func (e *Evaluator) EvaluateTail(label, left, right []byte) error {
+	significant, n := e.tapeSlice(left, right)
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[n:], e.tapeSize))
+	e.IncrementCursor()
+	return nil
+}
+
+// tapeSlice reads the tape under left and the index under right, and returns the tape's
+// significant bytes with the index already normalized into them.
+func (e *Evaluator) tapeSlice(left, right []byte) ([]byte, int) {
+	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
+	significant := byteutil.ExtractSignificantBytes(tape)
+
+	// The index is a literal operand, not a temp: the emitter writes it inline.
+	n := int(byteutil.ToUint64(right) % uint64(e.tapeSize))
+	if n > len(significant) {
+		n = len(significant)
+	}
+	return significant, n
+}
+
 func (e *Evaluator) EvaluatePrint(label, left []byte) error {
 	val := e.environ.GetTemp(byteutil.ToHex(left))
 	builtin.PrintFunction(e.printWriter, val)
@@ -441,6 +511,20 @@ func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
 	}
 	if inst.GetOpCode() == emitter.OpCall {
 		return e.EvaluateCall(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+
+	// Tape operations
+	if inst.GetOpCode() == emitter.OpPull {
+		return e.EvaluatePull(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpPush {
+		return e.EvaluatePush(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpHead {
+		return e.EvaluateHead(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpTail {
+		return e.EvaluateTail(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 	}
 
 	// Assertions

@@ -152,9 +152,11 @@ if flag bigger 0 then 1 else 0;   // if is an expression, returns a value
 
 ident b = true;        // a tape holding 1, same bytes as the number 1
 print b + 1;           // 2
-```
 
-> Tape operations (`pull`, `push`, `head`, `tail`) and tape literals like `[1, 2, 3]` parse and compile, but the evaluator does not run them yet.
+ident t = [1, 2, 3];   // a tape holding three bytes
+print pull t 4;        // shifts left, 4 enters at the right
+print head t 2;        // the first two significant bytes
+```
 
 For more — tapes, reels, branches, EVM-style callables — dig into the [examples folder](https://github.com/guiferpa/aurora/tree/main/examples) (e.g. `examples/evm/ident.ar`, `examples/simple_math.ar`). What's in and what's not yet: [CHANGELOG.md](CHANGELOG.md).
 
@@ -169,7 +171,7 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 
 - **Values** = tapes: a fixed run of bytes, 8 by default (`ident a = 3` → `[0,0,0,0,0,0,0,3]`). Booleans are tapes too: `true` is the same bytes as `1`.
 - **Tape size** is a compiler parameter: `tape_size` in `aurora.toml` or `--tape-size` (1 to 32, flag wins). A literal that does not fit is a compile-time error.
-- **Tapes**: `pull`, `push`, `head tape n`, `tail tape n`; index `n` is modulo the tape size. *(Not implemented in the evaluator yet.)*
+- **Tapes** are shift registers: `pull` shifts left (value in at the right), `push` shifts right (value in at the left), `head`/`tail` slice the significant bytes; index `n` is modulo the tape size.
 - **Reels**: strings are runs of tapes (one per character); use `echo` to print.
 - **Arithmetic**: a tape read as an unsigned big-endian integer, wrapping at the tape width.
 </details>

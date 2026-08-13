@@ -81,7 +81,7 @@ ident c = [];       // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
 ident d = true;     // [0, 0, 0, 0, 0, 0, 0, 1] (same bytes as the number 1)
 ```
 
-Note: Tapes (arrays) store values directly as bytes, not as unsigned 64-bit integers. So `[1, 2, 3]` is represented as `[0, 0, 0, 0, 0, 1, 2, 3]` (8 bytes, right-aligned), not as 24 bytes (3 × 8 bytes). All tapes have the same width (`tape_size`, 8 by default). If an operation would result in more than 8 bytes, an error is raised.
+Note: Tapes (arrays) store values directly as bytes, not as unsigned 64-bit integers. So `[1, 2, 3]` is represented as `[0, 0, 0, 0, 0, 1, 2, 3]` (8 bytes, right-aligned), not as 24 bytes (3 × 8 bytes). All tapes have the same width (`tape_size`, 8 by default). The width never changes: an operation that would need more room discards what reaches the far end (see Tape Operations).
 
 ## Tapes (Arrays)
 
@@ -116,14 +116,16 @@ ident e = [];  // [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
 
 ### Tape Operations
 
-> ⚠ **Not implemented yet.** `pull`, `push`, `head` and `tail` are recognized by the lexer, parsed and emitted, but the evaluator has no case for them — they do not run. Because a tape literal like `[1, 2, 3]` is compiled as a chain of `pull`, it does not run either. This section describes the intended design; the operations below are not usable today.
+A tape behaves as a **shift register** of fixed width. `pull` moves it left and lets the value in at the right end; `push` moves it right and lets the value in at the left end. Whatever reaches the far end is discarded — the width never changes and nothing grows.
 
-Aurora provides several operations to work with tapes:
+The value contributes only its **significant bytes** (from its first non-zero byte on), so pulling `4` moves the tape by one byte, not by a whole width.
 
-- **`pull tape value`**: Removes bytes from the beginning and adds the value at the end
-- **`push tape value`**: Adds the value at the beginning and removes bytes from the end
-- **`head tape n`**: Gets the first `n` bytes from the tape
-- **`tail tape n`**: Gets all bytes after skipping the first `n` bytes
+- **`pull tape value`**: shifts left, the value enters at the right; bytes leaving on the left are discarded
+- **`push tape value`**: shifts right, the value enters at the left; bytes leaving on the right are discarded
+- **`head tape n`**: keeps the first `n` significant bytes
+- **`tail tape n`**: drops the first `n` significant bytes and keeps the rest
+
+Because everything is a tape, these work on any value — `ident a = 1; push a 2;` is as valid as operating on a `[…]` literal.
 
 #### Index Behavior for `head` and `tail`
 
@@ -146,8 +148,8 @@ Since all tapes have the same width, the index `n` in `head` and `tail` operatio
 ```javascript
 // Create a tape and manipulate it
 ident a = [1, 2, 3];        // [0, 0, 0, 0, 0, 1, 2, 3]
-ident b = pull a 4;         // Remove 1 byte, add 4: [0, 0, 0, 0, 1, 2, 3, 4]
-ident c = push b 5;         // Add 5 at start, remove 1 byte: [5, 0, 0, 0, 1, 2, 3]
+ident b = pull a 4;         // 4 enters at the right: [0, 0, 0, 0, 1, 2, 3, 4]
+ident c = push b 5;         // 5 enters at the left, the 4 falls off the right: [5, 0, 0, 0, 0, 1, 2, 3]
 
 // Extract parts of a tape
 ident d = head [1, 2, 3, 4, 5] 2;      // First 2 bytes: [0, 0, 0, 0, 0, 0, 1, 2]

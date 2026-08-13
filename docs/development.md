@@ -34,8 +34,11 @@ go run ./cmd/aurora repl
 ```sh
 go build -o /tmp/aurora ./cmd/aurora   # plain, fast
 make aurora                            # ./target/bin/aurora, rebuilt whenever sources change
-make build-force                       # clean + rebuild from scratch
+make aurorals                          # ./target/bin/aurorals, the language server
+make build-force                       # clean + rebuild both from scratch
 ```
+
+The project ships **two binaries**: `aurora` (CLI) and `aurorals` (language server, see [lsp.md](lsp.md)). Both are declared in `.goreleaser.yaml`, so a missing one breaks the release build.
 
 `$(BIN)/aurora` depends on the `SOURCES` list (every `*.go` in the tree plus `go.mod` and `go.sum`), so editing code rebuilds the binary and running the target twice does nothing the second time. Adding a new file is picked up too, since the list is computed on each invocation.
 

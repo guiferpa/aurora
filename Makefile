@@ -2,6 +2,9 @@ SHELL=/bin/sh
 GOBIN ?= $(shell go env GOBIN)
 BIN ?= ./target/bin
 PKGS = $(shell go list ./... | grep -v examples)
+# Every Go file plus the module files: prerequisites of the binary, so editing source
+# rebuilds it instead of leaving a stale binary behind.
+SOURCES = $(shell find . -type f -name '*.go' -not -path './.git/*') go.mod go.sum
 LINTER = $(GOBIN)/golangci-lint
 ACT_BIN = $(GOBIN)/act
 TPARSE_BIN = $(GOBIN)/tparse
@@ -14,7 +17,8 @@ build-force: clean aurora aurorals
 
 aurora: $(BIN)/aurora
 
-$(BIN)/aurora:
+$(BIN)/aurora: $(SOURCES)
+	@mkdir -p $(BIN)
 	@CGO_ENABLED=0 go build -race -o $(BIN)/aurora ./cmd/aurora/*.go
 
 clean:

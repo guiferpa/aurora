@@ -46,7 +46,13 @@ func (l *Lexer) GetTokens(bs []byte) ([]Token, error) {
 	for cursor < length {
 		matched, tag, match := MatchToken(bs[cursor:])
 		if !matched && !isComment {
-			return tokens, fmt.Errorf("unexpected character at line %d, column %d", line, col)
+			return tokens, &Error{
+				Message: fmt.Sprintf("unexpected character at line %d, column %d", line, col),
+				Line:    line,
+				Column:  col,
+				Offset:  cursor,
+				Length:  1,
+			}
 		}
 		if _, err := l.logger.Println(tag, match); err != nil {
 			return tokens, err

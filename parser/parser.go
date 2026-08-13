@@ -161,7 +161,7 @@ func (p *pr) ParseReel() (ReelLiteral, error) {
 	// Remove surrounding quotes and get the string content
 	match := tok.GetMatch()
 	if len(match) < 2 {
-		return ReelLiteral{}, fmt.Errorf("invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
+		return ReelLiteral{}, lexer.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
 	}
 	// Remove first and last character (quotes)
 	content := match[1 : len(match)-1]
@@ -700,7 +700,7 @@ func (p *pr) ParseIdent() (Node, error) {
 	}
 	id, err := p.EatToken(lexer.ID)
 	if len(id.GetMatch()) == 0 {
-		return nil, fmt.Errorf("missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn())
+		return nil, lexer.NewError(id, "missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn())
 	}
 	if err != nil {
 		return nil, err
@@ -812,7 +812,7 @@ func (p *pr) ParseAssert() (Node, error) {
 	// Validate that assert can only be used in .test.ar files
 	if !strings.HasSuffix(p.GetCurrentUnit().Filename, ".test.ar") {
 		lookahead := p.GetLookahead()
-		return nil, fmt.Errorf("assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
+		return nil, lexer.NewError(lookahead, "assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
 	}
 
 	t, err := p.EatToken(lexer.ASSERT)
@@ -912,7 +912,7 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	}
 
 	if tokenId != currtok.GetTag().Id {
-		return currtok, fmt.Errorf("unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn())
+		return currtok, lexer.NewError(currtok, "unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn())
 	}
 
 	p.cursor++

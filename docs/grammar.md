@@ -38,7 +38,7 @@ Aurora is **expression-only**: the grammar has no separate statement category. T
 | Name | Reference | Representation |
 |---|---|---|
 | Logical | **_log** | `true \| false` |
-| Character | **_char** | *Represented for 8 bytes encoded given UTF-32* |
+| Character | **_char** | *One tape (`tape_size` bytes, 8 by default)* |
 | Integer | **_int** | `[0-9]+` |
 | Identifier | **_id** | `[a-zA-Z_?!]` |
 

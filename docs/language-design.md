@@ -2,6 +2,36 @@
 
 How Aurora thinks about values and the cool stuff you can do with them.
 
+## Tape size (how many bytes a value has)
+
+Every value in Aurora is a **tape**: a fixed run of bytes, big-endian, right-aligned. How many bytes is a property of the program being compiled, not of the language — the default is **8**, the floor is **1** and the ceiling is **32** (the EVM word, and the widest operand `PUSH32` can carry).
+
+```toml
+# aurora.toml
+[profiles.main]
+  tape_size = 1
+```
+
+```sh
+aurora build --tape-size 2    # the flag wins over the manifest
+aurora run -t 1
+aurora repl -t 1
+```
+
+The size applies to the whole compilation unit — the linker compiles a directory as one namespace, so two files cannot disagree — and the compiled binary carries the choice implicitly.
+
+**A literal that does not fit is a compile-time error**, not a silent truncation:
+
+```
+value 300 does not fit in a 1-byte tape (max 255)
+```
+
+What changes with a narrow tape is worth saying out loud:
+
+- **Arithmetic wraps at the tape width.** With `tape_size = 1`, `255 + 1` is `0` and `0 - 1` is `255`. A tape of N bytes holds values modulo 2^(8N).
+- **`head` and `tail` take the index modulo the width**, so with one byte the index is always 0.
+- **A reel is a run of tapes**, so with one byte per tape a string is one byte per character — plain ASCII.
+
 ## Expressions only (no Statements)
 
 Aurora is an **expression-only** language: there are no statements. Everything at the top level and inside blocks is an expression that produces a value.
@@ -16,13 +46,13 @@ So when you write `ident a = 3;` or `print x;` or `nothing;`, you are always wri
 
 Aurora has a first-class value called **nothing**, written with the keyword `nothing`. It is the **universal neutral value** of the language.
 
-- **Representation**: Internally it is 8 zero bytes. It is not null, not absence, not an error — it is a normal value that means "neutral" or "no meaningful value."
+- **Representation**: Internally it is a tape of zeros — the same bytes as the number `0`. It is not null, not absence, not an error — it is a normal value that means "neutral" or "no meaningful value."
 - **Where it appears**: Empty blocks `{ }` evaluate to nothing. An `if` without `else` has an implicit else that returns nothing. Any expression that "does nothing" or has no other value yields nothing.
-- **Use**: You can assign it (`ident x = nothing;`), pass it to functions (`print nothing;`), compare it, or use it in arithmetic (it behaves like zero). It compiles to the same 8-byte representation as the number 0.
+- **Use**: You can assign it (`ident x = nothing;`), pass it to functions (`print nothing;`), compare it, or use it in arithmetic (it behaves like zero). It has the same representation as the number 0, byte for byte.
 
 ```javascript
 nothing;              // expression that evaluates to nothing
-ident x = nothing;    // x holds the nothing value (8 zero bytes)
+ident x = nothing;    // x holds the nothing value (a tape of zeros)
 print nothing;        // prints the nothing value
 if false { 1; } else { nothing; };  // explicit nothing in a branch
 { };                  // empty block evaluates to nothing
@@ -35,10 +65,10 @@ Aurora is **untyped** — everything is just bytes under the hood. There are no 
 ### Core Concept
 
 In Aurora, all values are byte arrays:
-- `ident a = 3;` → 8 bytes representing the number 3
-- `ident b = [1, 2];` → 8 bytes: `[0, 0, 0, 0, 0, 0, 1, 2]` (tape values stored as direct bytes, right-aligned)
-- `ident c = [];` → 8 bytes: `[0, 0, 0, 0, 0, 0, 0, 0]` (empty tape, all zeros)
-- `ident d = true;` → 1 byte representing boolean true
+- `ident a = 3;` → `[0, 0, 0, 0, 0, 0, 0, 3]`
+- `ident b = [1, 2];` → `[0, 0, 0, 0, 0, 0, 1, 2]` (tape values stored as direct bytes, right-aligned)
+- `ident c = [];` → `[0, 0, 0, 0, 0, 0, 0, 0]` (empty tape, all zeros)
+- `ident d = true;` → `[0, 0, 0, 0, 0, 0, 0, 1]` — **a boolean is a tape like any other value**, indistinguishable from the number 1
 
 This means that `3` (8 bytes) and `[1, 2]` (8 bytes) are just different representations of bytes. The language doesn't enforce type safety - it's up to the operations to interpret the bytes correctly.
 
@@ -48,10 +78,10 @@ This means that `3` (8 bytes) and `[1, 2]` (8 bytes) are just different represen
 ident a = 3;        // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 3]
 ident b = [1, 2];   // 8 bytes: [0, 0, 0, 0, 0, 0, 1, 2] (tape values as direct bytes, right-aligned)
 ident c = [];       // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
-ident d = true;     // 1 byte: [1]
+ident d = true;     // [0, 0, 0, 0, 0, 0, 0, 1] (same bytes as the number 1)
 ```
 
-Note: Tapes (arrays) store values directly as bytes, not as unsigned 64-bit integers. So `[1, 2, 3]` is represented as `[0, 0, 0, 0, 0, 1, 2, 3]` (8 bytes, right-aligned), not as 24 bytes (3 × 8 bytes). All tapes are exactly 8 bytes. If an operation would result in more than 8 bytes, an error is raised.
+Note: Tapes (arrays) store values directly as bytes, not as unsigned 64-bit integers. So `[1, 2, 3]` is represented as `[0, 0, 0, 0, 0, 1, 2, 3]` (8 bytes, right-aligned), not as 24 bytes (3 × 8 bytes). All tapes have the same width (`tape_size`, 8 by default). If an operation would result in more than 8 bytes, an error is raised.
 
 ## Tapes (Arrays)
 
@@ -78,13 +108,15 @@ ident e = [];  // [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
 
 ### Key Points
 
-- **Tapes are 8-byte arrays**: All tapes are exactly 8 bytes, regardless of how many values you specify
+- **Tapes all have the same width**: `tape_size` bytes (8 by default), regardless of how many values you specify
 - **Values are stored as direct bytes**: Each value in `[1, 2, 3]` is stored as a single byte, not as an 8-byte unsigned 64-bit integer
 - **Right-aligned storage**: Values are padded with zeros on the left (right-aligned)
 - **Just syntactic sugar**: `[1, 2, 3]` is equivalent to creating an 8-byte array and using operations like `pull` to add values
 - **Same as numbers**: `0` and `[]` both create the same 8-byte array of zeros
 
 ### Tape Operations
+
+> ⚠ **Not implemented yet.** `pull`, `push`, `head` and `tail` are recognized by the lexer, parsed and emitted, but the evaluator has no case for them — they do not run. Because a tape literal like `[1, 2, 3]` is compiled as a chain of `pull`, it does not run either. This section describes the intended design; the operations below are not usable today.
 
 Aurora provides several operations to work with tapes:
 
@@ -95,7 +127,7 @@ Aurora provides several operations to work with tapes:
 
 #### Index Behavior for `head` and `tail`
 
-Since all tapes are exactly 8 bytes, the index `n` in `head` and `tail` operations is automatically applied modulo 8 to prevent boundary errors. This means:
+Since all tapes have the same width, the index `n` in `head` and `tail` operations is applied modulo `tape_size` to prevent boundary errors. This means:
 
 - **Any index value works**: You can use any integer value, and it will be wrapped to the range 0-7
 - **No boundary errors**: Operations never fail due to index out of bounds
@@ -214,7 +246,7 @@ Remember: Strings in Aurora are reels - arrays of tapes where each character is 
 
 ## Arithmetic Operations
 
-Arithmetic operations in Aurora work by interpreting the first 8 bytes of a value as an unsigned 64-bit integer.
+Arithmetic reads a tape as an unsigned big-endian integer and writes the result back as a tape, wrapping at the tape width.
 
 ### How It Works
 
@@ -261,8 +293,6 @@ print false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 
 - **Arithmetic operations always work on unsigned 64-bit integers**: Operations like `+`, `-`, `*`, `/`, `^` interpret values as unsigned 64-bit integers
 - **Tapes store values as direct bytes**: When you write `[1, 2, 3]`, the values are stored directly as bytes in an 8-byte array: `[0, 0, 0, 0, 0, 1, 2, 3]`
 - **For arithmetic, tapes are treated as 8-byte values**: The entire 8-byte array is interpreted as a single unsigned 64-bit integer for arithmetic operations
-- **Booleans are padded to 8 bytes for arithmetic**: 
-  - `true` → `[0, 0, 0, 0, 0, 0, 0, 1]` (8 bytes, value = 1)
-  - `false` → `[0, 0, 0, 0, 0, 0, 0, 0]` (8 bytes, value = 0)
-  - This means `true + 1 = 2` and `false + 1 = 1`
+- **Booleans need no special rule**: `true` is a tape holding 1 and `false` a tape of zeros, so `true + 1 = 2` and `false + 1 = 1` fall out of ordinary arithmetic
+- **Arithmetic wraps at the tape width**: with `tape_size = 1`, `255 + 1` is `0`
 - **This is a design decision**: Aurora prioritizes simplicity and the untyped philosophy over strict type safety

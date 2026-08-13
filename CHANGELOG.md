@@ -4,6 +4,23 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## Unreleased
+
+### Language
+
+- **Every value is a tape of the same width.** Booleans are no longer a one-byte exception: `true` is a tape holding 1, indistinguishable from the number 1, and `nothing` is a tape of zeros — the same bytes as `0`.
+- **Tape width is a compiler parameter**: `tape_size` in `aurora.toml` or `--tape-size` on `build`, `run` and `repl` (1 to 32 bytes, default 8, flag wins over the manifest). A literal that does not fit is a compile-time error instead of being truncated silently.
+- Arithmetic now wraps at the tape width (`255 + 1` is `0` with one-byte tapes) and runs on 256-bit integers, which also fixes `^` losing precision above 2^53.
+- The EVM backend emits `PUSH<n>` for the configured width, from `PUSH1` to `PUSH32`.
+- The REPL prints values as numbers: with no boolean type of its own, there is no `true`/`false` to show.
+
+### Tooling
+
+- `aurorals`, the language server, returned with semantic tokens, diagnostics, hover and completion. See [docs/lsp.md](docs/lsp.md).
+- The REPL gained command history (`~/.aurora/history`) and line editing with the arrow keys.
+
+---
+
 ## Alpha (v0.13.1)
 
 First alpha release: Aurora compiles source code to EVM bytecode. Use for study and experimentation only; **do not use in production**.

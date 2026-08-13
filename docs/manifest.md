@@ -42,8 +42,11 @@ These are written by `aurora init` and are enough for **build** and **run**.
 | **`source`** | Yes      | `"src/main.ar"` | Path to the main Aurora source file, relative to the project root. Used by `aurora build`, `aurora run`, and (when building before deploy) by `aurora deploy` when you don’t pass a file path. |
 | **`binary`** | Yes      | `"bin/main"`    | Path where the compiled binary (bytecode) is written, relative to the project root. Used by `aurora build` when you don’t pass `-o`, and by `aurora deploy` as the contract bytecode to send. The name usually matches the source filename without extension (e.g. `main.ar` → `bin/main`). |
 
+| **`tape_size`** | No | `8` | Width in bytes of every value in this project, from 1 to 32. A literal that does not fit is rejected at compile time. Overridden by `--tape-size` on the command line. See [language-design.md](language-design.md#tape-size-how-many-bytes-a-value-has). |
+
 **Why:**  
-- **`source`** centralizes the entry point so `aurora build` and `aurora run` can be used without arguments.  
+- **`source`** centralizes the entry point so `aurora build` and `aurora run` can be used without arguments.
+- **`tape_size`** declares the dialect the project is written in: everything the linker compiles into one namespace shares it, so it belongs to the project rather than to a command line someone has to remember.  
 - **`binary`** centralizes the build output so `aurora build` and `aurora deploy` agree on where the bytecode lives.
 
 ### Optional fields (on-chain)

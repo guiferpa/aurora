@@ -26,6 +26,7 @@ Aurora is a **study-focused** language that compiles to the Ethereum Virtual Mac
 - [Language Design](docs/language-design.md) (Expressions only, Nothing, Untyped, Tapes, Reels, Arithmetic)
 - [Try it out](#try-it-out) — [Playground](#playground)
 - [Extra options](#extra-options) — [Debug flag](#debug-flag)
+- [Development](docs/development.md) (build, tests, coverage, lint, CI) — for contributors
 - [Publishing releases](docs/releasing.md) (maintainers)
 
 ## Get started
@@ -200,6 +201,18 @@ Flags:
   -h, --help   help for aurora
 
 Use "aurora [command] --help" for more information about a command.
+```
+
+## Contributing
+
+Building the binary, running the suite, coverage expectations, lint and CI are all in **[docs/development.md](docs/development.md)**.
+
+Quick start:
+
+```sh
+go run ./cmd/aurora repl     # fast loop, no build needed
+go test ./... -race          # tests
+make lint                    # golangci-lint, same version and args CI uses
 ```
 
 <details>

@@ -8,6 +8,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0
 	github.com/ethereum/go-ethereum v1.16.7
 	github.com/fatih/color v1.17.0
+	github.com/holiman/uint256 v1.3.2
 	github.com/spf13/cobra v1.8.1
 	golang.org/x/term v0.36.0
 )
@@ -26,7 +27,6 @@ require (
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -31,3 +31,23 @@ jobs:
         with:
           path-to-profile: covprofile
 
+  lint:
+    runs-on: ubuntu-24.04
+    name: Lint
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Running lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          # Keep in sync with the version installed by the Makefile's $(LINTER) target.
+          version: v2.7.2
+          # Same arguments as "make lint", so local and CI agree.
+          args: ./... --timeout 10m
+

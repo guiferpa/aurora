@@ -5,10 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/guiferpa/aurora/internal/cli"
 	"github.com/guiferpa/aurora/repl"
 )
 
 func init() {
+	replCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8)")
 	replCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
 }
 
@@ -20,7 +22,14 @@ var replCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		repl.Start(os.Stdin, loggers)
+		tapeSize, err := cmd.Flags().GetInt("tape-size")
+		if err != nil {
+			return err
+		}
+		if err := cli.ValidateTapeSize(tapeSize); err != nil {
+			return err
+		}
+		repl.Start(os.Stdin, loggers, tapeSize)
 		return nil
 	},
 }

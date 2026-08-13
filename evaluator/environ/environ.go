@@ -1,5 +1,10 @@
 package environ
 
+import "github.com/guiferpa/aurora/byteutil"
+
+// calldataSlotSize is the ABI word used to pass arguments in, independent of the tape size.
+const calldataSlotSize = 32
+
 type Environ struct {
 	args   map[uint64][]byte
 	idents map[string][]byte
@@ -101,15 +106,18 @@ func (e *Environ) GetArgumentsLength() uint64 {
 }
 
 type NewEnvironOptions struct {
-	Idents map[string][]byte
-	Args   []byte
-	Prev   *Environ
+	Idents   map[string][]byte
+	Args     []byte
+	Prev     *Environ
+	TapeSize int
 }
 
 func NewEnviron(opts NewEnvironOptions) *Environ {
+	// Arguments arrive as 32-byte ABI words (EVM calldata convention) and are narrowed to
+	// tapes, so arguments(n) yields a value of the same width as everything else.
 	args := make(map[uint64][]byte, 0)
-	for i := 0; i < len(opts.Args); i += 32 {
-		args[uint64(i/32)] = opts.Args[i : i+32]
+	for i := 0; i < len(opts.Args); i += calldataSlotSize {
+		args[uint64(i/calldataSlotSize)] = byteutil.PaddingTape(opts.Args[i:i+calldataSlotSize], opts.TapeSize)
 	}
 	idents := make(map[string][]byte, 0)
 	if opts.Idents != nil {

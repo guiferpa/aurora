@@ -20,22 +20,14 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-func isString(v []byte) bool {
-	return len(v) > 8 && len(v)%8 == 0 && utf8.Valid(v)
+// isString reports whether the value looks like a reel: more than one tape, all printable.
+func isString(v []byte, tapeSize int) bool {
+	return len(v) > tapeSize && len(v)%tapeSize == 0 && utf8.Valid(v)
 }
 
-func isBoolean(v []byte) bool {
-	return len(v) == 1 && v[0] == 0
-}
-
-func isNothing(v []byte) bool {
-	return byteutil.IsNothing(v)
-}
-
-func render(w io.Writer, temps map[string][]byte, eerr error) {
+func render(w io.Writer, temps map[string][]byte, eerr error, tapeSize int) {
 	marker := color.New(color.FgWhite, color.Bold).Sprint("=")
 	literals := color.New(color.FgHiYellow).SprintFunc()
-	internals := color.New(color.FgCyan).SprintFunc()
 	errors := color.New(color.FgRed).SprintFunc()
 	format := "%s %s\n"
 
@@ -44,20 +36,14 @@ func render(w io.Writer, temps map[string][]byte, eerr error) {
 		return
 	}
 
+	// Every value is a tape of bytes, so there is nothing to render as "true" or as a
+	// distinct neutral value: true is a tape holding 1 and nothing is a tape of zeros.
 	for _, v := range temps {
-		if isNothing(v) {
-			_, _ = fmt.Fprintf(w, format, marker, internals("<nothing>"))
-			continue
-		}
-		if isBoolean(v) {
-			_, _ = fmt.Fprintf(w, format, marker, literals(byteutil.ToBoolean(v)))
-			continue
-		}
-		if isString(v) {
+		if isString(v, tapeSize) {
 			_, _ = fmt.Fprintf(w, format, marker, literals(string(v)))
 			continue
 		}
-		er, err := byteutil.Encode(v)
+		er, err := byteutil.Encode(v, tapeSize)
 		if err != nil {
 			_, _ = fmt.Fprint(w, errors(err))
 			break
@@ -111,11 +97,13 @@ func newLineReader(in io.Reader) (lineReader, *History) {
 	}), hist
 }
 
-func Start(in io.Reader, loggers []string) {
+func Start(in io.Reader, loggers []string, tapeSize int) {
+	tapeSize = byteutil.TapeSize(tapeSize)
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
 		EchoWriter:    &EchoWriter{},
 		PrintWriter:   &PrintWriter{},
+		TapeSize:      tapeSize,
 	})
 
 	reader, hist := newLineReader(in)
@@ -175,6 +163,7 @@ func Start(in io.Reader, loggers []string) {
 				},
 			},
 			EnableLogging: slices.Contains(loggers, "parser"),
+			TapeSize:      tapeSize,
 		}).Parse()
 		if err != nil {
 			fmt.Println(err)
@@ -183,6 +172,7 @@ func Start(in io.Reader, loggers []string) {
 
 		insts, err := emitter.New(emitter.NewEmitterOptions{
 			EnableLogging: slices.Contains(loggers, "emitter"),
+			TapeSize:      tapeSize,
 		}).Emit(ast)
 		if err != nil {
 			fmt.Println(err)
@@ -195,7 +185,7 @@ func Start(in io.Reader, loggers []string) {
 		to := uint64(len(instsBuffer))
 
 		temps, err := ev.EvaluateRange(instsBuffer, from, to)
-		render(os.Stdout, temps, err)
+		render(os.Stdout, temps, err, tapeSize)
 		if err != nil {
 			continue
 		}

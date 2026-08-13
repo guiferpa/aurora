@@ -36,6 +36,7 @@ type RuntimeCode struct {
 }
 
 type Builder struct {
+	tapeSize     int
 	cursor       int
 	insts        []emitter.Instruction
 	operands     [][]byte
@@ -72,7 +73,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 
 	// Emit EVM bytecode for the defer body (OpBeginScope, ...exprs..., OpReturn).
 	code := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteCode(code, b.identManager, body); err != nil {
+	if _, err := WriteCode(code, b.identManager, body, b.tapeSize); err != nil {
 		return nil, cursor, false
 	}
 
@@ -117,7 +118,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	if len(rootinsts) > 0 {
 		rootinsts = Lowering(rootinsts)
 		root := bytes.NewBuffer(make([]byte, 0))
-		if _, err := WriteCode(root, b.identManager, rootinsts); err != nil {
+		if _, err := WriteCode(root, b.identManager, rootinsts, b.tapeSize); err != nil {
 			return nil, err
 		}
 		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil
@@ -160,10 +161,13 @@ func (b *Builder) Build(w io.Writer) (int, error) {
 
 type NewBuilderOptions struct {
 	EnableLogging bool
+	// TapeSize is the width in bytes of every value. Zero means the default (8).
+	TapeSize int
 }
 
 func NewBuilder(insts []emitter.Instruction, options NewBuilderOptions) *Builder {
 	return &Builder{
+		tapeSize:     byteutil.TapeSize(options.TapeSize),
 		operands:     make([][]byte, 0),
 		identManager: NewIdentManager(),
 		cursor:       0,

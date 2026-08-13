@@ -6,23 +6,22 @@ func (err *ErrEncode) Error() string {
 	return "unknown byte sequence to encode"
 }
 
-func Encode(v []byte) (any, error) {
-	if len(v) == 8 {
-		return ToUint64(v), nil
+// Encode renders bytes for display: a single tape becomes its decimal value, and a run of
+// tapes (a reel) becomes one value per tape.
+//
+// There is no boolean case any more. Every value is a tape, so true is indistinguishable
+// from 1 and showing it otherwise would be inventing a type the language does not have.
+func Encode(v []byte, size int) (any, error) {
+	size = TapeSize(size)
+	if len(v) == 0 || len(v)%size != 0 {
+		return nil, &ErrEncode{}
 	}
-	if len(v)%8 == 0 {
-		r := make([]uint64, 0)
-		i := 0
-		for i < len(v) {
-			r = append(r, ToUint64(v[i:i+8]))
-			i += 8
-		}
-		return r, nil
+	if len(v) == size {
+		return ToUint256(v, size).Dec(), nil
 	}
-	if len(v) == 1 {
-		return ToBoolean(v), nil
+	values := make([]string, 0, len(v)/size)
+	for i := 0; i < len(v); i += size {
+		values = append(values, ToUint256(v[i:i+size], size).Dec())
 	}
-	return nil, &ErrEncode{}
+	return values, nil
 }
-
-

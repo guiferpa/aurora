@@ -9,19 +9,14 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 )
 
-func WritePush8(w io.Writer, operand []byte) (int, error) {
-	if _, err := w.Write([]byte{OpPush8}); err != nil {
+// WritePush emits PUSH<size> with the operand as a tape. The push opcodes are contiguous
+// from PUSH1 to PUSH32, so the opcode is derived from the width.
+func WritePush(w io.Writer, operand []byte, size int) (int, error) {
+	size = byteutil.TapeSize(size)
+	if _, err := w.Write([]byte{OpPush1 + byte(size-1)}); err != nil {
 		return 0, err
 	}
-	padded := byteutil.Padding64Bits(operand)
-	if _, err := w.Write(padded); err != nil {
-		return 0, err
-	}
-	return 0, nil
-}
-
-func WriteBool(w io.Writer, v byte) (int, error) {
-	if _, err := w.Write([]byte{OpPush1, v}); err != nil {
+	if _, err := w.Write(byteutil.PaddingTape(operand, size)); err != nil {
 		return 0, err
 	}
 	return 0, nil
@@ -44,21 +39,10 @@ func WriteDivide(w io.Writer) (int, error) {
 	return w.Write([]byte{OpDiv})
 }
 
-// WriteSave emits the value onto the EVM stack: PUSH1 for single byte, PUSH8 (8-byte padded) otherwise.
-func WriteSave(w io.Writer, left []byte) (int, error) {
-	if len(left) == 1 {
-		if _, err := w.Write([]byte{OpPush1, left[0]}); err != nil {
-			return 0, err
-		}
-		return 0, nil
-	}
-	if _, err := w.Write([]byte{OpPush8}); err != nil {
-		return 0, err
-	}
-	if _, err := w.Write(byteutil.Padding64Bits(left)); err != nil {
-		return 0, err
-	}
-	return 0, nil
+// WriteSave puts a value on the EVM stack as a tape of the configured width. There is no
+// special case for booleans any more: they are tapes like everything else.
+func WriteSave(w io.Writer, left []byte, size int) (int, error) {
+	return WritePush(w, left, size)
 }
 
 type IdentOffsetMapper interface {
@@ -204,7 +188,7 @@ func WriteBodyCode(bs io.Writer, ds []Dispatcher, root *bytes.Buffer) (int, erro
 	return 0, nil
 }
 
-func WriteCode(bs io.Writer, im *IdentManager, insts []emitter.Instruction) (int, error) {
+func WriteCode(bs io.Writer, im *IdentManager, insts []emitter.Instruction, tapeSize int) (int, error) {
 	for _, inst := range insts {
 		op := inst.GetOpCode()
 
@@ -239,7 +223,7 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []emitter.Instruction) (int
 		}
 
 		if op == emitter.OpSave {
-			if _, err := WriteSave(bs, inst.GetLeft()); err != nil {
+			if _, err := WriteSave(bs, inst.GetLeft(), tapeSize); err != nil {
 				return 0, err
 			}
 		}

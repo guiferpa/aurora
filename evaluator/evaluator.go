@@ -4,7 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
+
+	"github.com/holiman/uint256"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
@@ -53,6 +54,12 @@ type Evaluator struct {
 	echoWriter   io.Writer
 	printWriter  io.Writer
 	environ      *environ.Environ
+	tapeSize     int
+}
+
+// TapeSize is the width, in bytes, of every value this evaluator handles.
+func (e *Evaluator) TapeSize() int {
+	return e.tapeSize
 }
 
 func (e *Evaluator) GetAssertErrors() []error {
@@ -63,104 +70,90 @@ func (e *Evaluator) SetPlayer(player *Player) {
 	e.player = player
 }
 
+// operands reads the two temps an operation consumes, as tapes of the configured size.
+func (e *Evaluator) operands(left, right []byte) (*uint256.Int, *uint256.Int) {
+	x := byteutil.ToUint256(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
+	y := byteutil.ToUint256(e.environ.GetTemp(byteutil.ToHex(right)), e.tapeSize)
+	return x, y
+}
+
+// setValue stores an arithmetic result, wrapped to the tape size: a tape of N bytes holds
+// values modulo 2^(8N), so 255 + 1 is 0 when a tape is one byte wide.
+func (e *Evaluator) setValue(label []byte, v *uint256.Int) {
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FromUint256(v, e.tapeSize))
+}
+
+// setCondition stores a comparison result as an ordinary tape.
+func (e *Evaluator) setCondition(label []byte, cond bool) {
+	value := byteutil.FalseTape(e.tapeSize)
+	if cond {
+		value = byteutil.TrueTape(e.tapeSize)
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), value)
+}
+
 func (e *Evaluator) EvaluateAdd(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := make([]byte, 8)
-	binary.BigEndian.PutUint64(r, x+y)
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setValue(label, new(uint256.Int).Add(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateSubtract(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := make([]byte, 8)
-	binary.BigEndian.PutUint64(r, x-y)
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setValue(label, new(uint256.Int).Sub(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateMultiply(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := make([]byte, 8)
-	binary.BigEndian.PutUint64(r, x*y)
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setValue(label, new(uint256.Int).Mul(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateDivide(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	if y == 0 {
+	x, y := e.operands(left, right)
+	if y.IsZero() {
 		return fmt.Errorf("integer divide by zero")
 	}
-	r := make([]byte, 8)
-	binary.BigEndian.PutUint64(r, x/y)
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.setValue(label, new(uint256.Int).Div(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateExponential(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	v := math.Pow(float64(x), float64(y))
-	r := make([]byte, 8)
-	binary.BigEndian.PutUint64(r, uint64(v))
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setValue(label, new(uint256.Int).Exp(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateDiff(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := byteutil.False
-	if x != y {
-		r = byteutil.True
-	}
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setCondition(label, !x.Eq(y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateEquals(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := byteutil.False
-	if x == y {
-		r = byteutil.True
-	}
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setCondition(label, x.Eq(y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateBigger(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := byteutil.False
-	if x > y {
-		r = byteutil.True
-	}
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setCondition(label, x.Gt(y))
 	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateSmaller(label, left, right []byte) error {
-	x := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToUint64(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := byteutil.False
-	if x < y {
-		r = byteutil.True
-	}
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	x, y := e.operands(left, right)
+	e.setCondition(label, x.Lt(y))
 	e.IncrementCursor()
 	return nil
 }
@@ -168,11 +161,7 @@ func (e *Evaluator) EvaluateSmaller(label, left, right []byte) error {
 func (e *Evaluator) EvaluateAnd(label, left, right []byte) error {
 	x := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
 	y := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := byteutil.False
-	if x && y {
-		r = byteutil.True
-	}
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.setCondition(label, x && y)
 	e.IncrementCursor()
 	return nil
 }
@@ -180,11 +169,7 @@ func (e *Evaluator) EvaluateAnd(label, left, right []byte) error {
 func (e *Evaluator) EvaluateOr(label, left, right []byte) error {
 	x := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
 	y := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(right)))
-	r := byteutil.False
-	if x || y {
-		r = byteutil.True
-	}
-	e.environ.SetTemp(byteutil.ToHex(label), r)
+	e.setCondition(label, x || y)
 	e.IncrementCursor()
 	return nil
 }
@@ -198,7 +183,7 @@ func (e *Evaluator) EvaluatePrint(label, left []byte) error {
 
 func (e *Evaluator) EvaluateEcho(label, left []byte) error {
 	val := e.environ.GetTemp(byteutil.ToHex(left))
-	builtin.EchoFunction(e.echoWriter, val)
+	builtin.EchoFunction(e.echoWriter, val, e.tapeSize)
 	e.IncrementCursor()
 	return nil
 }
@@ -248,7 +233,7 @@ func (e *Evaluator) EvaluateReturn(_, left, right []byte) error {
 	label := byteutil.ToHex(left)
 	value := e.environ.GetTemp(byteutil.ToHex(right))
 	if value == nil {
-		value = byteutil.Nothing
+		value = byteutil.NothingTape(e.tapeSize)
 	}
 	e.environ = e.environ.GetPrevious()
 	e.environ.SetTemp(label, value)
@@ -263,7 +248,7 @@ func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
 	}
 	val := e.environ.GetTemp(byteutil.ToHex(right))
 	e.environ.SetIdent(k, val)
-	e.environ.SetTemp(byteutil.ToHex(label), byteutil.Nothing)
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.NothingTape(e.tapeSize))
 	e.IncrementCursor()
 	return nil
 }
@@ -332,7 +317,7 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
 	cond := e.environ.GetTemp(byteutil.ToHex(left))
 	msg := e.environ.GetTemp(byteutil.ToHex(right))
-	passed, errMsg := builtin.AssertFunction(cond, msg)
+	passed, errMsg := builtin.AssertFunction(cond, msg, e.tapeSize)
 	if !passed {
 		e.assertErrors = append(e.assertErrors, errMsg)
 	}
@@ -512,6 +497,8 @@ type NewEvaluatorOptions struct {
 	EchoWriter    io.Writer
 	PrintWriter   io.Writer
 	Args          []byte
+	// TapeSize is the width in bytes of every value. Zero means the default (8).
+	TapeSize int
 }
 
 func New(options NewEvaluatorOptions) *Evaluator {
@@ -524,8 +511,10 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		assertErrors: make([]error, 0),
 		echoWriter:   options.EchoWriter,
 		printWriter:  options.PrintWriter,
+		tapeSize:     byteutil.TapeSize(options.TapeSize),
 		environ: environ.NewEnviron(environ.NewEnvironOptions{
-			Args: options.Args,
+			Args:     options.Args,
+			TapeSize: byteutil.TapeSize(options.TapeSize),
 		}),
 	}
 }

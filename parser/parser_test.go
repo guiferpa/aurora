@@ -357,7 +357,7 @@ func TestParseNothing(t *testing.T) {
 				Name: "testing",
 				AST: []Node{
 					BooleanExpression{
-						Left:      BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+						Left:      BooleanLiteral{Value: byteutil.TrueTape(byteutil.DefaultTapeSize), Token: tok{[]byte("true"), lexer.TagTrue}},
 						Right:     NothingLiteral{Token: nothing},
 						Operation: OperationLiteral{Value: "or", Token: or},
 					},
@@ -399,7 +399,7 @@ func TestParseNothing(t *testing.T) {
 				Name: "testing",
 				AST: []Node{
 					IfExpression{
-						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+						Test: BooleanLiteral{Value: byteutil.TrueTape(byteutil.DefaultTapeSize), Token: tok{[]byte("true"), lexer.TagTrue}},
 						Body: []Node{NothingLiteral{Token: nothing}},
 						Else: &ElseExpression{
 							Body: []Node{NumberLiteral{Value: 2, Token: two}},
@@ -420,7 +420,7 @@ func TestParseNothing(t *testing.T) {
 				Name: "testing",
 				AST: []Node{
 					IfExpression{
-						Test: BooleanLiteral{Value: byteutil.True, Token: tok{[]byte("true"), lexer.TagTrue}},
+						Test: BooleanLiteral{Value: byteutil.TrueTape(byteutil.DefaultTapeSize), Token: tok{[]byte("true"), lexer.TagTrue}},
 						Body: []Node{NothingLiteral{Token: nothing}},
 						Else: &ElseExpression{
 							Body: []Node{NumberLiteral{Value: 3, Token: three}},

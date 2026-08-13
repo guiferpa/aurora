@@ -29,19 +29,6 @@ func TestWriteInstantiateBlock(t *testing.T) {
 	}
 }
 
-func TestWriteBool(t *testing.T) {
-	bs := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteBool(bs, byteutil.True[0]); err != nil {
-		t.Errorf("Error writing bool: %v", err)
-		return
-	}
-	got := bs.Bytes()
-	expected := []byte{OpPush1, 1}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Bool: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
-	}
-}
-
 func TestWriteAdd(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	if _, err := WriteAdd(bs); err != nil {
@@ -97,12 +84,14 @@ func TestWriteDivide(t *testing.T) {
 func TestWriteSave(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	operand := []byte{1}
-	if _, err := WriteSave(bs, operand); err != nil {
+	if _, err := WriteSave(bs, operand, byteutil.DefaultTapeSize); err != nil {
 		t.Errorf("Error writing save: %v", err)
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpPush1, 1} // single byte: PUSH1 only
+	// Every value is a tape of the configured width: a one-byte operand is padded, not
+	// pushed as PUSH1. There is no special case for booleans any more.
+	expected := []byte{OpPush8, 0, 0, 0, 0, 0, 0, 0, 1}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Save: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}

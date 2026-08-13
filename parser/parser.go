@@ -30,6 +30,7 @@ type pr struct {
 	units     []ParserUnit
 	unitindex int
 	logger    *Logger
+	tapeSize  int
 }
 
 // Helper functions to validate node types for tape operations
@@ -119,7 +120,7 @@ func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
 	if err != nil {
 		return BooleanLiteral{}, err
 	}
-	return BooleanLiteral{byteutil.True, tok}, nil
+	return BooleanLiteral{byteutil.TrueTape(p.tapeSize), tok}, nil
 }
 
 func (p *pr) ParseBooleanFalse() (BooleanLiteral, error) {
@@ -127,7 +128,7 @@ func (p *pr) ParseBooleanFalse() (BooleanLiteral, error) {
 	if err != nil {
 		return BooleanLiteral{}, err
 	}
-	return BooleanLiteral{byteutil.False, tok}, nil
+	return BooleanLiteral{byteutil.FalseTape(p.tapeSize), tok}, nil
 }
 
 func (p *pr) ParseNumber() (NumberLiteral, error) {
@@ -141,16 +142,25 @@ func (p *pr) ParseNumber() (NumberLiteral, error) {
 	// Check if it's a hexadecimal number (starts with 0x)
 	if strings.HasPrefix(raw, "0x") || strings.HasPrefix(raw, "0X") {
 		if n, err := strconv.ParseUint(raw[2:], 16, 64); err == nil {
-			return NumberLiteral{n, tok}, nil
+			return p.fitInTape(n, tok)
 		}
 		return NumberLiteral{}, err
 	}
 
 	// Parse as decimal
 	if n, err := strconv.ParseUint(raw, 10, 64); err == nil {
-		return NumberLiteral{n, tok}, nil
+		return p.fitInTape(n, tok)
 	}
 	return NumberLiteral{}, err
+}
+
+// fitInTape rejects a literal that the configured tape cannot hold, instead of letting it
+// be truncated silently at emission.
+func (p *pr) fitInTape(v uint64, tok lexer.Token) (NumberLiteral, error) {
+	if !byteutil.FitsInTape(v, p.tapeSize) {
+		return NumberLiteral{}, lexer.NewError(tok, "value %d does not fit in a %d-byte tape (max %d)", v, p.tapeSize, byteutil.MaxTapeValue(p.tapeSize))
+	}
+	return NumberLiteral{v, tok}, nil
 }
 
 func (p *pr) ParseReel() (ReelLiteral, error) {
@@ -171,14 +181,14 @@ func (p *pr) ParseReel() (ReelLiteral, error) {
 	reel := make([][]byte, 0, len(content))
 	for _, char := range content {
 		charByte := byte(char)
-		// Each character is a tape (8-byte array)
-		tape := byteutil.Padding64Bits([]byte{charByte})
+		// Each character is a tape
+		tape := byteutil.PaddingTape([]byte{charByte}, p.tapeSize)
 		reel = append(reel, tape)
 	}
 
 	// If empty string, create a reel with one empty tape
 	if len(reel) == 0 {
-		reel = append(reel, make([]byte, 8))
+		reel = append(reel, byteutil.NothingTape(p.tapeSize))
 	}
 
 	return ReelLiteral{reel, tok}, nil
@@ -271,8 +281,12 @@ func (p *pr) ParseTapeBrk() (Node, error) {
 			return nil, err
 		}
 	}
-	if _, err := p.EatToken(lexer.C_BRK); err != nil {
+	closing, err := p.EatToken(lexer.C_BRK)
+	if err != nil {
 		return nil, err
+	}
+	if len(items) > p.tapeSize {
+		return nil, lexer.NewError(closing, "tape literal has %d values but a tape holds %d bytes", len(items), p.tapeSize)
 	}
 	return TapeBracketExpression{Items: items}, nil
 }
@@ -985,6 +999,8 @@ type NewParserOptions struct {
 	Namespace     string
 	Units         []ParserUnit
 	EnableLogging bool
+	// TapeSize is the width in bytes of every value. Zero means the default (8).
+	TapeSize int
 }
 
 func New(opts NewParserOptions) Parser {
@@ -998,5 +1014,6 @@ func New(opts NewParserOptions) Parser {
 		units:     opts.Units,
 		unitindex: 0,
 		logger:    NewLogger(opts.EnableLogging),
+		tapeSize:  byteutil.TapeSize(opts.TapeSize),
 	}
 }

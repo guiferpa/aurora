@@ -117,7 +117,7 @@ func TestEvaluateDiff(t *testing.T) {
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.True
+	expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -132,7 +132,7 @@ func TestEvaluateEquals(t *testing.T) {
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.False
+	expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -147,7 +147,7 @@ func TestEvaluateBigger(t *testing.T) {
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.True
+	expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -162,7 +162,7 @@ func TestEvaluateSmaller(t *testing.T) {
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.False
+	expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -170,14 +170,14 @@ func TestEvaluateSmaller(t *testing.T) {
 
 func TestEvaluateAnd(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.True)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.True)
+	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
+	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 	if err := ev.EvaluateAnd([]byte("02"), []byte("00"), []byte("01")); err != nil {
 		t.Errorf("Error evaluating and: %v", err)
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.True
+	expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -185,14 +185,14 @@ func TestEvaluateAnd(t *testing.T) {
 
 func TestEvaluateAnd_False(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.True)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.False)
+	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
+	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 	if err := ev.EvaluateAnd([]byte("02"), []byte("00"), []byte("01")); err != nil {
 		t.Errorf("Error evaluating and: %v", err)
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.False
+	expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -200,14 +200,14 @@ func TestEvaluateAnd_False(t *testing.T) {
 
 func TestEvaluateOr(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.False)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.True)
+	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
+	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 	if err := ev.EvaluateOr([]byte("02"), []byte("00"), []byte("01")); err != nil {
 		t.Errorf("Error evaluating or: %v", err)
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.True
+	expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -215,14 +215,14 @@ func TestEvaluateOr(t *testing.T) {
 
 func TestEvaluateOr_False(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.False)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.False)
+	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
+	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 	if err := ev.EvaluateOr([]byte("02"), []byte("00"), []byte("01")); err != nil {
 		t.Errorf("Error evaluating or: %v", err)
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	expected := byteutil.False
+	expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -290,7 +290,9 @@ func TestEvaluateGetArg(t *testing.T) {
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("00")))
-	expected := args
+	// Arguments arrive as 32-byte ABI words and are narrowed to a tape, so arguments(n)
+	// has the same width as every other value.
+	expected := byteutil.PaddingTape(args, byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
 	}
@@ -317,7 +319,7 @@ func TestEvaluatePushArg(t *testing.T) {
 func TestEvaluateIf(t *testing.T) {
 	t.Run("True", func(t *testing.T) {
 		ev := New(NewEvaluatorOptions{EnableLogging: false})
-		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.True)
+		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 		ev.cursor = 0
 		if err := ev.EvaluateIf([]byte("01"), []byte("00"), byteutil.FromUint64(10)); err != nil {
 			t.Errorf("Error evaluating if: %v", err)
@@ -330,7 +332,7 @@ func TestEvaluateIf(t *testing.T) {
 
 	t.Run("False", func(t *testing.T) {
 		ev := New(NewEvaluatorOptions{EnableLogging: false})
-		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.False)
+		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 		ev.cursor = 0
 		if err := ev.EvaluateIf([]byte("01"), []byte("00"), byteutil.FromUint64(3)); err != nil {
 			t.Errorf("Error evaluating if: %v", err)
@@ -577,10 +579,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 different 2" the emitter generates Save(00), Save(01), Different(02). The Different stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{1}
+				expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -597,10 +599,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 equals 2" the emitter generates Save(00), Save(01), Equals(02). The Equals stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{0}
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -617,10 +619,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 smaller 2" the emitter generates Save(00), Save(01), Smaller(02). The Smaller stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{1}
+				expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -637,10 +639,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 bigger 2" the emitter generates Save(00), Save(01), Bigger(02). The Bigger stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{0}
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -657,10 +659,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 equals 1" the emitter generates Save(00), Save(01), Equals(02). The Equals stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{1}
+				expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -677,10 +679,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 different 1" the emitter generates Save(00), Save(01), Different(02). The Different stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{0}
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -697,14 +699,14 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 smaller 1" the emitter generates Save(00), Save(01), Smaller(02). The Smaller stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{0}
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
-				expected = []byte{0}
+				expected = byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -721,10 +723,10 @@ func TestRelative(t *testing.T) {
 				// Label 02: for "1 bigger 1" the emitter generates Save(00), Save(01), Bigger(02). The Bigger stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{0}
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -839,10 +841,10 @@ func TestBoolean(t *testing.T) {
 				// Label 02: for "true or false" the emitter generates Save(00), Save(01), Or(02). The Or stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{1}
+				expected := byteutil.TrueTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -860,10 +862,10 @@ func TestBoolean(t *testing.T) {
 				// Label 02: for "false or false" the emitter generates Save(00), Save(01), Or(02). The Or stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label := byteutil.ToHex([]byte("02"))
 				got := returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected := []byte{0}
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -871,10 +873,10 @@ func TestBoolean(t *testing.T) {
 				// Label 05: for "true and true" the emitter generates Save(03), Save(04), And(05). The And stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
 				label = byteutil.ToHex([]byte("05"))
 				got = returns[label]
-				if len(got) != 1 {
-					t.Errorf("Boolean value should be 1 byte, got: %v", got)
+				if len(got) != byteutil.DefaultTapeSize {
+					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
 				}
-				expected = []byte{1}
+				expected = byteutil.TrueTape(byteutil.DefaultTapeSize)
 				if !bytes.Equal(got, expected) {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -918,7 +920,7 @@ if 11 bigger 10 { 20; };`,
 					return
 				}
 				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
-				if ok, got := containsReturn(returns, 0, byteutil.Nothing); !ok {
+				if ok, got := containsReturn(returns, 0, byteutil.NothingTape(byteutil.DefaultTapeSize)); !ok {
 					t.Errorf("got: %v, expected: <nothing>", got)
 				}
 			},
@@ -976,7 +978,7 @@ branch {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				expected := byteutil.Nothing
+				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1000,7 +1002,7 @@ r;`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				expected := byteutil.Nothing
+				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1109,7 +1111,7 @@ r(3, 4);`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				expected := byteutil.Nothing
+				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1146,7 +1148,7 @@ fib(11);`,
 					return
 				}
 
-				expected := byteutil.Nothing
+				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1174,7 +1176,7 @@ fib(11);`,
 					return
 				}
 
-				expected := byteutil.Nothing
+				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1199,7 +1201,7 @@ factorial(4);`,
 					return
 				}
 
-				expected := byteutil.Nothing
+				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}

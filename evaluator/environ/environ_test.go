@@ -121,7 +121,8 @@ func TestGetArgument(t *testing.T) {
 
 	t.Run("TestGetArgument", func(t *testing.T) {
 		got := env0.GetArgument(1)
-		expected := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20}
+		// Calldata words are 32 bytes; the environ narrows each one to a tape.
+		expected := []byte{0, 0, 0, 0, 0, 0, 0, 20}
 		if !bytes.Equal(got, expected) {
 			t.Errorf("unexpected result: got: %v, expected: %v", got, expected)
 		}

@@ -19,6 +19,7 @@ type Linker interface {
 }
 
 type lkr struct {
+	tapeSize   int
 	source     string
 	namespaces map[string]parser.Namespace
 	processing []string
@@ -29,6 +30,8 @@ type lkr struct {
 type NewLinkerOptions struct {
 	Source  string
 	Loggers []string
+	// TapeSize is the width in bytes of every value. Zero means the default (8).
+	TapeSize int
 }
 
 func NewLinker(opts NewLinkerOptions) (Linker, error) {
@@ -37,6 +40,7 @@ func NewLinker(opts NewLinkerOptions) (Linker, error) {
 		return nil, err
 	}
 	return &lkr{
+		tapeSize:   opts.TapeSize,
 		source:     filepath.Dir(abs),
 		namespaces: make(map[string]parser.Namespace),
 		processing: make([]string, 0),
@@ -94,6 +98,7 @@ func (l *lkr) GetNamespace(name string) (parser.Namespace, error) {
 		Namespace:     name,
 		Units:         units,
 		EnableLogging: slices.Contains(l.loggers, "parser"),
+		TapeSize:      l.tapeSize,
 	}
 	return parser.New(opts).Parse()
 }
@@ -171,6 +176,7 @@ func (l *lkr) Resolve() ([]emitter.Instruction, error) {
 		namespace := l.namespaces[order]
 		nsinsts, err := emitter.New(emitter.NewEmitterOptions{
 			EnableLogging: slices.Contains(l.loggers, "emitter"),
+			TapeSize:      l.tapeSize,
 		}).Emit(namespace)
 		if err != nil {
 			return nil, err

@@ -25,7 +25,10 @@ func isString(v []byte, tapeSize int) bool {
 	return len(v) > tapeSize && len(v)%tapeSize == 0 && utf8.Valid(v)
 }
 
-func render(w io.Writer, temps map[string][]byte, eerr error, tapeSize int) {
+// render prints the value of the line that was typed — the temp left by its last
+// instruction. Printing the whole temp map would spill every intermediate value of the
+// expression, in map order, which is no order at all.
+func render(w io.Writer, temps map[string][]byte, result string, eerr error, tapeSize int) {
 	marker := color.New(color.FgWhite, color.Bold).Sprint("=")
 	literals := color.New(color.FgHiYellow).SprintFunc()
 	errors := color.New(color.FgRed).SprintFunc()
@@ -36,20 +39,23 @@ func render(w io.Writer, temps map[string][]byte, eerr error, tapeSize int) {
 		return
 	}
 
+	value, ok := temps[result]
+	if !ok {
+		return // nothing to show: the line produced no value
+	}
+
 	// Every value is a tape of bytes, so there is nothing to render as "true" or as a
 	// distinct neutral value: true is a tape holding 1 and nothing is a tape of zeros.
-	for _, v := range temps {
-		if isString(v, tapeSize) {
-			_, _ = fmt.Fprintf(w, format, marker, literals(string(v)))
-			continue
-		}
-		er, err := byteutil.Encode(v, tapeSize)
-		if err != nil {
-			_, _ = fmt.Fprint(w, errors(err))
-			break
-		}
-		_, _ = fmt.Fprintf(w, format, marker, literals(er))
+	if isString(value, tapeSize) {
+		_, _ = fmt.Fprintf(w, format, marker, literals(string(value)))
+		return
 	}
+	er, err := byteutil.Encode(value, tapeSize)
+	if err != nil {
+		_, _ = fmt.Fprint(w, errors(err))
+		return
+	}
+	_, _ = fmt.Fprintf(w, format, marker, literals(er))
 }
 
 const prompt = ">> "
@@ -184,8 +190,14 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		instsBuffer = append(instsBuffer, insts...)
 		to := uint64(len(instsBuffer))
 
+		// The last instruction of the line holds its value.
+		result := ""
+		if len(insts) > 0 {
+			result = byteutil.ToHex(insts[len(insts)-1].GetLabel())
+		}
+
 		temps, err := ev.EvaluateRange(instsBuffer, from, to)
-		render(os.Stdout, temps, err, tapeSize)
+		render(os.Stdout, temps, result, err, tapeSize)
 		if err != nil {
 			continue
 		}

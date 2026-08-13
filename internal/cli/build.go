@@ -15,13 +15,18 @@ type BuildInput struct {
 	Source     string   // path to .ar source
 	OutputPath string   // path to write bytecode
 	Loggers    []string // enabled loggers (lexer, parser, emitter, builder)
+	TapeSize   int      // width in bytes of every value; zero means the default
 }
 
 // Build compiles the Aurora source at Source and writes bytecode to OutputPath.
 func Build(ctx context.Context, in BuildInput) error {
+	if err := ValidateTapeSize(in.TapeSize); err != nil {
+		return err
+	}
 	l, err := linker.NewLinker(linker.NewLinkerOptions{
-		Source:  in.Source,
-		Loggers: in.Loggers,
+		Source:   in.Source,
+		Loggers:  in.Loggers,
+		TapeSize: in.TapeSize,
 	})
 	if err != nil {
 		return err
@@ -51,6 +56,7 @@ func Build(ctx context.Context, in BuildInput) error {
 			insts,
 			evm.NewBuilderOptions{
 				EnableLogging: slices.Contains(in.Loggers, "builder"),
+				TapeSize:      in.TapeSize,
 			},
 		).Build(fd)
 		return err

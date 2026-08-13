@@ -12,19 +12,24 @@ import (
 
 // RunInput is the input for the Run handler.
 type RunInput struct {
-	Source  string   // path to .ar source
-	Loggers []string // enabled loggers
-	Stdin   io.Reader
-	Stdout  io.Writer // used for both Echo and Print
-	Player  *evaluator.Player
-	Args    []string
+	Source   string   // path to .ar source
+	Loggers  []string // enabled loggers
+	Stdin    io.Reader
+	Stdout   io.Writer // used for both Echo and Print
+	Player   *evaluator.Player
+	Args     []string
+	TapeSize int // width in bytes of every value; zero means the default
 }
 
 // Run compiles and evaluates the Aurora source at Source.
 func Run(ctx context.Context, in RunInput) error {
+	if err := ValidateTapeSize(in.TapeSize); err != nil {
+		return err
+	}
 	l, err := linker.NewLinker(linker.NewLinkerOptions{
-		Source:  in.Source,
-		Loggers: in.Loggers,
+		Source:   in.Source,
+		Loggers:  in.Loggers,
+		TapeSize: in.TapeSize,
 	})
 	if err != nil {
 		return err
@@ -39,6 +44,7 @@ func Run(ctx context.Context, in RunInput) error {
 		EchoWriter:    in.Stdout,
 		PrintWriter:   in.Stdout,
 		Args:          ParseArgs(in.Args),
+		TapeSize:      in.TapeSize,
 	})
 	if in.Player != nil {
 		ev.SetPlayer(in.Player)

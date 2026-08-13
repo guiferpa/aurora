@@ -18,6 +18,7 @@ func init() {
 	buildCmd.Flags().StringP("output", "o", "", "output path for compiled binary (default: binary from aurora.toml)")
 	buildCmd.Flags().StringP("source", "s", "", "custom source code to build")
 	buildCmd.Flags().StringP("profile", "p", "main", "profile to build")
+	buildCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
 func runBuild(cmd *cobra.Command, args []string) error {
@@ -47,9 +48,14 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	tapeSize, err := cmd.Flags().GetInt("tape-size")
+	if err != nil {
+		return err
+	}
 	return cli.Build(cmd.Context(), cli.BuildInput{
 		Source:     source,
 		OutputPath: output,
 		Loggers:    loggers,
+		TapeSize:   cli.ResolveTapeSize(tapeSize, env.Profile.TapeSize),
 	})
 }

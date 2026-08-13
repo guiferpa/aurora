@@ -45,6 +45,9 @@ type Profile struct {
 	Binary  string `toml:"binary"`
 	RPC     string `toml:"rpc"`
 	Privkey string `toml:"privkey"`
+	// TapeSize is the width in bytes of every value in this project. Zero means the
+	// default (8). A command-line flag overrides it.
+	TapeSize int `toml:"tape_size"`
 }
 
 // FindProjectRoot returns the directory that contains aurora.toml, starting from the current directory and walking up. Returns an error if not found.

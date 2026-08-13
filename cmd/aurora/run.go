@@ -20,6 +20,7 @@ func init() {
 	runCmd.Flags().BoolP("player", "r", false, "enable player mode (stdin)")
 	runCmd.Flags().StringP("source", "s", "", "custom source code to run")
 	runCmd.Flags().StringP("profile", "p", "main", "profile to run")
+	runCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
@@ -46,12 +47,17 @@ func runRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	tapeSize, err := cmd.Flags().GetInt("tape-size")
+	if err != nil {
+		return err
+	}
 	return cli.Run(cmd.Context(), cli.RunInput{
-		Source:  source,
-		Loggers: loggers,
-		Stdin:   os.Stdin,
-		Stdout:  ToMainWriter(),
-		Player:  pl,
-		Args:    args,
+		Source:   source,
+		Loggers:  loggers,
+		Stdin:    os.Stdin,
+		Stdout:   ToMainWriter(),
+		Player:   pl,
+		Args:     args,
+		TapeSize: cli.ResolveTapeSize(tapeSize, env.Profile.TapeSize),
 	})
 }

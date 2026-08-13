@@ -3,11 +3,13 @@ package repl
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"slices"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/fatih/color"
@@ -64,6 +66,51 @@ func render(w io.Writer, temps map[string][]byte, eerr error) {
 	}
 }
 
+const prompt = ">> "
+
+// lineReader is where the REPL gets the next line from: the editor when stdin is a
+// terminal (arrow keys, history), a plain scanner otherwise (pipes, CI, tests).
+type lineReader interface {
+	ReadLine() (string, error)
+}
+
+// scannerReader is the non-interactive path: same behavior the REPL had before the editor.
+type scannerReader struct {
+	scanner *bufio.Scanner
+	out     io.Writer
+}
+
+func (s *scannerReader) ReadLine() (string, error) {
+	_, _ = fmt.Fprint(s.out, prompt)
+	if !s.scanner.Scan() {
+		if err := s.scanner.Err(); err != nil {
+			return "", err
+		}
+		return "", io.EOF
+	}
+	return s.scanner.Text(), nil
+}
+
+// newLineReader picks the editor for a terminal and the scanner for anything else.
+// The history is shared with the caller so it can record accepted lines.
+func newLineReader(in io.Reader) (lineReader, *History) {
+	f, ok := in.(*os.File)
+	if !ok || !isTTY(f) {
+		return &scannerReader{scanner: bufio.NewScanner(in), out: os.Stdout}, LoadHistory("")
+	}
+
+	// Without a home directory the history stays in memory; that is no reason to break the REPL.
+	path, err := DefaultHistoryPath()
+	if err != nil {
+		path = ""
+	}
+	hist := LoadHistory(path)
+
+	return newEditor(f, os.Stdout, prompt, hist, func() (func(), error) {
+		return enterRaw(f)
+	}), hist
+}
+
 func Start(in io.Reader, loggers []string) {
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
@@ -71,24 +118,45 @@ func Start(in io.Reader, loggers []string) {
 		PrintWriter:   &PrintWriter{},
 	})
 
+	reader, hist := newLineReader(in)
+	editing, interactive := reader.(*editor)
+
 	csig := make(chan os.Signal, 1)
 	signal.Notify(csig, os.Interrupt)
 	go func() {
 		<-csig
+		// os.Exit skips defers, so leave raw mode here before quitting.
+		if interactive {
+			editing.Restore()
+		}
 		fmt.Println("Bye :)")
 		os.Exit(0)
 	}()
 
-	scanner := bufio.NewScanner(in)
 	var instsBuffer []emitter.Instruction
+	histWarned := false
 	for {
-		_, _ = fmt.Fprintf(os.Stdout, ">> ")
-		scanned := scanner.Scan()
-		if !scanned {
+		text, err := reader.ReadLine()
+		if errors.Is(err, errInterrupt) { // Ctrl+C: drop the line, prompt again
+			continue
+		}
+		if err != nil { // Ctrl+D or end of piped input
+			if interactive {
+				fmt.Println("Bye :)")
+			}
 			return
 		}
+		if strings.TrimSpace(text) == "" {
+			continue
+		}
 
-		line := bytes.NewBufferString(scanner.Text())
+		// Record before evaluating so a line that fails to compile is still recallable.
+		if err := hist.Append(text); err != nil && !histWarned {
+			histWarned = true
+			_, _ = fmt.Fprintf(os.Stderr, "warning: could not write history: %v\n", err)
+		}
+
+		line := bytes.NewBufferString(text)
 
 		tokens, err := lexer.New(lexer.NewLexerOptions{
 			EnableLogging: slices.Contains(loggers, "lexer"),

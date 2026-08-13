@@ -75,7 +75,11 @@ aurora repl
 [0 0 0 0 0 0 0 1]
 ```
 
-`Ctrl+D` or `Ctrl+C` to exit. No `aurora.toml` needed for `repl`, `version`, or `help`.
+`Ctrl+D` exits; `Ctrl+C` clears the line you're typing. No `aurora.toml` needed for `repl`, `version`, or `help`.
+
+**Line editing and history:** `↑`/`↓` browse previous commands, `←`/`→` move the cursor inside the line (also `Home`/`End` and `Ctrl+A`/`Ctrl+E`), and `Backspace`/`Delete` edit in place.
+
+History is shared by every project in **`~/.aurora/history`** (last 1000 commands, written as you type them, `0600`). Point `AURORA_HISTORY` somewhere else to change the file. When stdin is not a terminal — e.g. `printf '1 + 1;\n' | aurora repl` — the REPL reads plain lines, with no history and no key handling.
 
 ### Project manifest
 

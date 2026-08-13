@@ -21,6 +21,12 @@ $(BIN)/aurora: $(SOURCES)
 	@mkdir -p $(BIN)
 	@CGO_ENABLED=0 go build -race -o $(BIN)/aurora ./cmd/aurora/*.go
 
+aurorals: $(BIN)/aurorals
+
+$(BIN)/aurorals: $(SOURCES)
+	@mkdir -p $(BIN)
+	@CGO_ENABLED=0 go build -race -o $(BIN)/aurorals ./cmd/aurorals
+
 clean:
 	@rm -rf $(BIN)
 

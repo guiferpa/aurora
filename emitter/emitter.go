@@ -9,6 +9,26 @@ import (
 
 type Emitter interface {
 	Emit(ast parser.AST) ([]Instruction, error)
+	EmitProgram(ast parser.AST) (Program, error)
+}
+
+// Expression is one top-level expression of a program: the range of instructions it
+// compiled to, and the label the temp holding its value ends up under.
+//
+// A caller that wants to report values in source order needs this. Reading the temp map
+// after the whole program has run cannot give it: the map has no order, and everything
+// written by print along the way has already been emitted.
+type Expression struct {
+	From  int // index of its first instruction
+	To    int // index one past its last instruction
+	Label []byte
+}
+
+// Program is what a source file compiled to: the instruction stream and where each
+// top-level expression sits inside it.
+type Program struct {
+	Instructions []Instruction
+	Expressions  []Expression
 }
 
 type emt struct {
@@ -30,6 +50,10 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		lr := EmitInstruction(tc, insts, n.Value, tapeSize)
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpIdent, ll, lr))
+		// A binding has a value like every other expression — the neutral one — and the
+		// label has to come back, or a scope ending in a binding returns the fallback of
+		// a node the emitter did not recognise.
+		return l
 	}
 	if n, ok := expr.(parser.BlockExpression); ok {
 		var l []byte
@@ -253,12 +277,27 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 }
 
 func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {
+	program, err := e.EmitProgram(ast)
+	if err != nil {
+		return nil, err
+	}
+	return program.Instructions, nil
+}
+
+// EmitProgram compiles ast and records where each top-level expression landed, so a caller
+// can run them one at a time and report each value as it is produced.
+func (e *emt) EmitProgram(ast parser.AST) (Program, error) {
 	tc := 0
 	insts := make([]Instruction, 0)
-	for _, expr := range ast.Nodes {
-		EmitInstruction(&tc, &insts, expr, e.tapeSize)
+	exprs := make([]Expression, 0, len(ast.Nodes))
+
+	for _, node := range ast.Nodes {
+		from := len(insts)
+		label := EmitInstruction(&tc, &insts, node, e.tapeSize)
+		exprs = append(exprs, Expression{From: from, To: len(insts), Label: label})
 	}
-	return insts, nil
+
+	return Program{Instructions: insts, Expressions: exprs}, nil
 }
 
 type NewEmitterOptions struct {

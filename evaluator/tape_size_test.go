@@ -50,6 +50,44 @@ func runWithTapeSize(t *testing.T, source string, tapeSize int) []byte {
 	return returns[labels[len(labels)-1]]
 }
 
+// runAndError compiles and runs source, returning the value of the last expression and any
+// error, for the cases where the error is the point.
+func runAndError(t *testing.T, source string, tapeSize int) ([]byte, error) {
+	t.Helper()
+
+	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+	if err != nil {
+		return nil, err
+	}
+	ast, err := parser.New(parser.NewParserOptions{
+		Filename: "main.ar",
+		Tokens:   tokens,
+		TapeSize: tapeSize,
+	}).Parse()
+	if err != nil {
+		return nil, err
+	}
+	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(ast)
+	if err != nil {
+		return nil, err
+	}
+	returns, err := New(NewEvaluatorOptions{TapeSize: tapeSize}).Evaluate(insts)
+	if err != nil {
+		return nil, err
+	}
+
+	labels := slices.Collect(maps.Keys(returns))
+	slices.SortFunc(labels, func(a, b string) int {
+		ia, _ := strconv.ParseInt(a, 10, 64)
+		ib, _ := strconv.ParseInt(b, 10, 64)
+		return int(ia - ib)
+	})
+	if len(labels) == 0 {
+		return nil, nil
+	}
+	return returns[labels[len(labels)-1]], nil
+}
+
 // Every value is a tape of the configured width — numbers and conditions alike.
 func TestValuesHaveTheTapeWidth(t *testing.T) {
 	sources := []string{"1 + 1;", "true;", "false;", "1 equals 1;", "2 bigger 1;"}

@@ -13,12 +13,19 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 )
 
+// deferMark opens every defer blob. The value handed to a program is an ordinary tape
+// holding an index, so any number can be presented as a deferred scope; the mark is what
+// keeps "call: value is not a deferred scope" an error rather than a silent jump into
+// whatever scope happens to sit at that index.
+const deferMark = 0xAE
+
 // encodeDeferBlob serializes a deferred scope into a blob for storage in environ.defers.
-// Layout: [0:8] from (uint64 BE), [8:16] to (uint64 BE), [16] keyLen, [17:17+N] returnKey.
-// Total length: 17 + len(returnKey).
+// Layout: [0] mark, [1:9] from (uint64 BE), [9:17] to (uint64 BE), [17] keyLen,
+// [18:18+N] returnKey. Total length: 18 + len(returnKey).
 func encodeDeferBlob(from, to uint64, returnKey string) []byte {
 	key := []byte(returnKey)
-	b := make([]byte, 0, 17+len(key))
+	b := make([]byte, 0, 18+len(key))
+	b = append(b, deferMark)
 	b = append(b, byteutil.FromUint64(from)...)
 	b = append(b, byteutil.FromUint64(to)...)
 	b = append(b, byte(len(key)))
@@ -27,19 +34,26 @@ func encodeDeferBlob(from, to uint64, returnKey string) []byte {
 }
 
 // decodeDeferBlob parses a blob from encodeDeferBlob.
-// Returns (from, to, returnKey, true) or (0, 0, "", false) if val is too short or invalid.
+// Returns (from, to, returnKey, true) or (0, 0, "", false) when val is too short, does not
+// carry the mark, or is otherwise not a deferred scope.
 func decodeDeferBlob(val []byte) (from, to uint64, returnKey string, ok bool) {
-	const minLen = 17
-	if len(val) < minLen {
+	const minLen = 18
+	if len(val) < minLen || val[0] != deferMark {
 		return 0, 0, "", false
 	}
-	from = binary.BigEndian.Uint64(val[0:8])
-	to = binary.BigEndian.Uint64(val[8:16])
-	keyLen := int(val[16])
-	if 17+keyLen > len(val) {
+	from = binary.BigEndian.Uint64(val[1:9])
+	to = binary.BigEndian.Uint64(val[9:17])
+	keyLen := int(val[17])
+	if 18+keyLen > len(val) {
 		return 0, 0, "", false
 	}
-	return from, to, string(val[17 : 17+keyLen]), true
+	return from, to, string(val[18 : 18+keyLen]), true
+}
+
+// deferKey is the internal key of a deferred scope, derived from its index. Keeping the key
+// separate from the value lets the value be an ordinary tape, whatever the tape size.
+func deferKey(index uint64) string {
+	return byteutil.ToHex(byteutil.FromUint64(index))
 }
 
 type ReturnsPerLabel map[string][]byte
@@ -333,7 +347,7 @@ func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {
 
 func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 	index := byteutil.ToUint64(left)
-	v := builtin.FeedFunction(e.environ.GetArguments(), index)
+	v := builtin.FeedFunction(e.environ.GetArguments(), index, e.tapeSize)
 	l := byteutil.ToHex(label)
 	e.environ.SetTemp(l, v)
 	e.IncrementCursor()
@@ -346,10 +360,13 @@ func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
 	from := e.cursor + 1
 	to := from + bodylength // index of OpReturn (last instruction of the block)
 	returnKey := byteutil.ToHex(left)
-	blob := encodeDeferBlob(from, to, returnKey)
-	ref := byteutil.ToHex(byteutil.FromUint64(uint64(e.environ.DefersLength())))
-	e.environ.SetDefer(ref, blob)
-	e.environ.SetTemp(byteutil.ToHex(label), []byte(ref))
+
+	// The value of a defer is its index as a tape, like every other value in the language.
+	// It used to be the hex key itself — 16 bytes of ASCII text that ignored the tape size.
+	index := uint64(e.environ.DefersLength())
+	e.environ.SetDefer(deferKey(index), encodeDeferBlob(from, to, returnKey))
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FromUint256(uint256.NewInt(index), e.tapeSize))
+
 	e.AddCursor(1 + bodylength)
 	return nil
 }
@@ -359,8 +376,8 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 	if val == nil {
 		return fmt.Errorf("call: %s identifier not found", left)
 	}
-	refKey := string(val)
-	blob := e.environ.GetDefer(refKey)
+	index := byteutil.ToUint256(val, e.tapeSize).Uint64()
+	blob := e.environ.GetDefer(deferKey(index))
 	if blob == nil {
 		return fmt.Errorf("call: value is not a deferred scope")
 	}

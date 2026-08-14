@@ -8,25 +8,28 @@ This document describes the binary format and semantics of deferred-scope data s
 
 - **Blob storage:** Each deferred scope is serialized into a **blob** (byte slice) and stored in the current **Environ** under the key `defers[key] = blob`.
 - **Key:** The key is **incremental** per environ: `key = byteutil.ToHex(byteutil.FromUint64(uint64(environ.DefersLength())))` at store time (e.g. `"0000000000000000"`, `"0000000000000001"`, …).
-- **Reference in ident:** The ident that “holds” the deferred value does **not** store the blob. It stores only the **reference** (the key as bytes). At call time, the evaluator resolves the ident value to a key, then does `environ.GetDefer(key)` to obtain the blob.
+- **Reference in ident:** The ident that “holds” the deferred value does **not** store the blob. It stores the **index as an ordinary tape**, like every other value in the language. At call time the evaluator reads that tape as a number, rebuilds the key from it (`deferKey(index)`) and does `environ.GetDefer(key)` to obtain the blob.
+
+  The reference used to be the key itself — 16 bytes of ASCII hex that ignored `tape_size`, so a defer was the one value in the language that was not a tape.
 - **Lookup:** `GetDefer(key)` walks the environ chain (inner to outer), like `GetIdent`, so a deferred scope can be found from inner scopes that close over it.
 
 ---
 
 ## Blob layout
 
-The blob has **no magic bytes**. It is a contiguous byte slice with the following layout:
-
 | Offset | Size    | Field       | Description |
 |--------|---------|-------------|-------------|
-| `0`    | 8 bytes | **from**    | `uint64` big-endian. Index of the **first instruction** of the deferred block in the instruction array. In practice this is the index of **OpBeginScope** (the instruction immediately after OpDefer). At call time, execution runs from `from+1` through `to`. |
-| `8`    | 8 bytes | **to**      | `uint64` big-endian. Index of the **last instruction** of the deferred block. In practice this is always the index of **OpReturn**. |
-| `16`   | 1 byte  | **keyLen**  | Length in bytes of the **returnKey** field (0–255). Used when decoding to know how many bytes to read for the variable-length returnKey. |
-| `17`   | N bytes | **returnKey** | Temp key (string, N = keyLen bytes) where the scope stores its return value when it runs. At call time, after executing the scope, the evaluator reads `environ.GetTemp(returnKey)` and copies that value to the call result temp. |
+| `0`    | 1 byte  | **mark**    | `0xAE`. Opens every blob, so decoding rejects anything that is not one. |
+| `1`    | 8 bytes | **from**    | `uint64` big-endian. Index of the **first instruction** of the deferred block in the instruction array. In practice this is the index of **OpBeginScope** (the instruction immediately after OpDefer). At call time, execution runs from `from+1` through `to`. |
+| `9`    | 8 bytes | **to**      | `uint64` big-endian. One past the last instruction of the block; in the current bytecode that instruction is **OpReturn**. |
+| `17`   | 1 byte  | **keyLen**  | Length in bytes of the **returnKey** field (0–255). Used when decoding to know how many bytes to read for the variable-length returnKey. |
+| `18`   | N bytes | **returnKey** | Temp key (string, N = keyLen bytes) where the scope stores its return value when it runs. At call time, after executing the scope, the evaluator reads `environ.GetTemp(returnKey)` and copies that value to the call result temp. |
 
-**Total length:** `17 + len(returnKey)` bytes (minimum 17 if returnKey is empty).
+**Total length:** `18 + len(returnKey)` bytes (minimum 18 if returnKey is empty).
 
-**Encoding:** `from` and `to` are written with `byteutil.FromUint64` (8 bytes big-endian each). Then one byte for keyLen, then the raw bytes of returnKey.
+**Encoding:** the mark, then `from` and `to` with `byteutil.FromUint64` (8 bytes big-endian each), then one byte for keyLen, then the raw bytes of returnKey.
+
+**What the mark does not do.** A reference is a tape holding an index, so a value equal to that index *is* that reference — `ident d = defer { … }; ident a = 0; a();` calls the scope at index 0. Nothing in the bytes could tell them apart, and the language does not pretend otherwise: it is the same bargain as `true` being `1`. Calling a value with no scope behind it is still an error (`call: value is not a deferred scope`).
 
 ---
 

@@ -42,7 +42,7 @@ The result of `defer { ... }` is a value that contains:
 
 > **a pointer to a scope**
 
-No metadata about parameters or argument count is stored.
+No metadata about parameters or argument count is stored. The pointer is an ordinary tape holding the scope's index — a deferred scope is a value like any other, of the same width as everything else.
 
 ---
 

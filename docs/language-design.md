@@ -32,6 +32,12 @@ What changes with a narrow tape is worth saying out loud:
 - **`head` and `tail` take the index modulo the width**, so with one byte the index is always 0.
 - **A reel is a run of tapes**, so with one byte per tape a string is one byte per character — plain ASCII.
 
+## Everything is a tape
+
+Numbers, conditions, reels, the neutral value and **deferred scopes** are all tapes of `tape_size` bytes. A `defer` produces the index of its scope, so `defer { }` is a tape holding 0 — the same bytes as `false` and as the number `0`.
+
+That is the bargain of an untyped language: values that are the same bytes are the same value, and calling a number equal to a scope's index calls that scope.
+
 ## Expressions only (no Statements)
 
 Aurora is an **expression-only** language: there are no statements. Everything at the top level and inside blocks is an expression that produces a value.

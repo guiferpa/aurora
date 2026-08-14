@@ -405,3 +405,18 @@ func TestSelectorComesFromTheName(t *testing.T) {
 		t.Error("expected a PUSH4 carrying the selector")
 	}
 }
+
+// Negating is subtracting from zero, and on chain it has to be exactly that: the bytecode
+// for -x is the bytecode for 0 - x, opcode for opcode. The emitter desugars it precisely so
+// this backend needs nothing new — if the two ever diverge, something started treating the
+// unary form as its own operation without teaching the writer about it.
+func TestNegationBuildsAsSubtractionFromZero(t *testing.T) {
+	for _, tapeSize := range []int{1, 8, 32} {
+		negated := build(t, "ident neg = defer { -feed(0); };\n", tapeSize)
+		subtracted := build(t, "ident neg = defer { 0 - feed(0); };\n", tapeSize)
+
+		if !bytes.Equal(negated, subtracted) {
+			t.Errorf("%d-byte tapes:\n-feed(0)    = %x\n0 - feed(0) = %x", tapeSize, negated, subtracted)
+		}
+	}
+}

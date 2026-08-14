@@ -88,7 +88,21 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		return lo
 	}
 	if n, ok := expr.(parser.UnaryExpression); ok {
-		return EmitInstruction(tc, insts, n.Expression, tapeSize)
+		// A tape is unsigned, so negating is taking the value away from zero and letting it
+		// wrap: -5 is the same tape as 0 - 5. Emitting the subtraction says exactly that,
+		// and every stage below — the evaluator, the lowering, the EVM writer — already
+		// knows how to subtract.
+		//
+		// The operator used to be dropped here and only the operand emitted, so `-5` was
+		// 5 and `10 + -5` was 15.
+		lo := EmitInstruction(tc, insts, n.Expression, tapeSize)
+
+		lz := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(lz, OpSave, byteutil.FalseTape(tapeSize), nil))
+
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSubtract, lz, lo))
+		return l
 	}
 	if n, ok := expr.(parser.RelativeExpression); ok {
 		ll := EmitInstruction(tc, insts, n.Left, tapeSize)

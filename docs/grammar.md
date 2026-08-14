@@ -157,6 +157,13 @@ _unae -> SUB _prie
        | _prie
 ```
 
+A tape is unsigned, so `-x` is the value taken away from zero, wrapping at the tape width:
+`-5` is the same tape as `0 - 5`, which is 251 with one-byte tapes and 2^64 - 5 with the
+default eight. The compiler emits exactly that subtraction.
+
+Until v0.3.1-alpha the operator was parsed and then dropped on the way to the IR, so `-5`
+was 5 and `10 + -5` was 15.
+
 ### Primary expression
 ```
 _prie -> _feed

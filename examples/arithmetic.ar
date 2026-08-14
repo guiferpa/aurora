@@ -17,6 +17,8 @@
 #-   [0 0 0 0 0 0 0 5]
 #-   2
 #-   512
+#-   18446744073709551611
+#-   5
 #-   [0 0 0 0 0 0 0 3]
 #-   [0 0 0 0 0 0 1 0]
 
@@ -40,6 +42,11 @@ printd 20 / 5 / 2;
 
 #- Exponentiation is the one that goes the other way: 2 ^ (3 ^ 2).
 printd 2 ^ 3 ^ 2;
+
+#- A tape is unsigned, so negating takes the value away from zero and wraps.
+#- With the default 8-byte tape that is 2^64 - 5; with --tape-size 1 it is 251.
+printd -5;
+printd 10 + -5;
 
 #- Division truncates: there are no fractions, only bytes.
 printb 7 / 2;

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
@@ -45,26 +46,35 @@ func init() {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
-			insts, err := emitter.New(emitter.NewEmitterOptions{
+			program, err := emitter.New(emitter.NewEmitterOptions{
 				EnableLogging: debug,
-			}).Emit(ast)
+			}).EmitProgram(ast)
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
 
-			temps, err := evaluator.New(evaluator.NewEvaluatorOptions{
+			ev := evaluator.New(evaluator.NewEvaluatorOptions{
 				EnableLogging: debug,
 				EchoWriter:    ToPlaygroundWriter("echo"),
 				PrintWriter:   ToPlaygroundWriter("print"),
-			}).Evaluate(insts)
-			if err != nil {
-				errorWriter.Write([]byte(err.Error()))
-				return nil
-			}
-			for _, temp := range temps {
-				u8 := js.Global().Get("Uint8Array").New(len(temp))
-				js.CopyBytesToJS(u8, temp)
+			})
+
+			// One top-level expression at a time, reporting its value before moving on.
+			// Running everything and then walking the temp map put every print first and
+			// the values after, in no order at all — a map has none.
+			for _, expr := range program.Expressions {
+				temps, err := ev.EvaluateRange(program.Instructions, uint64(expr.From), uint64(expr.To))
+				if err != nil {
+					errorWriter.Write([]byte(err.Error()))
+					return nil
+				}
+				value, ok := temps[byteutil.ToHex(expr.Label)]
+				if !ok {
+					continue
+				}
+				u8 := js.Global().Get("Uint8Array").New(len(value))
+				js.CopyBytesToJS(u8, value)
 				js.Global().Call("evalResultHandler", u8)
 			}
 			return nil

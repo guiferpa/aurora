@@ -58,20 +58,6 @@ func render(w io.Writer, temps map[string][]byte, result string, eerr error, tap
 	_, _ = fmt.Fprintf(w, format, marker, literals(er))
 }
 
-// resultLabel is where the value of a line ends up. Usually that is the label of its last
-// instruction, but a scope closes with OpReturn, which writes into the enclosing environ
-// under the scope's own label — so blocks and ifs are found through its left operand.
-func resultLabel(insts []emitter.Instruction) string {
-	if len(insts) == 0 {
-		return ""
-	}
-	last := insts[len(insts)-1]
-	if last.GetOpCode() == emitter.OpReturn {
-		return byteutil.ToHex(last.GetLeft())
-	}
-	return byteutil.ToHex(last.GetLabel())
-}
-
 const prompt = ">> "
 
 // lineReader is where the REPL gets the next line from: the editor when stdin is a
@@ -184,26 +170,27 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 			continue
 		}
 
-		insts, err := emitter.New(emitter.NewEmitterOptions{
+		program, err := emitter.New(emitter.NewEmitterOptions{
 			EnableLogging: slices.Contains(loggers, "emitter"),
 			TapeSize:      tapeSize,
-		}).Emit(ast)
+		}).EmitProgram(ast)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
 		// Append to buffer so defer from/to indices stay valid when calling later.
-		from := uint64(len(instsBuffer))
-		instsBuffer = append(instsBuffer, insts...)
-		to := uint64(len(instsBuffer))
+		offset := len(instsBuffer)
+		instsBuffer = append(instsBuffer, program.Instructions...)
 
-		result := resultLabel(insts)
-
-		temps, err := ev.EvaluateRange(instsBuffer, from, to)
-		render(os.Stdout, temps, result, err, tapeSize)
-		if err != nil {
-			continue
+		// One expression at a time, so a line holding several of them prints each value
+		// where it happens rather than all of them at the end.
+		for _, expr := range program.Expressions {
+			temps, err := ev.EvaluateRange(instsBuffer, uint64(offset+expr.From), uint64(offset+expr.To))
+			render(os.Stdout, temps, byteutil.ToHex(expr.Label), err, tapeSize)
+			if err != nil {
+				break
+			}
 		}
 	}
 }

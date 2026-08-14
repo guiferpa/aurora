@@ -13,12 +13,12 @@ The defer body **sees the caller's scope** (and any outer scopes above it).
 At call time, the environment chain is:
 
 ```
-(defer frame, with arguments) → caller's environment → ...
+(defer frame, with the fed values) → caller's environment → ...
 ```
 
 Because name resolution walks this chain, the defer body sees:
 
-- the call arguments (`arguments(0)`, `arguments(1)`, etc.);
+- the values fed by the call (`feed(0)`, `feed(1)`, etc.);
 - all idents from the **caller** and from scopes above it.
 
 **Example:** defer and call in the same scope — outer variable is visible.
@@ -62,4 +62,4 @@ So: the defer sees "outer" variables **at call time** (the caller), but **not** 
 
 ## Relation to the overall design
 
-This behavior is consistent with the model described in [defer_and_scope_callable_philosofy.md](defer_and_scope_callable_philosofy.md): defer does not introduce functions or closures; it is a scope whose execution is delayed and that receives data (arguments) at invocation. The environment in which the body runs is that of **call time**, not creation time.
+This behavior is consistent with the model described in [defer_and_scope_callable_philosofy.md](defer_and_scope_callable_philosofy.md): defer does not introduce functions or closures; it is a scope whose execution is delayed and that receives data at invocation. The environment in which the body runs is that of **call time**, not creation time.

@@ -18,7 +18,7 @@ aurora run -t 1
 aurora repl -t 1
 ```
 
-The size applies to the whole compilation unit — the linker compiles a directory as one namespace, so two files cannot disagree — and the compiled binary carries the choice implicitly.
+The size applies to the whole compilation unit, and the compiled binary carries the choice implicitly.
 
 **A literal that does not fit is a compile-time error**, not a silent truncation:
 

@@ -16,6 +16,10 @@ All notable changes and release notes for Aurora are documented here.
 - The REPL prints values as numbers: with no boolean type of its own, there is no `true`/`false` to show. It also prints the value of the line that was typed, instead of every intermediate value of the expression in map order.
 - **Tape operations run.** `pull`, `push`, `head` and `tail` were parsed and emitted but never evaluated, which also left tape literals like `[1, 2, 3]` broken. A tape is a shift register: `pull` shifts left with the value entering at the right, `push` shifts right with the value entering at the left, and what reaches the far end is discarded.
 
+- **Namespaces were removed.** `use ... as ...`, the `::` operator and the directory-as-namespace rule are gone. The rule meant that compiling one file compiled every `.ar` file next to it, so independent programs in one folder collided; and the half that was implemented never resolved a symbol anyway — the emitter ignored `use` entirely. The unit of compilation is now the file. A program spanning several files is not supported until the module system is designed: see [docs/module_system_design.md](docs/module_system_design.md). **Breaking:** `use` and `as` are ordinary identifiers now, and `::` is two colons.
+- **`arguments(n)` is now `feed(n)`.** Aurora has no functions, so it has no parameters — and "argument" only means something against "parameter". `feed` says what happens: values are fed to a scope, and `feed(n)` reads the nth one. The reasoning is recorded in [docs/grammar.md](docs/grammar.md#feed-formerly-arguments). **Breaking:** `arguments` no longer parses as a builtin.
+- **`echo` prints text again in the CLI.** `aurora run` gave `print` and `echo` the same writer, so `echo` showed raw bytes; the evaluator always took two writers for exactly this reason, and the REPL was already correct.
+
 ### Tooling
 
 - `aurorals`, the language server, returned with semantic tokens, diagnostics, hover and completion. See [docs/lsp.md](docs/lsp.md).

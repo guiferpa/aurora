@@ -14,7 +14,7 @@ Source → Lexer → Parser → AST → Emitter (IR) → Lowering (builder/evm) 
                                Evaluator (interpreta IR)
 ```
 
-- **Emitter** gera uma sequência linear de instruções (IR). Ex.: `GetArg(0)`, `GetArg(1)`, `Add`.
+- **Emitter** gera uma sequência linear de instruções (IR). Ex.: `GetFeed(0)`, `GetFeed(1)`, `Add`.
 - **Evaluator** consome a mesma IR para executar em memória.
 - **Lowering** (pacote `builder/evm`) reordena a IR para a stack EVM (Sub/Div left-assoc, RPN). O Builder chama `Lowering(body)` e `Lowering(rootinsts)` antes de escrever bytecode.
 - **Builder EVM** consome a IR já reordenada e emite opcodes da EVM.
@@ -70,7 +70,7 @@ Se o Builder começa a reorganizar operandos ou a decidir quando usar SWAP, ele 
 O **OperandManager** (push/pop de operandos no Builder) foi uma tentativa de controlar a ordem dos valores na stack dentro do próprio Builder.
 
 - **Problema:** ele não resolve o problema arquitetural:
-  - Só **Save** fazia push; **GetArg** e **Load** não. Então para `arguments(0) + arguments(1)` o manager ficava vazio e dava panic.
+  - Só **Save** fazia push; **GetFeed** e **Load** não. Então para `feed(0) + feed(1)` o manager ficava vazio e dava panic.
   - A decisão “quem empilha o quê e em que ordem” continuava espalhada (Emitter + Builder), sem uma fase única de Lowering.
 
 Hoje o Builder **não usa** o OperandManager para Add/Sub/Mul/Div: assume que a IR já vem na ordem correta (left, right, op) e só emite o opcode. Ou seja:

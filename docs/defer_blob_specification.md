@@ -56,6 +56,6 @@ The blob has **no magic bytes**. It is a contiguous byte slice with the followin
 ## Definition and call flow (summary)
 
 1. **OpDefer:** Compute `from`, `to`, `returnKey`; build blob with `encodeDeferBlob(from, to, returnKey)`; compute incremental key `key`; `environ.SetDefer(key, blob)`; store ref in temp as `SetTemp(label, []byte(key))`. Later that temp is assigned to an ident (e.g. `ident r = defer { ... };`).
-2. **OpCall:** Get ident value (the ref); `blob := environ.GetDefer(refKey)`; decode blob to `from`, `to`, `returnKey`; push new frame with arguments; `ExecuteInstructions(from+1, to)`; read `environ.GetTemp(returnKey)` and set call result temp from it.
+2. **OpCall:** Get ident value (the ref); `blob := environ.GetDefer(refKey)`; decode blob to `from`, `to`, `returnKey`; push new frame with the fed values; `ExecuteInstructions(from+1, to)`; read `environ.GetTemp(returnKey)` and set call result temp from it.
 
 Scope visibility (which environs the defer body sees at call time) is described in [defer_scope_visibility.md](defer_scope_visibility.md).

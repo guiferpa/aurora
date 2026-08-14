@@ -46,7 +46,7 @@ These are written by `aurora init` and are enough for **build** and **run**.
 
 **Why:**  
 - **`source`** centralizes the entry point so `aurora build` and `aurora run` can be used without arguments.
-- **`tape_size`** declares the dialect the project is written in: everything the linker compiles into one namespace shares it, so it belongs to the project rather than to a command line someone has to remember.  
+- **`tape_size`** declares the dialect the project is written in, so it belongs to the project rather than to a command line someone has to remember.  
 - **`binary`** centralizes the build output so `aurora build` and `aurora deploy` agree on where the bytecode lives.
 
 ### Optional fields (on-chain)

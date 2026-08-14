@@ -22,7 +22,7 @@ The auto-installing targets write to `$(go env GOBIN)`; make sure it is on your 
 ### Fast loop (preferred while developing)
 
 ```sh
-go run ./cmd/aurora run -s examples/fibonacci.ar 10   # evaluator
+go run ./cmd/aurora run -s examples/recursion.ar      # evaluator (run from examples/)
 go run ./cmd/aurora build -s src/main.ar -o bin/main  # EVM bytecode
 go run ./cmd/aurora repl
 ```
@@ -46,26 +46,24 @@ Note that both targets build with `-race`: great for catching data races, ~20MB 
 
 > macOS ships GNU Make 3.81, which compares timestamps with one-second granularity. A build triggered in the same second as the previous one can be skipped — only relevant when scripting builds back to back.
 
-### Manual testing trap: `-s` takes a directory, not a file
+### Running a single file
 
-The linker treats a **namespace as a directory** and parses **every `.ar` file next to the one you pass** (`linker.GetUnits`). So:
-
-```sh
-go run ./cmd/aurora run -s examples/fibonacci.ar   # fails: conflict between identifiers named a
-```
-
-…because all of `examples/*.ar` get compiled together. To exercise a single program, put it in its own directory:
+The unit of compilation is the file: `-s` compiles exactly what you pass and nothing else.
 
 ```sh
-mkdir -p /tmp/ar && cp examples/fibonacci.ar /tmp/ar/
-go run ./cmd/aurora run -s /tmp/ar/fibonacci.ar 10   # 55
+cd examples
+go run ../cmd/aurora run -s recursion.ar
 ```
+
+Commands other than `repl`, `version`, `help` and `init` need an `aurora.toml` at or above the current directory — `examples/aurora.toml` is there for exactly that.
+
+There is no module system yet, so a program is one file. See [module_system_design.md](module_system_design.md).
 
 ### Inspecting each phase
 
 ```sh
-go run ./cmd/aurora run -s /tmp/ar/main.ar -l lexer,parser,evaluator
-go run ./cmd/aurora build -s /tmp/ar/main.ar -o /tmp/out.bin -l builder && xxd /tmp/out.bin
+go run ./cmd/aurora run -s main.ar -l lexer,parser,evaluator
+go run ./cmd/aurora build -s main.ar -o /tmp/out.bin -l builder && xxd /tmp/out.bin
 ```
 
 Valid loggers: `lexer`, `parser`, `emitter`, `evaluator` (run) and `builder` (build).
@@ -99,7 +97,7 @@ make bench                          # benchmarks with -benchmem
       op   byte
       want int
   }{
-      {name: "OpGetArg_push", op: emitter.OpGetArg, want: 1},
+      {name: "OpGetFeed_push", op: emitter.OpGetFeed, want: 1},
   }
   for _, tc := range cases {
       t.Run(tc.name, func(t *testing.T) { ... })
@@ -107,7 +105,7 @@ make bench                          # benchmarks with -benchmem
   ```
 
 - **Tests live in the same package** (`package evaluator`, not `evaluator_test`), so they can reach unexported state — e.g. `ev.environ.SetTemp(...)`. Keep it that way; the compiler internals are the thing under test.
-- **Shared helpers go in a non-test file** when other packages need them: `parser/testutil.go` exports `NamespaceEqual` and `TokenEqual` for AST comparison that ignores pointer identity.
+- **Shared helpers go in a non-test file** when other packages need them: `parser/testutil.go` exports `ASTEqual` and `TokenEqual` for AST comparison that ignores pointer identity.
 - **Filesystem and env**: always `t.TempDir()` and `t.Setenv()`. No test may touch the developer's home, the repo tree, or a real network.
 - **Fixtures are inline source strings** (`const minimalAR = "ident x = 1 + 2;\nprint x;\n"`), not files on disk.
 - **Benchmarks** live in `*_bench_test.go` (see `lexer/scanner_bench_test.go`).
@@ -118,7 +116,7 @@ make bench                          # benchmarks with -benchmem
 | Layer | What a test should assert | Reference |
 |---|---|---|
 | `lexer` | token stream (tags + matches) for a source string | `lexer/scanner_test.go` |
-| `parser` | AST shape, using `NamespaceEqual` | `parser/parser_test.go` |
+| `parser` | AST shape, using `ASTEqual` | `parser/parser_test.go` |
 | `emitter` | no direct tests today — covered through the evaluator | see gap below |
 | `evaluator` | **source → resulting bytes**; this is the de-facto integration suite | `evaluator/evaluator_test.go` |
 | `builder/evm` | emitted opcode bytes and the lowering order | `builder/evm/lowering_test.go` |
@@ -157,9 +155,9 @@ Current baseline (`go test ./... -cover`):
 | `manifest` | 51.9% |
 | `internal/cli` | 45.4% |
 | `builder/evm` | 34.3% |
-| `emitter`, `linker`, `fileutil`, `evaluator/builtin`, `logger`, `cmd/aurora` | 0% |
+| `emitter`, `fileutil`, `evaluator/builtin`, `logger`, `cmd/aurora` | 0% |
 
-**Known gap:** `emitter` has no direct unit tests — it is exercised indirectly through `evaluator` and `builder/evm`. The `linker` (namespace resolution, dependency cycles) has none at all. Both are the highest-value places to add tests right now.
+**Known gap:** `emitter` has no direct unit tests — it is exercised indirectly through `evaluator` and `builder/evm`. That is the highest-value place to add tests right now.
 
 ---
 

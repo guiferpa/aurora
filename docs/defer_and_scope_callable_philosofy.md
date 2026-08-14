@@ -24,7 +24,7 @@ The **`defer`** keyword solves this problem by transforming a scope into a **def
 
 ```lang
 ident r = defer {
-  arguments(0) + arguments(1);
+  feed(0) + feed(1);
 };
 
 r(1, 2); // 3
@@ -62,43 +62,43 @@ The runtime:
 4. Executes the scope
 5. Returns the value of the last expression
 
-The scope itself remains unaware of how many arguments were passed.
+The scope itself remains unaware of how many values were fed to it.
 
 ---
 
-## `arguments` as a builtin function
+## `feed` as a builtin
 
-`arguments` is a **builtin function provided by the runtime**, not a language-level function and not a user-definable construct.
+`feed` is a **builtin provided by the runtime**, not a language-level function and not a user-definable construct.
 
 ```lang
-arguments(index)
+feed(index)
 ```
 
-### Properties of `arguments`
+### Properties of `feed`
 
-* `arguments` is globally available inside any executing scope
+* `feed` is globally available inside any executing scope
 * It is **not declared** using `ident`
 * It cannot be shadowed or overridden
 * It does not expose arity or argument count
 * It does not perform validation
 
-Internally, `arguments` accesses the **argument vector of the current execution frame**.
+Internally, `feed` reads the **vector of values applied to the current execution frame**.
 
 ---
 
-## Argument access semantics
+## Feed access semantics
 
-* Arguments are stored as a sequential structure
-* Access is **always normalized using modulo with the argument vector length**
+* Fed values are stored as a sequential structure
+* Access is **always normalized using modulo with the vector length**
 * Negative indices are normalized by absolute value before modulo
 * Access never fails and never throws
 
 Example:
 
 ```lang
-arguments(0)
-arguments(10)
-arguments(-1)
+feed(0)
+feed(10)
+feed(-1)
 ```
 
 All expressions return a valid value according to the normalization rules.
@@ -129,7 +129,7 @@ Execution is defined as:
 
 —not as a function call.
 
-The presence of the `arguments` builtin does not introduce function semantics; it only provides a runtime access mechanism to execution data.
+The presence of the `feed` builtin does not introduce function semantics; it only provides a runtime access mechanism to execution data.
 
 ---
 
@@ -177,7 +177,7 @@ The presence of the `arguments` builtin does not introduce function semantics; i
 ## Core principle
 
 > **`defer` does not introduce functions into the language.
-> It turns scopes into executable values, while `arguments` provides runtime access to execution data without creating contracts or arity.**
+> It turns scopes into executable values, while `feed` provides runtime access to execution data without creating contracts or arity.**
 
 This design prioritizes:
 

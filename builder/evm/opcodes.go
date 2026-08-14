@@ -2,7 +2,8 @@ package evm
 
 import "github.com/guiferpa/aurora/byteutil"
 
-// https://www.evm.codes/
+// Opcodes and their names follow https://www.evm.codes/, so a disassembled log can be
+// read against the reference.
 
 const (
 	OpStop         byte = iota + 0x0 // Halts execution
@@ -141,11 +142,11 @@ func ResolveOpCode(op byte) string {
 	case OpDiv:
 		return "DIV"
 	case OpSignedDiv:
-		return "SIGNEDDIV"
+		return "SDIV"
 	case OpMod:
 		return "MOD"
 	case OpSignedMod:
-		return "SIGNEDMOD"
+		return "SMOD"
 	case OpAddMod:
 		return "ADDMOD"
 	case OpMulMod:
@@ -159,9 +160,9 @@ func ResolveOpCode(op byte) string {
 	case OpGreaterThan:
 		return "GREATERTHAN"
 	case OpSignedLessThan:
-		return "SIGNEDLESSTHAN"
+		return "SLT"
 	case OpSignedGreaterThan:
-		return "SIGNEDGREATERTHAN"
+		return "SGT"
 	case OpEqual:
 		return "EQUAL"
 	case OpIsZero:
@@ -242,11 +243,11 @@ func ResolveOpCode(op byte) string {
 	case OpPop:
 		return "POP"
 	case OpMemoryLoad:
-		return "MEMORYLOAD"
+		return "MLOAD"
 	case OpMemoryStore:
-		return "MEMORYSTORE"
+		return "MSTORE"
 	case OpMemoryStore8:
-		return "MEMORYSTORE8"
+		return "MSTORE8"
 	case OpStorageLoad:
 		return "STORAGELOAD"
 	case OpStorageStore:
@@ -254,21 +255,21 @@ func ResolveOpCode(op byte) string {
 	case OpJump:
 		return "JUMP"
 	case OpJumpIf:
-		return "JUMPIF"
+		return "JUMPI"
 	case OpProgramCounter:
 		return "PROGRAMCOUNTER"
 	case OpMemorySize:
-		return "MEMORYSIZE"
+		return "MSIZE"
 	case OpGas:
 		return "GAS"
 	case OpJumpDestiny:
-		return "JUMPDESTINY"
+		return "JUMPDEST"
 	case OpTransientLoad:
 		return "TRANSIENTLOAD"
 	case OpTransientStore:
 		return "TRANSIENTSTORE"
 	case OpMemoryCopy:
-		return "MEMORYCOPY"
+		return "MCOPY"
 	case OpPush0:
 		return "PUSH0"
 	case OpPush1:

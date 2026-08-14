@@ -38,9 +38,12 @@ The manifest is found by walking up from the working directory, so these command
 `tiny` pins `tape_size = 1`, so every value holds a single byte and arithmetic wraps at 256:
 
 ```sh
-aurora run tiny        # [200] then [44]  — 200 + 100 wrapped
+aurora run tiny        # [200] then [44]  — 200 + 100 wrapped past 255
 aurora run tiny -t 8   # [0 0 0 0 0 0 0 200] then [0 0 0 0 0 0 1 44]
 ```
+
+(The file also echoes both values. 200 is not printable ASCII, so what you see
+for it depends on your terminal; 44 comes out as a comma.)
 
 The flag beats the profile, which beats the default of 8. Pinning it in the manifest means the project compiles the same way for whoever runs it, instead of depending on a flag someone has to remember.
 

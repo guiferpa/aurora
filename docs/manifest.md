@@ -1,6 +1,8 @@
 # Aurora manifest reference (`aurora.toml`)
 
-The Aurora manifest is a TOML file named `aurora.toml` that describes your project and how the CLI should build, run, deploy, and call your program. It is created by `aurora init` and must live at the root of your project (or in a parent directory of where you run Aurora commands).
+The Aurora manifest is a TOML file named `aurora.toml` that describes your project and how the CLI should build, run, deploy, and call your program. It is created by `aurora init` and lives at the root of your project.
+
+A manifest lets you name a **profile** instead of repeating paths and settings on every command. It is not always required: `run` and `build` also take a path, and a path needs no project at all.
 
 Deploy state (contract address, tx hash, deployed-at per profile) is stored in a **separate hidden file** (`.aurora.deploys.toml`) so that `aurora.toml` stays clean and editable.
 
@@ -13,6 +15,40 @@ The manifest has two scopes in `aurora.toml`: **`[project]`** and **`[profiles.<
 - **Filename:** `aurora.toml`
 - **Location:** Project root (the directory that contains `aurora.toml`).
 - **Discovery:** When you run a command (e.g. from `my-project/src/`), the CLI walks up the directory tree until it finds `aurora.toml`. That directory is the project root; paths in the manifest are relative to it.
+
+---
+
+## Selecting a profile
+
+`run` and `build` take **one argument**, and its shape decides what it means:
+
+| Command | What it compiles | Manifest |
+|---|---|---|
+| `aurora run` | the `main` profile | required |
+| `aurora run dev` | the `dev` profile | required |
+| `aurora run src/app.ar` | that file | **not used** |
+
+A path is anything ending in `.ar`; anything else is read as a profile name. So a loose file runs from anywhere, with no project around it, and the manifest only comes into play when you name a profile — or name nothing, which means `main`.
+
+An argument that looks like a path but has no `.ar` extension is rejected rather than looked up as a profile:
+
+```
+$ aurora run ./app
+"./app" is neither a profile name nor an .ar file
+```
+
+`build` follows the same rule and adds `-o` for the output path:
+
+```sh
+aurora build                          # profile main: source -> binary
+aurora build dev                      # profile dev
+aurora build src/app.ar               # writes ./app, next to where you are
+aurora build src/app.ar -o bin/app    # -o wins in every case
+```
+
+Without `-o`, a profile gives the output path (`binary`); a loose file has no profile to ask, so the binary takes the source's name in the working directory.
+
+**`deploy` and `call` are different:** they read `rpc` and `privkey` from a profile, so they always need a manifest and still select the profile with `-p/--profile`.
 
 ---
 
@@ -39,15 +75,14 @@ These are written by `aurora init` and are enough for **build** and **run**.
 
 | Field        | Required | Default   | Description |
 |--------------|----------|-----------|-------------|
-| **`source`** | Yes      | `"src/main.ar"` | Path to the main Aurora source file, relative to the project root. Used by `aurora build`, `aurora run`, and (when building before deploy) by `aurora deploy` when you don’t pass a file path. |
-| **`binary`** | Yes      | `"bin/main"`    | Path where the compiled binary (bytecode) is written, relative to the project root. Used by `aurora build` when you don’t pass `-o`, and by `aurora deploy` as the contract bytecode to send. The name usually matches the source filename without extension (e.g. `main.ar` → `bin/main`). |
-
-| **`tape_size`** | No | `8` | Width in bytes of every value in this project, from 1 to 32. A literal that does not fit is rejected at compile time. Overridden by `--tape-size` on the command line. See [language-design.md](language-design.md#tape-size-how-many-bytes-a-value-has). |
+| **`source`** | Yes      | `"src/main.ar"` | Path to the Aurora source file, relative to the project root. Used by `aurora run` and `aurora build` when this profile is selected. |
+| **`binary`** | Yes      | `"bin/main"`    | Path where the compiled bytecode is written, relative to the project root. Used by `aurora build` when you don’t pass `-o`, and read by `aurora deploy` as the bytecode to send — so **`deploy` needs a `build` first**. The name usually matches the source filename without extension (e.g. `main.ar` → `bin/main`). |
+| **`tape_size`** | No    | `8` | Width in bytes of every value in this project, from 1 to 32. A literal that does not fit is rejected at compile time. Overridden by `--tape-size` on the command line. See [language-design.md](language-design.md#tape-size-how-many-bytes-a-value-has). |
 
 **Why:**  
-- **`source`** centralizes the entry point so `aurora build` and `aurora run` can be used without arguments.
-- **`tape_size`** declares the dialect the project is written in, so it belongs to the project rather than to a command line someone has to remember.  
-- **`binary`** centralizes the build output so `aurora build` and `aurora deploy` agree on where the bytecode lives.
+- **`source`** centralizes the entry point so `aurora run` and `aurora build` work with a profile name, or with no argument at all.  
+- **`binary`** centralizes the build output so `aurora build` and `aurora deploy` agree on where the bytecode lives.  
+- **`tape_size`** declares the dialect the project is written in, so it belongs to the project rather than to a command line someone has to remember.
 
 ### Optional fields (on-chain)
 
@@ -99,6 +134,13 @@ source = "src/main.ar"
 binary = "bin/main"
 ```
 
+```sh
+aurora run        # runs src/main.ar
+aurora build      # writes bin/main
+```
+
+A working example lives in [`examples/project/`](../examples/project/), with a second profile that pins the tape size.
+
 ---
 
 ## Example: after deploy
@@ -143,7 +185,13 @@ rpc = "https://eth-sepolia.g.alchemy.com/v2/..."
 privkey = "<hex private key, no 0x>"
 ```
 
-Deploy state for each profile lives in **`.aurora.deploys.toml`** (created/updated by the CLI on deploy).
+Deploy state for each profile lives in **`.aurora.deploys.toml`** (created/updated by the CLI on deploy). Select the profile with `-p`:
+
+```sh
+aurora build sepolia          # bytecode for that profile
+aurora deploy -p sepolia      # sends what build wrote
+aurora call getResult -p sepolia
+```
 
 ---
 
@@ -152,10 +200,12 @@ Deploy state for each profile lives in **`.aurora.deploys.toml`** (created/updat
 | Scope / file              | Purpose |
 |---------------------------|---------|
 | **`[project]`**            | Project identity: `name`, `version`. |
-| **`[profiles.<name>]`**    | Build and chain config per environment: `source`, `binary`, and optionally `rpc`, `privkey`. Do **not** put contract address here. |
+| **`[profiles.<name>]`**    | Build and chain config per environment: `source`, `binary`, `tape_size`, and optionally `rpc`, `privkey`. Do **not** put contract address here. |
 | **`.aurora.deploys.toml`** | Last deploy state per profile: `contract_address`, `tx_hash`, `deployed_at`. Generated by the CLI on deploy; do not edit. Used by **call** for the contract address. |
 
-**Profile fields:** `source`, `binary` (default from init); `rpc`, `privkey` (optional, for on-chain).  
+**Profile fields:** `source`, `binary` (default from init); `tape_size`, `rpc`, `privkey` (optional).  
 **Deploy state file:** `.aurora.deploys.toml` holds `contract_address`, `tx_hash`, `deployed_at` per profile (CLI-only).
+
+**How a command finds its profile:** `run` and `build` take it as the argument (or a path, which skips the manifest entirely); `deploy` and `call` take `-p`.
 
 For the main project README and getting started, see the [Project manifest](../README.md#project-manifest) section.

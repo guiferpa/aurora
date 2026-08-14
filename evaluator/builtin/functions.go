@@ -7,61 +7,18 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 )
 
+// PrintFunction writes the bytes of a value as they are: print is how you see what a value
+// actually is.
 func PrintFunction(w io.Writer, bs []byte) {
 	_, _ = w.Write(bs)
 }
 
-// EchoFunction converts bytes to text and prints it
-// If bytes represent a reel (array of tapes), it prints each tape in sequence
-// If bytes represent a tape (8 bytes), it prints the tape as a character
-// If bytes represent a number, it encodes it as text (ASCII character)
+// EchoFunction writes a value as text: echo is how you read bytes back as characters.
+//
+// A reel is a run of tapes, one character each, so anything wider than a tape is walked
+// tape by tape. A single tape becomes the character its last significant byte stands for.
 func EchoFunction(w io.Writer, bs []byte, tapeSize int) {
-	// Check if this is a reel (array of tapes)
-	// A reel is a concatenation of multiple 8-byte tapes
-	// If the length is a multiple of 8 and greater than 8, it's likely a reel
-	tapeSize = byteutil.TapeSize(tapeSize)
-	if len(bs) > tapeSize && len(bs)%tapeSize == 0 {
-		// This is a reel - iterate over each tape (8 bytes each)
-		result := ""
-		for i := 0; i < len(bs); i += tapeSize {
-			tape := bs[i : i+tapeSize]
-			// Extract significant bytes from this tape (right-aligned)
-			significant := extractSignificantBytes(tape)
-			if len(significant) > 0 {
-				// Convert significant bytes to character
-				char := rune(significant[len(significant)-1]) // Use last byte as character
-				if char >= 32 && char <= 126 {
-					result += string(char)
-				}
-			}
-		}
-		if result != "" {
-			_, _ = w.Write([]byte(result))
-		} else {
-			_, _ = w.Write([]byte("\n"))
-		}
-		return
-	}
-
-	// This is a tape (8 bytes or less) - extract significant bytes
-	significant := extractSignificantBytes(bs)
-
-	// If no significant bytes, print empty line
-	if len(significant) == 0 {
-		fmt.Println()
-		return
-	}
-
-	// Convert bytes to text
-	// Use the last significant byte as the character
-	char := rune(significant[len(significant)-1])
-	if char >= 32 && char <= 126 {
-		// Printable ASCII character
-		_, _ = w.Write([]byte(string(char)))
-	} else {
-		// Non-printable, print as-is
-		_, _ = w.Write([]byte(string(significant)))
-	}
+	_, _ = w.Write([]byte(textOf(bs, tapeSize)))
 }
 
 // FeedFunction returns the value at the given index of the feed: the vector of values
@@ -82,55 +39,60 @@ func FeedFunction(feed map[uint64][]byte, index uint64, tapeSize int) []byte {
 	return byteutil.PaddingTape(value, tapeSize)
 }
 
-// AssertFunction evaluates an assert: condition (bytes as boolean) and message (reel bytes for error display).
-// Returns (passed, errMessage). When passed is false, errMessage is the decoded message to show.
+// AssertFunction evaluates an assert: the condition as a truth value, the message as text
+// to show when it does not hold.
 func AssertFunction(cond, msg []byte, tapeSize int) (bool, error) {
-	passed := byteutil.ToBoolean(cond)
-	if passed {
+	if byteutil.ToBoolean(cond) {
 		return true, nil
 	}
-	message := reelBytesToString(msg, tapeSize)
-	return false, fmt.Errorf("assertion failed: %s", message)
+	return false, fmt.Errorf("assertion failed: %s", textOf(msg, tapeSize))
 }
 
-// reelBytesToString decodes reel bytes (concatenated 8-byte tapes) to a Go string for display.
-func reelBytesToString(bs []byte, tapeSize int) string {
+// textOf reads a value as text, tape by tape. Both echo and a failed assertion need it,
+// and they used to walk the bytes in two slightly different ways — one of them with a
+// stride of 8 that ignored the tape size, which read past the end of a narrow reel.
+func textOf(bs []byte, tapeSize int) string {
+	tapeSize = byteutil.TapeSize(tapeSize)
 	if len(bs) == 0 {
 		return ""
 	}
-	tapeSize = byteutil.TapeSize(tapeSize)
+
+	// A run of whole tapes is a reel: one character per tape.
 	if len(bs) > tapeSize && len(bs)%tapeSize == 0 {
-		result := ""
-		for i := 0; i < len(bs); i += 8 {
-			tape := bs[i : i+8]
-			significant := extractSignificantBytes(tape)
-			if len(significant) > 0 {
-				char := rune(significant[len(significant)-1])
-				if char >= 32 && char <= 126 {
-					result += string(char)
-				}
+		text := make([]byte, 0, len(bs)/tapeSize)
+		for i := 0; i < len(bs); i += tapeSize {
+			if char, ok := printableOf(bs[i : i+tapeSize]); ok {
+				text = append(text, char)
 			}
 		}
-		return result
+		return string(text)
 	}
-	significant := extractSignificantBytes(bs)
-	if len(significant) == 0 {
-		return ""
+
+	// Anything else is a single value: the character its last significant byte stands for,
+	// or the significant bytes themselves when that is not printable.
+	if char, ok := printableOf(bs); ok {
+		return string(rune(char))
 	}
-	return string(significant)
+	return string(significantBytes(bs))
 }
 
-// extractSignificantBytes extracts bytes from the first non-zero byte to the end (right-aligned)
-func extractSignificantBytes(bs []byte) []byte {
-	if len(bs) == 0 {
-		return []byte{}
+// printableOf returns the printable ASCII character a tape stands for, if it is one.
+func printableOf(tape []byte) (byte, bool) {
+	significant := significantBytes(tape)
+	if len(significant) == 0 {
+		return 0, false
 	}
-	// Start from the right and collect non-zero bytes
-	significant := make([]byte, 0)
-	for i := len(bs) - 1; i >= 0; i-- {
-		if bs[i] != 0 || len(significant) > 0 {
-			significant = append([]byte{bs[i]}, significant...)
+	char := significant[len(significant)-1]
+	return char, char >= 32 && char <= 126
+}
+
+// significantBytes drops the leading zeros of a value, which are padding rather than
+// content. A value of all zeros has nothing significant in it.
+func significantBytes(bs []byte) []byte {
+	for i := range bs {
+		if bs[i] != 0 {
+			return bs[i:]
 		}
 	}
-	return significant
+	return nil
 }

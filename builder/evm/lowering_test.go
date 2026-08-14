@@ -182,6 +182,21 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 			},
 		},
 		{
+			// A chain of divisions has the same shape as a chain of subtractions — both
+			// group to the left and neither is associative — so the lowering has to
+			// reorder it the same way. Nothing covered this before: the tree used to
+			// group division to the right, where the question did not arise.
+			name:   "div_div_reorder",
+			source: "feed(0) / feed(1) / feed(2);",
+			want: []emitter.Instruction{
+				emitter.NewInstruction([]byte("03"), emitter.OpGetFeed, byteutil.FromUint64(2), nil),
+				emitter.NewInstruction([]byte("01"), emitter.OpGetFeed, byteutil.FromUint64(1), nil),
+				emitter.NewInstruction([]byte("00"), emitter.OpGetFeed, byteutil.FromUint64(0), nil),
+				emitter.NewInstruction([]byte("02"), emitter.OpDivide, []byte("00"), []byte("01")),
+				emitter.NewInstruction([]byte("04"), emitter.OpDivide, []byte("02"), []byte("03")),
+			},
+		},
+		{
 			name:   "div_reorder",
 			source: "feed(0) / feed(1);",
 			want: []emitter.Instruction{

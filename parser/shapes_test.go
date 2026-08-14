@@ -384,6 +384,21 @@ func TestAdditiveIsLeftAssociative(t *testing.T) {
 	}
 }
 
+// Multiplicative expressions are left-associative too: 20 / 5 / 2 is (20 / 5) / 2, not
+// 20 / (5 / 2). They used to group to the right, which answered 10 for that.
+func TestMultiplicativeIsLeftAssociative(t *testing.T) {
+	for _, source := range []string{"20 / 5 / 2;", "4 / 2 * 6;", "2 * 3 / 6;"} {
+		expr := first[BinaryExpression](t, source)
+
+		if _, ok := expr.Left.(BinaryExpression); !ok {
+			t.Errorf("%s: the left side is %T, want the inner operation", source, expr.Left)
+		}
+		if _, ok := expr.Right.(NumberLiteral); !ok {
+			t.Errorf("%s: the right side is %T, want the last operand alone", source, expr.Right)
+		}
+	}
+}
+
 // Exponentiation recurses to the right: 2 ^ 3 ^ 2 is 2 ^ (3 ^ 2).
 func TestExponentiationIsRightAssociative(t *testing.T) {
 	expr := first[BinaryExpression](t, "2 ^ 3 ^ 2;")

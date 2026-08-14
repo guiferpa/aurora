@@ -374,36 +374,46 @@ func (p *pr) ParseExpoExpr() (Node, error) {
 	return left, nil
 }
 
+// ParseMultExpr parses multiplicative expressions left-associatively: a / b / c => (a / b) / c,
+// a * b * c => (a * b) * c.
+//
+// It used to recurse into itself on the right, which grouped the other way: `20 / 5 / 2` read
+// as 20 / (5 / 2) and answered 10 instead of 2, and `4 / 2 * 6` read as 4 / (2 * 6) and
+// answered 0 instead of 12. Multiplication hid it — it is associative, so only a chain mixing
+// it with division gives a different answer.
 func (p *pr) ParseMultExpr() (Node, error) {
 	left, err := p.ParseExpoExpr()
 	if err != nil {
 		return nil, err
 	}
-
-	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.MULT {
-		op, err := p.EatToken(lexer.MULT)
-		if err != nil {
-			return nil, err
+	for {
+		lookahead := p.GetLookahead()
+		if lookahead.GetTag().Id == lexer.MULT {
+			op, err := p.EatToken(lexer.MULT)
+			if err != nil {
+				return nil, err
+			}
+			right, err := p.ParseExpoExpr()
+			if err != nil {
+				return nil, err
+			}
+			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
+			continue
 		}
-		right, err := p.ParseMultExpr()
-		if err != nil {
-			return nil, err
+		if lookahead.GetTag().Id == lexer.DIV {
+			op, err := p.EatToken(lexer.DIV)
+			if err != nil {
+				return nil, err
+			}
+			right, err := p.ParseExpoExpr()
+			if err != nil {
+				return nil, err
+			}
+			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
+			continue
 		}
-		return BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}, nil
+		break
 	}
-	if lookahead.GetTag().Id == lexer.DIV {
-		op, err := p.EatToken(lexer.DIV)
-		if err != nil {
-			return nil, err
-		}
-		right, err := p.ParseMultExpr()
-		if err != nil {
-			return nil, err
-		}
-		return BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}, nil
-	}
-
 	return left, nil
 }
 

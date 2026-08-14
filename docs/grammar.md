@@ -130,20 +130,26 @@ _rele -> _adde EQUALS _rele
 _adde -> _multe ((SUM | SUB) _multe)*
 ```
 
-Left-associative, unlike the levels around it: `a - b - c` is `(a - b) - c`.
+Left-associative: `a - b - c` is `(a - b) - c`.
 
 ### Multiplicative expression
 ```
-_multe -> _expoe MULT _multe
-        | _expoe DIV _multe
-        | _expoe
+_multe -> _expoe ((MULT | DIV) _expoe)*
 ```
+
+Left-associative as well: `a / b / c` is `(a / b) / c`, and `a / b * c` is `(a / b) * c`. It
+recursed to the right until v0.3.1-alpha, which grouped the other way and answered 10 for
+`20 / 5 / 2`. Multiplication on its own is associative, so only a chain mixing the two tells
+the groupings apart.
 
 ### Exponential expression
 ```
 _expoe -> _unae EXPO _expoe
         | _unae
 ```
+
+Right-associative, which is the convention for exponentiation: `2 ^ 3 ^ 2` is `2 ^ (3 ^ 2)`,
+512 rather than 64.
 
 ### Unary expression
 ```

@@ -15,6 +15,8 @@
 #-   [0 0 0 0 0 0 0 14]
 #-   [0 0 0 0 0 0 0 20]
 #-   [0 0 0 0 0 0 0 5]
+#-   2
+#-   512
 #-   [0 0 0 0 0 0 0 3]
 #-   [0 0 0 0 0 0 1 0]
 
@@ -32,6 +34,12 @@ printb (2 + 3) * 4;
 
 #- Subtraction is left-associative: (10 - 3) - 2, not 10 - (3 - 2).
 printb 10 - 3 - 2;
+
+#- Division is too: (20 / 5) / 2, not 20 / (5 / 2).
+printd 20 / 5 / 2;
+
+#- Exponentiation is the one that goes the other way: 2 ^ (3 ^ 2).
+printd 2 ^ 3 ^ 2;
 
 #- Division truncates: there are no fractions, only bytes.
 printb 7 / 2;

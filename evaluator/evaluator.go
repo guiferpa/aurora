@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -59,16 +60,17 @@ func deferKey(index uint64) string {
 type ReturnsPerLabel map[string][]byte
 
 type Evaluator struct {
-	player       *Player
-	cursor       uint64
-	end          uint64
-	logger       *Logger
-	insts        []emitter.Instruction
-	assertErrors []error // Buffer to collect assert errors
-	echoWriter   io.Writer
-	printWriter  io.Writer
-	environ      *environ.Environ
-	tapeSize     int
+	player        *Player
+	cursor        uint64
+	end           uint64
+	logger        *Logger
+	insts         []emitter.Instruction
+	assertResults []AssertResult // what each assertion did, in the order they ran
+	asserts       bool           // whether assertions are evaluated at all
+	echoWriter    io.Writer
+	printWriter   io.Writer
+	environ       *environ.Environ
+	tapeSize      int
 }
 
 // TapeSize is the width, in bytes, of every value this evaluator handles.
@@ -76,8 +78,34 @@ func (e *Evaluator) TapeSize() int {
 	return e.tapeSize
 }
 
+// AssertResult is one assertion and what became of it. A run collects every one, not only
+// the failures, so a report can say how many held.
+type AssertResult struct {
+	Passed  bool
+	Message string
+}
+
+// ClearTemps drops the temps left behind by a program. A caller running two programs in
+// one evaluator needs it: each is emitted on its own and numbers its labels from zero, so
+// what one left behind would sit under the labels the next is about to use.
+func (e *Evaluator) ClearTemps() {
+	e.environ.ClearTemps()
+}
+
+// GetAssertResults returns every assertion that ran, in order.
+func (e *Evaluator) GetAssertResults() []AssertResult {
+	return e.assertResults
+}
+
+// GetAssertErrors returns only the failures, which is what a plain run reports.
 func (e *Evaluator) GetAssertErrors() []error {
-	return e.assertErrors
+	errs := make([]error, 0)
+	for _, result := range e.assertResults {
+		if !result.Passed {
+			errs = append(errs, errors.New(result.Message))
+		}
+	}
+	return errs
 }
 
 func (e *Evaluator) SetPlayer(player *Player) {
@@ -401,13 +429,29 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 	return nil
 }
 
+// EvaluateAssert checks a condition, but only under a runner that asked for it. A plain
+// run consumes the operands and moves on: assertions belong to "aurora test", and a
+// program that happens to hold one should not fail because of it.
 func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
 	cond := e.environ.GetTemp(byteutil.ToHex(left))
 	msg := e.environ.GetTemp(byteutil.ToHex(right))
-	passed, errMsg := builtin.AssertFunction(cond, msg, e.tapeSize)
-	if !passed {
-		e.assertErrors = append(e.assertErrors, errMsg)
+
+	if !e.asserts {
+		e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
+		e.IncrementCursor()
+		return nil
 	}
+
+	passed, failure := builtin.AssertFunction(cond, msg, e.tapeSize)
+	result := AssertResult{Passed: passed}
+	if passed {
+		result.Message = builtin.TextOf(msg, e.tapeSize)
+	} else {
+		result.Message = failure.Error()
+	}
+	e.assertResults = append(e.assertResults, result)
+
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
 	e.IncrementCursor()
 	return nil
 }
@@ -600,19 +644,22 @@ type NewEvaluatorOptions struct {
 	Args          []byte
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
+	// Asserts turns assertions on. Only "aurora test" does.
+	Asserts bool
 }
 
 func New(options NewEvaluatorOptions) *Evaluator {
 	return &Evaluator{
-		player:       options.Player,
-		cursor:       0,
-		end:          0,
-		logger:       NewLogger(options.EnableLogging),
-		insts:        make([]emitter.Instruction, 0),
-		assertErrors: make([]error, 0),
-		echoWriter:   options.EchoWriter,
-		printWriter:  options.PrintWriter,
-		tapeSize:     byteutil.TapeSize(options.TapeSize),
+		player:        options.Player,
+		cursor:        0,
+		end:           0,
+		logger:        NewLogger(options.EnableLogging),
+		insts:         make([]emitter.Instruction, 0),
+		assertResults: make([]AssertResult, 0),
+		asserts:       options.Asserts,
+		echoWriter:    options.EchoWriter,
+		printWriter:   options.PrintWriter,
+		tapeSize:      byteutil.TapeSize(options.TapeSize),
 		environ: environ.NewEnviron(environ.NewEnvironOptions{
 			Args:     options.Args,
 			TapeSize: byteutil.TapeSize(options.TapeSize),

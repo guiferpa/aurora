@@ -18,7 +18,7 @@ func PrintFunction(w io.Writer, bs []byte) {
 // A reel is a run of tapes, one character each, so anything wider than a tape is walked
 // tape by tape. A single tape becomes the character its last significant byte stands for.
 func EchoFunction(w io.Writer, bs []byte, tapeSize int) {
-	_, _ = w.Write([]byte(textOf(bs, tapeSize)))
+	_, _ = w.Write([]byte(TextOf(bs, tapeSize)))
 }
 
 // FeedFunction returns the value at the given index of the feed: the vector of values
@@ -45,13 +45,14 @@ func AssertFunction(cond, msg []byte, tapeSize int) (bool, error) {
 	if byteutil.ToBoolean(cond) {
 		return true, nil
 	}
-	return false, fmt.Errorf("assertion failed: %s", textOf(msg, tapeSize))
+	return false, fmt.Errorf("assertion failed: %s", TextOf(msg, tapeSize))
 }
 
-// textOf reads a value as text, tape by tape. Both echo and a failed assertion need it,
-// and they used to walk the bytes in two slightly different ways — one of them with a
-// stride of 8 that ignored the tape size, which read past the end of a narrow reel.
-func textOf(bs []byte, tapeSize int) string {
+// TextOf reads a value as text, tape by tape. echo, a failed assertion and a test report
+// all need it, and echo and assert used to walk the bytes in two slightly different ways —
+// one of them with a stride of 8 that ignored the tape size, which read past the end of a
+// narrow reel.
+func TextOf(bs []byte, tapeSize int) string {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	if len(bs) == 0 {
 		return ""

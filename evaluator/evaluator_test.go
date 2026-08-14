@@ -1248,6 +1248,8 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 			}
 			ev := New(NewEvaluatorOptions{
 				EnableLogging: false,
+				// Assertions only run under a runner that asked for them.
+				Asserts: true,
 			})
 			if _, err := ev.Evaluate(insts); err != nil {
 				t.Errorf("%v: %v", c.Name, err)

@@ -1,0 +1,41 @@
+#- Numbers
+#-
+#- A number is a tape: a fixed run of bytes, 8 by default. Literals can be
+#- decimal or hexadecimal, and "_" may be used anywhere as a separator.
+#-
+#- A literal that does not fit the tape is rejected at compile time rather than
+#- being truncated, so with --tape-size 1 the line "ident big = 300;" fails with
+#- "value 300 does not fit in a 1-byte tape (max 255)".
+#-
+#- Run: aurora run -s numbers.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 7]
+#-   [0 0 0 0 0 0 3 232]
+#-   [0 0 0 0 0 15 66 64]
+#-   [0 0 0 0 0 0 0 255]
+#-   [0 0 0 0 0 0 0 255]
+#-   [0 0 0 0 0 0 26 43]
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 26]
+
+ident small = 7;
+ident thousand = 1_000;
+ident million = 1_000_000;
+
+print small;
+print thousand;
+print million;
+
+#- Hexadecimal, upper or lower case, with 0x or 0X.
+ident hex = 0xFF;
+ident hex_upper = 0XFF;
+ident hex_word = 0x1A2B;
+
+print hex;
+print hex_upper;
+print hex_word;
+
+#- Decimal and hexadecimal are the same kind of value: both are tapes.
+print 0x10 equals 16;
+print 10 + 0x10;

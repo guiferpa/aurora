@@ -1,26 +1,30 @@
-ident sum = defer {
-  ident a = arguments(0);
-  ident b = arguments(1);
-  a + b;
+#- Branch
+#-
+#- "branch" is sugar for nested if/else: a list of "test: value" pairs and a
+#- final fallback closed with ";". The first test that holds gives the value.
+#-
+#- Run: aurora run -s branch.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 20]
+#-   [0 0 0 0 0 0 3 231]
+
+ident code = 2;
+
+ident label = branch {
+  code equals 1: 10,
+  code equals 2: 20,
+  code equals 3: 30,
+  0;
 };
 
-ident sub = defer {
-  ident a = arguments(0);
-  ident b = arguments(1);
-  a - b;
+print label;
+
+#- The fallback is what you get when nothing matches.
+ident unknown = branch {
+  code equals 8: 80,
+  code equals 9: 90,
+  999;
 };
 
-ident op = 1;
-
-ident another_id = true;
-
-ident a = branch {
-  op equals 1: sum(1, 1), 
-  op equals 2: sub(1, 1),
-  branch {
-    another_id: 10,
-    12;
-  };
-};
-
-print a;
+print unknown;

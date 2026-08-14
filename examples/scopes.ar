@@ -1,0 +1,41 @@
+#- Scopes
+#-
+#- A block "{ }" is an expression that runs immediately and produces the value
+#- of its last expression. An empty block produces a tape of zeros.
+#-
+#- Run: aurora run -s scopes.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 30]
+#-   [0 0 0 0 0 0 0 0]
+#-   [0 0 0 0 0 0 0 21]
+#-   [0 0 0 0 0 0 0 101]
+
+ident result = {
+  ident x = 10;
+  ident y = 20;
+  x + y;
+};
+
+print result;
+
+#- An empty block still has a value.
+ident empty = { };
+print empty;
+
+#- Blocks nest, and each one has its own scope: the inner "x" is a different
+#- binding from the outer one.
+ident outer = {
+  ident x = 1;
+  ident inner = {
+    ident x = 2;
+    x * 10;
+  };
+  inner + x;
+};
+
+print outer;
+
+#- A block sees the bindings around it.
+ident base = 100;
+print { base + 1; };

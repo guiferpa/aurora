@@ -1,0 +1,37 @@
+#- Recursion
+#-
+#- A deferred scope can invoke itself: the binding is visible while the scope
+#- runs, so recursion needs nothing special.
+#-
+#- Run: aurora run -s recursion.ar
+#-      aurora run -p fibonacci      (same file, through the manifest)
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 120]
+#-   [0 0 0 0 0 0 0 55]
+#-   [0 0 0 0 0 0 0 55]
+
+ident factorial = defer {
+  ident n = feed(0);
+  if n smaller 2 { 1; } else { n * factorial(n - 1); };
+};
+
+print factorial(5);
+
+ident fib = defer {
+  ident n = feed(0);
+  if n smaller 2 { n; } else { fib(n - 1) + fib(n - 2); };
+};
+
+print fib(10);
+
+#- The same fibonacci written with branch instead of if/else.
+ident fib_branch = defer {
+  ident n = feed(0);
+  branch {
+    n smaller 2: n,
+    fib_branch(n - 1) + fib_branch(n - 2);
+  };
+};
+
+print fib_branch(10);

@@ -1,0 +1,34 @@
+#- Logic
+#-
+#- "and" and "or" read their operands as conditions: any non-zero tape is true,
+#- a tape of zeros is false. The result is a tape holding 1 or 0.
+#-
+#- Run: aurora run -s logic.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 0]
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 0]
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 2]
+#-   [0 0 0 0 0 0 0 1]
+
+print true and true;
+print true and false;
+print false or true;
+print false or false;
+
+#- Any non-zero value counts as true, not just the true keyword.
+print 42 and 1;
+print 0 or 7;
+
+#- Combining with comparisons.
+ident age = 20;
+print age bigger 18 and age smaller 65;
+
+#- true is a tape holding 1, so it takes part in arithmetic with no special rule.
+print true + 1;
+print false + 1;

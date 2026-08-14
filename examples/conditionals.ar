@@ -1,0 +1,31 @@
+#- Conditionals
+#-
+#- "if" is an expression: it produces the value of the branch taken, so it can
+#- be bound to a name or used inside another expression. Without an "else", a
+#- failing test produces a tape of zeros.
+#-
+#- Run: aurora run -s conditionals.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 32]
+#-   [0 0 0 0 0 0 0 100]
+#-   [0 0 0 0 0 0 0 0]
+#-   [0 0 0 0 0 0 0 50]
+
+ident a = if 10 bigger 9 { 32; };
+print a;
+
+ident b = if 9 bigger 10 { 90; } else { 100; };
+print b;
+
+#- No else and a failing test: the value is a tape of zeros.
+ident c = if false { 1; };
+print c;
+
+#- A branch body is a scope: it may hold several expressions, and the last one
+#- is the value.
+ident d = if true {
+  ident base = 10;
+  base * 5;
+};
+print d;

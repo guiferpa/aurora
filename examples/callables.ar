@@ -1,0 +1,41 @@
+#- Callables: defer and feed
+#-
+#- Aurora has no functions. "defer" takes a scope and delays it, producing a
+#- value that can be invoked later; "feed(n)" reads the nth value applied to the
+#- running scope.
+#-
+#- There is no signature, no arity and no parameter list: executing is applying
+#- a vector of values to a scope. The scope never learns how many it received —
+#- feed(n) normalizes the index, so it always answers.
+#-
+#- Run: aurora run -s callables.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 3]
+#-   [0 0 0 0 0 0 0 30]
+#-   [0 0 0 0 0 0 0 12]
+#-   [0 0 0 0 0 0 0 42]
+#-   [0 0 0 0 0 0 0 10]
+
+ident sum = defer {
+  feed(0) + feed(1);
+};
+
+print sum(1, 2);
+print sum(10, 20);
+
+#- Naming the fed values makes a scope easier to read.
+ident area = defer {
+  ident width = feed(0);
+  ident height = feed(1);
+  width * height;
+};
+
+print area(3, 4);
+
+#- A deferred scope is a value: it can be bound and passed around.
+ident double = defer { feed(0) * 2; };
+print double(21);
+
+#- The scope is blind to how many values arrive. Extra ones are simply unread.
+print double(5, 99, 100);

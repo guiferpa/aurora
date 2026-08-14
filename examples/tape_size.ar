@@ -1,0 +1,39 @@
+#- Tape size
+#-
+#- How many bytes a value holds is a property of the program being compiled,
+#- not of the language: 8 by default, 1 at the floor, 32 at the ceiling (the
+#- EVM word). Set it in aurora.toml or with --tape-size, which wins.
+#-
+#- Run the same file three ways and compare:
+#-
+#-   aurora run -s tape_size.ar                 8-byte tapes
+#-   aurora run -s tape_size.ar --tape-size 2   2-byte tapes
+#-   aurora run -s tape_size.ar --tape-size 1   1-byte tapes, values wrap at 256
+#-   aurora run -p tiny                         the "tiny" profile pins 1 byte
+#-
+#- A literal that does not fit is rejected at compile time, so with one-byte
+#- tapes the line "ident big = 300;" fails with:
+#-   value 300 does not fit in a 1-byte tape (max 255)
+#-
+#- Output, 8-byte tapes:      Output, 1-byte tapes:
+#-   [0 0 0 0 0 0 1 4]          [4]     <- 250 + 10 wrapped
+#-   [0 0 0 0 0 0 1 0]          [0]     <- 255 + 1 wrapped
+#-   [0 0 0 0 0 0 0 1]          [1]
+#-   [0 0 0 0 0 0 0 1]          [1]
+
+ident a = 250;
+
+#- With 8 or 2 bytes this is 260. With one byte it wraps to 4.
+print a + 10;
+
+#- Arithmetic wraps at the tape width, whatever that width is.
+print 255 + 1;
+
+#- Every value has the width, conditions included.
+print true;
+print 1 equals 1;
+
+#- A tape literal cannot carry more values than the tape is wide, so with
+#- --tape-size 1 the next line fails to compile:
+#-   tape literal has 2 values but a tape holds 1 bytes
+#- ident pair = [1, 2];

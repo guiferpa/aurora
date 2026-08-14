@@ -1,0 +1,38 @@
+#- Identifiers
+#-
+#- "ident" binds a name to a value. Bindings are immutable: a name cannot be
+#- redeclared in the same scope, and there is no assignment operator to change
+#- one afterwards.
+#-
+#- Run: aurora run -s identifiers.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 2]
+#-   [0 0 0 0 0 0 0 3]
+#-   [0 0 0 0 0 0 0 6]
+#-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 10]
+
+ident a = 1;
+ident b = 2;
+
+print a;
+print b;
+print a + b;
+
+#- A binding can hold the result of any expression.
+ident sum = a + b;
+ident doubled = sum * 2;
+
+print doubled;
+
+#- Names may contain letters, digits, _ - ? ! > < after the first character.
+ident is_ready? = true;
+ident max-size = 10;
+
+print is_ready?;
+print max-size;
+
+#- Redeclaring is an error, so this line would stop the program:
+#- ident a = 3;   -> conflict between identifiers named a

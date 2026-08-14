@@ -1,4 +1,4 @@
 coverage.out
-aurora.toml
-.aurora.deploys.toml
+/aurora.toml
+/.aurora.deploys.toml
 bin/

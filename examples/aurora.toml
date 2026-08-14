@@ -1,0 +1,35 @@
+# Example project manifest.
+#
+# Run the examples from this directory so the CLI finds this file:
+#
+#   cd examples
+#   aurora run                 # the "main" profile below
+#   aurora run -p fibonacci    # another profile
+#   aurora run -s numbers.ar   # any file, ignoring the profile's source
+#
+# The CLI walks up from the current directory looking for aurora.toml, so the
+# manifest has to be at or above where you run the command — not next to the
+# file you pass with -s.
+#
+# Full reference: ../docs/manifest.md
+
+[project]
+  name = "aurora-examples"
+  version = "0.1.0"
+
+[profiles]
+  # "main" is the default profile: "aurora run" with no arguments uses it.
+  [profiles.main]
+    source = "arithmetic.ar"
+    binary = "bin/arithmetic"
+
+  [profiles.fibonacci]
+    source = "recursion.ar"
+    binary = "bin/recursion"
+
+  # A profile can pin the tape size, so the project always compiles the same way
+  # whoever runs it. The --tape-size flag overrides it.
+  [profiles.tiny]
+    source = "tape_size.ar"
+    binary = "bin/tape_size"
+    tape_size = 1

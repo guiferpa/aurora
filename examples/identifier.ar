@@ -1,3 +1,0 @@
-#- It works like a constant
-ident a = 1;
-print(a);

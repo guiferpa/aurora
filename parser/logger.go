@@ -102,7 +102,7 @@ func WrapNodeLogging(n any) any {
 	}
 }
 
-func (l *Logger) JSON(m Namespace) (int, error) {
+func (l *Logger) JSON(m AST) (int, error) {
 	if l.enableLogging {
 		bs, err := json.MarshalIndent(WrapNodeLogging(m), "", "  ")
 		if err != nil {

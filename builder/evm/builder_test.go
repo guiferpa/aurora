@@ -50,13 +50,7 @@ false;
 			return
 		}
 		ast, err := parser.New(parser.NewParserOptions{
-			Units: []parser.ParserUnit{
-				{
-					Filename:  "",
-					Namespace: "testing",
-					Tokens:    tokens,
-				},
-			},
+			Tokens:        tokens,
 			EnableLogging: false,
 		}).Parse()
 		if err != nil {
@@ -133,8 +127,8 @@ func TestPickRuntimeCode(t *testing.T) {
 			},
 		},
 		{
-			"callable_scope_with_arguments",
-			`ident a = { arguments(0) - arguments(1); };`,
+			"callable_scope_with_feed",
+			`ident a = { feed(0) - feed(1); };`,
 			//nolint:errcheck
 			func(got []byte) error {
 				want := bytes.NewBuffer(make([]byte, 0))
@@ -162,13 +156,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				return
 			}
 			ast, err := parser.New(parser.NewParserOptions{
-				Units: []parser.ParserUnit{
-					{
-						Filename:  "",
-						Namespace: "testing",
-						Tokens:    tokens,
-					},
-				},
+				Tokens: tokens,
 			}).Parse()
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)

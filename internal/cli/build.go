@@ -7,7 +7,6 @@ import (
 	"slices"
 
 	"github.com/guiferpa/aurora/builder/evm"
-	"github.com/guiferpa/aurora/linker"
 )
 
 // BuildInput is the input for the Build handler.
@@ -23,15 +22,7 @@ func Build(ctx context.Context, in BuildInput) error {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return err
 	}
-	l, err := linker.NewLinker(linker.NewLinkerOptions{
-		Source:   in.Source,
-		Loggers:  in.Loggers,
-		TapeSize: in.TapeSize,
-	})
-	if err != nil {
-		return err
-	}
-	insts, err := l.Resolve()
+	insts, err := Compile(in.Source, in.TapeSize, in.Loggers)
 	if err != nil {
 		return err
 	}

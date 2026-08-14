@@ -35,9 +35,8 @@ func (cln CalleeLiteral) Next() Node {
 }
 
 type IdentifierLiteral struct {
-	Value     string      `json:"value"`     // symbol name (e.g. "open_file")
-	Namespace string      `json:"namespace"` // optional path segments (e.g. "std::fs::io"); empty = simple identifier
-	Token     lexer.Token `json:"-"`
+	Value string      `json:"value"`
+	Token lexer.Token `json:"-"`
 }
 
 func (iln IdentifierLiteral) Next() Node {
@@ -224,11 +223,12 @@ func (esn EchoStatement) Next() Node {
 	return nil
 }
 
-type ArgumentsExpression struct {
+// FeedExpression is "feed(n)": it reads the nth value applied to the running scope.
+type FeedExpression struct {
 	Nth NumberLiteral `json:"nth"`
 }
 
-func (aen ArgumentsExpression) Next() Node {
+func (fen FeedExpression) Next() Node {
 	return nil
 }
 
@@ -252,39 +252,13 @@ func (asn AssertStatement) Next() Node {
 	return nil
 }
 
-// UseDeclaration is "use path::to::ns as alias;". Path is the namespace path segments; Alias is the local name.
-// Resolution and linking are implicit; this node only records the alias for the rest of the compiler.
-type UseDeclaration struct {
-	Namespace string      `json:"namespace"` // e.g. "std::fs::io"
-	Alias     string      `json:"alias"`     // e.g. "io" (alias for "std::fs::io")
-	Token     lexer.Token `json:"-"`
+// AST is the top-level node: Aurora is expression-only, so a parsed file is the sequence
+// of expressions it holds. The unit of compilation is the file.
+type AST struct {
+	Filename string `json:"filename"`
+	Nodes    []Node `json:"nodes"`
 }
 
-func (ud UseDeclaration) Next() Node {
-	return nil
-}
-
-// NamespaceUnit is the top-level AST node. Aurora is expression-only: AST is
-// the sequence of expressions at top level (e.g. NumberLiteral, IdentStatement,
-// BlockExpression, IfExpression).
-type NamespaceUnit struct {
-	Name         string   `json:"name"`
-	Namespace    string   `json:"namespace"`
-	Dependencies []string `json:"dependencies"`
-	AST          []Node   `json:"ast"`
-}
-
-func (ns NamespaceUnit) Next() Node {
-	return nil
-}
-
-type Namespace struct {
-	Name         string          `json:"name"`
-	Units        []NamespaceUnit `json:"-"`
-	Dependencies []string        `json:"dependencies"`
-	AST          []Node          `json:"ast"`
-}
-
-func (ns Namespace) Next() Node {
+func (a AST) Next() Node {
 	return nil
 }

@@ -22,14 +22,13 @@ const (
 // Analysis is one pass of the compiler front end over a single document: the token
 // stream, the parsed namespace (nil when parsing failed) and a position mapper.
 //
-// The server analyses the open document alone. That is all diagnostics and coloring need,
-// and it does not outrun the compiler, where namespace resolution across files does not
-// exist yet.
+// The server analyses the open document alone, which is also the compiler's unit: there is
+// no module system yet (see docs/module_system_design.md).
 type Analysis struct {
 	Source string
 	Mapper *lsp.Mapper
 	Tokens []lexer.Token
-	AST    *parser.Namespace
+	AST    *parser.AST
 	Err    error
 }
 
@@ -45,19 +44,15 @@ func Analyze(filename, source string) *Analysis {
 		return analysis
 	}
 
-	namespace, err := parser.New(parser.NewParserOptions{
-		Namespace: "main",
-		Units: []parser.ParserUnit{{
-			Filename:  filename,
-			Namespace: "main",
-			Tokens:    tokens,
-		}},
+	ast, err := parser.New(parser.NewParserOptions{
+		Filename: filename,
+		Tokens:   tokens,
 	}).Parse()
 	if err != nil {
 		analysis.Err = err
 		return analysis
 	}
-	analysis.AST = &namespace
+	analysis.AST = &ast
 
 	return analysis
 }
@@ -162,7 +157,7 @@ func HoverInfo(filename, source string, pos lsp.Position) string {
 		if analysis.AST == nil {
 			return "identifier: " + match
 		}
-		if def := FindIdent(analysis.AST.AST, match); def != nil {
+		if def := FindIdent(analysis.AST.Nodes, match); def != nil {
 			return "identifier: " + match + "\nvalue: " + describeNode(def.Value)
 		}
 		return "identifier: " + match
@@ -187,7 +182,7 @@ func CompletionItemsFor(filename, source string) []CompletionItem {
 	if analysis.AST == nil {
 		return items
 	}
-	for _, ident := range CollectIdents(analysis.AST.AST) {
+	for _, ident := range CollectIdents(analysis.AST.Nodes) {
 		items = append(items, CompletionItem{
 			Label:  ident.Id,
 			Detail: describeNode(ident.Value),

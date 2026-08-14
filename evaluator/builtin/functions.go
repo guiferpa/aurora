@@ -64,13 +64,16 @@ func EchoFunction(w io.Writer, bs []byte, tapeSize int) {
 	}
 }
 
-// ArgumentsFunction returns the argument at the given index from the current scope's arguments.
-// It is the builtin for the "arguments(index)" call.
-func ArgumentsFunction(args map[uint64][]byte, index uint64) []byte {
-	if args == nil {
+// FeedFunction returns the value at the given index of the feed: the vector of values
+// applied to the running scope. It is the builtin behind "feed(index)".
+//
+// Execution in Aurora is the application of a vector of values to a scope, not a function
+// call — there is no signature, no arity and no parameter, so this only reads a position.
+func FeedFunction(feed map[uint64][]byte, index uint64) []byte {
+	if feed == nil {
 		return nil
 	}
-	return args[index]
+	return feed[index]
 }
 
 // AssertFunction evaluates an assert: condition (bytes as boolean) and message (reel bytes for error display).

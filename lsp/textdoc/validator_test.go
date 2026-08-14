@@ -91,7 +91,7 @@ func TestValidateCodeHonoursTestFileRule(t *testing.T) {
 }
 
 func TestHoverInfo(t *testing.T) {
-	const source = "ident a = 1;\nident sum = defer { arguments(0); };\nprint a;\n"
+	const source = "ident a = 1;\nident sum = defer { feed(0); };\nprint a;\n"
 
 	cases := []struct {
 		name string

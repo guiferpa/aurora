@@ -8,7 +8,7 @@ import (
 )
 
 type Emitter interface {
-	Emit(ast parser.NamespaceUnit) ([]Instruction, error)
+	Emit(ast parser.AST) ([]Instruction, error)
 }
 
 type emt struct {
@@ -170,7 +170,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		for i, p := range n.Params {
 			ll := EmitInstruction(tc, insts, p.Expression, tapeSize)
 			l := GenerateLabel(tc)
-			*insts = append(*insts, NewInstruction(l, OpPushArg, byteutil.FromUint64(uint64(i)), ll))
+			*insts = append(*insts, NewInstruction(l, OpPushFeed, byteutil.FromUint64(uint64(i)), ll))
 		}
 		l := GenerateLabel(tc)
 		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
@@ -195,9 +195,9 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		*insts = append(*insts, NewInstruction(l, OpAssert, cond, msg))
 		return l
 	}
-	if n, ok := expr.(parser.ArgumentsExpression); ok {
+	if n, ok := expr.(parser.FeedExpression); ok {
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpGetArg, byteutil.FromUint64(n.Nth.Value), nil))
+		*insts = append(*insts, NewInstruction(l, OpGetFeed, byteutil.FromUint64(n.Nth.Value), nil))
 		return l
 	}
 	if n, ok := expr.(parser.BinaryExpression); ok {
@@ -252,10 +252,10 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 	return byteutil.FalseTape(tapeSize)
 }
 
-func (e *emt) Emit(ast parser.Namespace) ([]Instruction, error) {
+func (e *emt) Emit(ast parser.AST) ([]Instruction, error) {
 	tc := 0
 	insts := make([]Instruction, 0)
-	for _, expr := range ast.AST {
+	for _, expr := range ast.Nodes {
 		EmitInstruction(&tc, &insts, expr, e.tapeSize)
 	}
 	return insts, nil

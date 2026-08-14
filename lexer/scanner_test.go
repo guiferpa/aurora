@@ -34,8 +34,8 @@ func TestScanToken(t *testing.T) {
 		{"comment", "#-", true, COMMENT_LINE, "#-"},
 		{"comment with text", "#- this is a comment", true, COMMENT_LINE, "#-"},
 
-		{"namespace scope", "::", true, NS_SCOPE, "::"},
-		{"namespace scope with more", "::foo", true, NS_SCOPE, "::"},
+		// "::" was the namespace operator and is two ordinary colons now
+		{"colon colon", "::", true, COLON, ":"},
 		{"colon then colon", ": :", true, COLON, ":"},
 
 		{"keyword if", "if", true, IF, "if"},
@@ -57,10 +57,11 @@ func TestScanToken(t *testing.T) {
 		{"keyword tail", "tail", true, TAIL, "tail"},
 		{"keyword push", "push", true, PUSH, "push"},
 		{"keyword pull", "pull", true, PULL, "pull"},
-		{"keyword arguments", "arguments", true, ARGUMENTS, "arguments"},
+		{"keyword feed", "feed", true, FEED, "feed"},
 		{"keyword assert", "assert", true, ASSERT, "assert"},
-		{"keyword as", "as", true, AS, "as"},
-		{"keyword use", "use", true, USE, "use"},
+		// "as" and "use" were the import keywords and are ordinary identifiers now
+		{"as is an identifier", "as", true, ID, "as"},
+		{"use is an identifier", "use", true, ID, "use"},
 
 		{"if with space", "if x", true, IF, "if"},
 		{"if with paren", "if(", true, IF, "if"},

@@ -21,7 +21,6 @@ const (
 	SemanticOperator
 	SemanticVariable
 	SemanticFunction
-	SemanticNamespace
 )
 
 // SemanticModifierDeclaration is bit 0 of the modifier set (the only modifier reported).
@@ -36,7 +35,6 @@ var SemanticTokenTypes = []string{
 	"operator",
 	"variable",
 	"function",
-	"namespace",
 }
 
 // SemanticTokenModifiers is the modifier legend sent in the server capabilities.
@@ -130,7 +128,7 @@ func collectSemanticTokens(mapper *lsp.Mapper, tokens []lexer.Token) []semanticT
 func semanticTypeOf(tag string) (int, bool) {
 	switch tag {
 	case lexer.IDENT, lexer.IF, lexer.ELSE, lexer.BRANCH, lexer.DEFER,
-		lexer.PRINT, lexer.ECHO, lexer.ASSERT, lexer.ARGUMENTS, lexer.USE, lexer.AS,
+		lexer.PRINT, lexer.ECHO, lexer.ASSERT, lexer.FEED,
 		lexer.HEAD, lexer.TAIL, lexer.PUSH, lexer.PULL, lexer.TRUE, lexer.FALSE:
 		return SemanticKeyword, true
 	case lexer.NUMBER:
@@ -138,8 +136,7 @@ func semanticTypeOf(tag string) (int, bool) {
 	case lexer.STRING:
 		return SemanticString, true
 	case lexer.SUM, lexer.SUB, lexer.MULT, lexer.DIV, lexer.EXPO, lexer.ASSIGN,
-		lexer.EQUALS, lexer.DIFFERENT, lexer.BIGGER, lexer.SMALLER, lexer.AND, lexer.OR,
-		lexer.NS_SCOPE:
+		lexer.EQUALS, lexer.DIFFERENT, lexer.BIGGER, lexer.SMALLER, lexer.AND, lexer.OR:
 		return SemanticOperator, true
 	case lexer.ID:
 		return SemanticVariable, true
@@ -148,16 +145,11 @@ func semanticTypeOf(tag string) (int, bool) {
 	}
 }
 
-// classifyIdentifier refines an ID by looking at its neighbours: "name(" is a call,
-// "ident name" is a declaration and "name::" is a namespace segment.
+// classifyIdentifier refines an ID by looking at its neighbours: "name(" is a call and
+// "ident name" is a declaration.
 func classifyIdentifier(tokens []lexer.Token, i int) (tokenType, modifiers int) {
-	if next := nextMeaningful(tokens, i); next != nil {
-		switch next.GetTag().Id {
-		case lexer.O_PAREN:
-			return SemanticFunction, 0
-		case lexer.NS_SCOPE:
-			return SemanticNamespace, 0
-		}
+	if next := nextMeaningful(tokens, i); next != nil && next.GetTag().Id == lexer.O_PAREN {
+		return SemanticFunction, 0
 	}
 	if prev := prevMeaningful(tokens, i); prev != nil && prev.GetTag().Id == lexer.IDENT {
 		return SemanticVariable, SemanticModifierDeclaration

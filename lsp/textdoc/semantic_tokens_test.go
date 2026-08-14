@@ -44,16 +44,6 @@ func TestSemanticTokens(t *testing.T) {
 			},
 		},
 		{
-			name:   "namespace segment before ::",
-			source: "m::add(1);",
-			want: []token{
-				{0, 0, 1, SemanticNamespace, 0}, // m
-				{0, 1, 2, SemanticOperator, 0},  // ::
-				{0, 2, 3, SemanticFunction, 0},  // add
-				{0, 4, 1, SemanticNumber, 0},    // 1
-			},
-		},
-		{
 			name:   "comment covers the rest of the line",
 			source: "#- a comment\nident a = 1;",
 			want: []token{
@@ -81,15 +71,15 @@ func TestSemanticTokens(t *testing.T) {
 			},
 		},
 		{
-			name:   "defer and arguments",
-			source: "ident f = defer { arguments(0); };",
+			name:   "defer and feed",
+			source: "ident f = defer { feed(0); };",
 			want: []token{
 				{0, 0, 5, SemanticKeyword, 0},
 				{0, 6, 1, SemanticVariable, SemanticModifierDeclaration},
 				{0, 2, 1, SemanticOperator, 0},
 				{0, 2, 5, SemanticKeyword, 0}, // defer
-				{0, 8, 9, SemanticKeyword, 0}, // arguments
-				{0, 10, 1, SemanticNumber, 0},
+				{0, 8, 4, SemanticKeyword, 0}, // feed
+				{0, 5, 1, SemanticNumber, 0},
 			},
 		},
 	}

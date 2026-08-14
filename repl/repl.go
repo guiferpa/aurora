@@ -175,13 +175,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		}
 
 		ast, err := parser.New(parser.NewParserOptions{
-			Units: []parser.ParserUnit{
-				{
-					Filename:  "",
-					Namespace: "main",
-					Tokens:    tokens,
-				},
-			},
+			Tokens:        tokens,
 			EnableLogging: slices.Contains(loggers, "parser"),
 			TapeSize:      tapeSize,
 		}).Parse()

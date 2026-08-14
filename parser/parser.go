@@ -3,8 +3,6 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -15,22 +13,15 @@ import (
 type Parser interface {
 	GetLookahead() lexer.Token
 	EatToken(tokenId string) (lexer.Token, error)
-	Parse() (Namespace, error)
-}
-
-type ParserUnit struct {
-	Filename  string
-	Namespace string
-	Tokens    []lexer.Token
+	Parse() (AST, error)
 }
 
 type pr struct {
-	namespace string
-	cursor    int
-	units     []ParserUnit
-	unitindex int
-	logger    *Logger
-	tapeSize  int
+	filename string
+	cursor   int
+	tokens   []lexer.Token
+	logger   *Logger
+	tapeSize int
 }
 
 // Helper functions to validate node types for tape operations
@@ -80,31 +71,13 @@ func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 	return CalleeLiteral{id, params}, nil
 }
 
-// ParseNamespacedIdentifier parses ID or ID (:: ID)+ and returns an IdentifierLiteral.
-// For "a::b::c" the result has Namespace: ["a","b"], Value: "c". For a single "a" the result has Value: "a", Namespace: nil.
-// Token is always the token of the symbol (the last segment), e.g. "b" in "a::b".
-func (p *pr) ParseNamespacedIdentifier() (IdentifierLiteral, error) {
+// ParseIdentifier reads a plain name.
+func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
 	tok, err := p.EatToken(lexer.ID)
 	if err != nil {
 		return IdentifierLiteral{}, err
 	}
-	segments := []lexer.Token{tok}
-	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.NS_SCOPE {
-		if _, err := p.EatToken(lexer.NS_SCOPE); err != nil {
-			return IdentifierLiteral{}, err
-		}
-		tok, err = p.EatToken(lexer.ID)
-		if err != nil {
-			return IdentifierLiteral{}, err
-		}
-		segments = append(segments, tok)
-	}
-	value := string(tok.GetMatch())
-	namespace := make([]string, 0, len(segments)-1)
-	for _, segment := range segments[:len(segments)-1] {
-		namespace = append(namespace, string(segment.GetMatch()))
-	}
-	return IdentifierLiteral{Value: value, Namespace: strings.Join(namespace, "::"), Token: tok}, nil
+	return IdentifierLiteral{Value: string(tok.GetMatch()), Token: tok}, nil
 }
 
 func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
@@ -188,8 +161,8 @@ func (p *pr) ParseReel() (ReelLiteral, error) {
 
 func (p *pr) ParsePriExpr() (Node, error) {
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.ARGUMENTS {
-		return p.ParseArgs()
+	if lookahead.GetTag().Id == lexer.FEED {
+		return p.ParseFeed()
 	}
 	if lookahead.GetTag().Id == lexer.O_PAREN {
 		if _, err := p.EatToken(lexer.O_PAREN); err != nil {
@@ -233,7 +206,7 @@ func (p *pr) ParsePriExpr() (Node, error) {
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.ParseIdent()
 	}
-	id, err := p.ParseNamespacedIdentifier()
+	id, err := p.ParseIdentifier()
 	if err != nil {
 		return nil, err
 	}
@@ -723,9 +696,6 @@ func (p *pr) ParseExpr() (Node, error) {
 	if lookahead == nil {
 		return nil, fmt.Errorf("unexpected end of input")
 	}
-	if lookahead.GetTag().Id == lexer.USE {
-		return p.ParseUseDeclaration()
-	}
 	if lookahead.GetTag().Id == lexer.PRINT {
 		return p.ParsePrint()
 	}
@@ -765,30 +735,6 @@ func (p *pr) ParseExpr() (Node, error) {
 	return p.ParseBoolExpr()
 }
 
-// ParseUseDeclaration parses "use path::to::ns as alias".
-func (p *pr) ParseUseDeclaration() (Node, error) {
-	tok, err := p.EatToken(lexer.USE)
-	if err != nil {
-		return nil, err
-	}
-	id, err := p.ParseNamespacedIdentifier()
-	if err != nil {
-		return nil, err
-	}
-	namespace := id.Value
-	if id.Namespace != "" {
-		namespace = strings.Join([]string{id.Namespace, namespace}, "::")
-	}
-	if _, err := p.EatToken(lexer.AS); err != nil {
-		return nil, err
-	}
-	alias, err := p.EatToken(lexer.ID)
-	if err != nil {
-		return nil, err
-	}
-	return UseDeclaration{Namespace: namespace, Alias: string(alias.GetMatch()), Token: tok}, nil
-}
-
 func (p *pr) ParsePrint() (Node, error) {
 	if _, err := p.EatToken(lexer.PRINT); err != nil {
 		return nil, err
@@ -813,7 +759,7 @@ func (p *pr) ParseEcho() (Node, error) {
 
 func (p *pr) ParseAssert() (Node, error) {
 	// Validate that assert can only be used in .test.ar files
-	if !strings.HasSuffix(p.GetCurrentUnit().Filename, ".test.ar") {
+	if !strings.HasSuffix(p.filename, ".test.ar") {
 		lookahead := p.GetLookahead()
 		return nil, lexer.NewError(lookahead, "assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
 	}
@@ -847,9 +793,9 @@ func (p *pr) ParseAssert() (Node, error) {
 	}, nil
 }
 
-// ParseArgs parses the builtin "arguments" as a function call: arguments(index) or arguments index (legacy).
-func (p *pr) ParseArgs() (Node, error) {
-	if _, err := p.EatToken(lexer.ARGUMENTS); err != nil {
+// ParseFeed parses the builtin "feed": feed(index), or feed index without parentheses.
+func (p *pr) ParseFeed() (Node, error) {
+	if _, err := p.EatToken(lexer.FEED); err != nil {
 		return nil, err
 	}
 	if p.GetLookahead().GetTag().Id == lexer.O_PAREN {
@@ -863,13 +809,13 @@ func (p *pr) ParseArgs() (Node, error) {
 		if _, err := p.EatToken(lexer.C_PAREN); err != nil {
 			return nil, err
 		}
-		return ArgumentsExpression{nth}, nil
+		return FeedExpression{nth}, nil
 	}
 	nth, err := p.ParseNumber()
 	if err != nil {
 		return nil, err
 	}
-	return ArgumentsExpression{nth}, nil
+	return FeedExpression{nth}, nil
 }
 
 func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
@@ -891,20 +837,11 @@ func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 	return exprs, nil
 }
 
-func (p *pr) ParseNamespaceUnit() (NamespaceUnit, error) {
-	exprs, err := p.ParseExprs(lexer.TagEOF)
-	if err != nil {
-		return NamespaceUnit{}, err
-	}
-	currunit := p.GetCurrentUnit()
-	return NamespaceUnit{Name: currunit.Filename, Namespace: currunit.Namespace, AST: exprs}, nil
-}
-
 func (p *pr) GetLookahead() lexer.Token {
-	if p.GetCurrentUnit() == nil || p.cursor >= len(p.GetCurrentUnit().Tokens) {
+	if p.cursor >= len(p.tokens) {
 		return nil
 	}
-	return p.GetCurrentUnit().Tokens[p.cursor]
+	return p.tokens[p.cursor]
 }
 
 func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
@@ -927,82 +864,39 @@ func (p *pr) ResetCursor() {
 	p.cursor = 0
 }
 
-func (p *pr) Parse() (Namespace, error) {
-	units := make([]NamespaceUnit, 0)
-
-	for i := 0; i < len(p.units); i++ {
-		p.SetUnitIndex(i)
-		p.ResetCursor()
-		unit, err := p.ParseNamespaceUnit()
-		if err != nil {
-			return Namespace{}, err
-		}
-		units = append(units, unit)
+func (p *pr) Parse() (AST, error) {
+	nodes, err := p.ParseExprs(lexer.TagEOF)
+	if err != nil {
+		return AST{}, err
 	}
 
-	if len(units) == 0 {
-		return Namespace{}, fmt.Errorf("no units to parse")
-	}
-
-	ast := make([]Node, 0)
-	dependencies := make([]string, 0)
-	for _, unit := range units {
-		for _, node := range unit.AST {
-			if use, ok := node.(UseDeclaration); ok {
-				if !slices.Contains(dependencies, use.Namespace) {
-					dependencies = append(dependencies, use.Namespace)
-				}
-			}
-		}
-		ast = append(ast, unit.AST...)
-	}
-
-	namespace := Namespace{
-		Name:         p.namespace,
-		AST:          ast,
-		Units:        units,
-		Dependencies: dependencies,
-	}
+	ast := AST{Filename: p.filename, Nodes: nodes}
 
 	if p.logger != nil {
-		if _, err := p.logger.JSON(namespace); err != nil {
-			return Namespace{}, err
+		if _, err := p.logger.JSON(ast); err != nil {
+			return AST{}, err
 		}
 	}
 
-	return namespace, nil
-}
-
-func (p *pr) SetUnitIndex(index int) {
-	p.unitindex = index
-}
-
-func (p *pr) GetCurrentUnit() *ParserUnit {
-	if p.unitindex >= len(p.units) {
-		return nil
-	}
-	return &p.units[p.unitindex]
+	return ast, nil
 }
 
 type NewParserOptions struct {
-	Namespace     string
-	Units         []ParserUnit
+	// Filename is the source path. It decides file-scoped rules: assert is only
+	// accepted inside *.test.ar.
+	Filename      string
+	Tokens        []lexer.Token
 	EnableLogging bool
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 }
 
 func New(opts NewParserOptions) Parser {
-	name := opts.Namespace
-	if name != "" && filepath.IsAbs(name) {
-		name = filepath.Base(name)
-	}
 	return &pr{
-		namespace: name,
-		cursor:    0,
-		units:     opts.Units,
-		unitindex: 0,
-		logger:    NewLogger(opts.EnableLogging),
-		tapeSize:  byteutil.TapeSize(opts.TapeSize),
+		filename: opts.Filename,
+		cursor:   0,
+		tokens:   opts.Tokens,
+		logger:   NewLogger(opts.EnableLogging),
+		tapeSize: byteutil.TapeSize(opts.TapeSize),
 	}
 }

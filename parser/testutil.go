@@ -20,13 +20,13 @@ func TokenEqual(a, b lexer.Token) bool {
 	return bytes.Equal(a.GetMatch(), b.GetMatch()) && a.GetTag() == b.GetTag()
 }
 
-// NamespaceEqual compares two NamespaceUnit ASTs by structure and token value (ignores pointer identity).
-func NamespaceEqual(got, want Namespace) bool {
-	if got.Name != want.Name || len(got.AST) != len(want.AST) {
+// ASTEqual compares two parsed files by structure and token value (ignores pointer identity).
+func ASTEqual(got, want AST) bool {
+	if got.Filename != want.Filename || len(got.Nodes) != len(want.Nodes) {
 		return false
 	}
-	for i := range got.AST {
-		if !nodeEqual(got.AST[i], want.AST[i]) {
+	for i := range got.Nodes {
+		if !nodeEqual(got.Nodes[i], want.Nodes[i]) {
 			return false
 		}
 	}
@@ -159,8 +159,8 @@ func nodeEqual(a, b Node) bool {
 			}
 		}
 		return true
-	case ArgumentsExpression:
-		vb, ok := b.(ArgumentsExpression)
+	case FeedExpression:
+		vb, ok := b.(FeedExpression)
 		if !ok {
 			return false
 		}
@@ -177,12 +177,6 @@ func nodeEqual(a, b Node) bool {
 			return false
 		}
 		return nodeEqual(va.Left, vb.Left) && nodeEqual(va.Right, vb.Right) && opEqual(va.Operation, vb.Operation)
-	case UseDeclaration:
-		vb, ok := b.(UseDeclaration)
-		if !ok {
-			return false
-		}
-		return va.Namespace == vb.Namespace && va.Alias == vb.Alias && TokenEqual(va.Token, vb.Token)
 	default:
 		return reflect.DeepEqual(a, b)
 	}

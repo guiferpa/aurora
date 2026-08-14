@@ -6,16 +6,18 @@ import (
 	"slices"
 
 	"github.com/guiferpa/aurora/evaluator"
-	"github.com/guiferpa/aurora/linker"
 	"github.com/guiferpa/aurora/logger"
 )
 
 // RunInput is the input for the Run handler.
 type RunInput struct {
-	Source   string   // path to .ar source
-	Loggers  []string // enabled loggers
-	Stdin    io.Reader
-	Stdout   io.Writer // used for both Echo and Print
+	Source  string   // path to .ar source
+	Loggers []string // enabled loggers
+	Stdin   io.Reader
+	Stdout  io.Writer // print: raw bytes
+	// EchoOut receives echo output, which is text rather than bytes. When nil, Stdout
+	// takes both, which is what a caller with a single stream wants.
+	EchoOut  io.Writer
 	Player   *evaluator.Player
 	Args     []string
 	TapeSize int // width in bytes of every value; zero means the default
@@ -26,22 +28,18 @@ func Run(ctx context.Context, in RunInput) error {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return err
 	}
-	l, err := linker.NewLinker(linker.NewLinkerOptions{
-		Source:   in.Source,
-		Loggers:  in.Loggers,
-		TapeSize: in.TapeSize,
-	})
-	if err != nil {
-		return err
-	}
-	insts, err := l.Resolve()
+	insts, err := Compile(in.Source, in.TapeSize, in.Loggers)
 	if err != nil {
 		return err
 	}
 
+	echoOut := in.EchoOut
+	if echoOut == nil {
+		echoOut = in.Stdout
+	}
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(in.Loggers, "evaluator"),
-		EchoWriter:    in.Stdout,
+		EchoWriter:    echoOut,
 		PrintWriter:   in.Stdout,
 		Args:          ParseArgs(in.Args),
 		TapeSize:      in.TapeSize,

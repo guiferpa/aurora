@@ -1,12 +1,11 @@
 package lexer
 
 const (
-	AND          = "AND"       // and
-	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
-	AS           = "AS"        // as
-	ASSERT       = "ASSERT"    // assert
-	ASSIGN       = "ASSIGN"    // =
-	BIGGER       = "BIGGER"    // bigger
+	AND          = "AND"    // and
+	FEED         = "FEED"   // feed - reads a value applied to the scope
+	ASSERT       = "ASSERT" // assert
+	ASSIGN       = "ASSIGN" // =
+	BIGGER       = "BIGGER" // bigger
 	BREAK_LINE   = "BREAK_LINE"
 	BRANCH       = "BRANCH"    // branch
 	C_BRK        = "C_BRK"     // ]
@@ -26,10 +25,9 @@ const (
 	FALSE        = "FALSE"  // false
 	HEAD         = "HEAD"   // head
 	ID           = "ID"
-	IDENT        = "IDENT"    // ident
-	IF           = "IF"       // if
-	MULT         = "MULT"     // *
-	NS_SCOPE     = "NS_SCOPE" // :: Namespace scope operator
+	IDENT        = "IDENT" // ident
+	IF           = "IF"    // if
+	MULT         = "MULT"  // *
 	NUMBER       = "NUMBER"
 	O_BRK        = "O_BRK"     // [
 	O_CUR_BRK    = "O_CUR_BRK" // {
@@ -45,7 +43,6 @@ const (
 	SUM          = "SUM"       // +
 	TAIL         = "TAIL"      // tail
 	TRUE         = "TRUE"      // true
-	USE          = "USE"       // use
 	WHITESPACE   = "WHITESPACE"
 )
 
@@ -57,8 +54,7 @@ type Tag struct {
 
 var (
 	TagAnd        = Tag{AND, "and", ""}
-	TagArguments  = Tag{ARGUMENTS, "arguments", "Get arguments from any callable scope"}
-	TagAs         = Tag{AS, "as", "Alias for use: use path as name"}
+	TagFeed       = Tag{FEED, "feed", "Read the nth value fed to this scope"}
 	TagAssert     = Tag{ASSERT, "assert", "Assert a condition in tests"}
 	TagAssign     = Tag{ASSIGN, "=", ""}
 	TagBigger     = Tag{BIGGER, "bigger", ""}
@@ -92,7 +88,6 @@ var (
 	TagOr         = Tag{OR, "or", ""}
 	TagPull       = Tag{PULL, "pull", "Pull item in right to left"}
 	TagPush       = Tag{PUSH, "push", "Push item in left to right"}
-	TagNsScope    = Tag{NS_SCOPE, "::", "Namespace scope operator"}
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagSmaller    = Tag{SMALLER, "smaller", ""}
 	TagString     = Tag{STRING, "", ""} // String literal: "text" (reel - array of tapes)
@@ -100,16 +95,14 @@ var (
 	TagSum        = Tag{SUM, "+", ""}
 	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
 	TagTrue       = Tag{TRUE, "true", ""}
-	TagUse        = Tag{USE, "use", "Import path into scope: use path as name (e.g. use utils::fs::io as io)"}
 	TagWhitespace = Tag{WHITESPACE, " ", ""}
 )
 
 var processableTags = []Tag{
 	TagCallPrint,
 	TagEcho,
-	TagArguments,
+	TagFeed,
 	TagAssert,
-	TagAs,
 	TagIdent,
 	TagIf,
 	TagElse,
@@ -119,7 +112,6 @@ var processableTags = []Tag{
 	TagTail,
 	TagPush,
 	TagPull,
-	TagUse,
 }
 
 func GetProcessableTags() []Tag {

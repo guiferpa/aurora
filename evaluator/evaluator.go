@@ -333,7 +333,7 @@ func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {
 
 func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 	index := byteutil.ToUint64(left)
-	v := builtin.ArgumentsFunction(e.environ.GetArguments(), index)
+	v := builtin.FeedFunction(e.environ.GetArguments(), index)
 	l := byteutil.ToHex(label)
 	e.environ.SetTemp(l, v)
 	e.IncrementCursor()
@@ -498,10 +498,10 @@ func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
 	}
 
 	// Arguments operations
-	if inst.GetOpCode() == emitter.OpPushArg {
+	if inst.GetOpCode() == emitter.OpPushFeed {
 		return e.EvaluatePushArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 	}
-	if inst.GetOpCode() == emitter.OpGetArg {
+	if inst.GetOpCode() == emitter.OpGetFeed {
 		return e.EvaluateGetArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 	}
 

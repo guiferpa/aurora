@@ -23,9 +23,8 @@ func runWithTapeSize(t *testing.T, source string, tapeSize int) []byte {
 		t.Fatalf("lexer: %v", err)
 	}
 	ast, err := parser.New(parser.NewParserOptions{
-		Namespace: "main",
-		Units:     []parser.ParserUnit{{Filename: "main.ar", Namespace: "main", Tokens: tokens}},
-		TapeSize:  tapeSize,
+		Filename: "main.ar", Tokens: tokens,
+		TapeSize: tapeSize,
 	}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)

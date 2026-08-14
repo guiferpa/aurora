@@ -290,7 +290,7 @@ func TestEvaluateGetArg(t *testing.T) {
 		return
 	}
 	got := ev.environ.GetTemp(byteutil.ToHex([]byte("00")))
-	// Arguments arrive as 32-byte ABI words and are narrowed to a tape, so arguments(n)
+	// Arguments arrive as 32-byte ABI words and are narrowed to a tape, so feed(n)
 	// has the same width as every other value.
 	expected := byteutil.PaddingTape(args, byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
@@ -530,13 +530,8 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 			}
 
 			ast, err := parser.New(parser.NewParserOptions{
-				Units: []parser.ParserUnit{
-					{
-						Filename:  options.Filename,
-						Namespace: "testing",
-						Tokens:    tokens,
-					},
-				},
+				Filename:      options.Filename,
+				Tokens:        tokens,
 				EnableLogging: false,
 			}).Parse()
 			if err != nil {
@@ -1101,7 +1096,7 @@ func TestDefer(t *testing.T) {
 		{
 			"defer_1",
 			`ident r = defer {
-  arguments(0) + arguments(1);
+  feed(0) + feed(1);
 };
 
 r(1, 2);
@@ -1137,7 +1132,7 @@ func TestDeferRecursivity(t *testing.T) {
 		{
 			"fibonacci_1",
 			`ident fib = defer {
-  ident n = arguments(0);
+  ident n = feed(0);
   if n smaller 1 or n equals 1 { n; } else { fib(n - 1) + fib(n - 2); };
 };
 
@@ -1162,7 +1157,7 @@ fib(11);`,
 		{
 			"fibonacci_2",
 			`ident fib = defer {
-  ident n = arguments(0);
+  ident n = feed(0);
   branch {
     n smaller 1 or n equals 1: n,
     fib(n - 1) + fib(n - 2);
@@ -1190,7 +1185,7 @@ fib(11);`,
 		{
 			"factorial_1",
 			`ident factorial = defer {
-  ident n = arguments(0);
+  ident n = feed(0);
   if n smaller 1 or n equals 1 { 1; } else { n * factorial(n - 1); };
 };
 
@@ -1235,13 +1230,9 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 				return
 			}
 			ast, err := parser.New(parser.NewParserOptions{
-				Units: []parser.ParserUnit{
-					{
-						Filename:  "test.test.ar",
-						Namespace: "testing",
-						Tokens:    tokens,
-					},
-				},
+				// assert is only accepted in a test file
+				Filename:      "assert.test.ar",
+				Tokens:        tokens,
 				EnableLogging: false,
 			}).Parse()
 			if err != nil {
@@ -1323,8 +1314,8 @@ assert(a equals 11, "a should be 10");`,
 		{
 			"assert_with_function_call",
 			`ident sum = defer {
-  ident x = arguments(0);
-  ident y = arguments(1);
+  ident x = feed(0);
+  ident y = feed(1);
   x + y;
 };
 

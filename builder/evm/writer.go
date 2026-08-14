@@ -240,7 +240,7 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []emitter.Instruction, tape
 			}
 		}
 
-		if op == emitter.OpGetArg {
+		if op == emitter.OpGetFeed {
 			if _, err := WriteGetArg(bs, inst.GetLeft()); err != nil {
 				return 0, err
 			}

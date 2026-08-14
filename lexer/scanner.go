@@ -20,10 +20,8 @@ var keywordTags = []Tag{
 	TagTail,
 	TagPush,
 	TagPull,
-	TagArguments,
+	TagFeed,
 	TagAssert,
-	TagAs,
-	TagUse,
 }
 
 var Keywords = func() map[string]Tag {
@@ -113,10 +111,6 @@ func scanTwoChars(bs []byte) (bool, Tag, []byte) {
 
 	if bs[0] == '#' && bs[1] == '-' {
 		return true, TagComment, bs[:2]
-	}
-
-	if bs[0] == ':' && bs[1] == ':' {
-		return true, TagNsScope, bs[:2]
 	}
 
 	return false, Tag{}, nil

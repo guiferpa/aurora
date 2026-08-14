@@ -9,16 +9,16 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 )
 
-func parseWithTapeSize(t *testing.T, source string, tapeSize int) (Namespace, error) {
+func parseWithTapeSize(t *testing.T, source string, tapeSize int) (AST, error) {
 	t.Helper()
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
 	return New(NewParserOptions{
-		Namespace: "main",
-		Units:     []ParserUnit{{Filename: "main.ar", Namespace: "main", Tokens: tokens}},
-		TapeSize:  tapeSize,
+		Filename: "main.ar",
+		Tokens:   tokens,
+		TapeSize: tapeSize,
 	}).Parse()
 }
 
@@ -95,9 +95,9 @@ func TestBooleanLiteralWidth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		literal, ok := ns.AST[0].(BooleanLiteral)
+		literal, ok := ns.Nodes[0].(BooleanLiteral)
 		if !ok {
-			t.Fatalf("unexpected node: %T", ns.AST[0])
+			t.Fatalf("unexpected node: %T", ns.Nodes[0])
 		}
 		if len(literal.Value) != size {
 			t.Errorf("true has %d bytes, want %d", len(literal.Value), size)
@@ -113,7 +113,7 @@ func TestDefaultTapeSizeIsEightBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if got := len(ns.AST[0].(BooleanLiteral).Value); got != byteutil.DefaultTapeSize {
+	if got := len(ns.Nodes[0].(BooleanLiteral).Value); got != byteutil.DefaultTapeSize {
 		t.Errorf("unset tape size produced %d bytes, want %d", got, byteutil.DefaultTapeSize)
 	}
 }

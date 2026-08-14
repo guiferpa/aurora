@@ -15,8 +15,8 @@ const (
 	OpSmaller                       // Operation to decide between two numbers with 64 bits (uint64) which one is smaller than other
 	OpAnd                           // Operation to decide the AND behavior logically between two boolean values (1 bit)
 	OpOr                            // Operation to decide the OR behavior logically between two boolean values (1 bit)
-	OpPushArg                       // Operation to push arguments to next scope
-	OpGetArg                        // Operation to get arguments from higher scopes
+	OpPushFeed                      // Operation to push arguments to next scope
+	OpGetFeed                       // Operation to get arguments from higher scopes
 	OpBeginScope                    // Starts a new scope in stack evaluate time
 	OpDefer                         // Defer: store scope range in temp, skip body (value = pointer to scope)
 	OpPreCall                       // It's a pre call operation, main goal is push all scope arguments

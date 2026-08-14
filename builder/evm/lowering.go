@@ -14,7 +14,7 @@ func Lowering(insts []emitter.Instruction) []emitter.Instruction {
 
 func IsOperand(op byte) bool {
 	switch op {
-	case emitter.OpGetArg, emitter.OpSave, emitter.OpLoad:
+	case emitter.OpGetFeed, emitter.OpSave, emitter.OpLoad:
 		return true
 	default:
 		return false

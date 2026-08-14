@@ -62,11 +62,13 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return cli.Build(cmd.Context(), cli.BuildInput{
+	_, err = cli.Build(cmd.Context(), cli.BuildInput{
 		Source:     target.Source,
 		OutputPath: output,
 		Loggers:    loggers,
 		Warnings:   os.Stderr,
+		Stdout:     cmd.OutOrStdout(),
 		TapeSize:   cli.ResolveTapeSize(tapeSize, target.TapeSize),
 	})
+	return err
 }

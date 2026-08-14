@@ -155,6 +155,13 @@ aurora build dev                        # another profile
 aurora build src/main.ar -o bin/main    # any file, with an explicit output
 ```
 
+It reports where the binary went and what is in it:
+
+```
+✨ src/main.ar → bin/main
+   17 instructions, 52 bytes, 8-byte tapes
+```
+
 You get a raw bytecode file — deploy it or feed it to your favorite EVM client. For deploy/call (rpc, privkey, etc.) check the [Manifest reference](docs/manifest.md).
 
 ### Writing some code

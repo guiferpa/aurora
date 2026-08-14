@@ -56,6 +56,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		Loggers:  loggers,
 		Stdin:    os.Stdin,
 		Stdout:   ToMainWriter(),
+		EchoOut:  ToEchoWriter(),
 		Player:   pl,
 		Args:     args,
 		TapeSize: cli.ResolveTapeSize(tapeSize, env.Profile.TapeSize),

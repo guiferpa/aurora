@@ -111,10 +111,15 @@ _expr -> _print | _assert
 
 ### Boolean expression
 ```
-_boole -> _rele OR _boole
-        | _rele AND _boole
-        | _rele
+_boole -> _ande (OR _ande)*
+_ande  -> _rele (AND _rele)*
 ```
+
+`and` binds tighter than `or`, and both are left-associative: `a and b or c` is
+`(a and b) or c`. Until v0.3.2-alpha the two shared one level and recursed to the right,
+which read it as `a and (b or c)` and answered false for `false and true or true`.
+
+Neither short-circuits: both operands are evaluated before the operation runs.
 
 ### Relational expression
 ```

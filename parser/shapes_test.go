@@ -399,6 +399,36 @@ func TestMultiplicativeIsLeftAssociative(t *testing.T) {
 	}
 }
 
+// `and` binds tighter than `or`: a and b or c is (a and b) or c. They used to share one
+// precedence level and recurse to the right, which grouped it as a and (b or c).
+func TestAndBindsTighterThanOr(t *testing.T) {
+	expr := first[BooleanExpression](t, "a and b or c;")
+	if expr.Operation.Value != "or" {
+		t.Fatalf("the outer operation is %q, want or", expr.Operation.Value)
+	}
+	inner, ok := expr.Left.(BooleanExpression)
+	if !ok {
+		t.Fatalf("the left side is %T, want the inner conjunction", expr.Left)
+	}
+	if inner.Operation.Value != "and" {
+		t.Errorf("the inner operation is %q, want and", inner.Operation.Value)
+	}
+	if _, ok := expr.Right.(IdentifierLiteral); !ok {
+		t.Errorf("the right side is %T, want the last operand alone", expr.Right)
+	}
+}
+
+// A comparison binds tighter than both, so a range reads as one test.
+func TestComparisonBindsTighterThanAnd(t *testing.T) {
+	expr := first[BooleanExpression](t, "n bigger 18 and n smaller 65;")
+	if _, ok := expr.Left.(RelativeExpression); !ok {
+		t.Errorf("the left side is %T, want the comparison", expr.Left)
+	}
+	if _, ok := expr.Right.(RelativeExpression); !ok {
+		t.Errorf("the right side is %T, want the comparison", expr.Right)
+	}
+}
+
 // Exponentiation recurses to the right: 2 ^ 3 ^ 2 is 2 ^ (3 ^ 2).
 func TestExponentiationIsRightAssociative(t *testing.T) {
 	expr := first[BinaryExpression](t, "2 ^ 3 ^ 2;")

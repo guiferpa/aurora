@@ -507,33 +507,47 @@ func (p *pr) ParseRelExpr() (Node, error) {
 	return left, nil
 }
 
+// ParseBoolExpr parses `or`, which binds loosest of all, left-associatively.
+//
+// `and` and `or` used to share this one level and recurse to the right, so `a and b or c`
+// read as `a and (b or c)`: `false and true or true` answered false where every language
+// that gives `and` the tighter binding answers true. Splitting them into two levels is what
+// makes `and` bind tighter, and the loop is what groups a chain to the left.
 func (p *pr) ParseBoolExpr() (Node, error) {
-	left, err := p.ParseRelExpr()
+	left, err := p.ParseAndExpr()
 	if err != nil {
 		return nil, err
 	}
-	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.OR {
+	for p.GetLookahead().GetTag().Id == lexer.OR {
 		op, err := p.EatToken(lexer.OR)
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.ParseBoolExpr()
+		right, err := p.ParseAndExpr()
 		if err != nil {
 			return nil, err
 		}
-		return BooleanExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
+		left = BooleanExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 	}
-	if lookahead.GetTag().Id == lexer.AND {
+	return left, nil
+}
+
+// ParseAndExpr parses `and`, which binds tighter than `or` and looser than a comparison.
+func (p *pr) ParseAndExpr() (Node, error) {
+	left, err := p.ParseRelExpr()
+	if err != nil {
+		return nil, err
+	}
+	for p.GetLookahead().GetTag().Id == lexer.AND {
 		op, err := p.EatToken(lexer.AND)
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.ParseBoolExpr()
+		right, err := p.ParseRelExpr()
 		if err != nil {
 			return nil, err
 		}
-		return BooleanExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
+		left = BooleanExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 	}
 	return left, nil
 }

@@ -13,6 +13,7 @@
 #-   [0 0 0 0 0 0 0 1]
 #-   [0 0 0 0 0 0 0 1]
 #-   [0 0 0 0 0 0 0 1]
+#-   [0 0 0 0 0 0 0 1]
 #-   [0 0 0 0 0 0 0 2]
 #-   [0 0 0 0 0 0 0 1]
 
@@ -24,6 +25,9 @@ printb false or false;
 #- Any non-zero value counts as true, not just the true keyword.
 printb 42 and 1;
 printb 0 or 7;
+
+#- `and` binds tighter than `or`, so this is (false and true) or true.
+printb false and true or true;
 
 #- Combining with comparisons.
 ident age = 20;

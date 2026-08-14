@@ -1,0 +1,12 @@
+#- The "tiny" profile points here and pins tape_size = 1, so every value holds a
+#- single byte and arithmetic wraps at 256.
+#-
+#- Run "aurora run tiny" from the project root to see it, and compare with
+#- "aurora run tiny -t 8", where the flag overrides the profile.
+
+ident a = 200;
+
+print a;
+print a + 100;   #- wraps: 300 does not fit in one byte
+echo a;
+echo a + 100;

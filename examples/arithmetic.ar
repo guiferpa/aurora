@@ -4,7 +4,7 @@
 #- result back as a tape, wrapping at the tape width. With the default 8-byte
 #- tape that is 2^64; with --tape-size 1 it is 256.
 #-
-#- Run: aurora run -s arithmetic.ar
+#- Run: aurora run examples/arithmetic.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 5]

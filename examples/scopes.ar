@@ -3,7 +3,7 @@
 #- A block "{ }" is an expression that runs immediately and produces the value
 #- of its last expression. An empty block produces a tape of zeros.
 #-
-#- Run: aurora run -s scopes.ar
+#- Run: aurora run examples/scopes.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 30]

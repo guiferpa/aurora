@@ -6,10 +6,9 @@
 #-
 #- Run the same file three ways and compare:
 #-
-#-   aurora run -s tape_size.ar                 8-byte tapes
-#-   aurora run -s tape_size.ar --tape-size 2   2-byte tapes
-#-   aurora run -s tape_size.ar --tape-size 1   1-byte tapes, values wrap at 256
-#-   aurora run -p tiny                         the "tiny" profile pins 1 byte
+#-   aurora run examples/tape_size.ar                 8-byte tapes
+#-   aurora run examples/tape_size.ar --tape-size 2   2-byte tapes
+#-   aurora run examples/tape_size.ar --tape-size 1   1-byte tapes, values wrap at 256
 #-
 #- A literal that does not fit is rejected at compile time, so with one-byte
 #- tapes the line "ident big = 300;" fails with:

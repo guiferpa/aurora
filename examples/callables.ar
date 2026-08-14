@@ -8,7 +8,7 @@
 #- a vector of values to a scope. The scope never learns how many it received —
 #- feed(n) normalizes the index, so it always answers.
 #-
-#- Run: aurora run -s callables.ar
+#- Run: aurora run examples/callables.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 3]

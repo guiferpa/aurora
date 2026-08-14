@@ -3,7 +3,7 @@
 #- "branch" is sugar for nested if/else: a list of "test: value" pairs and a
 #- final fallback closed with ";". The first test that holds gives the value.
 #-
-#- Run: aurora run -s branch.ar
+#- Run: aurora run examples/branch.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 20]

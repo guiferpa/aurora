@@ -7,7 +7,7 @@
 #- being truncated, so with --tape-size 1 the line "ident big = 300;" fails with
 #- "value 300 does not fit in a 1-byte tape (max 255)".
 #-
-#- Run: aurora run -s numbers.ar
+#- Run: aurora run examples/numbers.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 7]

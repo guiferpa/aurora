@@ -8,7 +8,7 @@
 #- in at the right end; "push" shifts it right and lets the value in at the
 #- left. Whatever reaches the far end is discarded: the width never changes.
 #-
-#- Run: aurora run -s tapes.ar
+#- Run: aurora run examples/tapes.ar
 
 ident t = [1, 2, 3];
 print t;

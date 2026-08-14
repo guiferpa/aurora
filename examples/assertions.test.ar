@@ -7,7 +7,7 @@
 #- A failing assertion does not stop the run: every failure is collected and
 #- reported at the end, with an exit code of 3.
 #-
-#- Run: aurora run -s assertions.test.ar
+#- Run: aurora run examples/assertions.test.ar
 #-
 #- Output: (no output; assertions only report failures)
 

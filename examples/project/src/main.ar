@@ -1,0 +1,7 @@
+#- The "main" profile points here, so "aurora run" from the project root runs
+#- this file with the default 8-byte tapes.
+
+ident width = 30;
+ident height = 20;
+
+print width * height;

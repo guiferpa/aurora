@@ -3,7 +3,7 @@
 #- "and" and "or" read their operands as conditions: any non-zero tape is true,
 #- a tape of zeros is false. The result is a tape holding 1 or 0.
 #-
-#- Run: aurora run -s logic.ar
+#- Run: aurora run examples/logic.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 1]

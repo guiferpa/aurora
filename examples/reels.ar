@@ -3,7 +3,7 @@
 #- A reel is a run of tapes, one per character. "print" shows the raw bytes;
 #- "echo" reads them back as text.
 #-
-#- Run: aurora run -s reels.ar
+#- Run: aurora run examples/reels.ar
 #-
 #- Output:
 #-   hello

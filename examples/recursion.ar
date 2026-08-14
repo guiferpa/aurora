@@ -3,8 +3,8 @@
 #- A deferred scope can invoke itself: the binding is visible while the scope
 #- runs, so recursion needs nothing special.
 #-
-#- Run: aurora run -s recursion.ar
-#-      aurora run -p fibonacci      (same file, through the manifest)
+#- Run: aurora run examples/recursion.ar
+#-      aurora run examples/recursion.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 120]

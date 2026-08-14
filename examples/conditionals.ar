@@ -4,7 +4,7 @@
 #- be bound to a name or used inside another expression. Without an "else", a
 #- failing test produces a tape of zeros.
 #-
-#- Run: aurora run -s conditionals.ar
+#- Run: aurora run examples/conditionals.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 32]

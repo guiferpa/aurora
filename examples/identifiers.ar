@@ -4,7 +4,7 @@
 #- redeclared in the same scope, and there is no assignment operator to change
 #- one afterwards.
 #-
-#- Run: aurora run -s identifiers.ar
+#- Run: aurora run examples/identifiers.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 1]

@@ -3,7 +3,7 @@
 #- A comment starts with "#-" and runs to the end of the line. There is no
 #- block comment form.
 #-
-#- Run: aurora run -s comments.ar
+#- Run: aurora run examples/comments.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 3]

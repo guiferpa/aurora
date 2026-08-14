@@ -4,17 +4,14 @@ One file per feature. Each one opens with a comment explaining what it shows, ho
 
 ## Running them
 
-Run from **this directory**, so the CLI finds the [`aurora.toml`](aurora.toml) next to the examples:
+Give the path, from anywhere. A file is all the CLI needs — no project, no manifest:
 
 ```sh
-cd examples
-aurora run -s numbers.ar        # any file
-aurora run                      # the "main" profile
-aurora run -p fibonacci         # another profile
-aurora run -p tiny              # a profile that pins one-byte tapes
+aurora run examples/numbers.ar
+aurora run examples/tape_size.ar --tape-size 1
 ```
 
-The manifest is discovered by walking up from the current directory, so it has to be at or above where you run the command — not next to the file you pass with `-s`.
+For the other way of working — a manifest with named profiles — see [project/](project/).
 
 ## The files
 
@@ -35,11 +32,12 @@ The manifest is discovered by walking up from the current directory, so it has t
 | [tape_size.ar](tape_size.ar) | the same file compiled at different tape widths |
 | [comments.ar](comments.ar) | `#-` |
 | [assertions.test.ar](assertions.test.ar) | `assert`, which only works in `*.test.ar` |
+| [project/](project/) | a manifest with profiles, and what they change |
 
 ## Reading the output
 
 `print` writes the raw bytes of a value, which is why a result looks like `[0 0 0 0 0 0 0 42]` — every value is a tape, 8 bytes wide by default. `echo` reads those same bytes back as text.
 
-One file is one program: the compiler's unit is the file, so these examples can share a directory without their names colliding.
+One file is one program: the compiler's unit is the file, so these examples share a directory without their names colliding.
 
 Background: [language design](../docs/language-design.md), [grammar](../docs/grammar.md), [manifest reference](../docs/manifest.md).

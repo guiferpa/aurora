@@ -3,7 +3,7 @@
 #- Comparisons produce a tape holding 1 or 0 — the same bytes as true and
 #- false, because a condition is an ordinary value like any other.
 #-
-#- Run: aurora run -s comparison.ar
+#- Run: aurora run examples/comparison.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 1]

@@ -2,40 +2,43 @@ package cli
 
 import (
 	"io"
-	"os"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
 )
 
-// Every example in examples/ must run. The header of each file documents the output it
-// produces, and that output was pasted from a real run — this keeps them from rotting.
+// Every example must run. The header of each file documents the output it produces, and
+// that output was pasted from a real run — this keeps them from rotting.
 func TestExamplesRun(t *testing.T) {
-	dir := filepath.Join("..", "..", "examples")
-	entries, err := os.ReadDir(dir)
+	root := filepath.Join("..", "..", "examples")
+
+	var sources []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), ".ar") {
+			sources = append(sources, path)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("reading examples: %v", err)
+		t.Fatalf("walking examples: %v", err)
+	}
+	if len(sources) == 0 {
+		t.Fatal("no examples found")
 	}
 
-	var found int
-	for _, entry := range entries {
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".ar") {
-			continue
-		}
-		found++
-		t.Run(name, func(t *testing.T) {
+	for _, source := range sources {
+		t.Run(filepath.Base(source), func(t *testing.T) {
 			err := Run(t.Context(), RunInput{
-				Source: filepath.Join(dir, name),
+				Source: source,
 				Stdout: io.Discard,
 			})
 			if err != nil {
-				t.Errorf("example failed: %v", err)
+				t.Errorf("%s failed: %v", source, err)
 			}
 		})
-	}
-
-	if found == 0 {
-		t.Fatal("no examples found")
 	}
 }

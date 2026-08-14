@@ -9,6 +9,7 @@ All notable changes and release notes for Aurora are documented here.
 ### Added
 
 - **`aurora test`**, a command for the test files of a project. It reports every assertion, not only the ones that failed, and exits non-zero when something breaks. A test belongs to the source file of the same name — `greeting.test.ar` tests `greeting.ar`, which is evaluated first so the test sees what it declared, which is how a test reaches code before there is a module system. With a profile it searches from the directory of the profile's source down to the leaves; with a path it runs that file alone. See [docs/testing.md](docs/testing.md).
+- **`aurora init` starts a project, not just a manifest.** It writes the layout the manifest describes — `src/main.ar` and `src/main.test.ar` — so a new project runs and passes its tests straight away. The program greets you with `Abidu abide`: Aurora is the author's daughter, and that is what she was saying at one year old.
 - **`assert` now belongs to `aurora test`.** Under `aurora run` each one is reported as a warning carrying its file, line and column, and is not checked — so a program holding an assertion no longer fails because of it. `run` used to exit 3 in that case.
 
 ### Fixed

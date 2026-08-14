@@ -112,4 +112,4 @@ Note that `aurora run` on a test file runs **only that file** — the source it 
 - **A test cannot reach another file** beyond the one it is paired with. That waits on the [module system](module_system_design.md).
 - **No fixtures, no setup or teardown, no mocks.** A test is an ordinary Aurora file that happens to hold assertions.
 
-A worked example lives in [examples/greeting.ar](../examples/greeting.ar) and [examples/greeting.test.ar](../examples/greeting.test.ar).
+A worked example lives in [examples/greeting.ar](../examples/greeting.ar) and [examples/greeting.test.ar](../examples/greeting.test.ar), and `aurora init` writes a smaller one into every new project.

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -26,26 +27,108 @@ source = "src/main.ar"
 binary = "bin/main"
 `
 
+// InitSourceTemplate is the program a new project starts from.
+//
+// "Abidu abide" is what Aurora — the language is named after the author's daughter — was
+// saying at one year old. It felt like the right first thing for the language to say.
+const InitSourceTemplate = `#- Welcome to Aurora.
+#-
+#- Run this with:
+#-
+#-   aurora run     the main profile, which points here
+#-   aurora test    the assertions in main.test.ar
+#-
+#- Every value is a tape: a fixed run of bytes, 8 by default. "print" shows those
+#- bytes, "echo" reads them back as text.
+
+ident greet = defer { "Abidu abide"; };
+
+echo greet();
+`
+
+// InitTestTemplate is the test that comes with a new project.
+const InitTestTemplate = `#- Tests for main.ar.
+#-
+#- A test belongs to the source file of the same name: this file tests main.ar,
+#- which runs first, so greet is in scope here without being imported.
+#-
+#- A reel is a run of tapes, one per character, and arithmetic on one uses its
+#- last tape — so this checks that the greeting ends in the "e" of abide.
+#-
+#- Run them with:
+#-
+#-   aurora test
+
+assert(greet() equals 101, "greet says its piece");
+`
+
 // InitInput is the input for the Init handler.
 type InitInput struct {
-	Dir         string // directory to write aurora.toml (usually cwd)
+	Dir         string // directory to write the project into (usually cwd)
 	ProjectName string // default: filepath.Base(Dir)
+	Stdout      io.Writer
 }
 
-// Init creates aurora.toml in Dir with project name from InitInput.ProjectName (or from Dir base if empty).
+// Init starts a project: the manifest, a program to run, and a test for it.
+//
+// A manifest on its own leaves someone with nothing to run and no clue where to put it, so
+// the layout it describes comes with it — src/main.ar and src/main.test.ar, which are what
+// the main profile points at.
 func Init(in InitInput) error {
 	if in.Dir == "" {
 		return fmt.Errorf("InitInput.Dir is required")
 	}
-	path := filepath.Join(in.Dir, manifest.Filename)
-	if _, err := os.Stat(path); err == nil {
+
+	manifestPath := filepath.Join(in.Dir, manifest.Filename)
+	if _, err := os.Stat(manifestPath); err == nil {
 		return fmt.Errorf("%s already exists", manifest.Filename)
 	}
+
 	name := in.ProjectName
 	if name == "" {
 		name = filepath.Base(in.Dir)
 	}
-	fmt.Println("✨ aurora.toml created — dawn has broken on your project.")
-	content := fmt.Sprintf(InitManifestTemplate, name)
-	return os.WriteFile(path, []byte(content), 0o644)
+
+	sourceDir := filepath.Join(in.Dir, "src")
+	if err := os.MkdirAll(sourceDir, 0o755); err != nil {
+		return err
+	}
+
+	files := []struct {
+		path    string
+		content string
+	}{
+		{path: manifestPath, content: fmt.Sprintf(InitManifestTemplate, name)},
+		{path: filepath.Join(sourceDir, "main.ar"), content: InitSourceTemplate},
+		{path: filepath.Join(sourceDir, "main.test.ar"), content: InitTestTemplate},
+	}
+
+	created := make([]string, 0, len(files))
+	for _, file := range files {
+		// A source file already sitting there belongs to whoever put it there.
+		if _, err := os.Stat(file.path); err == nil {
+			continue
+		}
+		if err := os.WriteFile(file.path, []byte(file.content), 0o644); err != nil {
+			return err
+		}
+		created = append(created, file.path)
+	}
+
+	report(in.Stdout, in.Dir, created)
+	return nil
+}
+
+func report(w io.Writer, dir string, created []string) {
+	if w == nil {
+		return
+	}
+	_, _ = fmt.Fprintln(w, "✨ dawn has broken on your project.")
+	for _, path := range created {
+		if relative, err := filepath.Rel(dir, path); err == nil {
+			path = relative
+		}
+		_, _ = fmt.Fprintf(w, "   %s\n", path)
+	}
+	_, _ = fmt.Fprintln(w, "\nRun it with 'aurora run', test it with 'aurora test'.")
 }

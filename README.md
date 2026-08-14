@@ -14,6 +14,8 @@
 
 Aurora is a **study-focused** language that compiles to the Ethereum Virtual Machine (EVM). It already does basic compilation and runs code via an evaluator, but it's still in the oven: syntax and behavior may shift, and some EVM goodies aren't fully there yet. Perfect for tinkering and learning.
 
+> **Where the name comes from.** Aurora is the author's daughter, and the language is a tribute to her. That is also why a new project says `Abidu abide` — it is what she was saying at one year old, and it seemed like the right first thing for the language to say.
+
 ## Summary
 
 - [Get started](#get-started)
@@ -101,7 +103,20 @@ mkdir my-project && cd my-project
 aurora init
 ```
 
-That drops an `aurora.toml` with `[project]` and `[profiles.main]` (defaults: `source` = `src/main.ar`, `binary` = `bin/main`). From there `aurora run` and `aurora build` work with no arguments, and a name picks another profile: `aurora run dev`.
+That writes the manifest and the layout it describes:
+
+```
+aurora.toml
+src/main.ar        a program to run
+src/main.test.ar   its tests
+```
+
+```sh
+aurora run    # Abidu abide
+aurora test   # 1 passed, 0 failed in 1 file
+```
+
+The manifest holds `[project]` and `[profiles.main]` (defaults: `source` = `src/main.ar`, `binary` = `bin/main`). From there `aurora run` and `aurora build` work with no arguments, and a name picks another profile: `aurora run dev`.
 
 A manifest is only needed when you name a profile — running a file by path never needs one.
 

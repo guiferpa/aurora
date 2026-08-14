@@ -11,9 +11,14 @@ import (
 
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Create an aurora.toml manifest in the current directory",
-	Args:  cobra.NoArgs,
-	RunE:  runInit,
+	Short: "Start an Aurora project in the current directory",
+	Long: `Start an Aurora project in the current directory.
+
+Writes the manifest and the layout it describes: aurora.toml, a program in
+src/main.ar and its tests in src/main.test.ar. A file that already exists is
+left alone.`,
+	Args: cobra.NoArgs,
+	RunE: runInit,
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -24,5 +29,6 @@ func runInit(cmd *cobra.Command, args []string) error {
 	return cli.Init(cli.InitInput{
 		Dir:         dir,
 		ProjectName: filepath.Base(dir),
+		Stdout:      os.Stdout,
 	})
 }

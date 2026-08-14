@@ -4,7 +4,7 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
-## Unreleased
+## v0.2.0-alpha — 2026-08-14
 
 ### Language
 
@@ -24,6 +24,11 @@ All notable changes and release notes for Aurora are documented here.
 
 - **`run` and `build` take one positional argument**: nothing means the `main` profile, a name means that profile, and a path ending in `.ar` means that file. Running a loose file no longer requires a project to exist anywhere above it — which is what learning the language mostly looks like. **Breaking:** `-s/--source` is gone from `run`, `build` and `deploy`, and `-p/--profile` from `run` and `build`.
 - **A failed command prints one thing.** Cobra printed the error and the entire usage block, and the CLI then printed the error again in colour; usage now belongs to `aurora help` and `--help`. Errors also go to stderr rather than stdout.
+
+### Fixed
+
+- **Output now follows source order** ([#11](https://github.com/guiferpa/aurora/issues/11)). The playground ran the whole program and then walked the temp map, so every `print` appeared before every value, and the values among themselves came out in no order at all. Both the playground and the REPL evaluate one top-level expression at a time and report its value before moving on.
+- A scope ending in a binding (`{ ident a = 1; }`) returned the emitter's fallback for an unrecognised node instead of the binding's value.
 
 ### Tooling
 

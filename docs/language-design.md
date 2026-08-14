@@ -38,6 +38,11 @@ Numbers, conditions, reels, the neutral value and **deferred scopes** are all ta
 
 That is the bargain of an untyped language: values that are the same bytes are the same value, and calling a number equal to a scope's index calls that scope.
 
+A byte runs from 0 to 255, and nothing in a tape is set aside to mean "negative". So the
+language has no signs and no negative numbers at all: `-5` is a tape of bytes like any
+other, the one you reach by taking 5 away from zero. See
+[No signs, and no negative numbers](#no-signs-and-no-negative-numbers).
+
 **How many scopes a tape can name.** Since the value is an index, a tape of N bytes names 2^(8N) scopes — 256 of them at one byte. Declaring more in the same scope makes the index wrap, so a call reaches a different scope. The compiler warns about it:
 
 ```
@@ -145,10 +150,11 @@ Because everything is a tape, these work on any value — `ident a = 1; push a 2
 
 Since all tapes have the same width, the index `n` in `head` and `tail` operations is applied modulo `tape_size` to prevent boundary errors. This means:
 
-- **Any index value works**: You can use any integer value, and it will be wrapped to the range 0-7
-- **No boundary errors**: Operations never fail due to index out of bounds
-- **Predictable behavior**: `head tape 10` is equivalent to `head tape 2` (since `10 % 8 = 2`)
-- **Negative indices**: Negative indices are also handled correctly (e.g., `-1 % 8 = 7`)
+- **The index is a literal number**: the grammar takes a number there, not an expression and not a name, so `head t 2` compiles and `head t n` does not. An index computed while the program runs is not expressible today.
+- **Any index works**: it is taken modulo the tape width, so it lands in `0 .. tape_size - 1`
+- **No boundary errors**: the operation never fails for being out of bounds
+- **Predictable behavior**: `head tape 10` is `head tape 2` with the default 8-byte tape, since `10 % 8 = 2`
+- **No negative index**: there is no negative literal to write, because [the language has no signs](#no-signs-and-no-negative-numbers)
 
 **Examples:**
 - `head [1, 2, 3, 4, 5, 6, 7, 8] 2` → Gets first 2 bytes: `[0, 0, 0, 0, 0, 0, 1, 2]`
@@ -316,11 +322,47 @@ printb true + 1;        // [0, 0, 0, 0, 0, 0, 0, 1] + [0, 0, 0, 0, 0, 0, 0, 1] =
 printb false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 1
 ```
 
+### No signs, and no negative numbers
+
+A value is a run of bytes, and a byte runs from 0 to 255. Nothing is set aside to carry a
+sign — there is no sign bit, no signed type, no negative literal. The language cannot write
+a negative number and no operation can produce one.
+
+So `-x` is not "negative x". It is x taken away from zero, wrapping at the tape width:
+
+```javascript
+printd -5;    // 18446744073709551611, which is 2^64 - 5 with the default 8-byte tape
+printd -5;    // 251 with --tape-size 1, which is 2^8 - 5
+printb -1;    // [255 255 255 255 255 255 255 255]
+```
+
+That value stands in for -5 wherever wrapping is the whole story:
+
+```javascript
+printd -5 + 5;      // 0 — it comes back
+printd 1 - 2 + 1;   // 0 — the wrap in the middle cancels
+```
+
+and stops standing in for it the moment an operation has to know the sign:
+
+```javascript
+printd -5 bigger 5;   // 1, true: 2^64 - 5 is an enormous number, not a small one
+printd -5 smaller 5;  // 0
+printd -5 / 2;        // 9223372036854775805 — half of an enormous number, not -2
+```
+
+Comparison and division read the bytes as unsigned, like everything else does. A program that
+needs negative quantities has to carry the sign itself: a second value holding it, or an
+offset agreed across the program (store `n + 1000`, read it back as `value - 1000`).
+
+This is the same reasoning as the one behind [the neutral value](#the-neutral-value) and
+booleans-as-tapes: there is one kind of value, and reading is the program's business.
+
 ### Important Notes
 
-- **Arithmetic operations always work on unsigned 64-bit integers**: Operations like `+`, `-`, `*`, `/`, `^` interpret values as unsigned 64-bit integers
+- **Arithmetic reads a tape as an unsigned big-endian integer**: `+`, `-`, `*`, `/` and `^` interpret the bytes as one unsigned number of the tape's width — 64 bits at the default 8 bytes, 8 bits at `--tape-size 1`, up to 256 bits at 32. There is no signed reading, at any width
 - **Tapes store values as direct bytes**: When you write `[1, 2, 3]`, the values are stored directly as bytes in an 8-byte array: `[0, 0, 0, 0, 0, 1, 2, 3]`
-- **For arithmetic, tapes are treated as 8-byte values**: The entire 8-byte array is interpreted as a single unsigned 64-bit integer for arithmetic operations
+- **For arithmetic, a tape is one value**: the whole run of bytes is interpreted as a single unsigned integer, whatever the tape width
 - **Booleans need no special rule**: `true` is a tape holding 1 and `false` a tape of zeros, so `true + 1 = 2` and `false + 1 = 1` fall out of ordinary arithmetic
 - **Arithmetic wraps at the tape width**: with `tape_size = 1`, `255 + 1` is `0`
 - **This is a design decision**: Aurora prioritizes simplicity and the untyped philosophy over strict type safety

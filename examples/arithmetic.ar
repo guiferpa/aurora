@@ -19,6 +19,8 @@
 #-   512
 #-   18446744073709551611
 #-   5
+#-   1
+#-   9223372036854775805
 #-   [0 0 0 0 0 0 0 3]
 #-   [0 0 0 0 0 0 1 0]
 
@@ -43,10 +45,19 @@ printd 20 / 5 / 2;
 #- Exponentiation is the one that goes the other way: 2 ^ (3 ^ 2).
 printd 2 ^ 3 ^ 2;
 
-#- A tape is unsigned, so negating takes the value away from zero and wraps.
-#- With the default 8-byte tape that is 2^64 - 5; with --tape-size 1 it is 251.
+#- There are no signs in Aurora, and so no negative numbers: a byte runs from
+#- 0 to 255 and nothing marks a value negative. "-5" is the tape you reach by
+#- taking 5 away from zero, wrapping at the tape width — 2^64 - 5 by default,
+#- 251 with --tape-size 1.
 printd -5;
+
+#- It stands in for -5 wherever wrapping is the whole story.
 printd 10 + -5;
+
+#- And stops standing in for it as soon as the sign would matter: comparison
+#- and division read the bytes as unsigned, so this is a large number.
+printd -5 bigger 5;
+printd -5 / 2;
 
 #- Division truncates: there are no fractions, only bytes.
 printb 7 / 2;

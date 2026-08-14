@@ -166,6 +166,10 @@ A tape is unsigned, so `-x` is the value taken away from zero, wrapping at the t
 `-5` is the same tape as `0 - 5`, which is 251 with one-byte tapes and 2^64 - 5 with the
 default eight. The compiler emits exactly that subtraction.
 
+`-` is not a sign, and the language has none: a byte runs from 0 to 255, no bit is set aside
+to mark a value negative, and no operation produces a negative value. `-5 bigger 5` is
+therefore true. See [No signs, and no negative numbers](language-design.md#no-signs-and-no-negative-numbers).
+
 Until v0.3.1-alpha the operator was parsed and then dropped on the way to the IR, so `-5`
 was 5 and `10 + -5` was 15.
 

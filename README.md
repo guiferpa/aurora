@@ -203,6 +203,7 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 - **Reels**: strings are runs of tapes, one per character.
 - **Printing** is three readings of the same tape: `printb` the bytes, `printd` the number they spell, `printc` the character that number names, as UTF-8.
 - **Arithmetic**: a tape read as an unsigned big-endian integer, wrapping at the tape width.
+- **No signs**: a byte runs from 0 to 255 and no bit marks a value negative, so the language has no negative numbers. `-x` is x taken away from zero and wrapped — `-5 + 5` is 0, but `-5 bigger 5` is true.
 </details>
 
 ## Try it out

@@ -85,9 +85,9 @@ History is shared by every project in **`~/.aurora/history`** (last 1000 command
 
 ### Project manifest
 
-Most commands (**build**, **run**, **deploy**, **call**) want a project manifest — that's the `aurora.toml` file at your project root (or in a parent folder). It holds stuff like default source and output paths.
+A manifest lets you name profiles instead of repeating paths — that's the `aurora.toml` file at your project root (or in a parent folder). **build** and **run** use it when you give them a profile name or nothing at all; **deploy** and **call** always need one, since they read `rpc` and `privkey` from a profile.
 
-If you forget, the CLI will gently remind you:
+If it is missing, the CLI will gently remind you:
 
 ```
 aurora.toml not found in current directory or any parent (run 'aurora init' to create a project manifest)
@@ -100,7 +100,9 @@ mkdir my-project && cd my-project
 aurora init
 ```
 
-That drops an `aurora.toml` with `[project]` and `[profiles.main]` (defaults: `source` = `src/main.ar`, `binary` = `bin/main`). From there you can `aurora run`, `aurora build`, etc. The only commands that *don't* need a manifest: `aurora init`, `aurora version`, `aurora help`, `aurora repl`.
+That drops an `aurora.toml` with `[project]` and `[profiles.main]` (defaults: `source` = `src/main.ar`, `binary` = `bin/main`). From there `aurora run` and `aurora build` work with no arguments, and a name picks another profile: `aurora run dev`.
+
+A manifest is only needed when you name a profile — running a file by path never needs one.
 
 Full manifest reference (including optional on-chain bits): [docs/manifest.md](docs/manifest.md).
 
@@ -112,10 +114,10 @@ Full manifest reference (including optional on-chain bits): [docs/manifest.md](d
    aurora run
    ```
 
-2. **Run any file:** From a dir that has (or inherits) `aurora.toml`:
+2. **Run any file:** From anywhere, with no project at all:
 
    ```sh
-   aurora run -s path/to/your/file.ar
+   aurora run path/to/your/file.ar
    ```
 
 Example — save as `src/main.ar`:
@@ -132,8 +134,9 @@ Run `aurora run`. The evaluator prints values as raw bytes (here 201 = 8 bytes):
 Want bytecode instead of running in the evaluator?
 
 ```sh
-aurora build                              # uses manifest: source -> binary
-aurora build -s src/main.ar -o bin/main   # or point to any file and output
+aurora build                            # the "main" profile: source -> binary
+aurora build dev                        # another profile
+aurora build src/main.ar -o bin/main    # any file, with an explicit output
 ```
 
 You get a raw bytecode file — deploy it or feed it to your favorite EVM client. For deploy/call (rpc, privkey, etc.) check the [Manifest reference](docs/manifest.md).
@@ -184,7 +187,7 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 
 ## Commands
 
-Quick reference: everything except **init**, **version**, **help**, and **repl** wants an `aurora.toml` in the current dir (or a parent). No manifest? Run `aurora init` and you're good.
+Quick reference: `run` and `build` take one argument — a profile name, or a path ending in `.ar`. A path needs no manifest; a profile name needs an `aurora.toml` in the current dir or a parent, which `aurora init` creates.
 
 ```sh
 aurora help

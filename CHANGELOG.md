@@ -20,6 +20,11 @@ All notable changes and release notes for Aurora are documented here.
 - **`arguments(n)` is now `feed(n)`.** Aurora has no functions, so it has no parameters — and "argument" only means something against "parameter". `feed` says what happens: values are fed to a scope, and `feed(n)` reads the nth one. The reasoning is recorded in [docs/grammar.md](docs/grammar.md#feed-formerly-arguments). **Breaking:** `arguments` no longer parses as a builtin.
 - **`echo` prints text again in the CLI.** `aurora run` gave `print` and `echo` the same writer, so `echo` showed raw bytes; the evaluator always took two writers for exactly this reason, and the REPL was already correct.
 
+### CLI
+
+- **`run` and `build` take one positional argument**: nothing means the `main` profile, a name means that profile, and a path ending in `.ar` means that file. Running a loose file no longer requires a project to exist anywhere above it — which is what learning the language mostly looks like. **Breaking:** `-s/--source` is gone from `run`, `build` and `deploy`, and `-p/--profile` from `run` and `build`.
+- **A failed command prints one thing.** Cobra printed the error and the entire usage block, and the CLI then printed the error again in colour; usage now belongs to `aurora help` and `--help`. Errors also go to stderr rather than stdout.
+
 ### Tooling
 
 - `aurorals`, the language server, returned with semantic tokens, diagnostics, hover and completion. See [docs/lsp.md](docs/lsp.md).

@@ -22,8 +22,8 @@ The auto-installing targets write to `$(go env GOBIN)`; make sure it is on your 
 ### Fast loop (preferred while developing)
 
 ```sh
-go run ./cmd/aurora run -s examples/recursion.ar      # evaluator (run from examples/)
-go run ./cmd/aurora build -s src/main.ar -o bin/main  # EVM bytecode
+go run ./cmd/aurora run examples/recursion.ar        # evaluator
+go run ./cmd/aurora build examples/recursion.ar -o /tmp/out.bin   # EVM bytecode
 go run ./cmd/aurora repl
 ```
 
@@ -46,24 +46,25 @@ Note that both targets build with `-race`: great for catching data races, ~20MB 
 
 > macOS ships GNU Make 3.81, which compares timestamps with one-second granularity. A build triggered in the same second as the previous one can be skipped — only relevant when scripting builds back to back.
 
-### Running a single file
+### Running a program
 
-The unit of compilation is the file: `-s` compiles exactly what you pass and nothing else.
+`run` and `build` take one argument that is either a profile name or a path:
 
 ```sh
-cd examples
-go run ../cmd/aurora run -s recursion.ar
+go run ./cmd/aurora run examples/recursion.ar   # a file: no manifest needed
+go run ./cmd/aurora run                         # the "main" profile from aurora.toml
+go run ./cmd/aurora run tiny                    # another profile
 ```
 
-Commands other than `repl`, `version`, `help` and `init` need an `aurora.toml` at or above the current directory — `examples/aurora.toml` is there for exactly that.
+A path ends in `.ar`; anything else is a profile name, looked up in the nearest `aurora.toml` (walking up from the working directory). Only the profile form needs a manifest — `examples/project/` has one to try it against.
 
-There is no module system yet, so a program is one file. See [module_system_design.md](module_system_design.md).
+The unit of compilation is the file, and there is no module system yet, so a program is one file. See [module_system_design.md](module_system_design.md).
 
 ### Inspecting each phase
 
 ```sh
-go run ./cmd/aurora run -s main.ar -l lexer,parser,evaluator
-go run ./cmd/aurora build -s main.ar -o /tmp/out.bin -l builder && xxd /tmp/out.bin
+go run ./cmd/aurora run main.ar -l lexer,parser,evaluator
+go run ./cmd/aurora build main.ar -o /tmp/out.bin -l builder && xxd /tmp/out.bin
 ```
 
 Valid loggers: `lexer`, `parser`, `emitter`, `evaluator` (run) and `builder` (build).

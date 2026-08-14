@@ -4,7 +4,7 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
-## Unreleased
+## v0.3.0-alpha — 2026-08-14
 
 ### Language
 

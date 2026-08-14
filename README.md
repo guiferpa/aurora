@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/mascot.png" width="224px" height="280px">
+<img src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/mascot.png" width="112px" height="140px">
 
 # aurora
 

@@ -58,6 +58,20 @@ func render(w io.Writer, temps map[string][]byte, result string, eerr error, tap
 	_, _ = fmt.Fprintf(w, format, marker, literals(er))
 }
 
+// resultLabel is where the value of a line ends up. Usually that is the label of its last
+// instruction, but a scope closes with OpReturn, which writes into the enclosing environ
+// under the scope's own label — so blocks and ifs are found through its left operand.
+func resultLabel(insts []emitter.Instruction) string {
+	if len(insts) == 0 {
+		return ""
+	}
+	last := insts[len(insts)-1]
+	if last.GetOpCode() == emitter.OpReturn {
+		return byteutil.ToHex(last.GetLeft())
+	}
+	return byteutil.ToHex(last.GetLabel())
+}
+
 const prompt = ">> "
 
 // lineReader is where the REPL gets the next line from: the editor when stdin is a
@@ -190,11 +204,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		instsBuffer = append(instsBuffer, insts...)
 		to := uint64(len(instsBuffer))
 
-		// The last instruction of the line holds its value.
-		result := ""
-		if len(insts) > 0 {
-			result = byteutil.ToHex(insts[len(insts)-1].GetLabel())
-		}
+		result := resultLabel(insts)
 
 		temps, err := ev.EvaluateRange(instsBuffer, from, to)
 		render(os.Stdout, temps, result, err, tapeSize)

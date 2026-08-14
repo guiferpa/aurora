@@ -69,11 +69,17 @@ func EchoFunction(w io.Writer, bs []byte, tapeSize int) {
 //
 // Execution in Aurora is the application of a vector of values to a scope, not a function
 // call — there is no signature, no arity and no parameter, so this only reads a position.
-func FeedFunction(feed map[uint64][]byte, index uint64) []byte {
-	if feed == nil {
-		return nil
+// The scope never learns how many values it got: the index wraps around the length of the
+// vector, so the read always answers with a tape and never fails.
+func FeedFunction(feed map[uint64][]byte, index uint64, tapeSize int) []byte {
+	if len(feed) == 0 {
+		return byteutil.FalseTape(tapeSize)
 	}
-	return feed[index]
+	value, ok := feed[index%uint64(len(feed))]
+	if !ok {
+		return byteutil.FalseTape(tapeSize)
+	}
+	return byteutil.PaddingTape(value, tapeSize)
 }
 
 // AssertFunction evaluates an assert: condition (bytes as boolean) and message (reel bytes for error display).

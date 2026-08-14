@@ -13,7 +13,10 @@ func InitializeHandler(l *log.Logger, s *state.State, contents []byte) any {
 		l.Println(err)
 		return nil
 	}
-	client := req.Params.ClientInfo
-	l.Printf("Connected to: %s %s", client.Name, client.Version)
+	// clientInfo is optional in the protocol, so it arrives nil from any client that does
+	// not send it. Dereferencing it took the whole server down on the very first message.
+	if client := req.Params.ClientInfo; client != nil {
+		l.Printf("Connected to: %s %s", client.Name, client.Version)
+	}
 	return initialize.NewResponse(req.ID)
 }

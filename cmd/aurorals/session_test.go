@@ -97,6 +97,22 @@ func TestSessionInitializeAdvertisesSemanticTokens(t *testing.T) {
 	}
 }
 
+// clientInfo is optional in the protocol. A client that omits it used to take the server
+// down with a nil dereference on the first message it ever received.
+func TestSessionInitializeWithoutClientInfo(t *testing.T) {
+	replies := runSession(t,
+		request(1, "initialize", map[string]any{}),
+		exitMessage,
+	)
+
+	if len(replies) != 1 {
+		t.Fatalf("expected the server to answer, got %d replies", len(replies))
+	}
+	if _, ok := replies[0]["result"].(map[string]any)["capabilities"]; !ok {
+		t.Errorf("expected capabilities in the reply: %v", replies[0])
+	}
+}
+
 func TestSessionPublishesDiagnosticsOnOpenAndClearsThemOnFix(t *testing.T) {
 	uri := "file:///tmp/main.ar"
 	fixed, _ := json.Marshal(map[string]any{

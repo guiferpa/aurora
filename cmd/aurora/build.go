@@ -7,43 +7,50 @@ import (
 )
 
 var buildCmd = &cobra.Command{
-	Use:   "build [file]",
+	Use:   "build [profile | file.ar]",
 	Short: "Build binary from source code",
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runBuild,
+	Long: `Build binary from source code.
+
+With no argument, the "main" profile from aurora.toml is used. A name selects
+another profile. A path ending in .ar builds that file, with no manifest
+involved:
+
+  aurora build                  the "main" profile
+  aurora build dev              the "dev" profile
+  aurora build src/main.ar      that file`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: runBuild,
 }
 
 func init() {
 	buildCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), builder)")
-	buildCmd.Flags().StringP("output", "o", "", "output path for compiled binary (default: binary from aurora.toml)")
-	buildCmd.Flags().StringP("source", "s", "", "custom source code to build")
-	buildCmd.Flags().StringP("profile", "p", "main", "profile to build")
+	buildCmd.Flags().StringP("output", "o", "", "output path for compiled binary (default: binary from aurora.toml, or the file name without extension)")
 	buildCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
 func runBuild(cmd *cobra.Command, args []string) error {
-	profile, err := cmd.Flags().GetString("profile")
+	var arg string
+	if len(args) > 0 {
+		arg = args[0]
+	}
+	target, err := cli.ResolveTarget(arg)
 	if err != nil {
 		return err
 	}
-	env, err := cli.LoadEnviron(profile)
-	if err != nil {
-		return err
-	}
-	source, err := cmd.Flags().GetString("source")
-	if err != nil {
-		return err
-	}
-	if source == "" {
-		source = env.AbsPath(env.Profile.Source)
-	}
+
 	output, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return err
 	}
 	if output == "" {
-		output = env.AbsPath(env.Profile.Binary)
+		// A profile carries its own output path; a loose file has none, so the binary
+		// lands next to where the command runs, named after the source.
+		output = target.Binary
+		if output == "" {
+			output = cli.DefaultBinaryPath(target.Source)
+		}
 	}
+
 	loggers, err := cmd.Flags().GetStringSlice("loggers")
 	if err != nil {
 		return err
@@ -52,10 +59,11 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	return cli.Build(cmd.Context(), cli.BuildInput{
-		Source:     source,
+		Source:     target.Source,
 		OutputPath: output,
 		Loggers:    loggers,
-		TapeSize:   cli.ResolveTapeSize(tapeSize, env.Profile.TapeSize),
+		TapeSize:   cli.ResolveTapeSize(tapeSize, target.TapeSize),
 	})
 }

@@ -25,7 +25,6 @@ var deployCmd = &cobra.Command{
 func init() {
 	deployCmd.Flags().IntVar(&deployMinTipGwei, "min-tip", 0, "minimum priority fee in Gwei (overrides default when RPC suggests too low)")
 	deployCmd.Flags().IntVar(&deployMinMaxFeeGwei, "min-max-fee", 0, "minimum max fee per gas in Gwei (overrides default when RPC suggests too low)")
-	deployCmd.Flags().StringP("source", "s", "", "custom source code to deploy")
 	deployCmd.Flags().StringP("profile", "p", "main", "profile to deploy")
 }
 

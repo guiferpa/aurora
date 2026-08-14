@@ -24,11 +24,12 @@ type Expression struct {
 	Label []byte
 }
 
-// Program is what a source file compiled to: the instruction stream and where each
-// top-level expression sits inside it.
+// Program is what a source file compiled to: the instruction stream, where each top-level
+// expression sits inside it, and anything worth saying that did not stop the compilation.
 type Program struct {
 	Instructions []Instruction
 	Expressions  []Expression
+	Warnings     []Warning
 }
 
 type emt struct {
@@ -297,7 +298,11 @@ func (e *emt) EmitProgram(ast parser.AST) (Program, error) {
 		exprs = append(exprs, Expression{From: from, To: len(insts), Label: label})
 	}
 
-	return Program{Instructions: insts, Expressions: exprs}, nil
+	return Program{
+		Instructions: insts,
+		Expressions:  exprs,
+		Warnings:     checkDeferCapacity(ast.Nodes, e.tapeSize),
+	}, nil
 }
 
 type NewEmitterOptions struct {

@@ -8,21 +8,26 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-func compile(t *testing.T, source string) Program {
+func compileWith(t *testing.T, source string, tapeSize int) Program {
 	t.Helper()
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
+	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	program, err := New(NewEmitterOptions{}).EmitProgram(ast)
+	program, err := New(NewEmitterOptions{TapeSize: tapeSize}).EmitProgram(ast)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}
 	return program
+}
+
+func compile(t *testing.T, source string) Program {
+	t.Helper()
+	return compileWith(t, source, 0)
 }
 
 // A program reports one expression per top-level node, in source order, and the ranges

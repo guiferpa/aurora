@@ -6,3 +6,6 @@ bin/
 /aurora.toml
 /.aurora.deploys.toml
 /src/
+
+# What aurorals writes where an editor happens to open a project.
+lsp.log

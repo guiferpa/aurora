@@ -28,7 +28,7 @@ func Build(ctx context.Context, in BuildInput) error {
 	if err != nil {
 		return err
 	}
-	ReportWarnings(in.Warnings, program.Warnings)
+	ReportWarnings(in.Warnings, in.Source, program.Warnings)
 
 	if err := os.MkdirAll(filepath.Dir(in.OutputPath), 0o755); err != nil {
 		return err

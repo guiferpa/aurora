@@ -34,7 +34,7 @@ func Run(ctx context.Context, in RunInput) error {
 	if err != nil {
 		return err
 	}
-	ReportWarnings(in.Warnings, program.Warnings)
+	ReportWarnings(in.Warnings, in.Source, program.Warnings)
 
 	echoOut := in.EchoOut
 	if echoOut == nil {

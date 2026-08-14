@@ -301,7 +301,7 @@ func (e *emt) EmitProgram(ast parser.AST) (Program, error) {
 	return Program{
 		Instructions: insts,
 		Expressions:  exprs,
-		Warnings:     checkDeferCapacity(ast.Nodes, e.tapeSize),
+		Warnings:     append(checkDeferCapacity(ast.Nodes, e.tapeSize), checkAsserts(ast.Nodes)...),
 	}, nil
 }
 

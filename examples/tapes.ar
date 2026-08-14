@@ -11,30 +11,30 @@
 #- Run: aurora run examples/tapes.ar
 
 ident t = [1, 2, 3];
-print t;
+printb t;
 
 #- An empty literal is a tape of zeros, the same value as 0.
-print [];
+printb [];
 
 #- pull: 4 enters at the right.
-print pull t 4;
+printb pull t 4;
 
 #- push: 5 enters at the left, and the far byte falls off.
-print push t 5;
+printb push t 5;
 
 #- head keeps the first n significant bytes, tail drops them.
 ident five = [1, 2, 3, 4, 5];
-print head five 2;
-print tail five 2;
+printb head five 2;
+printb tail five 2;
 
 #- The index is taken modulo the tape width, so it can never be out of bounds.
 ident full = [1, 2, 3, 4, 5, 6, 7, 8];
-print tail full 18;
+printb tail full 18;
 
 #- Everything is a tape, so the operations work on any value, not just literals.
 ident n = 1;
-print pull n 2;
+printb pull n 2;
 
 #- The result is an ordinary value, usable anywhere.
 ident built = pull [1, 2] 3;
-print built + 1;
+printb built + 1;

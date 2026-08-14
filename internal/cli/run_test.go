@@ -11,7 +11,7 @@ import (
 func TestRunExecutesAndWritesToStdout(t *testing.T) {
 	dir := t.TempDir()
 	entry := filepath.Join(dir, "main.ar")
-	source := "ident x = 1 + 10;\nprint x;\n"
+	source := "ident x = 1 + 10;\nprintb x;\n"
 	if err := os.WriteFile(entry, []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}

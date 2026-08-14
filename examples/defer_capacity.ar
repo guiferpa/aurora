@@ -283,5 +283,5 @@ ident filler255 = defer { 0; };
 #- The 257th scope. Its index is 256, which needs more than one byte.
 ident last = defer { 9; };
 
-print first();
-print last();
+printb first();
+printb last();

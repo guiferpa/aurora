@@ -190,8 +190,7 @@ func runTestFile(path string, tapeSize int, loggers []string) FileReport {
 
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
-		EchoWriter:    io.Discard,
-		PrintWriter:   io.Discard,
+		Output:        io.Discard,
 		TapeSize:      tapeSize,
 		Asserts:       true,
 	})

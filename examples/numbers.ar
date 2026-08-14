@@ -23,19 +23,19 @@ ident small = 7;
 ident thousand = 1_000;
 ident million = 1_000_000;
 
-print small;
-print thousand;
-print million;
+printb small;
+printb thousand;
+printb million;
 
 #- Hexadecimal, upper or lower case, with 0x or 0X.
 ident hex = 0xFF;
 ident hex_upper = 0XFF;
 ident hex_word = 0x1A2B;
 
-print hex;
-print hex_upper;
-print hex_word;
+printb hex;
+printb hex_upper;
+printb hex_word;
 
 #- Decimal and hexadecimal are the same kind of value: both are tapes.
-print 0x10 equals 16;
-print 10 + 0x10;
+printb 0x10 equals 16;
+printb 10 + 0x10;

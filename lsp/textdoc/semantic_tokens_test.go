@@ -36,10 +36,10 @@ func TestSemanticTokens(t *testing.T) {
 		},
 		{
 			name:   "call is a function, plain use is a variable",
-			source: "print sum(a);",
+			source: "printb sum(a);",
 			want: []token{
-				{0, 0, 5, SemanticKeyword, 0},  // print
-				{0, 6, 3, SemanticFunction, 0}, // sum(
+				{0, 0, 6, SemanticKeyword, 0},  // printb
+				{0, 7, 3, SemanticFunction, 0}, // sum(
 				{0, 4, 1, SemanticVariable, 0}, // a
 			},
 		},
@@ -56,18 +56,18 @@ func TestSemanticTokens(t *testing.T) {
 		},
 		{
 			name:   "reel literal",
-			source: `echo "hi";`,
+			source: `printc "hi";`,
 			want: []token{
-				{0, 0, 4, SemanticKeyword, 0},
-				{0, 5, 4, SemanticString, 0},
+				{0, 0, 6, SemanticKeyword, 0},
+				{0, 7, 4, SemanticString, 0},
 			},
 		},
 		{
 			name:   "multi-byte runes are measured in utf-16 units",
-			source: `echo "áé";`,
+			source: `printc "áé";`,
 			want: []token{
-				{0, 0, 4, SemanticKeyword, 0},
-				{0, 5, 4, SemanticString, 0}, // "áé" = 6 bytes, 4 UTF-16 units
+				{0, 0, 6, SemanticKeyword, 0},
+				{0, 7, 4, SemanticString, 0}, // "áé" = 6 bytes, 4 UTF-16 units
 			},
 		},
 		{
@@ -115,7 +115,7 @@ func TestSemanticTokensEmptyDocument(t *testing.T) {
 
 // Every entry must be a full 5-tuple, or clients misread the whole stream.
 func TestSemanticTokensDataIsWellFormed(t *testing.T) {
-	data := SemanticTokensFor("ident a = 1;\n#- note\nprint a;\n")
+	data := SemanticTokensFor("ident a = 1;\n#- note\nprintb a;\n")
 	if len(data)%5 != 0 {
 		t.Fatalf("data length %d is not a multiple of 5", len(data))
 	}

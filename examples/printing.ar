@@ -1,0 +1,57 @@
+#- Printing
+#-
+#- A value in Aurora is a tape: a fixed run of bytes. It is never a number, a
+#- character or a string on its own — those are readings of the same tape, and
+#- there is one builtin per reading:
+#-
+#-   printb   the bytes themselves
+#-   printd   the number they spell, big-endian
+#-   printc   the character that number names, written as UTF-8
+#-
+#- Nothing is converted between them. The tape holding 44 is one tape; read as
+#- bytes it is [0 0 0 0 0 0 0 44], as a number 44, as a character a comma.
+#-
+#- Run: aurora run examples/printing.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 44]
+#-   44
+#-   ,
+#-   [0 0 0 0 0 0 2 2]
+#-   514
+#-   Ȃ
+#-   [0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 105]
+#-   104 105
+#-   hi
+#-   99 97 102 233
+#-   café
+#-   [0 0 0 0 0 0 0 0]
+#-   0
+
+#- One number, three readings.
+printb 44;
+printd 44;
+printc 44;
+
+#- A character is the whole number the tape holds, not the byte at its end. 514
+#- is past what a byte reaches, and it still names a letter.
+printb 514;
+printd 514;
+printc 514;
+
+#- A reel is a run of tapes, one per character, so each builtin reads it tape by
+#- tape: the bytes of all of them, one number per tape, one character per tape.
+printb "hi";
+printd "hi";
+printc "hi";
+
+#- Which is what keeps a character outside ASCII whole. "café" is four tapes,
+#- and the last one holds 233.
+printd "café";
+printc "café";
+
+#- A tape of zeros is the neutral value. It spells zero and names no character,
+#- so printc has nothing to write and writes an empty line.
+printb false;
+printd false;
+printc false;

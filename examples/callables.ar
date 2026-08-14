@@ -21,8 +21,8 @@ ident sum = defer {
   feed(0) + feed(1);
 };
 
-print sum(1, 2);
-print sum(10, 20);
+printb sum(1, 2);
+printb sum(10, 20);
 
 #- Naming the fed values makes a scope easier to read.
 ident area = defer {
@@ -31,11 +31,11 @@ ident area = defer {
   width * height;
 };
 
-print area(3, 4);
+printb area(3, 4);
 
 #- A deferred scope is a value: it can be bound and passed around.
 ident double = defer { feed(0) * 2; };
-print double(21);
+printb double(21);
 
 #- The scope is blind to how many values arrive. Extra ones are simply unread.
-print double(5, 99, 100);
+printb double(5, 99, 100);

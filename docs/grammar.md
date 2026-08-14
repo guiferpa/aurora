@@ -14,8 +14,9 @@ Every token the lexer produces. Keywords are only recognised when the word start
 | Branch | **BRANCH** | `branch` |
 | Defer | **DEFER** | `defer` |
 | Feed | **FEED** | `feed` |
-| Print | **PRINT** | `print` |
-| Echo | **ECHO** | `echo` |
+| Print bytes | **PRINTB** | `printb` |
+| Print characters | **PRINTC** | `printc` |
+| Print decimal | **PRINTD** | `printd` |
 | Assert | **ASSERT** | `assert` |
 | True | **TRUE** | `true` |
 | False | **FALSE** | `false` |
@@ -60,6 +61,25 @@ The plural form was misleading on its own: `arguments(0)` reads *one* value, not
 
 **Breaking change:** `arguments(n)` no longer parses as a builtin; `arguments` is now an ordinary identifier, which will not resolve.
 
+### `printb` / `printc` / `printd`, formerly `print` and `echo`
+
+There used to be two: `print` wrote the bytes of a value and `echo` wrote it as text. Neither
+name said which reading it was — `print` is what every language calls writing something,
+whatever the form, and `echo` says nothing at all about characters. Someone reading a program
+had to know that one of them meant bytes.
+
+The three that replaced them carry the reading in the suffix, and the third one had nowhere to
+go under the old pair: reading a tape as a decimal number was possible only by counting the
+bytes by hand.
+
+`echo` also read one byte per byte, and kept it only when it fell in printable ASCII, so
+every character above 127 was silently dropped — `printc "café"` used to write `caf`. It now
+reads the number the whole tape holds and writes it as UTF-8, which is what makes 233 an é
+and 514 an Ȃ.
+
+**Breaking change:** `print` and `echo` no longer parse; both are ordinary identifiers now,
+which will not resolve. `print x` becomes `printb x`, `echo x` becomes `printc x`.
+
 ## Terminals
 
 | Name | Reference | Representation |
@@ -83,7 +103,7 @@ Every expression ends in `;`, at the top level and inside a block alike.
 
 ### Expression
 ```
-_expr -> _print | _echo | _assert
+_expr -> _print | _assert
        | _block | _if | _branch | _defer | _ident
        | _pull | _push | _head | _tail
        | _boole
@@ -251,9 +271,18 @@ significant bytes, with the index taken modulo the tape width.
 
 ### Builtins
 ```
-_print  -> PRINT _expr
-_echo   -> ECHO _expr
+_print  -> (PRINTB | PRINTC | PRINTD) _expr
 _assert -> ASSERT O_PAREN _expr COMMA _expr C_PAREN
+```
+
+The three print builtins are three readings of the same tape, and the suffix names the
+reading: `printb` the bytes, `printd` the decimal number they spell, `printc` the character
+that number names. A reel is read tape by tape.
+
+```
+printb 44;   [0 0 0 0 0 0 0 44]
+printd 44;   44
+printc 44;   ,
 ```
 
 `assert` is only accepted in files named `*.test.ar`.

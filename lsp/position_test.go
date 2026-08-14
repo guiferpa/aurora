@@ -3,7 +3,7 @@ package lsp
 import "testing"
 
 func TestMapperPosition(t *testing.T) {
-	const source = "ident a = 1;\nident b = \"áé\";\nprint b;\n"
+	const source = "ident a = 1;\nident b = \"áé\";\nprintb b;\n"
 
 	cases := []struct {
 		name      string
@@ -32,7 +32,7 @@ func TestMapperPosition(t *testing.T) {
 }
 
 func TestMapperRange(t *testing.T) {
-	mapper := NewMapper("ident a = 1;\nprint a;\n")
+	mapper := NewMapper("ident a = 1;\nprintb a;\n")
 	got := mapper.Range(13, 5) // "print"
 	if got.Start.Line != 1 || got.Start.Character != 0 {
 		t.Errorf("start = %d:%d, want 1:0", got.Start.Line, got.Start.Character)
@@ -43,7 +43,7 @@ func TestMapperRange(t *testing.T) {
 }
 
 func TestMapperOffsetRoundTrip(t *testing.T) {
-	const source = "ident a = \"áé\";\nprint a;\n"
+	const source = "ident a = \"áé\";\nprintb a;\n"
 	mapper := NewMapper(source)
 
 	for _, offset := range []int{0, 6, 10, 16, 20} {

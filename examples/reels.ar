@@ -1,7 +1,7 @@
 #- Reels (strings)
 #-
-#- A reel is a run of tapes, one per character. "print" shows the raw bytes;
-#- "echo" reads them back as text.
+#- A reel is a run of tapes, one per character. "printb" shows the raw bytes;
+#- "printc" reads them back as text.
 #-
 #- Run: aurora run examples/reels.ar
 #-
@@ -16,22 +16,22 @@
 #-   a
 
 ident greeting = "hello";
-echo greeting;
-print greeting;
+printc greeting;
+printb greeting;
 
 #- A single character is one tape.
 ident letter = "a";
-echo letter;
-print letter;
+printc letter;
+printb letter;
 
 #- Arithmetic on a reel uses its last tape, so "a" is 97 and this gives 98.
 ident next = 1 + "a";
-echo next;
+printc next;
 
 #- An empty string is one empty tape.
 ident nothing_to_say = "";
-print nothing_to_say;
+printb nothing_to_say;
 
-#- echo also turns a number into the character it stands for.
-echo 65;
-echo 97;
+#- printc also turns a number into the character it stands for.
+printc 65;
+printc 97;

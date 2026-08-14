@@ -17,22 +17,22 @@
 ident a = 1;
 ident b = 2;
 
-print a;
-print b;
-print a + b;
+printb a;
+printb b;
+printb a + b;
 
 #- A binding can hold the result of any expression.
 ident sum = a + b;
 ident doubled = sum * 2;
 
-print doubled;
+printb doubled;
 
 #- Names may contain letters, digits, _ - ? ! > < after the first character.
 ident is_ready? = true;
 ident max-size = 10;
 
-print is_ready?;
-print max-size;
+printb is_ready?;
+printb max-size;
 
 #- Redeclaring is an error, so this line would stop the program:
 #- ident a = 3;   -> conflict between identifiers named a

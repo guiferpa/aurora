@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const minimalAR = "ident x = 1 + 2;\nprint x;\n"
+const minimalAR = "ident x = 1 + 2;\nprintb x;\n"
 
 func TestBuild_producesOutputFile(t *testing.T) {
 	dir := t.TempDir()

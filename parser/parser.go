@@ -141,13 +141,12 @@ func (p *pr) ParseReel() (ReelLiteral, error) {
 	// Remove first and last character (quotes)
 	content := match[1 : len(match)-1]
 
-	// Convert string to reel (array of tapes)
-	// Each character becomes a tape (8-byte array) padded with zeros
+	// A reel is a run of tapes, one per character, and each tape holds the character's
+	// number. Ranging over the string rather than the bytes is what keeps a character
+	// outside ASCII whole: "café" is four characters, not five bytes.
 	reel := make([][]byte, 0, len(content))
-	for _, char := range content {
-		charByte := byte(char)
-		// Each character is a tape
-		tape := byteutil.PaddingTape([]byte{charByte}, p.tapeSize)
+	for _, char := range string(content) {
+		tape := byteutil.PaddingTape(byteutil.FromUint64(uint64(char)), p.tapeSize)
 		reel = append(reel, tape)
 	}
 
@@ -696,11 +695,8 @@ func (p *pr) ParseExpr() (Node, error) {
 	if lookahead == nil {
 		return nil, fmt.Errorf("unexpected end of input")
 	}
-	if lookahead.GetTag().Id == lexer.PRINT {
-		return p.ParsePrint()
-	}
-	if lookahead.GetTag().Id == lexer.ECHO {
-		return p.ParseEcho()
+	if format, ok := printFormats[lookahead.GetTag().Id]; ok {
+		return p.ParsePrint(lookahead.GetTag().Id, format)
 	}
 	if lookahead.GetTag().Id == lexer.ASSERT {
 		return p.ParseAssert()
@@ -735,26 +731,22 @@ func (p *pr) ParseExpr() (Node, error) {
 	return p.ParseBoolExpr()
 }
 
-func (p *pr) ParsePrint() (Node, error) {
-	if _, err := p.EatToken(lexer.PRINT); err != nil {
-		return nil, err
-	}
-	expr, err := p.ParseExpr()
-	if err != nil {
-		return nil, err
-	}
-	return PrintStatement{expr}, nil
+// printFormats maps each print builtin to the reading it asks for.
+var printFormats = map[string]PrintFormat{
+	lexer.PRINTB: PrintBytes,
+	lexer.PRINTC: PrintChars,
+	lexer.PRINTD: PrintDecimal,
 }
 
-func (p *pr) ParseEcho() (Node, error) {
-	if _, err := p.EatToken(lexer.ECHO); err != nil {
+func (p *pr) ParsePrint(token string, format PrintFormat) (Node, error) {
+	if _, err := p.EatToken(token); err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
-	return EchoStatement{expr}, nil
+	return PrintStatement{Format: format, Param: expr}, nil
 }
 
 func (p *pr) ParseAssert() (Node, error) {

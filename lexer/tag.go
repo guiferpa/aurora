@@ -17,7 +17,6 @@ const (
 	DEFER        = "DEFER"     // defer - delayed scope execution
 	DIFFERENT    = "DIFFERENT" // differenTag
 	DIV          = "DIV"       // /
-	ECHO         = "ECHO"      // echo - print bytes as text
 	ELSE         = "ELSE"      // else
 	EOF          = "EOF"
 	EQUALS       = "EQUALS" // equals
@@ -33,7 +32,9 @@ const (
 	O_CUR_BRK    = "O_CUR_BRK" // {
 	O_PAREN      = "O_PAREN"   // (
 	OR           = "OR"        // or
-	PRINT        = "PRINT"     // print
+	PRINTB       = "PRINTB"    // printb - the bytes of a value
+	PRINTC       = "PRINTC"    // printc - the characters a value names
+	PRINTD       = "PRINTD"    // printd - a value as a decimal number
 	PULL         = "PULL"      // pull
 	PUSH         = "PUSH"      // push
 	SEMICOLON    = "SEMICOLON" // ;
@@ -63,14 +64,15 @@ var (
 	TagCBrk       = Tag{C_BRK, "]", ""}
 	TagCCurBrk    = Tag{C_CUR_BRK, "}", ""}
 	TagCParen     = Tag{C_PAREN, ")", ""}
-	TagCallPrint  = Tag{PRINT, "print", "Print anything"}
+	TagPrintBytes = Tag{PRINTB, "printb", "Print the bytes of a value"}
+	TagPrintChars = Tag{PRINTC, "printc", "Print a value as text"}
+	TagPrintDec   = Tag{PRINTD, "printd", "Print a value as a decimal number"}
 	TagColon      = Tag{COLON, ":", ""}
 	TagComma      = Tag{COMMA, ",", ""}
 	TagComment    = Tag{COMMENT_LINE, "#-", ""}
 	TagDefer      = Tag{DEFER, "defer", "Defer scope execution (pointer to scope)"}
 	TagDifferent  = Tag{DIFFERENT, "different", ""}
 	TagDiv        = Tag{DIV, "/", ""}
-	TagEcho       = Tag{ECHO, "echo", "Echo bytes as text"}
 	TagElse       = Tag{ELSE, "else", "Make else for conditions with If"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 	TagEquals     = Tag{EQUALS, "equals", ""}
@@ -99,8 +101,9 @@ var (
 )
 
 var processableTags = []Tag{
-	TagCallPrint,
-	TagEcho,
+	TagPrintBytes,
+	TagPrintChars,
+	TagPrintDec,
 	TagFeed,
 	TagAssert,
 	TagIdent,

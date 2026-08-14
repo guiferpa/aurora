@@ -25,8 +25,8 @@ Because name resolution walks this chain, the defer body sees:
 
 ```aurora
 ident x = 10;
-ident r = defer { print x; };
-r();   // caller is the same scope that has x → sees x, print 10
+ident r = defer { printb x; };
+r();   // caller is the same scope that has x → sees x, prints 10
 ```
 
 ### What the defer body does not see
@@ -40,7 +40,7 @@ If the defer is **invoked from another scope**, it no longer sees the variables 
 ```aurora
 ident r = {
   ident x = 10;
-  defer { print x; }
+  defer { printb x; }
 };
 r();   // invoked "from outside" → caller does not have x → x is not visible
 ```

@@ -16,19 +16,19 @@
 #-   [0 0 0 0 0 0 0 2]
 #-   [0 0 0 0 0 0 0 1]
 
-print true and true;
-print true and false;
-print false or true;
-print false or false;
+printb true and true;
+printb true and false;
+printb false or true;
+printb false or false;
 
 #- Any non-zero value counts as true, not just the true keyword.
-print 42 and 1;
-print 0 or 7;
+printb 42 and 1;
+printb 0 or 7;
 
 #- Combining with comparisons.
 ident age = 20;
-print age bigger 18 and age smaller 65;
+printb age bigger 18 and age smaller 65;
 
 #- true is a tape holding 1, so it takes part in arithmetic with no special rule.
-print true + 1;
-print false + 1;
+printb true + 1;
+printb false + 1;

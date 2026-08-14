@@ -55,7 +55,7 @@ Aurora is an **expression-only** language: there are no statements. Everything a
 - **Blocks** (`{ ... }`): The body of a block is a sequence of expressions. Blocks are expressions that evaluate their body and produce the value of the last expression.
 - **Control flow**: `if`/`else` and `branch` are expressions — they have a value (the branch that was taken). There is no "statement" form of conditionals.
 
-So when you write `ident a = 3;` or `print x;` or `false;`, you are always writing expressions. The parser and the AST reflect this: the module holds a list of expression nodes (often still named "statements" in code for historical reasons), and blocks hold lists of expressions. There is no separate "statement" node type.
+So when you write `ident a = 3;` or `printb x;` or `false;`, you are always writing expressions. The parser and the AST reflect this: the module holds a list of expression nodes (often still named "statements" in code for historical reasons), and blocks hold lists of expressions. There is no separate "statement" node type.
 
 ## The neutral value
 
@@ -209,46 +209,58 @@ ident empty = "";  // One empty tape: [0, 0, 0, 0, 0, 0, 0, 0]
 - **Reels store complete strings**: Unlike single tapes, reels preserve all characters in a string
 - **Arithmetic works with reels**: When you do arithmetic with a string, it uses the last tape (last character) as the value
 
-### The `echo` Function
+### Three Readings of a Tape
 
-The `echo` function is designed to work with reels, printing all characters in sequence:
+A value is a tape. It is not a number, a character or a string on its own — those are ways of
+reading the same bytes, and there is one builtin per reading:
+
+| Builtin | Reads the tape as | `44` |
+|---|---|---|
+| `printb` | the bytes it is | `[0 0 0 0 0 0 0 44]` |
+| `printd` | the number they spell, big-endian | `44` |
+| `printc` | the character that number names, as UTF-8 | `,` |
+
+Nothing is converted between them, and none of them changes the value: they are three ways of
+looking at it.
+
+A reel is a run of tapes, so each builtin reads it tape by tape — every byte for `printb`, one
+number per tape for `printd`, one character per tape for `printc`.
 
 ```javascript
 ident greeting = "hello";
-echo greeting;  // Prints: hello
-
-ident single = "a";
-echo single;    // Prints: a
-
-ident empty = "";
-echo empty;     // Prints: (empty line)
+printb greeting;  // [0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 101 ...]
+printd greeting;  // 104 101 108 108 111
+printc greeting;  // hello
 ```
 
-The `echo` function:
-- **Detects reels**: If the value is a multiple of 8 bytes and greater than 8 bytes, it's treated as a reel
-- **Prints each tape**: Iterates through each 8-byte tape and prints the character
-- **Works with single tapes**: If the value is 8 bytes or less, it prints a single character
+`printc` writes the character named by the whole tape, not by its last byte, which is what
+keeps text outside ASCII intact:
+
+```javascript
+printc "café";   // café — the last tape holds 233, which is é
+printc 514;      // Ȃ — past what a single byte reaches
+```
+
+A tape of zeros is the neutral value rather than a character, so it spells `0` and `printc`
+writes nothing for it. A number that names no character — a lone surrogate half, say — is
+skipped the same way.
 
 ### Examples
 
 ```javascript
-// Basic string operations
-ident greeting = "hello";
-print greeting;  // Shows raw bytes: [0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 101 ...]
-echo greeting;   // Shows text: hello
-
 // Arithmetic with strings (uses last character)
 ident a = "a";   // Last tape: [0, 0, 0, 0, 0, 0, 0, 97] (ASCII 'a' = 97)
 ident result = 1 + a;  // 1 + 97 = 98
-echo result;     // Prints: b (ASCII 98)
+printc result;   // Prints: b (ASCII 98)
 
 // String with numbers
 ident num_str = "123";
-echo num_str;    // Prints: 123
+printc num_str;  // Prints: 123
+printd num_str;  // Prints: 49 50 51 — the numbers of the characters, not the number 123
 
 // Empty string
 ident empty = "";
-echo empty;      // Prints: (empty line)
+printc empty;    // Prints: (empty line)
 ```
 
 ### Relationship Between Reels and Tapes
@@ -289,19 +301,19 @@ Arithmetic reads a tape as an unsigned big-endian integer and writes the result 
 // Simple arithmetic
 ident a = 10;
 ident b = 20;
-print a + b;  // = 30
+printb a + b;  // = 30
 
 // All values are treated as unsigned 64-bit integers for arithmetic
 ident x = 3;           // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 3]
 ident y = [1, 1];      // 8 bytes: [0, 0, 0, 0, 0, 1, 1] (tape as direct bytes)
-print x + y;           // y interpreted as unsigned 64-bit integer from bytes [0, 0, 0, 0, 0, 1, 1]
+printb x + y;           // y interpreted as unsigned 64-bit integer from bytes [0, 0, 0, 0, 0, 1, 1]
                        // Result depends on how bytes are interpreted as unsigned 64-bit integer
 
 // Booleans in arithmetic
 ident t = true;        // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 1]
 ident f = false;       // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0]
-print true + 1;        // [0, 0, 0, 0, 0, 0, 0, 1] + [0, 0, 0, 0, 0, 0, 0, 1] = 2
-print false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 1
+printb true + 1;        // [0, 0, 0, 0, 0, 0, 0, 1] + [0, 0, 0, 0, 0, 0, 0, 1] = 2
+printb false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 1
 ```
 
 ### Important Notes

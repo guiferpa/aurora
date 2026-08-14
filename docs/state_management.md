@@ -70,7 +70,7 @@ increment!();  // Modifies state :increment
 ### 2. State Update
 
 - The **last expression** in the function body returns a value that updates the state
-- If the last expression doesn't return a value (e.g., `print`), state receives an empty byte array
+- If the last expression doesn't return a value (e.g., `printb`), state receives an empty byte array
 
 ```aurora
 ident counter! = { state + 1; };  // Last expression updates state
@@ -196,8 +196,8 @@ ident total = sum();  // 21 (1 + 20)
 
 ```aurora
 ident printState! = {
-  print state;
-  // print doesn't return a value, so state receives empty byte array
+  printb state;
+  // printb doesn't return a value, so state receives empty byte array
 };
 
 printState!();

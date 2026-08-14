@@ -67,8 +67,7 @@ type Evaluator struct {
 	insts         []emitter.Instruction
 	assertResults []AssertResult // what each assertion did, in the order they ran
 	asserts       bool           // whether assertions are evaluated at all
-	echoWriter    io.Writer
-	printWriter   io.Writer
+	output        io.Writer
 	environ       *environ.Environ
 	tapeSize      int
 }
@@ -286,16 +285,26 @@ func (e *Evaluator) tapeSlice(left, right []byte) ([]byte, int) {
 	return significant, n
 }
 
-func (e *Evaluator) EvaluatePrint(label, left []byte) error {
+// The three print builtins read the same tape three ways; how it is written belongs to the
+// builtin, not to the writer it is handed. They used to share one writer whose formatting
+// decided the difference, which is how echo ended up printing byte arrays.
+func (e *Evaluator) EvaluatePrintBytes(label, left []byte) error {
 	val := e.environ.GetTemp(byteutil.ToHex(left))
-	builtin.PrintFunction(e.printWriter, val)
+	builtin.PrintBytesFunction(e.output, val)
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateEcho(label, left []byte) error {
+func (e *Evaluator) EvaluatePrintChars(label, left []byte) error {
 	val := e.environ.GetTemp(byteutil.ToHex(left))
-	builtin.EchoFunction(e.echoWriter, val, e.tapeSize)
+	builtin.PrintCharsFunction(e.output, val, e.tapeSize)
+	e.IncrementCursor()
+	return nil
+}
+
+func (e *Evaluator) EvaluatePrintDecimal(label, left []byte) error {
+	val := e.environ.GetTemp(byteutil.ToHex(left))
+	builtin.PrintDecimalFunction(e.output, val, e.tapeSize)
 	e.IncrementCursor()
 	return nil
 }
@@ -526,11 +535,14 @@ func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
 	}
 
 	// Builtins operations
-	if inst.GetOpCode() == emitter.OpPrint {
-		return e.EvaluatePrint(inst.GetLabel(), inst.GetLeft())
+	if inst.GetOpCode() == emitter.OpPrintBytes {
+		return e.EvaluatePrintBytes(inst.GetLabel(), inst.GetLeft())
 	}
-	if inst.GetOpCode() == emitter.OpEcho {
-		return e.EvaluateEcho(inst.GetLabel(), inst.GetLeft())
+	if inst.GetOpCode() == emitter.OpPrintChars {
+		return e.EvaluatePrintChars(inst.GetLabel(), inst.GetLeft())
+	}
+	if inst.GetOpCode() == emitter.OpPrintDecimal {
+		return e.EvaluatePrintDecimal(inst.GetLabel(), inst.GetLeft())
 	}
 
 	// Memory operations
@@ -639,9 +651,9 @@ func (e *Evaluator) EvaluateRange(insts []emitter.Instruction, from, to uint64) 
 type NewEvaluatorOptions struct {
 	EnableLogging bool
 	Player        *Player
-	EchoWriter    io.Writer
-	PrintWriter   io.Writer
-	Args          []byte
+	// Output receives what the print builtins write, already formatted.
+	Output io.Writer
+	Args   []byte
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 	// Asserts turns assertions on. Only "aurora test" does.
@@ -649,6 +661,10 @@ type NewEvaluatorOptions struct {
 }
 
 func New(options NewEvaluatorOptions) *Evaluator {
+	output := options.Output
+	if output == nil {
+		output = io.Discard
+	}
 	return &Evaluator{
 		player:        options.Player,
 		cursor:        0,
@@ -657,8 +673,7 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		insts:         make([]emitter.Instruction, 0),
 		assertResults: make([]AssertResult, 0),
 		asserts:       options.Asserts,
-		echoWriter:    options.EchoWriter,
-		printWriter:   options.PrintWriter,
+		output:        output,
 		tapeSize:      byteutil.TapeSize(options.TapeSize),
 		environ: environ.NewEnviron(environ.NewEnvironOptions{
 			Args:     options.Args,

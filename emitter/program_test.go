@@ -33,7 +33,7 @@ func compile(t *testing.T, source string) Program {
 // A program reports one expression per top-level node, in source order, and the ranges
 // tile the instruction stream without gaps.
 func TestEmitProgramCoversEveryTopLevelExpression(t *testing.T) {
-	program := compile(t, "ident a = 1;\nprint a;\n2 + 3;\n")
+	program := compile(t, "ident a = 1;\nprintb a;\n2 + 3;\n")
 
 	if len(program.Expressions) != 3 {
 		t.Fatalf("expected 3 expressions, got %d", len(program.Expressions))
@@ -59,7 +59,7 @@ func TestEmitProgramCoversEveryTopLevelExpression(t *testing.T) {
 
 // Emit keeps returning just the stream, so nothing that only wants instructions changes.
 func TestEmitMatchesEmitProgram(t *testing.T) {
-	const source = "ident a = 1;\nprint a + 1;\n"
+	const source = "ident a = 1;\nprintb a + 1;\n"
 	program := compile(t, source)
 
 	tokens, _ := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))

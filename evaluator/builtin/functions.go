@@ -3,22 +3,34 @@ package builtin
 import (
 	"fmt"
 	"io"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/guiferpa/aurora/byteutil"
 )
 
-// PrintFunction writes the bytes of a value as they are: print is how you see what a value
-// actually is.
-func PrintFunction(w io.Writer, bs []byte) {
-	_, _ = w.Write(bs)
+// Every value in Aurora is a tape of bytes, and the three print builtins are three ways of
+// reading the same tape. Each says which one it is in its name:
+//
+//	printb   the bytes themselves       [0 0 0 0 0 0 0 44]
+//	printd   as a decimal number        44
+//	printc   as the character it names   ,
+//
+// A reel is a run of tapes, so each of them is read tape by tape.
+
+// PrintBytesFunction writes the bytes of a value, which is what the value is.
+func PrintBytesFunction(w io.Writer, bs []byte) {
+	_, _ = fmt.Fprintf(w, "%v\n", bs)
 }
 
-// EchoFunction writes a value as text: echo is how you read bytes back as characters.
-//
-// A reel is a run of tapes, one character each, so anything wider than a tape is walked
-// tape by tape. A single tape becomes the character its last significant byte stands for.
-func EchoFunction(w io.Writer, bs []byte, tapeSize int) {
-	_, _ = w.Write([]byte(TextOf(bs, tapeSize)))
+// PrintDecimalFunction writes a value as a number, or one number per tape for a reel.
+func PrintDecimalFunction(w io.Writer, bs []byte, tapeSize int) {
+	_, _ = fmt.Fprintf(w, "%s\n", DecimalOf(bs, tapeSize))
+}
+
+// PrintCharsFunction writes a value as text.
+func PrintCharsFunction(w io.Writer, bs []byte, tapeSize int) {
+	_, _ = fmt.Fprintf(w, "%s\n", TextOf(bs, tapeSize))
 }
 
 // FeedFunction returns the value at the given index of the feed: the vector of values
@@ -48,52 +60,49 @@ func AssertFunction(cond, msg []byte, tapeSize int) (bool, error) {
 	return false, fmt.Errorf("assertion failed: %s", TextOf(msg, tapeSize))
 }
 
-// TextOf reads a value as text, tape by tape. echo, a failed assertion and a test report
-// all need it, and echo and assert used to walk the bytes in two slightly different ways —
-// one of them with a stride of 8 that ignored the tape size, which read past the end of a
-// narrow reel.
+// TextOf reads a value as text: each tape holds the number of a character, and that
+// character is written as UTF-8.
+//
+// Reading the tape as a number rather than as a single byte is what lets a character
+// outside ASCII survive — "café" holds 233 in its last tape, and 233 is é.
 func TextOf(bs []byte, tapeSize int) string {
+	var text strings.Builder
+	for _, tape := range tapesOf(bs, tapeSize) {
+		char := rune(byteutil.ToUint256(tape, tapeSize).Uint64())
+		// A tape of zeros is the neutral value rather than a character, and a number that
+		// names no character has nothing to write.
+		if char == 0 || !utf8.ValidRune(char) {
+			continue
+		}
+		text.WriteRune(char)
+	}
+	return text.String()
+}
+
+// DecimalOf reads a value as a number, or as one number per tape when it is a reel.
+func DecimalOf(bs []byte, tapeSize int) string {
+	tapes := tapesOf(bs, tapeSize)
+	numbers := make([]string, 0, len(tapes))
+	for _, tape := range tapes {
+		numbers = append(numbers, byteutil.ToUint256(tape, tapeSize).Dec())
+	}
+	return strings.Join(numbers, " ")
+}
+
+// tapesOf splits a value into the tapes it holds. Anything that is not a whole run of
+// tapes is read as a single one.
+func tapesOf(bs []byte, tapeSize int) [][]byte {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	if len(bs) == 0 {
-		return ""
+		return nil
+	}
+	if len(bs) <= tapeSize || len(bs)%tapeSize != 0 {
+		return [][]byte{bs}
 	}
 
-	// A run of whole tapes is a reel: one character per tape.
-	if len(bs) > tapeSize && len(bs)%tapeSize == 0 {
-		text := make([]byte, 0, len(bs)/tapeSize)
-		for i := 0; i < len(bs); i += tapeSize {
-			if char, ok := printableOf(bs[i : i+tapeSize]); ok {
-				text = append(text, char)
-			}
-		}
-		return string(text)
+	tapes := make([][]byte, 0, len(bs)/tapeSize)
+	for i := 0; i < len(bs); i += tapeSize {
+		tapes = append(tapes, bs[i:i+tapeSize])
 	}
-
-	// Anything else is a single value: the character its last significant byte stands for,
-	// or the significant bytes themselves when that is not printable.
-	if char, ok := printableOf(bs); ok {
-		return string(rune(char))
-	}
-	return string(significantBytes(bs))
-}
-
-// printableOf returns the printable ASCII character a tape stands for, if it is one.
-func printableOf(tape []byte) (byte, bool) {
-	significant := significantBytes(tape)
-	if len(significant) == 0 {
-		return 0, false
-	}
-	char := significant[len(significant)-1]
-	return char, char >= 32 && char <= 126
-}
-
-// significantBytes drops the leading zeros of a value, which are padding rather than
-// content. A value of all zeros has nothing significant in it.
-func significantBytes(bs []byte) []byte {
-	for i := range bs {
-		if bs[i] != 0 {
-			return bs[i:]
-		}
-	}
-	return nil
+	return tapes
 }

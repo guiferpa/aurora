@@ -107,8 +107,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(loggers, "evaluator"),
-		EchoWriter:    &EchoWriter{},
-		PrintWriter:   &PrintWriter{},
+		Output:        os.Stdout,
 		TapeSize:      tapeSize,
 	})
 

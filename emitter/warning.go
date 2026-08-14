@@ -110,8 +110,6 @@ func childScopesOf(node parser.Node) []parser.Node {
 		return body
 	case parser.PrintStatement:
 		return []parser.Node{n.Param}
-	case parser.EchoStatement:
-		return []parser.Node{n.Param}
 	default:
 		return nil
 	}
@@ -134,8 +132,6 @@ func countDefers(node parser.Node, count *int, walk func([]parser.Node)) bool {
 			walk(n.Else.Body)
 		}
 	case parser.PrintStatement:
-		return countDefers(n.Param, count, walk)
-	case parser.EchoStatement:
 		return countDefers(n.Param, count, walk)
 	}
 	return true

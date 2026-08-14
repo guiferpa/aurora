@@ -91,13 +91,7 @@ func nodeEqual(a, b Node) bool {
 		if !ok {
 			return false
 		}
-		return nodeEqual(va.Param, vb.Param)
-	case EchoStatement:
-		vb, ok := b.(EchoStatement)
-		if !ok {
-			return false
-		}
-		return nodeEqual(va.Param, vb.Param)
+		return va.Format == vb.Format && nodeEqual(va.Param, vb.Param)
 	case AssertStatement:
 		vb, ok := b.(AssertStatement)
 		if !ok {

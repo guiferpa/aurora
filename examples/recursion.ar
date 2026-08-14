@@ -16,14 +16,14 @@ ident factorial = defer {
   if n smaller 2 { 1; } else { n * factorial(n - 1); };
 };
 
-print factorial(5);
+printb factorial(5);
 
 ident fib = defer {
   ident n = feed(0);
   if n smaller 2 { n; } else { fib(n - 1) + fib(n - 2); };
 };
 
-print fib(10);
+printb fib(10);
 
 #- The same fibonacci written with branch instead of if/else.
 ident fib_branch = defer {
@@ -34,4 +34,4 @@ ident fib_branch = defer {
   };
 };
 
-print fib_branch(10);
+printb fib_branch(10);

@@ -56,12 +56,13 @@ func init() {
 
 			ev := evaluator.New(evaluator.NewEvaluatorOptions{
 				EnableLogging: debug,
-				EchoWriter:    ToPlaygroundWriter("echo"),
-				PrintWriter:   ToPlaygroundWriter("print"),
+				// The print builtins each format their own reading of a tape, so what
+				// arrives here is the finished line and the page only has to show it.
+				Output: ToPlaygroundWriter("output"),
 			})
 
 			// One top-level expression at a time, reporting its value before moving on.
-			// Running everything and then walking the temp map put every print first and
+			// Running everything and then walking the temp map put every printed line first and
 			// the values after, in no order at all — a map has none.
 			for _, expr := range program.Expressions {
 				temps, err := ev.EvaluateRange(program.Instructions, uint64(expr.From), uint64(expr.To))

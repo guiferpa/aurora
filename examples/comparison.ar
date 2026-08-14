@@ -17,21 +17,21 @@
 #-   [0 0 0 0 0 0 0 1]
 #-   [0 0 0 0 0 0 0 1]
 
-print 1 equals 1;
-print 1 equals 2;
+printb 1 equals 1;
+printb 1 equals 2;
 
-print 1 different 2;
-print 1 different 1;
+printb 1 different 2;
+printb 1 different 1;
 
-print 3 bigger 2;
-print 2 bigger 3;
+printb 3 bigger 2;
+printb 2 bigger 3;
 
-print 2 smaller 3;
-print 3 smaller 2;
+printb 2 smaller 3;
+printb 3 smaller 2;
 
 #- The result is a value, so it can be bound and used further.
 ident is_bigger = 10 bigger 9;
-print is_bigger;
+printb is_bigger;
 
 #- And it is indistinguishable from the number 1.
-print is_bigger equals 1;
+printb is_bigger equals 1;

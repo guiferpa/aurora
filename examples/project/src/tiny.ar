@@ -6,7 +6,7 @@
 
 ident a = 200;
 
-print a;
-print a + 100;   #- wraps: 300 does not fit in one byte
-echo a;
-echo a + 100;
+printb a;
+printb a + 100;   #- wraps: 300 does not fit in one byte
+printc a;
+printc a + 100;

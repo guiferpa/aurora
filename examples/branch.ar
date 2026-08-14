@@ -18,7 +18,7 @@ ident label = branch {
   0;
 };
 
-print label;
+printb label;
 
 #- The fallback is what you get when nothing matches.
 ident unknown = branch {
@@ -27,4 +27,4 @@ ident unknown = branch {
   999;
 };
 
-print unknown;
+printb unknown;

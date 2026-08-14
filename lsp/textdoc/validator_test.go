@@ -9,7 +9,7 @@ import (
 )
 
 func TestValidateCodeAcceptsValidSource(t *testing.T) {
-	diagnostics := ValidateCode("main.ar", "ident a = 1;\nprint a + 1;\n")
+	diagnostics := ValidateCode("main.ar", "ident a = 1;\nprintb a + 1;\n")
 	if len(diagnostics) != 0 {
 		t.Fatalf("expected no diagnostics, got %v", diagnostics)
 	}
@@ -91,7 +91,7 @@ func TestValidateCodeHonoursTestFileRule(t *testing.T) {
 }
 
 func TestHoverInfo(t *testing.T) {
-	const source = "ident a = 1;\nident sum = defer { feed(0); };\nprint a;\n"
+	const source = "ident a = 1;\nident sum = defer { feed(0); };\nprintb a;\n"
 
 	cases := []struct {
 		name string
@@ -100,7 +100,7 @@ func TestHoverInfo(t *testing.T) {
 	}{
 		{name: "keyword uses the tag description", pos: lsp.Position{Line: 0, Character: 2}, want: "immutable identifier"},
 		{name: "number", pos: lsp.Position{Line: 0, Character: 10}, want: "number: 1"},
-		{name: "identifier resolves to its declaration", pos: lsp.Position{Line: 2, Character: 6}, want: "identifier: a"},
+		{name: "identifier resolves to its declaration", pos: lsp.Position{Line: 2, Character: 7}, want: "identifier: a"},
 		{name: "deferred scope is described", pos: lsp.Position{Line: 1, Character: 7}, want: "deferred scope"},
 		{name: "whitespace has nothing to say", pos: lsp.Position{Line: 0, Character: 5}, want: ""},
 	}

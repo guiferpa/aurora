@@ -34,8 +34,12 @@ func ResolveOpCode(op byte) string {
 		return "OpPreCall"
 	case OpCall:
 		return "OpCall"
-	case OpPrint:
-		return "OpPrint"
+	case OpPrintBytes:
+		return "OpPrintBytes"
+	case OpPrintChars:
+		return "OpPrintChars"
+	case OpPrintDecimal:
+		return "OpPrintDecimal"
 	case OpReturn:
 		return "OpReturn"
 	case OpIf:
@@ -60,8 +64,6 @@ func ResolveOpCode(op byte) string {
 		return "OpGetFeed"
 	case OpAssert:
 		return "OpAssert"
-	case OpEcho:
-		return "OpEcho"
 	}
 	return "Unknown"
 }

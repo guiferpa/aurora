@@ -42,7 +42,7 @@ There is no module system yet, so this pairing is how a test reaches the code it
 Three consequences follow, and none of them is worked around:
 
 - **The source has to exist.** A `.test.ar` with no `.ar` next to it is an error: it would not see the code it is meant to check.
-- **Whatever the source does at its top level happens.** If `greeting.ar` prints, you see that print during the test.
+- **Whatever the source does at its top level happens.** If `greeting.ar` prints, you see that output during the test.
 - **The two files share one scope.** Declaring in the test a name the source already declares is a conflict, not a shadow:
 
   ```

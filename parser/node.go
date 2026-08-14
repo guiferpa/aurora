@@ -207,19 +207,23 @@ func (een ElseExpression) Next() Node {
 	return nil
 }
 
+// PrintFormat is how a print builtin reads the tape it is given.
+type PrintFormat string
+
+const (
+	PrintBytes   PrintFormat = "bytes"   // printb
+	PrintChars   PrintFormat = "chars"   // printc
+	PrintDecimal PrintFormat = "decimal" // printd
+)
+
+// PrintStatement is one of the print builtins. They differ only in how the value is read,
+// so they are one node carrying which reading was asked for.
 type PrintStatement struct {
-	Param Node `json:"parameter"`
+	Format PrintFormat `json:"format"`
+	Param  Node        `json:"parameter"`
 }
 
-func (cpsn PrintStatement) Next() Node {
-	return nil
-}
-
-type EchoStatement struct {
-	Param Node `json:"param"`
-}
-
-func (esn EchoStatement) Next() Node {
+func (psn PrintStatement) Next() Node {
 	return nil
 }
 

@@ -18,7 +18,7 @@ func writeFile(t *testing.T, dir, name, content string) string {
 
 func TestCompile(t *testing.T) {
 	dir := t.TempDir()
-	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprint a + 1;\n")
+	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprintb a + 1;\n")
 
 	program, err := Compile(source, 0, nil)
 	if err != nil {
@@ -37,8 +37,8 @@ func TestCompile(t *testing.T) {
 // identifiers — which is what made "aurora run" fail on the examples directory.
 func TestCompileIgnoresNeighbouringFiles(t *testing.T) {
 	dir := t.TempDir()
-	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprint a;\n")
-	writeFile(t, dir, "other.ar", "ident a = 2;\nprint a;\n")
+	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprintb a;\n")
+	writeFile(t, dir, "other.ar", "ident a = 2;\nprintb a;\n")
 	writeFile(t, dir, "third.ar", "ident a = 3;\n")
 
 	if _, err := Compile(source, 0, nil); err != nil {

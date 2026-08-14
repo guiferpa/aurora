@@ -45,6 +45,13 @@ func GenerateLabel(tc *int) []byte {
 
 type Label []byte
 
+// printOpCodes maps each reading of a value to the instruction that writes it.
+var printOpCodes = map[parser.PrintFormat]byte{
+	parser.PrintBytes:   OpPrintBytes,
+	parser.PrintChars:   OpPrintChars,
+	parser.PrintDecimal: OpPrintDecimal,
+}
+
 func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize int) Label {
 	if n, ok := expr.(parser.IdentLiteral); ok {
 		ll := n.Token.GetMatch()
@@ -204,13 +211,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 	if n, ok := expr.(parser.PrintStatement); ok {
 		ll := EmitInstruction(tc, insts, n.Param, tapeSize)
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpPrint, ll, nil))
-		return l
-	}
-	if n, ok := expr.(parser.EchoStatement); ok {
-		ll := EmitInstruction(tc, insts, n.Param, tapeSize)
-		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpEcho, ll, nil))
+		*insts = append(*insts, NewInstruction(l, printOpCodes[n.Format], ll, nil))
 		return l
 	}
 	if n, ok := expr.(parser.AssertStatement); ok {

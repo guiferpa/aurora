@@ -255,15 +255,28 @@ func TestParseBranchDesugarsIntoNestedIfs(t *testing.T) {
 	}
 }
 
-func TestParseBuiltinStatementShapes(t *testing.T) {
-	printed := first[PrintStatement](t, "print 1;")
-	if _, ok := printed.Param.(NumberLiteral); !ok {
-		t.Errorf("print takes %T, want a number", printed.Param)
+// The three print builtins differ only in how the value is read, so they parse into one
+// node carrying which reading was asked for.
+func TestParsePrintShapes(t *testing.T) {
+	cases := []struct {
+		source string
+		want   PrintFormat
+	}{
+		{source: "printb 1;", want: PrintBytes},
+		{source: `printc "hi";`, want: PrintChars},
+		{source: "printd 1;", want: PrintDecimal},
 	}
 
-	echoed := first[EchoStatement](t, `echo "hi";`)
-	if _, ok := echoed.Param.(ReelLiteral); !ok {
-		t.Errorf("echo takes %T, want a reel", echoed.Param)
+	for _, tc := range cases {
+		t.Run(tc.source, func(t *testing.T) {
+			printed := first[PrintStatement](t, tc.source)
+			if printed.Format != tc.want {
+				t.Errorf("format = %q, want %q", printed.Format, tc.want)
+			}
+			if printed.Param == nil {
+				t.Error("the value to print is missing")
+			}
+		})
 	}
 }
 
@@ -380,7 +393,7 @@ func TestExponentiationIsRightAssociative(t *testing.T) {
 }
 
 func TestParseSeveralTopLevelExpressions(t *testing.T) {
-	nodes := parse(t, "ident a = 1;\nprint a;\na + 1;\n")
+	nodes := parse(t, "ident a = 1;\nprintb a;\na + 1;\n")
 	if len(nodes) != 3 {
 		t.Fatalf("got %d nodes, want 3", len(nodes))
 	}
@@ -460,7 +473,7 @@ func TestParseErrorsArePositioned(t *testing.T) {
 func TestParseWithLoggingEnabled(t *testing.T) {
 	source := `ident a = 1;
 ident f = defer { feed(0) + 1; };
-if a bigger 0 { print f(a); } else { echo "no"; };
+if a bigger 0 { printb f(a); } else { printc "no"; };
 ident t = pull [1, 2] 3;
 `
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))

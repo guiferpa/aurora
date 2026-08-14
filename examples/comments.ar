@@ -13,7 +13,7 @@ ident a = 1;
 
 ident b = 2;  #- ...or after an expression.
 
-print a + b;
+printb a + b;
 
 #- Commenting out code is the usual way to disable it:
-#- print 999;
+#- printb 999;

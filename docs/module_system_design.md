@@ -62,8 +62,8 @@ Every import names a parent, and the parent is the only way to reach anything in
 use "./math" as m;
 use "./utils/strings" as s;
 
-print m.add(1, 2);
-print s.upper("hi");
+printb m.add(1, 2);
+printc s.upper("hi");
 ```
 
 There is no form that omits the alias, and no form that brings a name in bare. Reading `m.add(1, 2)`, you know where `add` lives without scrolling anywhere. This is also what keeps the binder simple: a qualified name has exactly one meaning, decided by one line in the same file.

@@ -17,11 +17,11 @@ ident result = {
   x + y;
 };
 
-print result;
+printb result;
 
 #- An empty block still has a value.
 ident empty = { };
-print empty;
+printb empty;
 
 #- Blocks nest, and each one has its own scope: the inner "x" is a different
 #- binding from the outer one.
@@ -34,8 +34,8 @@ ident outer = {
   inner + x;
 };
 
-print outer;
+printb outer;
 
 #- A block sees the bindings around it.
 ident base = 100;
-print { base + 1; };
+printb { base + 1; };

@@ -19,7 +19,7 @@ type recorder struct {
 }
 
 func (r recorder) Write(bs []byte) (int, error) {
-	*r.lines = append(*r.lines, fmt.Sprintf("%s %v", r.tag, bs))
+	*r.lines = append(*r.lines, r.tag+" "+strings.TrimSpace(string(bs)))
 	return len(bs), nil
 }
 
@@ -43,8 +43,7 @@ func runInOrder(t *testing.T, source string) []string {
 
 	lines := make([]string, 0)
 	ev := New(NewEvaluatorOptions{
-		PrintWriter: recorder{tag: "print", lines: &lines},
-		EchoWriter:  recorder{tag: "echo", lines: &lines},
+		Output: recorder{tag: "printb", lines: &lines},
 	})
 
 	for _, expr := range program.Expressions {
@@ -59,7 +58,7 @@ func runInOrder(t *testing.T, source string) []string {
 	return lines
 }
 
-// Issue #11: output came out in the wrong order because every print was written while the
+// Issue #11: output came out in the wrong order because every printb was written while the
 // program ran and the values only afterwards, walked out of a map. Running one expression
 // at a time puts each value next to the prints that came with it.
 func TestOutputFollowsSourceOrder(t *testing.T) {
@@ -68,14 +67,14 @@ func TestOutputFollowsSourceOrder(t *testing.T) {
 };
 
 if 11 bigger 10 {
-  print 20;
+  printb 20;
 };
 `)
 
 	want := []string{
-		"value [0 0 0 0 0 0 0 10]", // the first if produced 10
-		"print [0 0 0 0 0 0 0 20]", // then the second one printed 20
-		"value [0 0 0 0 0 0 0 0]",  // and produced nothing of its own
+		"value [0 0 0 0 0 0 0 10]",  // the first if produced 10
+		"printb [0 0 0 0 0 0 0 20]", // then the second one printed 20
+		"value [0 0 0 0 0 0 0 0]",   // and produced nothing of its own
 	}
 
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -84,15 +83,15 @@ if 11 bigger 10 {
 	}
 }
 
-// print is an effect, not a value: it leaves no temp behind, so it adds one line to the
+// printb is an effect, not a value: it leaves no temp behind, so it adds one line to the
 // output rather than two.
 func TestOutputInterleavesPrintsAndValues(t *testing.T) {
-	got := runInOrder(t, "print 1;\n2;\nprint 3;\n4;\n")
+	got := runInOrder(t, "printb 1;\n2;\nprintb 3;\n4;\n")
 
 	want := []string{
-		"print [0 0 0 0 0 0 0 1]",
+		"printb [0 0 0 0 0 0 0 1]",
 		"value [0 0 0 0 0 0 0 2]",
-		"print [0 0 0 0 0 0 0 3]",
+		"printb [0 0 0 0 0 0 0 3]",
 		"value [0 0 0 0 0 0 0 4]",
 	}
 
@@ -105,7 +104,7 @@ func TestOutputInterleavesPrintsAndValues(t *testing.T) {
 // Bindings made by one expression have to be visible to the next, since each is evaluated
 // on its own.
 func TestStateCarriesAcrossExpressions(t *testing.T) {
-	got := runInOrder(t, "ident a = 41;\nprint a + 1;\n")
+	got := runInOrder(t, "ident a = 41;\nprintb a + 1;\n")
 
 	if len(got) == 0 || !strings.Contains(got[len(got)-1], "42") {
 		t.Errorf("expected the binding to survive into the next expression, got %v", got)

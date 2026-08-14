@@ -14,10 +14,9 @@ type RunInput struct {
 	Source  string   // path to .ar source
 	Loggers []string // enabled loggers
 	Stdin   io.Reader
-	Stdout  io.Writer // print: raw bytes
-	// EchoOut receives echo output, which is text rather than bytes. When nil, Stdout
-	// takes both, which is what a caller with a single stream wants.
-	EchoOut io.Writer
+	// Stdout receives what the program prints. The three print builtins are three
+	// readings of the same tape and share one stream, so there is one writer here.
+	Stdout io.Writer
 	// Warnings receives compiler warnings. Nil discards them.
 	Warnings io.Writer
 	Player   *evaluator.Player
@@ -36,14 +35,9 @@ func Run(ctx context.Context, in RunInput) error {
 	}
 	ReportWarnings(in.Warnings, in.Source, program.Warnings)
 
-	echoOut := in.EchoOut
-	if echoOut == nil {
-		echoOut = in.Stdout
-	}
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		EnableLogging: slices.Contains(in.Loggers, "evaluator"),
-		EchoWriter:    echoOut,
-		PrintWriter:   in.Stdout,
+		Output:        in.Stdout,
 		Args:          ParseArgs(in.Args),
 		TapeSize:      in.TapeSize,
 	})

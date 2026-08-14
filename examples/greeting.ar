@@ -20,4 +20,4 @@ ident bigger_of = defer {
   if a bigger b { a; } else { b; };
 };
 
-print hello();
+printb hello();

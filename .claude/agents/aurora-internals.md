@@ -61,14 +61,12 @@ Mental model: a cursor over the instruction slice plus a chain of `Environ` fram
   - `OpCall` runs `ExecuteInstructions(from+1, to)` — skipping `OpBeginScope` because the caller already pushed the frame — then reads `GetTemp(returnKey)`.
 - **No closures.** The defer body sees the **caller's** chain, not the definition scope (`docs/defer_scope_visibility.md` is accurate). Recursion works because the ident and the defer blob are found by walking outward from the call frame.
 - **Arguments are shared by reference**: `OpPushArg` mutates the *current* frame's `args` map, and `OpCall` passes that same map into the new frame (`SetArguments`, not a copy). Nested/recursive calls therefore share and overwrite argument slots — assume this when debugging wrong argument values.
-- CLI args become 32-byte ABI words (`internal/cli/args.go`) and are sliced into `args[i]` in `NewEnviron` — that is why `arguments(0)` works at top level in `aurora run file.ar 10`.
+- CLI args become 32-byte ABI words (`internal/cli/args.go`) and are sliced into `args[i]` in `NewEnviron` — that is why `feed(0)` works at top level in `aurora run file.ar 10`.
 
 ### Verified gaps in the evaluator (do not assume these work)
 
-- **Tape ops are not implemented**: `ExecuteInstruction` has no case for `OpPull`, `OpPush`, `OpHead`, `OpTail`. They fall through to the default branch, which only advances the cursor, so the result temp is never set. Consequence: **any tape literal breaks** — `ident t = [1,2,3]; print t;` fails with `identifier t not found` (the ident is bound to `nil`). Tapes parse and emit fine; only evaluation is missing. `docs/language-design.md`'s tape chapter is a spec, not a description.
 - **`state` / stateful `name!` functions do not exist** — no token, no node, no opcode. `docs/state_management.md` is entirely aspirational.
-- **Namespaces don't resolve at call time**: `use x as y;` produces a `UseDeclaration` the emitter ignores, and `OpCall`/`OpLoad` carry only the last identifier segment (`n.Id.Token.GetMatch()`), dropping `IdentifierLiteral.Namespace`. `examples/namespace_demo` parses and links but fails at evaluation.
-- `byteutil.Nothing` is an **empty** slice (`[]byte{}`), not the 8 zero bytes the docs describe; `IsNothing` compares against that empty value.
+- **There are no namespaces and no module system.** `use` was rolled back: one file is one program, and the compiler's unit is the file. `docs/module_system_design.md` is a proposal, not a description.
 - `emitter.Emitter` (the interface) declares `Emit(parser.NamespaceUnit)` while `*emt` implements `Emit(parser.Namespace)` — the interface is stale and unimplemented; callers use the concrete type.
 
 ## Linker & namespaces (`linker/linker.go`)
@@ -93,7 +91,7 @@ Mental model: a cursor over the instruction slice plus a chain of `Environ` fram
 
 - `Lowering` (`lowering.go`) is the only place allowed to reorder for the stack: `ResolveOperandsOrder` buffers operand instructions (`OpSave`, `OpLoad`, `OpGetArg`) by label and re-emits them around each binary consumer, swapping operand order for the non-commutative `OpSubtract`/`OpDivide`. Keep the Builder mechanical — never add reordering or `SWAP` logic to `writer.go`.
 - `Builder.PickRuntimeCode` treats each `OpDefer` immediately followed by `OpIdent` as a **public function**: the ident name becomes a 4-byte `keccak256` selector in the dispatcher table; everything else becomes root code.
-- `WriteCode` supports only `OpAdd`, `OpMultiply`, `OpSubtract`, `OpDivide`, `OpSave`, `OpIdent`, `OpLoad`, `OpGetArg`, `OpReturn`, and terminates with `STOP`. **`if`, `jump`, `call`, `print`, `echo`, `assert`, tape ops silently produce no bytecode** — a program can build "successfully" and do nothing on chain. Say so when a user builds something that uses them.
+- `WriteCode` supports only `OpAdd`, `OpMultiply`, `OpSubtract`, `OpDivide`, `OpSave`, `OpIdent`, `OpLoad`, `OpGetArg`, `OpReturn`, and terminates with `STOP`. **`if`, `jump`, `call`, `printb`/`printc`/`printd`, `assert`, tape ops silently produce no bytecode** — a program can build "successfully" and do nothing on chain. Say so when a user builds something that uses them.
 - Hard limits from `PUSH1` operands: jump targets and `MSTORE` offsets are one byte, so idents are capped at ~7 memory slots (`GetLength() * 32 < 256`) and the runtime must stay under 256 bytes. Larger programs need `PUSH2` work.
 - Layout: instantiate block (`WriteInstantiateBlock`, 12 bytes) → dispatchers (15 bytes each) → no-match `STOP` → dispatcher bodies → root code.
 
@@ -117,8 +115,8 @@ Mental model: a cursor over the instruction slice plus a chain of `Environ` fram
 | Namespaces / linking | `linker/linker.go`, `fileutil/file.go` |
 | Runtime | `evaluator/evaluator.go`, `evaluator/environ/environ.go`, `evaluator/builtin/functions.go` |
 | EVM | `builder/evm/lowering.go`, `builder/evm/builder.go`, `builder/evm/writer.go`, `builder/evm/opcodes.go` |
-| Bytes | `byteutil/` (`ToUint64`, `FromUint64`, `ToHex`, `Padding64Bits`, `Padding32Bytes`, `Nothing`, `True`/`False`) |
+| Bytes | `byteutil/` — two families: **values** (`PaddingTape`, `ToUint256`, `TrueTape`/`FalseTape`, `TapeSize`) and compiler **metadata** (`FromUint64`, `ToUint64`, `ToHex`), which stays 64-bit whatever the tape width |
 | CLI / manifest | `cmd/aurora/`, `internal/cli/`, `manifest/`, `repl/`, `cmd/playground/` (wasm) |
 | Docs (verify first) | `docs/language-design.md`, `docs/grammar.md`, `docs/compiler_pipeline_and_lowering.md`, `docs/defer_*.md`, `docs/import_design.md`, `docs/manifest.md` |
 
-Note: `print` writes raw bytes to a writer that formats with `%v` (`cmd/aurora/writer.go`), so even `echo` output appears as a byte slice in the CLI — that is the writer, not the program.
+Note: printing is three builtins over one writer, and each formats its own reading of the tape (`evaluator/builtin/functions.go`): `printb` the bytes, `printd` the decimal number, `printc` the character as UTF-8. There is no formatting writer between the evaluator and the CLI any more — what a builtin writes is what appears.

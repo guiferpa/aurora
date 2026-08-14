@@ -6,6 +6,19 @@ All notable changes and release notes for Aurora are documented here.
 
 ## Unreleased
 
+### Language
+
+- **Printing is three builtins instead of two.** `print` and `echo` became `printb`, `printd` and `printc`, and the suffix names the reading: bytes, decimal, character. A value is a tape and never a number or a string on its own, so reading one is a choice the program makes — the old pair named the act of printing rather than the reading, and left no room for the third. `printd` is new: reading a tape as a number meant counting bytes by hand.
+
+  ```
+  printb 44;   [0 0 0 0 0 0 0 44]
+  printd 44;   44
+  printc 44;   ,
+  ```
+
+  **Breaking:** `print` and `echo` no longer parse. `print x` becomes `printb x`, `echo x` becomes `printc x`.
+- **Text outside ASCII survives.** `echo` read one byte per byte and kept it only when it landed in printable ASCII, so every accented character was dropped — `echo "café"` wrote `caf`. `printc` reads the number the whole tape holds and writes it as UTF-8, which is what makes 233 an é and 514 an Ȃ. A reel is read tape by tape, so a character is never cut in half.
+
 ### Added
 
 - **`aurora test`**, a command for the test files of a project. It reports every assertion, not only the ones that failed, and exits non-zero when something breaks. A test belongs to the source file of the same name — `greeting.test.ar` tests `greeting.ar`, which is evaluated first so the test sees what it declared, which is how a test reaches code before there is a module system. With a profile it searches from the directory of the profile's source down to the leaves; with a path it runs that file alone. See [docs/testing.md](docs/testing.md).
@@ -16,7 +29,7 @@ All notable changes and release notes for Aurora are documented here.
 
 - **A deferred scope is a tape.** Its value was the hex key of its own storage — 16 bytes of ASCII text that ignored `tape_size` — so `ident b = defer {};` showed a row of zeros where `ident a = {};` showed one, `b + 1` produced ASCII digits, and a defer stayed 16 bytes wide even with `--tape-size 1`. It is the scope's index as an ordinary tape now. A consequence the language owns: a value equal to an index *is* that reference, the same way `true` is `1`.
 - **The compiler warns when a scope holds more deferred scopes than its tape can name** (256 at one byte), since the index wraps and a call would reach a different scope. It is a warning rather than an error: the count is static, and a running program is never stopped by it.
-- **`feed(n)` always answers with a tape.** It read the vector directly, so an index past the end gave nothing at all — `print feed(0)` with no values applied printed `[]`, and the REPL said `unknown byte sequence to encode`. The index now wraps around the length of the vector, as the design always described, and an empty vector gives a tape of zeros.
+- **`feed(n)` always answers with a tape.** It read the vector directly, so an index past the end gave nothing at all — `printb feed(0)` with no values applied printed `[]`, and the REPL said `unknown byte sequence to encode`. The index now wraps around the length of the vector, as the design always described, and an empty vector gives a tape of zeros.
 
 ---
 

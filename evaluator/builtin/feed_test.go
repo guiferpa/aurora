@@ -10,11 +10,11 @@ import (
 // feed(n) reads the vector of values applied to a scope. The scope never learns how many
 // it received, so the index wraps around the length: the read always answers with a tape
 // and never fails. It used to return nil for anything out of range, which is not a value
-// at all — "print feed(0)" with nothing applied printed an empty array.
+// at all — "printb feed(0)" with nothing applied printed an empty array.
 func TestFeedFunction(t *testing.T) {
 	feed := map[uint64][]byte{
-		0: byteutil.PaddingTape([]byte{10}, 8),
-		1: byteutil.PaddingTape([]byte{20}, 8),
+		0: tape(8, 10),
+		1: tape(8, 20),
 	}
 
 	cases := []struct {
@@ -32,7 +32,7 @@ func TestFeedFunction(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := FeedFunction(feed, tc.index, 8)
-			want := byteutil.PaddingTape([]byte{tc.want}, 8)
+			want := tape(8, uint64(tc.want))
 			if !bytes.Equal(got, want) {
 				t.Errorf("FeedFunction(index %d) = %v, want %v", tc.index, got, want)
 			}

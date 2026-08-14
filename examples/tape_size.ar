@@ -23,14 +23,14 @@
 ident a = 250;
 
 #- With 8 or 2 bytes this is 260. With one byte it wraps to 4.
-print a + 10;
+printb a + 10;
 
 #- Arithmetic wraps at the tape width, whatever that width is.
-print 255 + 1;
+printb 255 + 1;
 
 #- Every value has the width, conditions included.
-print true;
-print 1 equals 1;
+printb true;
+printb 1 equals 1;
 
 #- A tape literal cannot carry more values than the tape is wide, so with
 #- --tape-size 1 the next line fails to compile:

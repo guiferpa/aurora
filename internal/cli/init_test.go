@@ -128,9 +128,8 @@ func TestInitGreets(t *testing.T) {
 
 	out := &strings.Builder{}
 	if err := Run(t.Context(), RunInput{
-		Source:  filepath.Join("src", "main.ar"),
-		Stdout:  io.Discard,
-		EchoOut: out,
+		Source: filepath.Join("src", "main.ar"),
+		Stdout: out,
 	}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}

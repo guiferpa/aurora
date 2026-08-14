@@ -6,4 +6,4 @@ ident area = defer { feed(0) * feed(1); };
 ident width = 30;
 ident height = 20;
 
-print area(width, height);
+printb area(width, height);

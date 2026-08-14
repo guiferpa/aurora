@@ -9,81 +9,157 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 )
 
-// tape builds a tape of the given width ending in the given bytes.
-func tape(size int, values ...byte) []byte {
-	return byteutil.PaddingTape(values, size)
+// tape builds a tape of the given width holding a number.
+func tape(size int, value uint64) []byte {
+	return byteutil.PaddingTape(byteutil.FromUint64(value), size)
 }
 
 // reel concatenates one tape per character, which is what a string is.
 func reel(size int, text string) []byte {
 	out := make([]byte, 0, len(text)*size)
-	for i := 0; i < len(text); i++ {
-		out = append(out, tape(size, text[i])...)
+	for _, char := range text {
+		out = append(out, tape(size, uint64(char))...)
 	}
 	return out
 }
 
-func TestPrintFunction(t *testing.T) {
-	buf := bytes.NewBuffer(nil)
-	value := []byte{0, 0, 42}
-
-	PrintFunction(buf, value)
-
-	if !bytes.Equal(buf.Bytes(), value) {
-		t.Errorf("print wrote %v, want the bytes as they are: %v", buf.Bytes(), value)
-	}
-}
-
-func TestEchoFunction(t *testing.T) {
+// The three builtins are three readings of the same tape. These are the readings named in
+// their own documentation, so they are the ones worth pinning.
+func TestTheThreeReadingsOfATape(t *testing.T) {
 	cases := []struct {
-		name     string
-		value    []byte
-		tapeSize int
-		want     string
+		name  string
+		value []byte
+		bytes string
+		decs  string
+		chars string
 	}{
-		{name: "a reel", value: reel(8, "hello"), tapeSize: 8, want: "hello"},
-		{name: "a reel of narrow tapes", value: reel(1, "hi"), tapeSize: 1, want: "hi"},
-		{name: "one tape is one character", value: tape(8, 'a'), tapeSize: 8, want: "a"},
-		{name: "a number is the character it stands for", value: tape(8, 65), tapeSize: 8, want: "A"},
-		{name: "a one-byte tape", value: tape(1, 'z'), tapeSize: 1, want: "z"},
-		{name: "space is printable", value: tape(8, ' '), tapeSize: 8, want: " "},
-		{name: "empty input", value: nil, tapeSize: 8, want: ""},
+		{
+			name:  "44 is a comma",
+			value: tape(8, 44),
+			bytes: "[0 0 0 0 0 0 0 44]",
+			decs:  "44",
+			chars: ",",
+		},
+		{
+			// 514 is beyond a byte, which is the point: a character is the number the
+			// tape holds, not the byte at its end.
+			name:  "514 is a letter outside ASCII",
+			value: tape(8, 514),
+			bytes: "[0 0 0 0 0 0 2 2]",
+			decs:  "514",
+			chars: "Ȃ",
+		},
+		{
+			name:  "a reel reads tape by tape",
+			value: reel(8, "hi"),
+			bytes: "[0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 105]",
+			decs:  "104 105",
+			chars: "hi",
+		},
+		{
+			name:  "an accented reel survives whole",
+			value: reel(8, "café"),
+			decs:  "99 97 102 233",
+			chars: "café",
+		},
+		{
+			name:  "a tape of zeros is the neutral value",
+			value: byteutil.FalseTape(8),
+			bytes: "[0 0 0 0 0 0 0 0]",
+			decs:  "0",
+			chars: "",
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.bytes != "" {
+				buf := bytes.NewBuffer(nil)
+				PrintBytesFunction(buf, tc.value)
+				if got := strings.TrimSuffix(buf.String(), "\n"); got != tc.bytes {
+					t.Errorf("printb wrote %q, want %q", got, tc.bytes)
+				}
+			}
+
 			buf := bytes.NewBuffer(nil)
-			EchoFunction(buf, tc.value, tc.tapeSize)
-			if got := buf.String(); got != tc.want {
-				t.Errorf("echo wrote %q, want %q", got, tc.want)
+			PrintDecimalFunction(buf, tc.value, 8)
+			if got := strings.TrimSuffix(buf.String(), "\n"); got != tc.decs {
+				t.Errorf("printd wrote %q, want %q", got, tc.decs)
+			}
+
+			buf = bytes.NewBuffer(nil)
+			PrintCharsFunction(buf, tc.value, 8)
+			if got := strings.TrimSuffix(buf.String(), "\n"); got != tc.chars {
+				t.Errorf("printc wrote %q, want %q", got, tc.chars)
 			}
 		})
 	}
 }
 
-// Everything echo produces has to reach the writer it was given. A tape of zeros used to
-// go to the process's stdout instead, which in the playground means the browser console
-// rather than the page.
-func TestEchoWritesEverythingToTheWriter(t *testing.T) {
-	for _, size := range []int{1, 8, 32} {
+// A character outside ASCII used to be dropped: the reader kept only the last byte of the
+// tape and wrote it when it fell between 32 and 126.
+func TestTextOfKeepsCharactersBeyondASCII(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+	}{
+		{name: "accents", text: "café"},
+		{name: "cedilla", text: "ação"},
+		{name: "greek", text: "λόγος"},
+		{name: "cyrillic", text: "привет"},
+		{name: "cjk", text: "日本語"},
+		{name: "emoji", text: "🌅"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := TextOf(reel(8, tc.text), 8); got != tc.text {
+				t.Errorf("got %q, want %q", got, tc.text)
+			}
+		})
+	}
+}
+
+func TestTextOfAcrossTapeSizes(t *testing.T) {
+	// A one-byte tape only names characters up to 255, so this is ASCII.
+	if got := TextOf(reel(1, "hi"), 1); got != "hi" {
+		t.Errorf("one-byte tapes: got %q, want %q", got, "hi")
+	}
+	// Two bytes reach beyond it.
+	if got := TextOf(reel(2, "café"), 2); got != "café" {
+		t.Errorf("two-byte tapes: got %q, want %q", got, "café")
+	}
+}
+
+func TestDecimalOfAcrossTapeSizes(t *testing.T) {
+	for _, size := range []int{1, 2, 8, 32} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
-			buf := bytes.NewBuffer(nil)
-			EchoFunction(buf, byteutil.FalseTape(size), size)
-			if buf.Len() != 0 {
-				t.Errorf("a tape of zeros wrote %q, want nothing", buf.String())
+			if got := DecimalOf(tape(size, 7), size); got != "7" {
+				t.Errorf("got %q, want %q", got, "7")
 			}
 		})
 	}
 }
 
-// A value that is not printable ASCII comes out as its significant bytes rather than
-// being dropped.
-func TestEchoWithUnprintableValue(t *testing.T) {
-	buf := bytes.NewBuffer(nil)
-	EchoFunction(buf, tape(8, 200), 8)
+func TestReadingAnEmptyValue(t *testing.T) {
+	if got := TextOf(nil, 8); got != "" {
+		t.Errorf("TextOf(nil) = %q, want empty", got)
+	}
+	if got := DecimalOf(nil, 8); got != "" {
+		t.Errorf("DecimalOf(nil) = %q, want empty", got)
+	}
+}
 
-	if got := buf.Bytes(); len(got) != 1 || got[0] != 200 {
-		t.Errorf("echo wrote %v, want the significant byte 200", got)
+// A number naming no character has nothing to write, and must not corrupt what surrounds
+// it in the output.
+func TestTextOfSkipsWhatNamesNoCharacter(t *testing.T) {
+	value := make([]byte, 0)
+	value = append(value, tape(8, 'a')...)
+	value = append(value, tape(8, 0xD800)...) // a surrogate half: not a character on its own
+	value = append(value, tape(8, 'b')...)
+
+	if got := TextOf(value, 8); got != "ab" {
+		t.Errorf("got %q, want %q", got, "ab")
 	}
 }
 
@@ -102,9 +178,9 @@ func TestAssertFunction(t *testing.T) {
 	}
 }
 
-// A failing assertion decodes its message the same way echo does. Walking it with a
-// stride of eight regardless of the tape size read past the end of a narrow reel and
-// brought the whole program down with it.
+// A failing assertion reads its message the same way printc does. Walking it with a stride
+// of eight regardless of the tape size read past the end of a narrow reel and brought the
+// whole program down with it.
 func TestAssertFunctionWithNarrowTapes(t *testing.T) {
 	for _, size := range []int{1, 2, 4, 8, 32} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
@@ -129,22 +205,23 @@ func TestAssertFunctionWithNoMessage(t *testing.T) {
 	}
 }
 
-func TestSignificantBytes(t *testing.T) {
+func TestTapesOf(t *testing.T) {
 	cases := []struct {
-		name string
-		in   []byte
-		want []byte
+		name     string
+		value    []byte
+		tapeSize int
+		want     int
 	}{
-		{name: "drops leading zeros", in: []byte{0, 0, 1, 2}, want: []byte{1, 2}},
-		{name: "keeps inner zeros", in: []byte{0, 1, 0, 2}, want: []byte{1, 0, 2}},
-		{name: "all zeros has nothing", in: []byte{0, 0, 0}, want: nil},
-		{name: "empty", in: nil, want: nil},
-		{name: "nothing to drop", in: []byte{1, 2}, want: []byte{1, 2}},
+		{name: "one tape", value: tape(8, 1), tapeSize: 8, want: 1},
+		{name: "a reel of three", value: reel(8, "abc"), tapeSize: 8, want: 3},
+		{name: "narrower than a tape is still one", value: []byte{1, 2}, tapeSize: 8, want: 1},
+		{name: "not a whole number of tapes is one", value: make([]byte, 9), tapeSize: 8, want: 1},
+		{name: "empty", value: nil, tapeSize: 8, want: 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := significantBytes(tc.in); !bytes.Equal(got, tc.want) {
-				t.Errorf("significantBytes(%v) = %v, want %v", tc.in, got, tc.want)
+			if got := len(tapesOf(tc.value, tc.tapeSize)); got != tc.want {
+				t.Errorf("got %d tapes, want %d", got, tc.want)
 			}
 		})
 	}

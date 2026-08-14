@@ -38,12 +38,13 @@ const InitSourceTemplate = `#- Welcome to Aurora.
 #-   aurora run     the main profile, which points here
 #-   aurora test    the assertions in main.test.ar
 #-
-#- Every value is a tape: a fixed run of bytes, 8 by default. "print" shows those
-#- bytes, "echo" reads them back as text.
+#- Every value is a tape: a fixed run of bytes, 8 by default. There are three
+#- ways to read one — printb for its bytes, printd for its number, printc for
+#- the characters it names.
 
 ident greet = defer { "Abidu abide"; };
 
-echo greet();
+printc greet();
 `
 
 // InitTestTemplate is the test that comes with a new project.

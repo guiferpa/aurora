@@ -1,18 +1,11 @@
-function print(result) {
-  return `(print) ${toDecimal(result)}`;
-}
-
-function echo(result) {
-  return `(echo) ${toText(result)}`;
-}
-
 function nothing(result) {
   return "<nothing>";
 }
 
-const builtins = {
-  print,
-  echo,
+// printb, printd and printc are three readings of the same tape, and each one formats its
+// own line. What arrives here is that line, already finished.
+const renderers = {
+  output: (result) => toText(result).replace(/\n$/, ''),
 }
 
 async function init() {
@@ -77,9 +70,9 @@ function renderError(text) {
   $output.appendChild(li);
 }
 
-window.evalResultHandler = (result, builtin) => {
-  const fromBuiltin = builtins[builtin];
-  const text = (!fromBuiltin) ? fromResult(result) : fromBuiltin(result);
+window.evalResultHandler = (result, kind) => {
+  const render = renderers[kind];
+  const text = (!render) ? fromResult(result) : render(result);
   renderOutput(text);
 }
 

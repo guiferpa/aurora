@@ -18,23 +18,23 @@
 #-   [0 0 0 0 0 0 0 3]
 #-   [0 0 0 0 0 0 1 0]
 
-print 2 + 3;
-print 10 - 4;
-print 6 * 7;
-print 20 / 4;
-print 2 ^ 10;
+printb 2 + 3;
+printb 10 - 4;
+printb 6 * 7;
+printb 20 / 4;
+printb 2 ^ 10;
 
 #- Multiplication binds tighter than addition.
-print 2 + 3 * 4;
+printb 2 + 3 * 4;
 
 #- Parentheses change the order.
-print (2 + 3) * 4;
+printb (2 + 3) * 4;
 
 #- Subtraction is left-associative: (10 - 3) - 2, not 10 - (3 - 2).
-print 10 - 3 - 2;
+printb 10 - 3 - 2;
 
 #- Division truncates: there are no fractions, only bytes.
-print 7 / 2;
+printb 7 / 2;
 
 #- Wrapping: with one-byte tapes this is 0 instead of 256.
-print 255 + 1;
+printb 255 + 1;

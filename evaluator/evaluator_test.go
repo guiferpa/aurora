@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -358,37 +359,32 @@ func TestEvaluateJump(t *testing.T) {
 	}
 }
 
-func TestEvaluatePrint(t *testing.T) {
-	var buf bytes.Buffer
-	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-		PrintWriter:   &buf,
-	})
-	val := byteutil.FromUint64(7)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), val)
-	if err := ev.EvaluatePrint([]byte("01"), []byte("00")); err != nil {
-		t.Errorf("Error evaluating print: %v", err)
-		return
+// The three print builtins write three readings of the same tape into the one output the
+// evaluator was given.
+func TestEvaluatePrintBuiltins(t *testing.T) {
+	cases := []struct {
+		name  string
+		print func(ev *Evaluator, label, left []byte) error
+		want  string
+	}{
+		{name: "printb", print: (*Evaluator).EvaluatePrintBytes, want: "[0 0 0 0 0 0 0 44]"},
+		{name: "printd", print: (*Evaluator).EvaluatePrintDecimal, want: "44"},
+		{name: "printc", print: (*Evaluator).EvaluatePrintChars, want: ","},
 	}
-	if buf.Len() == 0 {
-		t.Errorf("expected something written to print writer")
-	}
-}
 
-func TestEvaluateEcho(t *testing.T) {
-	var buf bytes.Buffer
-	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-		EchoWriter:    &buf,
-	})
-	val := []byte("hello")
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), val)
-	if err := ev.EvaluateEcho([]byte("01"), []byte("00")); err != nil {
-		t.Errorf("Error evaluating echo: %v", err)
-		return
-	}
-	if buf.Len() == 0 {
-		t.Errorf("expected something written to echo writer")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			ev := New(NewEvaluatorOptions{Output: &buf})
+			ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(44))
+
+			if err := tc.print(ev, []byte("01"), []byte("00")); err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if got := strings.TrimSpace(buf.String()); got != tc.want {
+				t.Errorf("%s wrote %q, want %q", tc.name, got, tc.want)
+			}
+		})
 	}
 }
 

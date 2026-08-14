@@ -76,7 +76,7 @@ aurora repl
 >> a + 1;
 = 2
 >> ident b = true;
->> print b;
+>> printb b;
 [0 0 0 0 0 0 0 1]
 ```
 
@@ -140,10 +140,10 @@ Example — save as `src/main.ar`:
 
 ```java
 ident result = 10 * 20;
-print result + 1;
+printb result + 1;
 ```
 
-Run `aurora run`. The evaluator prints values as raw bytes (here 201 = 8 bytes): `[0 0 0 0 0 0 0 201]`.
+Run `aurora run`. `printb` writes the bytes of a value, which is what a value is (here 201, 8 bytes wide): `[0 0 0 0 0 0 0 201]`. Read it as a number with `printd` or as text with `printc`.
 
 ### Compile to EVM bytecode
 
@@ -164,17 +164,19 @@ A few snippets to paste in the REPL or in a file:
 ```java
 ident x = 10;
 ident y = 20;
-print x + y;           // 30 (as bytes)
+printb x + y;          // 30, as the bytes it is
+printd x + y;          // 30, as a number
+printc 44;             // the character 44 names: ,
 
 ident flag = true;
 if flag bigger 0 then 1 else 0;   // if is an expression, returns a value
 
 ident b = true;        // a tape holding 1, same bytes as the number 1
-print b + 1;           // 2
+printb b + 1;          // 2
 
 ident t = [1, 2, 3];   // a tape holding three bytes
-print pull t 4;        // shifts left, 4 enters at the right
-print head t 2;        // the first two significant bytes
+printb pull t 4;       // shifts left, 4 enters at the right
+printb head t 2;       // the first two significant bytes
 ```
 
 For more — tapes, reels, branches, EVM-style callables — dig into the [examples folder](https://github.com/guiferpa/aurora/tree/main/examples) (e.g. `examples/evm/ident.ar`, `examples/simple_math.ar`). What's in and what's not yet: [CHANGELOG.md](CHANGELOG.md).
@@ -191,7 +193,8 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 - **Values** = tapes: a fixed run of bytes, 8 by default (`ident a = 3` → `[0,0,0,0,0,0,0,3]`). Booleans are tapes too: `true` is the same bytes as `1`.
 - **Tape size** is a compiler parameter: `tape_size` in `aurora.toml` or `--tape-size` (1 to 32, flag wins). A literal that does not fit is a compile-time error.
 - **Tapes** are shift registers: `pull` shifts left (value in at the right), `push` shifts right (value in at the left), `head`/`tail` slice the significant bytes; index `n` is modulo the tape size.
-- **Reels**: strings are runs of tapes (one per character); use `echo` to print.
+- **Reels**: strings are runs of tapes, one per character.
+- **Printing** is three readings of the same tape: `printb` the bytes, `printd` the number they spell, `printc` the character that number names, as UTF-8.
 - **Arithmetic**: a tape read as an unsigned big-endian integer, wrapping at the tape width.
 </details>
 

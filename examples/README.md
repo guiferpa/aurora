@@ -28,16 +28,17 @@ For the other way of working — a manifest with named profiles — see [project
 | [callables.ar](callables.ar) | `defer` and `feed`: applying values to a scope |
 | [recursion.ar](recursion.ar) | factorial and fibonacci |
 | [tapes.ar](tapes.ar) | tape literals, `pull`, `push`, `head`, `tail` |
-| [reels.ar](reels.ar) | strings as runs of tapes, `echo` |
+| [reels.ar](reels.ar) | strings as runs of tapes, `printc` |
 | [tape_size.ar](tape_size.ar) | the same file compiled at different tape widths |
 | [defer_capacity.ar](defer_capacity.ar) | how many scopes a tape can name, and the warning when they do not fit |
+| [printing.ar](printing.ar) | `printb`, `printd`, `printc`: three readings of one tape |
 | [comments.ar](comments.ar) | `#-` |
 | [greeting.ar](greeting.ar) + [greeting.test.ar](greeting.test.ar) | `assert` and `aurora test`: a test belongs to the source of the same name |
 | [project/](project/) | a manifest with profiles, and what they change |
 
 ## Reading the output
 
-`print` writes the raw bytes of a value, which is why a result looks like `[0 0 0 0 0 0 0 42]` — every value is a tape, 8 bytes wide by default. `echo` reads those same bytes back as text.
+Every value is a tape — a fixed run of bytes, 8 wide by default — and the three print builtins are three readings of it. `printb` writes the bytes, which is why a result looks like `[0 0 0 0 0 0 0 42]`; `printd` writes the number they spell, `42`; `printc` writes the character that number names. See [printing.ar](printing.ar).
 
 One file is one program: the compiler's unit is the file, so these examples share a directory without their names colliding.
 

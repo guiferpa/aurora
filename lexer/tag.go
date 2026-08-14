@@ -86,7 +86,7 @@ var (
 	TagIdent      = Tag{IDENT, "ident", "Create an immutable identifier"}
 	TagIf         = Tag{IF, "if", "Make conditions with If"}
 	TagMult       = Tag{MULT, "*", ""}
-	TagNothing    = Tag{NOTHING, "nothing", "Universal neutral value (8 zero bytes)"}
+	TagNothing    = Tag{NOTHING, "nothing", "Universal neutral value: a tape of zeros"}
 	TagNumber     = Tag{NUMBER, "", ""}
 	TagOBrk       = Tag{O_BRK, "[", ""}
 	TagOCurBrk    = Tag{O_CUR_BRK, "{", ""}

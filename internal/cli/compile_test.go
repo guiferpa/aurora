@@ -20,12 +20,15 @@ func TestCompile(t *testing.T) {
 	dir := t.TempDir()
 	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprint a + 1;\n")
 
-	insts, err := Compile(source, 0, nil)
+	program, err := Compile(source, 0, nil)
 	if err != nil {
 		t.Fatalf("Compile: %v", err)
 	}
-	if len(insts) == 0 {
+	if len(program.Instructions) == 0 {
 		t.Error("expected instructions")
+	}
+	if len(program.Warnings) != 0 {
+		t.Errorf("expected no warnings, got %v", program.Warnings)
 	}
 }
 

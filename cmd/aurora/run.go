@@ -61,6 +61,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 		Loggers:  loggers,
 		Stdin:    os.Stdin,
 		Stdout:   ToMainWriter(),
+		Warnings: os.Stderr,
 		EchoOut:  ToEchoWriter(),
 		Player:   pl,
 		Args:     programArgs,

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,10 +12,11 @@ import (
 
 // BuildInput is the input for the Build handler.
 type BuildInput struct {
-	Source     string   // path to .ar source
-	OutputPath string   // path to write bytecode
-	Loggers    []string // enabled loggers (lexer, parser, emitter, builder)
-	TapeSize   int      // width in bytes of every value; zero means the default
+	Source     string    // path to .ar source
+	OutputPath string    // path to write bytecode
+	Loggers    []string  // enabled loggers (lexer, parser, emitter, builder)
+	TapeSize   int       // width in bytes of every value; zero means the default
+	Warnings   io.Writer // receives compiler warnings; nil discards them
 }
 
 // Build compiles the Aurora source at Source and writes bytecode to OutputPath.
@@ -22,10 +24,11 @@ func Build(ctx context.Context, in BuildInput) error {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return err
 	}
-	insts, err := Compile(in.Source, in.TapeSize, in.Loggers)
+	program, err := Compile(in.Source, in.TapeSize, in.Loggers)
 	if err != nil {
 		return err
 	}
+	ReportWarnings(in.Warnings, program.Warnings)
 
 	if err := os.MkdirAll(filepath.Dir(in.OutputPath), 0o755); err != nil {
 		return err
@@ -44,7 +47,7 @@ func Build(ctx context.Context, in BuildInput) error {
 			}
 		}()
 		_, err = evm.NewBuilder(
-			insts,
+			program.Instructions,
 			evm.NewBuilderOptions{
 				EnableLogging: slices.Contains(in.Loggers, "builder"),
 				TapeSize:      in.TapeSize,

@@ -17,7 +17,9 @@ type RunInput struct {
 	Stdout  io.Writer // print: raw bytes
 	// EchoOut receives echo output, which is text rather than bytes. When nil, Stdout
 	// takes both, which is what a caller with a single stream wants.
-	EchoOut  io.Writer
+	EchoOut io.Writer
+	// Warnings receives compiler warnings. Nil discards them.
+	Warnings io.Writer
 	Player   *evaluator.Player
 	Args     []string
 	TapeSize int // width in bytes of every value; zero means the default
@@ -28,10 +30,11 @@ func Run(ctx context.Context, in RunInput) error {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return err
 	}
-	insts, err := Compile(in.Source, in.TapeSize, in.Loggers)
+	program, err := Compile(in.Source, in.TapeSize, in.Loggers)
 	if err != nil {
 		return err
 	}
+	ReportWarnings(in.Warnings, program.Warnings)
 
 	echoOut := in.EchoOut
 	if echoOut == nil {
@@ -47,7 +50,7 @@ func Run(ctx context.Context, in RunInput) error {
 	if in.Player != nil {
 		ev.SetPlayer(in.Player)
 	}
-	if _, err := ev.Evaluate(insts); err != nil {
+	if _, err := ev.Evaluate(program.Instructions); err != nil {
 		return err
 	}
 	logger.AssertError(ev.GetAssertErrors(), in.Source)

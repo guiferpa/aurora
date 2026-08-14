@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/guiferpa/aurora/internal/cli"
@@ -64,6 +66,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		Source:     target.Source,
 		OutputPath: output,
 		Loggers:    loggers,
+		Warnings:   os.Stderr,
 		TapeSize:   cli.ResolveTapeSize(tapeSize, target.TapeSize),
 	})
 }

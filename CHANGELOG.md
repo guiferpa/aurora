@@ -4,6 +4,15 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.3.1-alpha — 2026-08-14
+
+### Fixed
+
+- **Multiplication and division group to the left**, like addition and subtraction. They recursed to the right, so a chain answered for a different expression than the one written: `20 / 5 / 2` gave 10 instead of 2, and `4 / 2 * 6` gave 0 instead of 12. Multiplication on its own hid it — it is associative, so only a chain mixing it with division tells the two groupings apart, and `n - (n / d) * d`, the way to take a remainder without a `%` operator, is exactly that. Exponentiation still groups to the right, which is the convention: `2 ^ 3 ^ 2` is 512.
+- **Negating a value negates it.** The emitter took the unary expression and emitted only its operand, dropping the operator, so `-5` was 5 and `10 + -5` was 15. A tape is unsigned, so `-x` is the value taken away from zero, wrapping at the tape width — the same tape `0 - x` gives, which is what the compiler now emits.
+
+---
+
 ## v0.3.0-alpha — 2026-08-14
 
 ### Language

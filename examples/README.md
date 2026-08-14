@@ -32,7 +32,7 @@ For the other way of working — a manifest with named profiles — see [project
 | [tape_size.ar](tape_size.ar) | the same file compiled at different tape widths |
 | [defer_capacity.ar](defer_capacity.ar) | how many scopes a tape can name, and the warning when they do not fit |
 | [comments.ar](comments.ar) | `#-` |
-| [assertions.test.ar](assertions.test.ar) | `assert`, which only works in `*.test.ar` |
+| [greeting.ar](greeting.ar) + [greeting.test.ar](greeting.test.ar) | `assert` and `aurora test`: a test belongs to the source of the same name |
 | [project/](project/) | a manifest with profiles, and what they change |
 
 ## Reading the output

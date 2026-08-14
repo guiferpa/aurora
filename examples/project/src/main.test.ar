@@ -1,0 +1,16 @@
+#- Tests for src/main.ar.
+#-
+#- "aurora test" from the project root finds this file: the main profile points
+#- at src/main.ar, so the search starts in src/ and goes down.
+#-
+#- Run: cd examples/project && aurora test
+#-
+#- Output:
+#-   src/main.test.ar
+#-     ok    area multiplies its sides
+#-     ok    area of a line is zero
+#-
+#-   2 passed, 0 failed in 1 file
+
+assert(area(3, 4) equals 12, "area multiplies its sides");
+assert(area(0, 5) equals 0, "area of a line is zero");

@@ -1,0 +1,23 @@
+#- Greeting
+#-
+#- The code that greeting.test.ar checks. A test belongs to the source file of
+#- the same name, so this one runs first and everything it declares is in scope
+#- for the test.
+#-
+#- Run: aurora run examples/greeting.ar
+#-      aurora test examples/greeting.test.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 0 1]
+
+ident hello = defer { 1; };
+
+ident twice = defer { feed(0) * 2; };
+
+ident bigger_of = defer {
+  ident a = feed(0);
+  ident b = feed(1);
+  if a bigger b { a; } else { b; };
+};
+
+print hello();

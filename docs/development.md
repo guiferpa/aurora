@@ -87,6 +87,8 @@ make test                           # -race -cover, pretty output, writes covera
 make bench                          # benchmarks with -benchmem
 ```
 
+Those are the compiler's own tests, written in Go. Programs *written in* Aurora are tested with `aurora test` — see [testing.md](testing.md).
+
 ### Conventions
 
 - **Standard library only.** No testify or other assertion libraries. Compare with `bytes.Equal`/`reflect.DeepEqual` and report with `t.Errorf("got: %v, expected: %v", got, want)`.
@@ -147,18 +149,22 @@ Current baseline (`go test ./... -cover`):
 
 | Package | Coverage |
 |---|---|
-| `evaluator` | 85.1% |
+| `fileutil`, `logger`, `lsp/state`, `lsp/initialize` | 100% |
+| `evaluator/builtin` | 96.9% |
+| `evaluator` | 88.5% |
 | `evaluator/environ` | 85.0% |
-| `lexer` | 79.9% |
-| `byteutil` | 71.3% |
-| `repl` | 55.1% |
-| `parser` | 53.5% |
-| `manifest` | 51.9% |
-| `internal/cli` | 45.4% |
-| `builder/evm` | 34.3% |
-| `emitter`, `fileutil`, `evaluator/builtin`, `logger`, `cmd/aurora` | 0% |
+| `lsp/messenger` · `lsp` | 81.8% · 81.3% |
+| `lexer` · `byteutil` · `lsp/textdoc` | 74.9% · 74.4% · 71.2% |
+| `parser` | 69.4% |
+| `internal/cli` | 68.4% |
+| `builder/evm` | 61.0% |
+| `repl` · `manifest` | 56.4% · 51.9% |
+| `cmd/aurorals` · `emitter` | 48.6% · 48.3% |
+| `cmd/aurora` | 27.4% |
 
-**Known gap:** `emitter` has no direct unit tests — it is exercised indirectly through `evaluator` and `builder/evm`. That is the highest-value place to add tests right now.
+Total: **66.7%**.
+
+**Where it is thinnest:** `cmd/aurora` is Cobra glue, and the guidance above says to test the handler in `internal/cli` instead — so what is left there is mostly flag plumbing. `emitter` is the one worth attention: it is exercised through `evaluator` and `builder/evm`, and its own tests only cover the program shape and the warnings.
 
 ---
 

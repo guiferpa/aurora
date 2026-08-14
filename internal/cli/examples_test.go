@@ -48,3 +48,20 @@ func TestExamplesRun(t *testing.T) {
 		})
 	}
 }
+
+// The examples that are tests must pass, which also covers the pairing rule end to end.
+func TestExamplesTestsPass(t *testing.T) {
+	report, err := Test(t.Context(), TestInput{
+		Target: filepath.Join("..", "..", "examples", "greeting.test.ar"),
+		Stdout: io.Discard,
+	})
+	if err != nil {
+		t.Fatalf("running the example tests: %v", err)
+	}
+	if !report.OK() {
+		t.Errorf("the example tests should pass: %d failed", report.Failed)
+	}
+	if report.Passed == 0 {
+		t.Error("expected assertions to have run")
+	}
+}

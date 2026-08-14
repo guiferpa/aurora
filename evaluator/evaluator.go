@@ -303,7 +303,7 @@ func (e *Evaluator) EvaluateReturn(_, left, right []byte) error {
 	label := byteutil.ToHex(left)
 	value := e.environ.GetTemp(byteutil.ToHex(right))
 	if value == nil {
-		value = byteutil.NothingTape(e.tapeSize)
+		value = byteutil.FalseTape(e.tapeSize)
 	}
 	e.environ = e.environ.GetPrevious()
 	e.environ.SetTemp(label, value)
@@ -318,7 +318,7 @@ func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
 	}
 	val := e.environ.GetTemp(byteutil.ToHex(right))
 	e.environ.SetIdent(k, val)
-	e.environ.SetTemp(byteutil.ToHex(label), byteutil.NothingTape(e.tapeSize))
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
 	e.IncrementCursor()
 	return nil
 }

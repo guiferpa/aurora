@@ -40,23 +40,22 @@ Aurora is an **expression-only** language: there are no statements. Everything a
 - **Blocks** (`{ ... }`): The body of a block is a sequence of expressions. Blocks are expressions that evaluate their body and produce the value of the last expression.
 - **Control flow**: `if`/`else` and `branch` are expressions — they have a value (the branch that was taken). There is no "statement" form of conditionals.
 
-So when you write `ident a = 3;` or `print x;` or `nothing;`, you are always writing expressions. The parser and the AST reflect this: the module holds a list of expression nodes (often still named "statements" in code for historical reasons), and blocks hold lists of expressions. There is no separate "statement" node type.
+So when you write `ident a = 3;` or `print x;` or `false;`, you are always writing expressions. The parser and the AST reflect this: the module holds a list of expression nodes (often still named "statements" in code for historical reasons), and blocks hold lists of expressions. There is no separate "statement" node type.
 
-## Nothing (universal neutral value)
+## The neutral value
 
-Aurora has a first-class value called **nothing**, written with the keyword `nothing`. It is the **universal neutral value** of the language.
+Aurora has no keyword for "no value". An expression that has nothing to say produces a **tape of zeros** — the very same value as `false` and as the number `0`, because in an untyped language a tape of zeros is a tape of zeros and there is nothing else it could be.
 
-- **Representation**: Internally it is a tape of zeros — the same bytes as the number `0`. It is not null, not absence, not an error — it is a normal value that means "neutral" or "no meaningful value."
-- **Where it appears**: Empty blocks `{ }` evaluate to nothing. An `if` without `else` has an implicit else that returns nothing. Any expression that "does nothing" or has no other value yields nothing.
-- **Use**: You can assign it (`ident x = nothing;`), pass it to functions (`print nothing;`), compare it, or use it in arithmetic (it behaves like zero). It has the same representation as the number 0, byte for byte.
+- **Where it appears**: an empty block `{ }`, an `if` without `else` whose test fails, the value of a binding (`ident a = 1;` itself evaluates to zeros), and a scope that returns no value.
+- **How to write it**: use `false` when the neutral value is the point, or `0` when it reads better as a number. They are the same bytes.
 
 ```javascript
-nothing;              // expression that evaluates to nothing
-ident x = nothing;    // x holds the nothing value (a tape of zeros)
-print nothing;        // prints the nothing value
-if false { 1; } else { nothing; };  // explicit nothing in a branch
-{ };                  // empty block evaluates to nothing
+ident x = false;      // the neutral value
+if false { 1; };      // no else: the whole expression is zeros
+{ };                  // an empty block is zeros
 ```
+
+> A `nothing` keyword existed until it became indistinguishable from `false`. It was removed rather than kept as a second name for one value; source using it now reads `nothing` as an ordinary identifier, which will not resolve.
 
 ## Untyped Philosophy
 

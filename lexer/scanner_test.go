@@ -47,7 +47,6 @@ func TestScanToken(t *testing.T) {
 		{"keyword echo", "echo", true, ECHO, "echo"},
 		{"keyword true", "true", true, TRUE, "true"},
 		{"keyword false", "false", true, FALSE, "false"},
-		{"keyword nothing", "nothing", true, NOTHING, "nothing"},
 		{"keyword equals", "equals", true, EQUALS, "equals"},
 		{"keyword different", "different", true, DIFFERENT, "different"},
 		{"keyword bigger", "bigger", true, BIGGER, "bigger"},
@@ -73,8 +72,8 @@ func TestScanToken(t *testing.T) {
 		{"if prefix", "iffy", true, ID, "iffy"},
 		{"else prefix", "elsewhere", true, ID, "elsewhere"},
 		{"true prefix", "trueish", true, ID, "trueish"},
+		{"nothing is an ordinary identifier now", "nothing", true, ID, "nothing"},
 		{"nothing prefix", "nothingish", true, ID, "nothingish"},
-		{"nothing with space", "nothing ", true, NOTHING, "nothing"},
 
 		{"uppercase id", "Foo", true, ID, "Foo"},
 		{"uppercase with digits", "Foo123", true, ID, "Foo123"},

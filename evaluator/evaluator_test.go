@@ -920,8 +920,8 @@ if 11 bigger 10 { 20; };`,
 					return
 				}
 				// Label 01: for "if 10 bigger 9 { 10; };" the emitter generates Save(00), Save(01), If(02). The If stores its result in its own label (no OpResult), so the result 1 lives at temp "01".
-				if ok, got := containsReturn(returns, 0, byteutil.NothingTape(byteutil.DefaultTapeSize)); !ok {
-					t.Errorf("got: %v, expected: <nothing>", got)
+				if ok, got := containsReturn(returns, 0, byteutil.FalseTape(byteutil.DefaultTapeSize)); !ok {
+					t.Errorf("got: %v, expected a tape of zeros", got)
 				}
 			},
 		},
@@ -978,7 +978,7 @@ branch {
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1002,7 +1002,7 @@ r;`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1111,7 +1111,7 @@ r(3, 4);`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1148,7 +1148,7 @@ fib(11);`,
 					return
 				}
 
-				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1176,7 +1176,7 @@ fib(11);`,
 					return
 				}
 
-				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}
@@ -1201,7 +1201,7 @@ factorial(4);`,
 					return
 				}
 
-				expected := byteutil.NothingTape(byteutil.DefaultTapeSize)
+				expected := byteutil.FalseTape(byteutil.DefaultTapeSize)
 				if ok, got := containsReturn(returns, 0, expected); !ok {
 					t.Errorf("got: %v, expected: %v", got, expected)
 				}

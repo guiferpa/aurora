@@ -147,9 +147,6 @@ func TestBooleanTapesAreOrdinaryTapes(t *testing.T) {
 			if !ToBoolean(truth) || ToBoolean(lie) {
 				t.Error("truthiness must follow the value, not the width")
 			}
-			if !bytes.Equal(lie, NothingTape(size)) {
-				t.Error("false and nothing are both a tape of zeros")
-			}
 		})
 	}
 }

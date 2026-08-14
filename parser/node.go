@@ -62,14 +62,6 @@ func (nln NumberLiteral) Next() Node {
 	return nil
 }
 
-type NothingLiteral struct {
-	Token lexer.Token `json:"-"`
-}
-
-func (nln NothingLiteral) Next() Node {
-	return nil
-}
-
 type ReelLiteral struct {
 	Value [][]byte    `json:"value"` // Reel as array of tapes: each char is a tape (8 bytes), stored as array of 8-byte arrays
 	Token lexer.Token `json:"-"`
@@ -273,7 +265,7 @@ func (ud UseDeclaration) Next() Node {
 }
 
 // NamespaceUnit is the top-level AST node. Aurora is expression-only: AST is
-// the sequence of expressions at top level (e.g. NothingLiteral, IdentStatement,
+// the sequence of expressions at top level (e.g. NumberLiteral, IdentStatement,
 // BlockExpression, IfExpression).
 type NamespaceUnit struct {
 	Name         string   `json:"name"`

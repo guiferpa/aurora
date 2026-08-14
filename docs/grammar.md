@@ -1,6 +1,6 @@
 # Grammar
 
-Aurora is **expression-only**: the grammar has no separate statement category. Top-level forms and block bodies are sequences of expressions (separated by `;`). `if`/`else` and blocks are expressions that produce a value. The keyword `nothing` denotes the universal neutral value (8 zero bytes).
+Aurora is **expression-only**: the grammar has no separate statement category. Top-level forms and block bodies are sequences of expressions (separated by `;`). `if`/`else` and blocks are expressions that produce a value. An expression with no value to give produces a tape of zeros, which is what `false` and `0` are.
 
 ## Demand list
 

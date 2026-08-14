@@ -51,9 +51,9 @@ func runWithTapeSize(t *testing.T, source string, tapeSize int) []byte {
 	return returns[labels[len(labels)-1]]
 }
 
-// Every value is a tape of the configured width — numbers, conditions and nothing alike.
+// Every value is a tape of the configured width — numbers and conditions alike.
 func TestValuesHaveTheTapeWidth(t *testing.T) {
-	sources := []string{"1 + 1;", "true;", "false;", "nothing;", "1 equals 1;", "2 bigger 1;"}
+	sources := []string{"1 + 1;", "true;", "false;", "1 equals 1;", "2 bigger 1;"}
 	for _, size := range []int{1, 2, 8, 32} {
 		for _, source := range sources {
 			t.Run(strconv.Itoa(size)+"/"+source, func(t *testing.T) {

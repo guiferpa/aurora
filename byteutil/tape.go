@@ -72,19 +72,17 @@ func FromUint256(v *uint256.Int, size int) []byte {
 	return tape
 }
 
-// TrueTape and FalseTape are the boolean values. They are ordinary tapes: nothing
+// TrueTape and FalseTape are the boolean values, and ordinary tapes: nothing
 // distinguishes true from the number 1, which is the point of an untyped language.
+//
+// FalseTape is also the language's neutral value — what a scope with no value returns,
+// what a binding evaluates to, the tape a literal starts from. There is no separate
+// "nothing": a tape of zeros is a tape of zeros.
 func TrueTape(size int) []byte {
 	return PaddingTape([]byte{1}, size)
 }
 
 func FalseTape(size int) []byte {
-	return make([]byte, TapeSize(size))
-}
-
-// NothingTape is the universal neutral value: a tape of zeros, the same representation as
-// the number zero.
-func NothingTape(size int) []byte {
 	return make([]byte, TapeSize(size))
 }
 

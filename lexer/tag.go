@@ -3,7 +3,7 @@ package lexer
 const (
 	AND          = "AND"       // and
 	ARGUMENTS    = "ARGUMENTS" // arguments - It's responsible for get value from higher scopes
-	AS           = "AS"       // as
+	AS           = "AS"        // as
 	ASSERT       = "ASSERT"    // assert
 	ASSIGN       = "ASSIGN"    // =
 	BIGGER       = "BIGGER"    // bigger
@@ -29,7 +29,6 @@ const (
 	IDENT        = "IDENT"    // ident
 	IF           = "IF"       // if
 	MULT         = "MULT"     // *
-	NOTHING      = "NOTHING"  // nothing
 	NS_SCOPE     = "NS_SCOPE" // :: Namespace scope operator
 	NUMBER       = "NUMBER"
 	O_BRK        = "O_BRK"     // [
@@ -86,7 +85,6 @@ var (
 	TagIdent      = Tag{IDENT, "ident", "Create an immutable identifier"}
 	TagIf         = Tag{IF, "if", "Make conditions with If"}
 	TagMult       = Tag{MULT, "*", ""}
-	TagNothing    = Tag{NOTHING, "nothing", "Universal neutral value: a tape of zeros"}
 	TagNumber     = Tag{NUMBER, "", ""}
 	TagOBrk       = Tag{O_BRK, "[", ""}
 	TagOCurBrk    = Tag{O_CUR_BRK, "{", ""}
@@ -117,7 +115,6 @@ var processableTags = []Tag{
 	TagElse,
 	TagBranch,
 	TagDefer,
-	TagNothing,
 	TagHead,
 	TagTail,
 	TagPush,

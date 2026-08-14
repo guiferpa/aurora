@@ -129,7 +129,7 @@ func collectSemanticTokens(mapper *lsp.Mapper, tokens []lexer.Token) []semanticT
 // (whitespace, line breaks, EOF, punctuation) report false and are skipped.
 func semanticTypeOf(tag string) (int, bool) {
 	switch tag {
-	case lexer.IDENT, lexer.IF, lexer.ELSE, lexer.BRANCH, lexer.DEFER, lexer.NOTHING,
+	case lexer.IDENT, lexer.IF, lexer.ELSE, lexer.BRANCH, lexer.DEFER,
 		lexer.PRINT, lexer.ECHO, lexer.ASSERT, lexer.ARGUMENTS, lexer.USE, lexer.AS,
 		lexer.HEAD, lexer.TAIL, lexer.PUSH, lexer.PULL, lexer.TRUE, lexer.FALSE:
 		return SemanticKeyword, true

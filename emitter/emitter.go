@@ -94,7 +94,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 	if n, ok := expr.(parser.TapeBracketExpression); ok {
 		// Create the initial tape, all zeros
 		l := GenerateLabel(tc)
-		tape := byteutil.NothingTape(tapeSize)
+		tape := byteutil.FalseTape(tapeSize)
 		*insts = append(*insts, NewInstruction(l, OpSave, tape, nil))
 
 		// For each item, generate instruction and use OpPull to add bytes directly
@@ -176,11 +176,6 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		*insts = append(*insts, NewInstruction(l, OpCall, n.Id.Token.GetMatch(), nil))
 		return l
 	}
-	if _, ok := expr.(parser.NothingLiteral); ok {
-		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.NothingTape(tapeSize), nil))
-		return l
-	}
 	if n, ok := expr.(parser.PrintStatement); ok {
 		ll := EmitInstruction(tc, insts, n.Param, tapeSize)
 		l := GenerateLabel(tc)
@@ -254,7 +249,7 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		*insts = append(*insts, NewInstruction(l, OpLoad, n.Token.GetMatch(), nil))
 		return l
 	}
-	return byteutil.NothingTape(tapeSize)
+	return byteutil.FalseTape(tapeSize)
 }
 
 func (e *emt) Emit(ast parser.Namespace) ([]Instruction, error) {

@@ -41,12 +41,6 @@ func nodeEqual(a, b Node) bool {
 		return false
 	}
 	switch va := a.(type) {
-	case NothingLiteral:
-		vb, ok := b.(NothingLiteral)
-		if !ok {
-			return false
-		}
-		return TokenEqual(va.Token, vb.Token)
 	case NumberLiteral:
 		vb, ok := b.(NumberLiteral)
 		if !ok {

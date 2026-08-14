@@ -42,9 +42,8 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`branch [true: 1,]`), BRANCH, []byte("branch"), true},
 		// DEFER
 		{[]byte(`defer`), DEFER, []byte("defer"), true},
-		// NOTHING
-		{[]byte(`nothing`), NOTHING, []byte("nothing"), true},
-		{[]byte(`nothing;`), NOTHING, []byte("nothing"), true},
+		// "nothing" was a keyword and is an ordinary identifier now
+		{[]byte(`nothing`), ID, []byte("nothing"), true},
 		// NS_SCOPE
 		{[]byte(`::`), NS_SCOPE, []byte("::"), true},
 		{[]byte(`::foo`), NS_SCOPE, []byte("::"), true},

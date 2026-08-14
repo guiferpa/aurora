@@ -256,8 +256,6 @@ func describeNode(node parser.Node) string {
 		return "boolean"
 	case parser.ReelLiteral:
 		return "reel (string)"
-	case parser.NothingLiteral:
-		return "nothing"
 	case parser.IdentifierLiteral:
 		return "identifier"
 	case parser.TapeBracketExpression:

@@ -8,7 +8,8 @@ All notable changes and release notes for Aurora are documented here.
 
 ### Language
 
-- **Every value is a tape of the same width.** Booleans are no longer a one-byte exception: `true` is a tape holding 1, indistinguishable from the number 1, and `nothing` is a tape of zeros — the same bytes as `0`.
+- **Every value is a tape of the same width.** Booleans are no longer a one-byte exception: `true` is a tape holding 1, indistinguishable from the number 1.
+- **The `nothing` keyword was removed.** Once every value became a tape, it was byte-for-byte the same as `false`, and one value does not need two names. Everywhere it served as the neutral default — an empty block, an `if` without `else`, the value of a binding, a scope returning no value — the language now produces `false`. **Breaking:** source that uses `nothing` now reads it as an ordinary identifier, which will not resolve.
 - **Tape width is a compiler parameter**: `tape_size` in `aurora.toml` or `--tape-size` on `build`, `run` and `repl` (1 to 32 bytes, default 8, flag wins over the manifest). A literal that does not fit is a compile-time error instead of being truncated silently.
 - Arithmetic now wraps at the tape width (`255 + 1` is `0` with one-byte tapes) and runs on 256-bit integers, which also fixes `^` losing precision above 2^53.
 - The EVM backend emits `PUSH<n>` for the configured width, from `PUSH1` to `PUSH32`.

@@ -80,14 +80,6 @@ func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 	return CalleeLiteral{id, params}, nil
 }
 
-func (p *pr) ParseNothing() (NothingLiteral, error) {
-	tok, err := p.EatToken(lexer.NOTHING)
-	if err != nil {
-		return NothingLiteral{}, err
-	}
-	return NothingLiteral{tok}, nil
-}
-
 // ParseNamespacedIdentifier parses ID or ID (:: ID)+ and returns an IdentifierLiteral.
 // For "a::b::c" the result has Namespace: ["a","b"], Value: "c". For a single "a" the result has Value: "a", Namespace: nil.
 // Token is always the token of the symbol (the last segment), e.g. "b" in "a::b".
@@ -188,7 +180,7 @@ func (p *pr) ParseReel() (ReelLiteral, error) {
 
 	// If empty string, create a reel with one empty tape
 	if len(reel) == 0 {
-		reel = append(reel, byteutil.NothingTape(p.tapeSize))
+		reel = append(reel, byteutil.FalseTape(p.tapeSize))
 	}
 
 	return ReelLiteral{reel, tok}, nil
@@ -237,9 +229,6 @@ func (p *pr) ParsePriExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.ParseBlockExpr()
-	}
-	if lookahead.GetTag().Id == lexer.NOTHING {
-		return p.ParseNothing()
 	}
 	if lookahead.GetTag().Id == lexer.IDENT {
 		return p.ParseIdent()

@@ -18,9 +18,15 @@ func TestExamplesRun(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && strings.HasSuffix(d.Name(), ".ar") {
-			sources = append(sources, path)
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".ar") {
+			return nil
 		}
+		// A test file belongs to the source of the same name and needs it in scope, so it
+		// runs under TestExamplesTestsPass rather than on its own.
+		if strings.HasSuffix(d.Name(), TestExtension) {
+			return nil
+		}
+		sources = append(sources, path)
 		return nil
 	})
 	if err != nil {

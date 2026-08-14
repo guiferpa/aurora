@@ -19,6 +19,6 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	rootCmd.AddCommand(versionCmd, runCmd, replCmd, buildCmd, deployCmd, callCmd, initCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, testCmd, replCmd, buildCmd, deployCmd, callCmd, initCmd)
 	logger.CommandError(rootCmd.Execute())
 }

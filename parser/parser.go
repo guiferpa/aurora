@@ -860,10 +860,6 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	return currtok, nil
 }
 
-func (p *pr) ResetCursor() {
-	p.cursor = 0
-}
-
 func (p *pr) Parse() (AST, error) {
 	nodes, err := p.ParseExprs(lexer.TagEOF)
 	if err != nil {

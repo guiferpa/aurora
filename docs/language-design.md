@@ -38,6 +38,15 @@ Numbers, conditions, reels, the neutral value and **deferred scopes** are all ta
 
 That is the bargain of an untyped language: values that are the same bytes are the same value, and calling a number equal to a scope's index calls that scope.
 
+**How many scopes a tape can name.** Since the value is an index, a tape of N bytes names 2^(8N) scopes — 256 of them at one byte. Declaring more in the same scope makes the index wrap, so a call reaches a different scope. The compiler warns about it:
+
+```
+warning: 257 deferred scopes in one scope, but a 1-byte tape can only name 256:
+calls past that reach the wrong scope
+```
+
+It is a **warning, not an error**, and it exists only at compile time. The count is static, so it cannot know how often a scope really runs; and a program that is already running is never stopped by it — a limit implied by the shape of the source should not become a failure mid-execution. The tally is per scope, since each running scope keeps its own. See [examples/defer_capacity.ar](../examples/defer_capacity.ar).
+
 ## Expressions only (no Statements)
 
 Aurora is an **expression-only** language: there are no statements. Everything at the top level and inside blocks is an expression that produces a value.

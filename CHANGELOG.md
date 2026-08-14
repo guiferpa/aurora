@@ -9,6 +9,7 @@ All notable changes and release notes for Aurora are documented here.
 ### Fixed
 
 - **A deferred scope is a tape.** Its value was the hex key of its own storage — 16 bytes of ASCII text that ignored `tape_size` — so `ident b = defer {};` showed a row of zeros where `ident a = {};` showed one, `b + 1` produced ASCII digits, and a defer stayed 16 bytes wide even with `--tape-size 1`. It is the scope's index as an ordinary tape now. A consequence the language owns: a value equal to an index *is* that reference, the same way `true` is `1`.
+- **The compiler warns when a scope holds more deferred scopes than its tape can name** (256 at one byte), since the index wraps and a call would reach a different scope. It is a warning rather than an error: the count is static, and a running program is never stopped by it.
 - **`feed(n)` always answers with a tape.** It read the vector directly, so an index past the end gave nothing at all — `print feed(0)` with no values applied printed `[]`, and the REPL said `unknown byte sequence to encode`. The index now wraps around the length of the vector, as the design always described, and an empty vector gives a tape of zeros.
 
 ---

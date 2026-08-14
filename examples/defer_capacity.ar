@@ -1,0 +1,287 @@
+#- Deferred scope capacity
+#-
+#- The value of a "defer" is the index of its scope, as a tape like every other
+#- value. A tape of N bytes can therefore name 2^(8N) scopes: 256 of them when a
+#- tape is one byte wide.
+#-
+#- This file declares 257 deferred scopes in the same scope — one too many for a
+#- one-byte tape. Compiling it that way prints a warning and carries on:
+#-
+#-   warning: 257 deferred scopes in one scope, but a 1-byte tape can only name
+#-   256: calls past that reach the wrong scope
+#-
+#- It is a warning, not an error. The count is static and cannot know how often a
+#- scope really runs, and a running program is never stopped by it.
+#-
+#- What it is about: the 257th scope gets index 256, which does not fit in one
+#- byte and wraps to 0. Calling it reaches the scope at index 0 instead.
+#-
+#- Run: aurora run examples/defer_capacity.ar
+#-      aurora run examples/defer_capacity.ar --tape-size 1
+#-
+#- Output, 8-byte tapes:      Output, 1-byte tapes:
+#-   [0 0 0 0 0 0 0 1]          [1]
+#-   [0 0 0 0 0 0 0 9]          [1]   <- last() reached first()
+
+ident first = defer { 1; };
+ident filler1 = defer { 0; };
+ident filler2 = defer { 0; };
+ident filler3 = defer { 0; };
+ident filler4 = defer { 0; };
+ident filler5 = defer { 0; };
+ident filler6 = defer { 0; };
+ident filler7 = defer { 0; };
+ident filler8 = defer { 0; };
+ident filler9 = defer { 0; };
+ident filler10 = defer { 0; };
+ident filler11 = defer { 0; };
+ident filler12 = defer { 0; };
+ident filler13 = defer { 0; };
+ident filler14 = defer { 0; };
+ident filler15 = defer { 0; };
+ident filler16 = defer { 0; };
+ident filler17 = defer { 0; };
+ident filler18 = defer { 0; };
+ident filler19 = defer { 0; };
+ident filler20 = defer { 0; };
+ident filler21 = defer { 0; };
+ident filler22 = defer { 0; };
+ident filler23 = defer { 0; };
+ident filler24 = defer { 0; };
+ident filler25 = defer { 0; };
+ident filler26 = defer { 0; };
+ident filler27 = defer { 0; };
+ident filler28 = defer { 0; };
+ident filler29 = defer { 0; };
+ident filler30 = defer { 0; };
+ident filler31 = defer { 0; };
+ident filler32 = defer { 0; };
+ident filler33 = defer { 0; };
+ident filler34 = defer { 0; };
+ident filler35 = defer { 0; };
+ident filler36 = defer { 0; };
+ident filler37 = defer { 0; };
+ident filler38 = defer { 0; };
+ident filler39 = defer { 0; };
+ident filler40 = defer { 0; };
+ident filler41 = defer { 0; };
+ident filler42 = defer { 0; };
+ident filler43 = defer { 0; };
+ident filler44 = defer { 0; };
+ident filler45 = defer { 0; };
+ident filler46 = defer { 0; };
+ident filler47 = defer { 0; };
+ident filler48 = defer { 0; };
+ident filler49 = defer { 0; };
+ident filler50 = defer { 0; };
+ident filler51 = defer { 0; };
+ident filler52 = defer { 0; };
+ident filler53 = defer { 0; };
+ident filler54 = defer { 0; };
+ident filler55 = defer { 0; };
+ident filler56 = defer { 0; };
+ident filler57 = defer { 0; };
+ident filler58 = defer { 0; };
+ident filler59 = defer { 0; };
+ident filler60 = defer { 0; };
+ident filler61 = defer { 0; };
+ident filler62 = defer { 0; };
+ident filler63 = defer { 0; };
+ident filler64 = defer { 0; };
+ident filler65 = defer { 0; };
+ident filler66 = defer { 0; };
+ident filler67 = defer { 0; };
+ident filler68 = defer { 0; };
+ident filler69 = defer { 0; };
+ident filler70 = defer { 0; };
+ident filler71 = defer { 0; };
+ident filler72 = defer { 0; };
+ident filler73 = defer { 0; };
+ident filler74 = defer { 0; };
+ident filler75 = defer { 0; };
+ident filler76 = defer { 0; };
+ident filler77 = defer { 0; };
+ident filler78 = defer { 0; };
+ident filler79 = defer { 0; };
+ident filler80 = defer { 0; };
+ident filler81 = defer { 0; };
+ident filler82 = defer { 0; };
+ident filler83 = defer { 0; };
+ident filler84 = defer { 0; };
+ident filler85 = defer { 0; };
+ident filler86 = defer { 0; };
+ident filler87 = defer { 0; };
+ident filler88 = defer { 0; };
+ident filler89 = defer { 0; };
+ident filler90 = defer { 0; };
+ident filler91 = defer { 0; };
+ident filler92 = defer { 0; };
+ident filler93 = defer { 0; };
+ident filler94 = defer { 0; };
+ident filler95 = defer { 0; };
+ident filler96 = defer { 0; };
+ident filler97 = defer { 0; };
+ident filler98 = defer { 0; };
+ident filler99 = defer { 0; };
+ident filler100 = defer { 0; };
+ident filler101 = defer { 0; };
+ident filler102 = defer { 0; };
+ident filler103 = defer { 0; };
+ident filler104 = defer { 0; };
+ident filler105 = defer { 0; };
+ident filler106 = defer { 0; };
+ident filler107 = defer { 0; };
+ident filler108 = defer { 0; };
+ident filler109 = defer { 0; };
+ident filler110 = defer { 0; };
+ident filler111 = defer { 0; };
+ident filler112 = defer { 0; };
+ident filler113 = defer { 0; };
+ident filler114 = defer { 0; };
+ident filler115 = defer { 0; };
+ident filler116 = defer { 0; };
+ident filler117 = defer { 0; };
+ident filler118 = defer { 0; };
+ident filler119 = defer { 0; };
+ident filler120 = defer { 0; };
+ident filler121 = defer { 0; };
+ident filler122 = defer { 0; };
+ident filler123 = defer { 0; };
+ident filler124 = defer { 0; };
+ident filler125 = defer { 0; };
+ident filler126 = defer { 0; };
+ident filler127 = defer { 0; };
+ident filler128 = defer { 0; };
+ident filler129 = defer { 0; };
+ident filler130 = defer { 0; };
+ident filler131 = defer { 0; };
+ident filler132 = defer { 0; };
+ident filler133 = defer { 0; };
+ident filler134 = defer { 0; };
+ident filler135 = defer { 0; };
+ident filler136 = defer { 0; };
+ident filler137 = defer { 0; };
+ident filler138 = defer { 0; };
+ident filler139 = defer { 0; };
+ident filler140 = defer { 0; };
+ident filler141 = defer { 0; };
+ident filler142 = defer { 0; };
+ident filler143 = defer { 0; };
+ident filler144 = defer { 0; };
+ident filler145 = defer { 0; };
+ident filler146 = defer { 0; };
+ident filler147 = defer { 0; };
+ident filler148 = defer { 0; };
+ident filler149 = defer { 0; };
+ident filler150 = defer { 0; };
+ident filler151 = defer { 0; };
+ident filler152 = defer { 0; };
+ident filler153 = defer { 0; };
+ident filler154 = defer { 0; };
+ident filler155 = defer { 0; };
+ident filler156 = defer { 0; };
+ident filler157 = defer { 0; };
+ident filler158 = defer { 0; };
+ident filler159 = defer { 0; };
+ident filler160 = defer { 0; };
+ident filler161 = defer { 0; };
+ident filler162 = defer { 0; };
+ident filler163 = defer { 0; };
+ident filler164 = defer { 0; };
+ident filler165 = defer { 0; };
+ident filler166 = defer { 0; };
+ident filler167 = defer { 0; };
+ident filler168 = defer { 0; };
+ident filler169 = defer { 0; };
+ident filler170 = defer { 0; };
+ident filler171 = defer { 0; };
+ident filler172 = defer { 0; };
+ident filler173 = defer { 0; };
+ident filler174 = defer { 0; };
+ident filler175 = defer { 0; };
+ident filler176 = defer { 0; };
+ident filler177 = defer { 0; };
+ident filler178 = defer { 0; };
+ident filler179 = defer { 0; };
+ident filler180 = defer { 0; };
+ident filler181 = defer { 0; };
+ident filler182 = defer { 0; };
+ident filler183 = defer { 0; };
+ident filler184 = defer { 0; };
+ident filler185 = defer { 0; };
+ident filler186 = defer { 0; };
+ident filler187 = defer { 0; };
+ident filler188 = defer { 0; };
+ident filler189 = defer { 0; };
+ident filler190 = defer { 0; };
+ident filler191 = defer { 0; };
+ident filler192 = defer { 0; };
+ident filler193 = defer { 0; };
+ident filler194 = defer { 0; };
+ident filler195 = defer { 0; };
+ident filler196 = defer { 0; };
+ident filler197 = defer { 0; };
+ident filler198 = defer { 0; };
+ident filler199 = defer { 0; };
+ident filler200 = defer { 0; };
+ident filler201 = defer { 0; };
+ident filler202 = defer { 0; };
+ident filler203 = defer { 0; };
+ident filler204 = defer { 0; };
+ident filler205 = defer { 0; };
+ident filler206 = defer { 0; };
+ident filler207 = defer { 0; };
+ident filler208 = defer { 0; };
+ident filler209 = defer { 0; };
+ident filler210 = defer { 0; };
+ident filler211 = defer { 0; };
+ident filler212 = defer { 0; };
+ident filler213 = defer { 0; };
+ident filler214 = defer { 0; };
+ident filler215 = defer { 0; };
+ident filler216 = defer { 0; };
+ident filler217 = defer { 0; };
+ident filler218 = defer { 0; };
+ident filler219 = defer { 0; };
+ident filler220 = defer { 0; };
+ident filler221 = defer { 0; };
+ident filler222 = defer { 0; };
+ident filler223 = defer { 0; };
+ident filler224 = defer { 0; };
+ident filler225 = defer { 0; };
+ident filler226 = defer { 0; };
+ident filler227 = defer { 0; };
+ident filler228 = defer { 0; };
+ident filler229 = defer { 0; };
+ident filler230 = defer { 0; };
+ident filler231 = defer { 0; };
+ident filler232 = defer { 0; };
+ident filler233 = defer { 0; };
+ident filler234 = defer { 0; };
+ident filler235 = defer { 0; };
+ident filler236 = defer { 0; };
+ident filler237 = defer { 0; };
+ident filler238 = defer { 0; };
+ident filler239 = defer { 0; };
+ident filler240 = defer { 0; };
+ident filler241 = defer { 0; };
+ident filler242 = defer { 0; };
+ident filler243 = defer { 0; };
+ident filler244 = defer { 0; };
+ident filler245 = defer { 0; };
+ident filler246 = defer { 0; };
+ident filler247 = defer { 0; };
+ident filler248 = defer { 0; };
+ident filler249 = defer { 0; };
+ident filler250 = defer { 0; };
+ident filler251 = defer { 0; };
+ident filler252 = defer { 0; };
+ident filler253 = defer { 0; };
+ident filler254 = defer { 0; };
+ident filler255 = defer { 0; };
+
+#- The 257th scope. Its index is 256, which needs more than one byte.
+ident last = defer { 9; };
+
+print first();
+print last();

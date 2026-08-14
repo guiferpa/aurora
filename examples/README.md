@@ -30,6 +30,7 @@ For the other way of working — a manifest with named profiles — see [project
 | [tapes.ar](tapes.ar) | tape literals, `pull`, `push`, `head`, `tail` |
 | [reels.ar](reels.ar) | strings as runs of tapes, `echo` |
 | [tape_size.ar](tape_size.ar) | the same file compiled at different tape widths |
+| [defer_capacity.ar](defer_capacity.ar) | how many scopes a tape can name, and the warning when they do not fit |
 | [comments.ar](comments.ar) | `#-` |
 | [assertions.test.ar](assertions.test.ar) | `assert`, which only works in `*.test.ar` |
 | [project/](project/) | a manifest with profiles, and what they change |

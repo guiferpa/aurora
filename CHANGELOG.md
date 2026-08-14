@@ -4,6 +4,14 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.3.2-alpha — 2026-08-14
+
+### Fixed
+
+- **`and` binds tighter than `or`.** The two shared one precedence level and recursed to the right, so `a and b or c` read as `a and (b or c)` and `false and true or true` answered false — every language that gives `and` the tighter binding answers true there, reading it as `(false and true) or true`. Each level now loops, so a chain groups to the left as well; that one is invisible in the answer, since both operations are associative. Comparison still binds tighter than both, which keeps `n bigger 18 and n smaller 65` reading as one range.
+
+---
+
 ## v0.3.1-alpha — 2026-08-14
 
 ### Fixed

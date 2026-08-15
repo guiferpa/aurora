@@ -63,8 +63,11 @@ func TestScanToken(t *testing.T) {
 		{"keyword pull", "pull", true, PULL, "pull"},
 		{"keyword feed", "feed", true, FEED, "feed"},
 		{"keyword assert", "assert", true, ASSERT, "assert"},
-		// "as" and "use" were the import keywords and are ordinary identifiers now
-		{"as is an identifier", "as", true, ID, "as"},
+		{"keyword struct", "struct", true, STRUCT, "struct"},
+		// "as" was an import keyword, became an ordinary identifier when namespaces were
+		// rolled back, and is a keyword again: it names the shape a value is read with.
+		{"keyword as", "as", true, AS, "as"},
+		// "use" was the other import keyword and stays an ordinary identifier.
 		{"use is an identifier", "use", true, ID, "use"},
 
 		{"if with space", "if x", true, IF, "if"},
@@ -262,5 +265,54 @@ func TestUnderscoreIdentifier(t *testing.T) {
 		t.Logf("ScanToken(%q) matched with tag=%q, match=%q", input, tag.Id, string(match))
 	} else {
 		t.Logf("ScanToken(%q) did not match (underscore-start not supported)", input)
+	}
+}
+
+// struct and as are directives for whoever writes the source: they name the fields of a run
+// of tapes and say which shape a value is read with. `as` was a keyword before namespaces
+// were rolled back, and comes back here for that.
+func TestScanStructDirectives(t *testing.T) {
+	cases := []struct {
+		source string
+		want   []string
+	}{
+		{source: "struct Point { x, y };", want: []string{STRUCT, ID, O_CUR_BRK, ID, COMMA, ID, C_CUR_BRK, SEMICOLON}},
+		{source: "p.x;", want: []string{ID, DOT, ID, SEMICOLON}},
+		{source: "feed(0) as Point;", want: []string{FEED, O_PAREN, NUMBER, C_PAREN, AS, ID, SEMICOLON}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.source, func(t *testing.T) {
+			tokens, err := New(NewLexerOptions{}).GetFilledTokens([]byte(tc.source))
+			if err != nil {
+				t.Fatalf("lexer: %v", err)
+			}
+
+			got := make([]string, 0, len(tokens))
+			for _, token := range tokens {
+				if id := token.GetTag().Id; id != EOF {
+					got = append(got, id)
+				}
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Errorf("token %d is %s, want %s", i, got[i], tc.want[i])
+				}
+			}
+		})
+	}
+}
+
+// A dot is its own token and never part of a name, so p.x is three tokens and not one.
+func TestDotIsNotPartOfAName(t *testing.T) {
+	tokens, err := New(NewLexerOptions{}).GetFilledTokens([]byte("point.x"))
+	if err != nil {
+		t.Fatalf("lexer: %v", err)
+	}
+	if got := string(tokens[0].GetMatch()); got != "point" {
+		t.Errorf("first token is %q, want %q", got, "point")
 	}
 }

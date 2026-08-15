@@ -2,6 +2,7 @@ package lexer
 
 const (
 	AND          = "AND"    // and
+	AS           = "AS"     // as - names the shape a value is read with
 	FEED         = "FEED"   // feed - reads a value applied to the scope
 	ASSERT       = "ASSERT" // assert
 	ASSIGN       = "ASSIGN" // =
@@ -17,6 +18,7 @@ const (
 	DEFER        = "DEFER"     // defer - delayed scope execution
 	DIFFERENT    = "DIFFERENT" // differenTag
 	DIV          = "DIV"       // /
+	DOT          = "DOT"       // . - reads a field of a struct
 	ELSE         = "ELSE"      // else
 	EOF          = "EOF"
 	EQUALS       = "EQUALS" // equals
@@ -40,6 +42,7 @@ const (
 	SEMICOLON    = "SEMICOLON" // ;
 	SMALLER      = "SMALLER"   // smaller
 	STRING       = "STRING"    // string literal "text" (reel - array of tapes)
+	STRUCT       = "STRUCT"    // struct - names the fields of a run of tapes
 	SUB          = "SUB"       // -
 	SUM          = "SUM"       // +
 	TAIL         = "TAIL"      // tail
@@ -55,6 +58,7 @@ type Tag struct {
 
 var (
 	TagAnd        = Tag{AND, "and", ""}
+	TagAs         = Tag{AS, "as", "Read a value with the shape of a struct"}
 	TagFeed       = Tag{FEED, "feed", "Read the nth value fed to this scope"}
 	TagAssert     = Tag{ASSERT, "assert", "Assert a condition in tests"}
 	TagAssign     = Tag{ASSIGN, "=", ""}
@@ -73,6 +77,7 @@ var (
 	TagDefer      = Tag{DEFER, "defer", "Defer scope execution (pointer to scope)"}
 	TagDifferent  = Tag{DIFFERENT, "different", ""}
 	TagDiv        = Tag{DIV, "/", ""}
+	TagDot        = Tag{DOT, ".", ""}
 	TagElse       = Tag{ELSE, "else", "Make else for conditions with If"}
 	TagEOF        = Tag{EOF, "<EOF>", ""}
 	TagEquals     = Tag{EQUALS, "equals", ""}
@@ -93,6 +98,7 @@ var (
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagSmaller    = Tag{SMALLER, "smaller", ""}
 	TagString     = Tag{STRING, "", ""} // String literal: "text" (reel - array of tapes)
+	TagStruct     = Tag{STRUCT, "struct", "Name the fields of a run of tapes"}
 	TagSub        = Tag{SUB, "-", ""}
 	TagSum        = Tag{SUM, "+", ""}
 	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
@@ -115,6 +121,8 @@ var processableTags = []Tag{
 	TagTail,
 	TagPush,
 	TagPull,
+	TagStruct,
+	TagAs,
 }
 
 func GetProcessableTags() []Tag {

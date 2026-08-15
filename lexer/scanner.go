@@ -23,6 +23,8 @@ var keywordTags = []Tag{
 	TagPull,
 	TagFeed,
 	TagAssert,
+	TagStruct,
+	TagAs,
 }
 
 var Keywords = func() map[string]Tag {
@@ -100,6 +102,8 @@ func scanOneChar(c byte) (Tag, bool) {
 		return TagDiv, true
 	case '^':
 		return TagExpo, true
+	case '.':
+		return TagDot, true
 	default:
 		return Tag{}, false
 	}

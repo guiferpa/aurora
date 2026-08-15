@@ -64,8 +64,13 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`)`), C_PAREN, []byte(")"), true},
 		// O_PAREN
 		{[]byte(`(`), O_PAREN, []byte("("), true},
-		// "as" was an import keyword: an ordinary identifier now
-		{[]byte(`as`), ID, []byte("as"), true},
+		// "as" was an import keyword, then an ordinary identifier, and is a keyword again:
+		// it names the shape a value is read with.
+		{[]byte(`as`), AS, []byte("as"), true},
+		// STRUCT
+		{[]byte(`struct`), STRUCT, []byte("struct"), true},
+		// DOT
+		{[]byte(`.`), DOT, []byte("."), true},
 		// ASSIGN
 		{[]byte(`=`), ASSIGN, []byte("="), true},
 		// IDENT

@@ -278,6 +278,71 @@ printc empty;    // Prints: (empty line)
 
 Remember: Strings in Aurora are reels - arrays of tapes where each character is a tape. This allows Aurora to work with text while maintaining its untyped, byte-array philosophy!
 
+## Structs
+
+A struct names the tapes of a run:
+
+```javascript
+struct Point { x, y };
+
+ident p = Point(10, 20);
+printd p.x;   // 10
+printd p;     // 10 20 — the whole run
+```
+
+`Point(10, 20)` is two tapes laid end to end. That is the same thing a reel of two
+characters is, and they are equal: `Pair(97, 98) equals "ab"` is true. There is no header,
+no length, no tag — a struct is not a new kind of value, and a field is exactly one tape
+wide, so the field at index *i* sits at `i × tape_size`.
+
+### The directives die at compile time
+
+`struct` and `as` are **directives for whoever writes the source**, and they exist for three
+things, all of them before the program runs:
+
+1. reporting a mistake — a field that does not exist, a construction that miscounts;
+2. saying how to reach the data — which index a name is;
+3. telling the language server what is there, so it can complete a field and describe one.
+
+None of it needs to exist in the compiled program: the flow is static, the fields are
+positional and every one is the same width. The compiler reads the directive, resolves an
+index and drops the rest. Nothing about a struct — not its name, not its fields — reaches
+the IR or the binary.
+
+Which is why two structs of the same width are the same value, and why nothing is checked
+at runtime.
+
+### Naming a shape with `as`
+
+Behaviour lives in `defer`, and a `defer` receives values through `feed`, which hands over
+bytes and nothing else. The shape does not survive that crossing, so it is named again:
+
+```javascript
+ident area = defer {
+  ident q = feed(0) as Point;
+  q.x * q.y;
+};
+printd area(Point(10, 20));   // 200
+```
+
+`as` is a claim, not a cast: there is nothing in a run of bytes to check it against. A wrong
+claim reads the wrong tapes, and reading past the end gives the neutral value rather than
+stopping the program — the same rule `head` and `feed` follow.
+
+### What is an error
+
+Because the directive exists to catch mistakes, these stop the compilation, with the line
+and column where they were written:
+
+- reading a field the struct does not have;
+- reading a field of a value whose shape nothing declared;
+- building with the wrong number of values.
+
+Padding a short construction with the neutral value would match how `feed` and `head` never
+fail, and would give up the only thing the directive does.
+
+See [examples/structs.ar](../examples/structs.ar).
+
 ## Arithmetic Operations
 
 Arithmetic reads a tape as an unsigned big-endian integer and writes the result back as a tape, wrapping at the tape width.

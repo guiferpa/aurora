@@ -1,0 +1,69 @@
+#- Structs
+#-
+#- A struct groups values by giving names to the tapes of a run. It is not a new
+#- kind of value: Point(10, 20) is two tapes laid end to end, which is exactly
+#- what a reel of two characters is. There is no header, no length and no tag.
+#-
+#- So `struct` and `as` are directives for whoever writes the source. They let
+#- the compiler turn a name into an index, point at a mistake where it was
+#- written, and tell the editor what is there — and then they are gone. Nothing
+#- about them reaches the compiled program.
+#-
+#- Run: aurora run examples/structs.ar
+#-
+#- Output:
+#-   10
+#-   20
+#-   10 20
+#-   [0 0 0 0 0 0 0 10 0 0 0 0 0 0 0 20]
+#-   200
+#-   14
+#-   1
+#-   1
+#-   98 1
+#-   0
+
+struct Point { x, y };
+
+ident p = Point(10, 20);
+
+#- A field reads one tape of the run, by the index its name was declared at.
+printd p.x;
+printd p.y;
+
+#- The value itself is the run, and printd walks tapes without being told
+#- anything about structs.
+printd p;
+printb p;
+
+#- Behaviour lives in defer, and a defer receives values through feed. The shape
+#- does not survive that crossing — nothing in the bytes carries it — so it is
+#- named again with "as". The annotation is a claim, not a check.
+ident area = defer {
+  ident q = feed(0) as Point;
+  q.x * q.y;
+};
+
+printd area(Point(10, 20));
+
+#- "as" is an expression, so it does not need a name to hang on.
+ident twice = defer { (feed(0) as Point).y * 2; };
+printd twice(Point(3, 7));
+
+#- Two structs of the same width are the same value. There is nothing in a run
+#- of tapes that says which struct built it.
+struct Pair { a, b };
+printd Point(1, 2) equals Pair(1, 2);
+
+#- Which is the same reason a struct and a reel of the same length are equal:
+#- "ab" is two tapes holding 97 and 98.
+printd Pair(97, 98) equals "ab";
+
+#- A field is one tape wide, so a wider value is cut to its last tape on the way
+#- in, exactly as arithmetic reads one. A run is always a whole number of tapes.
+printd Pair("ab", 1);
+
+#- Reading past the end gives the neutral value instead of stopping the program,
+#- the way head saturates and feed wraps. A claim can be wrong.
+ident single = 7 as Point;
+printd single.y;

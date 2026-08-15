@@ -4,6 +4,40 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## Unreleased
+
+### Language
+
+- **`struct`**, a way of grouping values by naming the tapes of a run.
+
+  ```aurora
+  struct Point { x, y };
+
+  ident area = defer {
+    ident p = feed(0) as Point;
+    p.x * p.y;
+  };
+  printd area(Point(10, 20));   # 200
+  ```
+
+  A struct value is not a new kind of value: `Point(10, 20)` is two tapes laid end to end, which is exactly what a reel of two characters is — no header, no length, no tag. `Pair(97, 98) equals "ab"` is true, and two structs of the same width are the same value.
+
+  `struct` and `as` are **directives for whoever writes the source**: they exist so the compiler can turn a name into an index, report a mistake where it was written, and tell the language server what is there. None of it reaches the IR or the binary, because the flow is static, the fields are positional and each one is exactly a tape wide. So the errors are the substance: a field the struct does not have, a value whose shape nothing declared, and a construction that miscounts the fields all stop the compilation. Reading a field past the end of a value does not — it gives the neutral value, as `head` and `feed` do.
+
+  `as` names the shape where the compiler cannot see it, which is above all when a value crosses into a scope. It claims rather than checks: there is nothing in a run of bytes to check against.
+
+  Not supported on chain: like `if`, `call` and the prints, the two new instructions produce no EVM bytecode. At `--tape-size 32` a struct of N fields is exactly the ABI encoding of a tuple of N words, which is where that support would start.
+
+### Tooling
+
+- The language server knows about structs: completing after a dot offers that struct's fields and nothing else, hover lists a struct's fields and says which tape a field reads, and `struct`, `as`, the struct's name and the field names are coloured for what they are. It reads the tokens rather than the tree, because a document being edited hardly ever parses — and typing `p.` is exactly when completion is wanted.
+
+### Fixed
+
+- **`feed` hands a run of tapes over whole.** It narrowed every read to a single tape, which cut a struct down to its last field on the way into a scope. The narrowing that command-line arguments need already happens where they enter, in `NewEnviron`.
+
+---
+
 ## v0.3.2-alpha — 2026-08-14
 
 ### Fixed

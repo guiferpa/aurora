@@ -266,3 +266,56 @@ type AST struct {
 func (a AST) Next() Node {
 	return nil
 }
+
+// StructDeclaration names the fields of a run of tapes: `struct Point { x, y };`.
+//
+// It is a directive for whoever writes the source, not a value. The compiler reads it to
+// turn a field name into an index, to report a mistake where it was written, and to feed
+// the language server — and then it is gone. Nothing about it reaches the IR: the flow is
+// static, the fields are positional and every one of them is exactly a tape wide.
+type StructDeclaration struct {
+	Name   string      `json:"name"`
+	Fields []string    `json:"fields"`
+	Token  lexer.Token `json:"-"`
+}
+
+func (sdn StructDeclaration) Next() Node {
+	return nil
+}
+
+// StructLiteral builds the run: `Point(10, 20)` is two tapes, one per field.
+type StructLiteral struct {
+	Name   string      `json:"name"`
+	Values []Node      `json:"values"`
+	Token  lexer.Token `json:"-"`
+}
+
+func (sln StructLiteral) Next() Node {
+	return nil
+}
+
+// FieldExpression reads one tape out of a run. The index is resolved while parsing, from
+// the shape of the value, so nothing about the field's name survives here.
+type FieldExpression struct {
+	Expression Node        `json:"expression"`
+	Index      uint64      `json:"index"`
+	Field      string      `json:"field"` // kept for the language server, never emitted
+	Token      lexer.Token `json:"-"`
+}
+
+func (fen FieldExpression) Next() Node {
+	return fen.Expression
+}
+
+// ShapedExpression is `expr as Point`: it says how to read a value the compiler cannot
+// trace back to a construction. It has no effect of its own — the emitter emits what is
+// inside it and drops the name.
+type ShapedExpression struct {
+	Expression Node        `json:"expression"`
+	Struct     string      `json:"struct"`
+	Token      lexer.Token `json:"-"`
+}
+
+func (sen ShapedExpression) Next() Node {
+	return sen.Expression
+}

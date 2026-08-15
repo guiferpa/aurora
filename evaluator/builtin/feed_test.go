@@ -51,14 +51,28 @@ func TestFeedFunctionWithNothingApplied(t *testing.T) {
 	}
 }
 
-// Values arrive as 32-byte ABI words from the command line, and come out as tapes.
-func TestFeedFunctionNarrowsToTheTape(t *testing.T) {
-	wide := make([]byte, 32)
-	wide[31] = 7
-	feed := map[uint64][]byte{0: wide}
+// A value wider than a tape is a run of them — a reel, or a struct — and feed hands it over
+// whole. It used to narrow every read to a single tape, which cut a struct down to its last
+// field: `defer { (feed(0) as Point).x }` answered with y.
+//
+// The narrowing that command-line arguments need is not gone, it lives where those arguments
+// enter: environ.NewEnviron turns each 32-byte ABI word into a tape.
+func TestFeedFunctionHandsARunOverWhole(t *testing.T) {
+	run := make([]byte, 0, 16)
+	run = append(run, tape(8, 10)...)
+	run = append(run, tape(8, 20)...)
 
-	for _, size := range []int{1, 2, 8} {
-		got := FeedFunction(feed, 0, size)
+	got := FeedFunction(map[uint64][]byte{0: run}, 0, 8)
+	if !bytes.Equal(got, run) {
+		t.Errorf("got %v, want the run whole: %v", got, run)
+	}
+}
+
+// Anything narrower than a tape still comes back as one, so a read always answers with at
+// least a whole value.
+func TestFeedFunctionPadsWhatIsNarrowerThanATape(t *testing.T) {
+	for _, size := range []int{2, 8, 32} {
+		got := FeedFunction(map[uint64][]byte{0: {7}}, 0, size)
 		if len(got) != size {
 			t.Errorf("size %d: got %d bytes", size, len(got))
 		}

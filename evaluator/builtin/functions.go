@@ -48,6 +48,14 @@ func FeedFunction(feed map[uint64][]byte, index uint64, tapeSize int) []byte {
 	if !ok {
 		return byteutil.FalseTape(tapeSize)
 	}
+	// A value wider than a tape is a run of them — a reel, or a struct — and it is handed
+	// over whole. Narrowing here would cut a struct down to its last field, and the
+	// narrowing that command-line arguments need already happens where they enter, in
+	// environ.NewEnviron. Anything shorter than a tape is padded, so a read always answers
+	// with at least one.
+	if len(value) >= byteutil.TapeSize(tapeSize) {
+		return value
+	}
 	return byteutil.PaddingTape(value, tapeSize)
 }
 

@@ -11,6 +11,7 @@ import "testing"
 //	*  /
 //	^
 //	-  (unary)
+//	.  as  (postfix)
 //	numbers, names, calls, parentheses
 //
 // Two bugs lived in this ladder, and both were invisible until a program gave a wrong
@@ -71,6 +72,11 @@ func TestPrecedenceLadder(t *testing.T) {
 		// is the one rung that reads against the usual convention, where the exponent binds
 		// tighter and -3 ^ 2 is -9. A tape is unsigned, so the sign is a wrap either way.
 		{source: "printd -3 ^ 2;", want: "9", rule: "unary over ^"},
+		// Reading a field binds tighter than any operator, so p.x * p.y multiplies the two
+		// fields rather than reading a field of a product.
+		{source: "struct Point { x, y };\nident p = Point(3, 4);\nprintd p.x * p.y;", want: "12", rule: ". over *"},
+		{source: "struct Point { x, y };\nident p = Point(3, 4);\nprintd p.x + p.y;", want: "7", rule: ". over +"},
+
 		// -(2 * 3) and (-2) * 3 are the same tape, so this one cannot tell the rungs apart —
 		// it is here because it is what caught the minus being discarded on the way to the
 		// IR, which answered 6.

@@ -152,6 +152,45 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		}
 		return l
 	}
+	if _, ok := expr.(parser.StructDeclaration); ok {
+		// A directive emits no work. It still answers with a value, because everything in
+		// Aurora is an expression, and the neutral one is what a declaration is worth.
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.FalseTape(tapeSize), nil))
+		return l
+	}
+	if n, ok := expr.(parser.StructLiteral); ok {
+		// One tape per field, laid end to end — the shape a reel of the same length has.
+		// Instructions carry two operands, so the run is built by chaining, the way a tape
+		// literal chains OpPull.
+		//
+		// It starts from an empty run rather than from the first field so that every field
+		// crosses the same join, which is what narrows each one to a single tape. Starting
+		// at the first field left that one whole, and a reel there became several tapes.
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpSave, make([]byte, 0), nil))
+
+		for _, value := range n.Values {
+			lv := EmitInstruction(tc, insts, value, tapeSize)
+			lj := GenerateLabel(tc)
+			*insts = append(*insts, NewInstruction(lj, OpJoin, l, lv))
+			l = lj
+		}
+		return l
+	}
+	if n, ok := expr.(parser.FieldExpression); ok {
+		// The index was resolved while parsing, so it goes in as an immediate — the same
+		// shape head and tail use. Nothing here knows the field had a name.
+		lv := EmitInstruction(tc, insts, n.Expression, tapeSize)
+		l := GenerateLabel(tc)
+		*insts = append(*insts, NewInstruction(l, OpField, lv, byteutil.FromUint64(n.Index)))
+		return l
+	}
+	if n, ok := expr.(parser.ShapedExpression); ok {
+		// `as` says how to read a value, which is a question the compiler answers and the
+		// program never asks: what is left is the value itself.
+		return EmitInstruction(tc, insts, n.Expression, tapeSize)
+	}
 	if n, ok := expr.(parser.PullExpression); ok {
 		lt := EmitInstruction(tc, insts, n.Target, tapeSize)
 		li := EmitInstruction(tc, insts, n.Item, tapeSize)

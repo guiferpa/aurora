@@ -110,6 +110,14 @@ func childScopesOf(node parser.Node) []parser.Node {
 		return body
 	case parser.PrintStatement:
 		return []parser.Node{n.Param}
+	case parser.StructLiteral:
+		// A field can hold a deferred scope, so the values of a struct are walked like any
+		// other place a scope can hide.
+		return n.Values
+	case parser.FieldExpression:
+		return []parser.Node{n.Expression}
+	case parser.ShapedExpression:
+		return []parser.Node{n.Expression}
 	default:
 		return nil
 	}
@@ -133,6 +141,16 @@ func countDefers(node parser.Node, count *int, walk func([]parser.Node)) bool {
 		}
 	case parser.PrintStatement:
 		return countDefers(n.Param, count, walk)
+	case parser.StructLiteral:
+		for _, value := range n.Values {
+			if !countDefers(value, count, walk) {
+				return false
+			}
+		}
+	case parser.FieldExpression:
+		return countDefers(n.Expression, count, walk)
+	case parser.ShapedExpression:
+		return countDefers(n.Expression, count, walk)
 	}
 	return true
 }

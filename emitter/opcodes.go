@@ -32,4 +32,6 @@ const (
 	OpTail                           // Operation to tail values in slice of byte
 	OpPush                           // Operation to push values in slice of byte
 	OpAssert                         // Operation to assert a condition in tests
+	OpJoin                           // Concatenate a run of tapes with one more tape
+	OpField                          // Take the tape at an immediate index out of a run
 )

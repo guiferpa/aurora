@@ -256,6 +256,41 @@ func (e *Evaluator) EvaluatePush(label, left, right []byte) error {
 //
 // The index is taken modulo the tape width, so it can never be out of bounds: with
 // one-byte tapes every index is 0.
+// EvaluateJoin lays one tape after a run of them, which is how a struct is built. Each part
+// is normalised to a tape first, so a run always holds a whole number of them however wide
+// the value handed over was.
+func (e *Evaluator) EvaluateJoin(label, left, right []byte) error {
+	run := e.environ.GetTemp(byteutil.ToHex(left))
+	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(right)), e.tapeSize)
+
+	joined := make([]byte, 0, len(run)+len(tape))
+	joined = append(joined, run...)
+	joined = append(joined, tape...)
+
+	e.environ.SetTemp(byteutil.ToHex(label), joined)
+	e.IncrementCursor()
+	return nil
+}
+
+// EvaluateField takes one tape out of a run, by index. The index is a literal operand
+// written inline by the emitter, resolved from a struct directive that no longer exists.
+//
+// Reading past the end gives the neutral value rather than failing, the way head saturates
+// and feed wraps: an operation on tapes does not stop a running program.
+func (e *Evaluator) EvaluateField(label, left, right []byte) error {
+	run := e.environ.GetTemp(byteutil.ToHex(left))
+	start := int(byteutil.ToUint64(right)) * e.tapeSize
+
+	value := byteutil.FalseTape(e.tapeSize)
+	if start >= 0 && start+e.tapeSize <= len(run) {
+		value = run[start : start+e.tapeSize]
+	}
+
+	e.environ.SetTemp(byteutil.ToHex(label), value)
+	e.IncrementCursor()
+	return nil
+}
+
 func (e *Evaluator) EvaluateHead(label, left, right []byte) error {
 	significant, n := e.tapeSlice(left, right)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[:n], e.tapeSize))
@@ -592,6 +627,12 @@ func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
 	}
 	if inst.GetOpCode() == emitter.OpPush {
 		return e.EvaluatePush(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpJoin {
+		return e.EvaluateJoin(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	}
+	if inst.GetOpCode() == emitter.OpField {
+		return e.EvaluateField(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 	}
 	if inst.GetOpCode() == emitter.OpHead {
 		return e.EvaluateHead(inst.GetLabel(), inst.GetLeft(), inst.GetRight())

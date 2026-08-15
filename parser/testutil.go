@@ -5,6 +5,7 @@ package parser
 import (
 	"bytes"
 	"reflect"
+	"slices"
 
 	"github.com/guiferpa/aurora/lexer"
 )
@@ -104,6 +105,35 @@ func nodeEqual(a, b Node) bool {
 			return false
 		}
 		return nodeEqual(va.Expression, vb.Expression) && opEqual(va.Operation, vb.Operation)
+	case StructDeclaration:
+		vb, ok := b.(StructDeclaration)
+		if !ok {
+			return false
+		}
+		return va.Name == vb.Name && slices.Equal(va.Fields, vb.Fields)
+	case StructLiteral:
+		vb, ok := b.(StructLiteral)
+		if !ok || va.Name != vb.Name || len(va.Values) != len(vb.Values) {
+			return false
+		}
+		for i := range va.Values {
+			if !nodeEqual(va.Values[i], vb.Values[i]) {
+				return false
+			}
+		}
+		return true
+	case FieldExpression:
+		vb, ok := b.(FieldExpression)
+		if !ok {
+			return false
+		}
+		return va.Index == vb.Index && nodeEqual(va.Expression, vb.Expression)
+	case ShapedExpression:
+		vb, ok := b.(ShapedExpression)
+		if !ok {
+			return false
+		}
+		return va.Struct == vb.Struct && nodeEqual(va.Expression, vb.Expression)
 	case DeferExpression:
 		vb, ok := b.(DeferExpression)
 		if !ok {

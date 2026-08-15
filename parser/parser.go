@@ -22,6 +22,12 @@ type pr struct {
 	tokens   []lexer.Token
 	logger   *Logger
 	tapeSize int
+	// structs and shapes are what the struct directives leave behind while a file is being
+	// parsed, and nothing more: the fields a struct declared, in order, and the struct a
+	// name was last read as. They turn `p.x` into an index and are dropped when the parse
+	// ends — no part of them reaches the tree, the IR or the binary.
+	structs map[string][]string
+	shapes  map[string]string
 }
 
 // Helper functions to validate node types for tape operations
@@ -158,7 +164,16 @@ func (p *pr) ParseReel() (ReelLiteral, error) {
 	return ReelLiteral{reel, tok}, nil
 }
 
+// ParsePriExpr reads a primary and then whatever binds to it tightest: a field, a shape.
 func (p *pr) ParsePriExpr() (Node, error) {
+	expr, err := p.parsePrimaryExpr()
+	if err != nil {
+		return nil, err
+	}
+	return p.parsePostfix(expr)
+}
+
+func (p *pr) parsePrimaryExpr() (Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == lexer.FEED {
 		return p.ParseFeed()
@@ -210,6 +225,11 @@ func (p *pr) ParsePriExpr() (Node, error) {
 		return nil, err
 	}
 	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_PAREN {
+		// A declared struct in front of parentheses builds a run of tapes; anything else
+		// applies values to a scope.
+		if _, declared := p.structs[id.Value]; declared {
+			return p.ParseStructLiteral(id)
+		}
 		return p.ParseCallee(id)
 	}
 	return id, nil
@@ -711,6 +731,11 @@ func (p *pr) ParseIdent() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Binding a value with a shape carries the shape to the name, so `p.x` reads after
+	// `ident p = feed(0) as Point;`.
+	if shape := p.shapeOf(expr); shape != "" {
+		p.shapes[string(id.GetMatch())] = shape
+	}
 	return IdentLiteral{string(id.GetMatch()), id, expr}, nil
 }
 
@@ -724,6 +749,9 @@ func (p *pr) ParseExpr() (Node, error) {
 	}
 	if lookahead.GetTag().Id == lexer.ASSERT {
 		return p.ParseAssert()
+	}
+	if lookahead.GetTag().Id == lexer.STRUCT {
+		return p.ParseStruct()
 	}
 	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
 		return p.ParseBlockExpr()
@@ -910,5 +938,7 @@ func New(opts NewParserOptions) Parser {
 		tokens:   opts.Tokens,
 		logger:   NewLogger(opts.EnableLogging),
 		tapeSize: byteutil.TapeSize(opts.TapeSize),
+		structs:  make(map[string][]string),
+		shapes:   make(map[string]string),
 	}
 }

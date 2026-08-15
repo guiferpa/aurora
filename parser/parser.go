@@ -22,12 +22,11 @@ type pr struct {
 	tokens   []lexer.Token
 	logger   *Logger
 	tapeSize int
-	// structs and shapes are what the struct directives leave behind while a file is being
-	// parsed, and nothing more: the fields a struct declared, in order, and the struct a
-	// name was last read as. They turn `p.x` into an index and are dropped when the parse
-	// ends — no part of them reaches the tree, the IR or the binary.
-	structs map[string][]string
-	shapes  map[string]string
+	// directives is what `struct` and `as` leave behind, and nothing more: it turns `p.x`
+	// into an index and never reaches the tree, the IR or the binary. It is held by
+	// reference so a caller compiling one file across several parses — the REPL — keeps
+	// what was declared earlier.
+	directives *Directives
 }
 
 // Helper functions to validate node types for tape operations
@@ -224,12 +223,15 @@ func (p *pr) parsePrimaryExpr() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_PAREN {
-		// A declared struct in front of parentheses builds a run of tapes; anything else
-		// applies values to a scope.
-		if _, declared := p.structs[id.Value]; declared {
+	if _, declared := p.directives.Structs[id.Value]; declared {
+		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_CUR_BRK {
 			return p.ParseStructLiteral(id)
 		}
+		// A struct is a directive, not a value: there is nothing to load under its name.
+		return nil, lexer.NewError(id.Token, "%s is a struct at line %d and column %d: build a value with %s{...}",
+			id.Value, id.Token.GetLine(), id.Token.GetColumn(), id.Value)
+	}
+	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_PAREN {
 		return p.ParseCallee(id)
 	}
 	return id, nil
@@ -734,7 +736,7 @@ func (p *pr) ParseIdent() (Node, error) {
 	// Binding a value with a shape carries the shape to the name, so `p.x` reads after
 	// `ident p = feed(0) as Point;`.
 	if shape := p.shapeOf(expr); shape != "" {
-		p.shapes[string(id.GetMatch())] = shape
+		p.directives.Shapes[string(id.GetMatch())] = shape
 	}
 	return IdentLiteral{string(id.GetMatch()), id, expr}, nil
 }
@@ -929,16 +931,23 @@ type NewParserOptions struct {
 	EnableLogging bool
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
+	// Directives carries the struct directives across parses of the same file. Nil starts
+	// empty, which is what compiling a file in one go wants; the REPL passes the same value
+	// every line so a struct declared earlier is still known.
+	Directives *Directives
 }
 
 func New(opts NewParserOptions) Parser {
+	directives := opts.Directives
+	if directives == nil {
+		directives = NewDirectives()
+	}
 	return &pr{
-		filename: opts.Filename,
-		cursor:   0,
-		tokens:   opts.Tokens,
-		logger:   NewLogger(opts.EnableLogging),
-		tapeSize: byteutil.TapeSize(opts.TapeSize),
-		structs:  make(map[string][]string),
-		shapes:   make(map[string]string),
+		filename:   opts.Filename,
+		cursor:     0,
+		tokens:     opts.Tokens,
+		logger:     NewLogger(opts.EnableLogging),
+		tapeSize:   byteutil.TapeSize(opts.TapeSize),
+		directives: directives,
 	}
 }

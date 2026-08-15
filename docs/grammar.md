@@ -163,12 +163,12 @@ Right-associative, which is the convention for exponentiation: `2 ^ 3 ^ 2` is `2
 
 ```
 _struct -> STRUCT _id O_CUR_BRK _id (COMMA _id)* C_CUR_BRK
-_build  -> _id O_PAREN _expr (COMMA _expr)* C_PAREN
+_build  -> _id O_CUR_BRK _expr (COMMA _expr)* C_CUR_BRK
 _field  -> _prie DOT _id
 _shape  -> _prie AS _id
 ```
 
-A struct names the tapes of a run. `Point(10, 20)` is two tapes laid end to end — the same
+A struct names the tapes of a run. `Point{10, 20}` is two tapes laid end to end — the same
 value a reel of two characters is, since a reel is a run of tapes too. There is no header,
 no length and no tag, and a field is exactly one tape wide, so the field at index *i* sits
 at `i × tape_size`.
@@ -176,7 +176,7 @@ at `i × tape_size`.
 `struct` and `as` are **directives**: they exist for the compiler to turn a name into an
 index, to report a mistake where it was written, and to tell the language server what is
 there. Nothing about them reaches the IR or the binary — the flow is static and the fields
-are positional, so an index is all that is needed. `Point(97, 98)` and `"ab"` are the same
+are positional, so an index is all that is needed. `Point{97, 98}` and `"ab"` are the same
 value, and compare equal.
 
 `as` names the shape where the compiler cannot see it, which is above all when a value
@@ -186,7 +186,7 @@ check — there is nothing in a run of bytes to check against.
 ```
 struct Point { x, y };
 
-ident p = Point(10, 20);
+ident p = Point{10, 20};
 printd p.x;                  # 10
 printd p;                    # 10 20
 
@@ -194,12 +194,22 @@ ident area = defer {
   ident q = feed(0) as Point;
   q.x * q.y;
 };
-printd area(Point(10, 20));  # 200
+printd area(Point{10, 20});  # 200
 ```
 
+Braces build the value, as in Go, which is also what tells a construction apart from
+applying values to a scope — `Point(1, 2)` and `greet(1, 2)` are the same shape, `Point{1, 2}`
+is not. It is a construction only when the name was declared, since `if flag { … }` also puts
+a brace after a name.
+
+A struct name is not a value: writing it on its own is an error, because there is nothing to
+load under it.
+
 Because the directive exists to catch mistakes, these are compile errors: a field the struct
-does not have, a value whose shape nothing declared, and a construction that miscounts the
-fields. Reading a field past the end of a value is not one — it gives the neutral value, the
+does not have, a value whose shape nothing declared, a construction that miscounts the
+fields, and a reel of several characters in a field — a field is one tape, and quietly
+keeping the last character of `"Guilherme"` is exactly what the directive is there to
+prevent. Reading a field past the end of a value is not one — it gives the neutral value, the
 way `head` saturates and `feed` wraps.
 
 Reading a field binds tighter than any operator, so `p.x * p.y` multiplies two fields.

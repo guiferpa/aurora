@@ -283,7 +283,7 @@ func (sdn StructDeclaration) Next() Node {
 	return nil
 }
 
-// StructLiteral builds the run: `Point(10, 20)` is two tapes, one per field.
+// StructLiteral builds the run: `Point{10, 20}` is two tapes, one per field.
 type StructLiteral struct {
 	Name   string      `json:"name"`
 	Values []Node      `json:"values"`

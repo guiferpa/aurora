@@ -8,7 +8,7 @@ import (
 // A struct value is a run of tapes, one per field, and nothing else. These check it at the
 // answer, which is the only place the shape can be observed at all.
 func TestStructReadsItsFields(t *testing.T) {
-	const source = "struct Point { x, y };\nident p = Point(10, 20);\n"
+	const source = "struct Point { x, y };\nident p = Point{10, 20};\n"
 
 	cases := []struct {
 		source string
@@ -37,7 +37,7 @@ func TestStructReadsItsFields(t *testing.T) {
 // a struct and a program that builds the equivalent reel answer identically.
 func TestStructIsIndistinguishableFromAReel(t *testing.T) {
 	// "ab" is two characters, so the reel is two tapes holding 97 and 98.
-	viaStruct := output(t, "struct Pair { a, b };\nprintb Pair(97, 98);", 0)[0]
+	viaStruct := output(t, "struct Pair { a, b };\nprintb Pair{97, 98};", 0)[0]
 	viaReel := output(t, "printb \"ab\";", 0)[0]
 
 	if viaStruct != viaReel {
@@ -48,7 +48,7 @@ func TestStructIsIndistinguishableFromAReel(t *testing.T) {
 // Two structs of the same width are the same value, which follows from there being nothing
 // in the bytes that says which struct they came from.
 func TestStructsOfTheSameWidthAreEqual(t *testing.T) {
-	source := "struct Point { x, y };\nstruct Pair { a, b };\nprintd Point(1, 2) equals Pair(1, 2);"
+	source := "struct Point { x, y };\nstruct Pair { a, b };\nprintd Point{1, 2} equals Pair{1, 2};"
 	if got := output(t, source, 0)[0]; got != "1" {
 		t.Errorf("comparing two structs of the same bytes gave %s, want 1", got)
 	}
@@ -65,7 +65,7 @@ ident area = defer {
   p.x * p.y;
 };
 
-printd area(Point(10, 20));`
+printd area(Point{10, 20});`
 
 	if got := output(t, source, 0)[0]; got != "200" {
 		t.Errorf("area printed %s, want 200", got)
@@ -74,7 +74,7 @@ printd area(Point(10, 20));`
 
 // The annotation is an expression, so it does not need a name to hang on.
 func TestShapeAnnotatedInline(t *testing.T) {
-	source := "struct Point { x, y };\nident twice = defer { (feed(0) as Point).y * 2; };\nprintd twice(Point(3, 7));"
+	source := "struct Point { x, y };\nident twice = defer { (feed(0) as Point).y * 2; };\nprintd twice(Point{3, 7});"
 	if got := output(t, source, 0)[0]; got != "14" {
 		t.Errorf("printed %s, want 14", got)
 	}
@@ -90,7 +90,7 @@ func TestStructFieldHoldingADefer(t *testing.T) {
 	source := `struct Op { run, value };
 
 ident double = defer { feed(0) * 2; };
-ident op = Op(double, 21);
+ident op = Op{double, 21};
 
 printd double;
 printd op.run;`
@@ -104,7 +104,7 @@ printd op.run;`
 // The offset of a field is its index times the tape width, so the same source answers the
 // same at any width.
 func TestStructAcrossTapeSizes(t *testing.T) {
-	const source = "struct Point { x, y };\nident p = Point(10, 20);\nprintd p.x;\nprintd p.y;"
+	const source = "struct Point { x, y };\nident p = Point{10, 20};\nprintd p.x;\nprintd p.y;"
 
 	for _, tapeSize := range []int{1, 2, 8, 32} {
 		got := output(t, source, tapeSize)
@@ -127,11 +127,10 @@ func TestFieldPastTheEndIsNeutral(t *testing.T) {
 	}
 }
 
-// A field is one tape wide, so a value wider than one is cut to its last tape on the way in
-// — the same rule arithmetic follows. The run never stops being a whole number of tapes.
-func TestFieldsAreNormalisedToOneTape(t *testing.T) {
-	source := "struct Pair { a, b };\nprintd Pair(\"ab\", 1);"
-	if got := output(t, source, 0)[0]; got != "98 1" {
-		t.Errorf("printed %s, want \"98 1\" — the reel cut to its last tape", got)
+// A field is one tape wide, and one character is one tape, so a reel of one fits.
+func TestAOneCharacterReelFitsAField(t *testing.T) {
+	source := "struct Pair { a, b };\nprintd Pair{\"a\", 1};"
+	if got := output(t, source, 0)[0]; got != "97 1" {
+		t.Errorf("printed %s, want \"97 1\"", got)
 	}
 }

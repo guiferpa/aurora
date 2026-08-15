@@ -11,9 +11,27 @@ import (
 // tapes so the compiler can turn a name into an index, point at a mistake where it was
 // written, and tell the language server what is there.
 //
-// None of it outlives the parse. A struct value is a run of tapes and nothing else — the
-// same run a reel of the same length is — so the tables here are read while parsing and
+// None of it outlives the compilation. A struct value is a run of tapes and nothing else —
+// the same run a reel of the same length is — so the tables here are read while parsing and
 // dropped, and the tree carries indexes rather than names.
+
+// Directives are what the struct directives leave behind while a file is compiled: the
+// fields each struct declared, and the struct a name is read as.
+//
+// They belong to a source file rather than to a parse, which is what the REPL needs — there
+// a file is typed one line at a time, with a fresh parser for each, and a struct declared on
+// one line has to still be there on the next.
+type Directives struct {
+	Structs map[string][]string // struct name -> its fields, in order
+	Shapes  map[string]string   // identifier name -> the struct it is read as
+}
+
+func NewDirectives() *Directives {
+	return &Directives{
+		Structs: make(map[string][]string),
+		Shapes:  make(map[string]string),
+	}
+}
 
 // ParseStruct reads `struct Point { x, y };`.
 func (p *pr) ParseStruct() (Node, error) {
@@ -27,7 +45,7 @@ func (p *pr) ParseStruct() (Node, error) {
 		return nil, err
 	}
 	structName := string(name.GetMatch())
-	if _, declared := p.structs[structName]; declared {
+	if _, declared := p.directives.Structs[structName]; declared {
 		return nil, lexer.NewError(name, "struct %s is already declared at line %d and column %d",
 			structName, name.GetLine(), name.GetColumn())
 	}
@@ -66,33 +84,47 @@ func (p *pr) ParseStruct() (Node, error) {
 			structName, tok.GetLine(), tok.GetColumn())
 	}
 
-	p.structs[structName] = fields
+	p.directives.Structs[structName] = fields
 	return StructDeclaration{Name: structName, Fields: fields, Token: tok}, nil
 }
 
-// ParseStructLiteral reads `Point(10, 20)`: one value per field, in the declared order.
+// ParseStructLiteral reads `Point{10, 20}`: one value per field, in the declared order.
+//
+// The braces are what tell a construction from applying values to a scope, which parentheses
+// could not do on their own — `Point{1, 2}` and `greet(1, 2)` are the same shape. It is still
+// only a construction when the name was declared, because `if flag { … }` also puts a brace
+// after a name; declaring a struct called `flag` and testing on it is the one ambiguity left,
+// and it is the same one Go has.
 func (p *pr) ParseStructLiteral(id IdentifierLiteral) (Node, error) {
-	fields := p.structs[id.Value]
+	fields := p.directives.Structs[id.Value]
 
-	if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
 		return nil, err
 	}
 	values := make([]Node, 0, len(fields))
-	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != lexer.C_PAREN {
+	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != lexer.C_CUR_BRK {
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
+		// A field is one tape wide, so a reel of several characters would be cut down to its
+		// last one. That is visible right here, and silently keeping the "e" of "Guilherme"
+		// is exactly the kind of mistake the directive exists to point at.
+		if reel, ok := expr.(ReelLiteral); ok && len(reel.Value) > 1 {
+			return nil, lexer.NewError(reel.Token, "a field is one tape wide, but this reel is %d characters at line %d and column %d: a struct cannot hold text",
+				len(reel.Value), reel.Token.GetLine(), reel.Token.GetColumn())
+		}
+
 		values = append(values, expr)
 
-		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
+		if p.GetLookahead().GetTag().Id == lexer.C_CUR_BRK {
 			break
 		}
 		if _, err := p.EatToken(lexer.COMMA); err != nil {
 			return nil, err
 		}
 	}
-	closing, err := p.EatToken(lexer.C_PAREN)
+	closing, err := p.EatToken(lexer.C_CUR_BRK)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +182,7 @@ func (p *pr) parseField(expr Node) (Node, error) {
 			field, name.GetLine(), name.GetColumn())
 	}
 
-	fields := p.structs[shape]
+	fields := p.directives.Structs[shape]
 	index := slices.Index(fields, field)
 	if index < 0 {
 		return nil, lexer.NewError(name, "struct %s has no field named %s at line %d and column %d (it has %s)",
@@ -172,7 +204,7 @@ func (p *pr) parseShape(expr Node) (Node, error) {
 		return nil, err
 	}
 	structName := string(name.GetMatch())
-	if _, declared := p.structs[structName]; !declared {
+	if _, declared := p.directives.Structs[structName]; !declared {
 		return nil, lexer.NewError(name, "%s is not a declared struct at line %d and column %d",
 			structName, name.GetLine(), name.GetColumn())
 	}
@@ -189,7 +221,7 @@ func (p *pr) shapeOf(node Node) string {
 	case ShapedExpression:
 		return n.Struct
 	case IdentifierLiteral:
-		return p.shapes[n.Value]
+		return p.directives.Shapes[n.Value]
 	}
 	return ""
 }

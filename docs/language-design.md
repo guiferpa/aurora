@@ -285,13 +285,13 @@ A struct names the tapes of a run:
 ```javascript
 struct Point { x, y };
 
-ident p = Point(10, 20);
+ident p = Point{10, 20};
 printd p.x;   // 10
 printd p;     // 10 20 — the whole run
 ```
 
-`Point(10, 20)` is two tapes laid end to end. That is the same thing a reel of two
-characters is, and they are equal: `Pair(97, 98) equals "ab"` is true. There is no header,
+`Point{10, 20}` is two tapes laid end to end. That is the same thing a reel of two
+characters is, and they are equal: `Pair{97, 98} equals "ab"` is true. There is no header,
 no length, no tag — a struct is not a new kind of value, and a field is exactly one tape
 wide, so the field at index *i* sits at `i × tape_size`.
 
@@ -322,7 +322,7 @@ ident area = defer {
   ident q = feed(0) as Point;
   q.x * q.y;
 };
-printd area(Point(10, 20));   // 200
+printd area(Point{10, 20});   // 200
 ```
 
 `as` is a claim, not a cast: there is nothing in a run of bytes to check it against. A wrong
@@ -336,7 +336,11 @@ and column where they were written:
 
 - reading a field the struct does not have;
 - reading a field of a value whose shape nothing declared;
-- building with the wrong number of values.
+- building with the wrong number of values;
+- putting a reel of several characters in a field — a field is one tape wide, and keeping
+  only the last character of `"Guilherme"` is the kind of quiet wrong answer the directive
+  exists to stop;
+- using a struct name as a value: it is a directive, not something to load.
 
 Padding a short construction with the neutral value would match how `feed` and `head` never
 fail, and would give up the only thing the directive does.

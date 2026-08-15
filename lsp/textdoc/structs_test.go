@@ -10,7 +10,7 @@ import (
 const structSource = `struct Point { x, y };
 struct Named { label, value };
 
-ident p = Point(10, 20);
+ident p = Point{10, 20};
 ident n = feed(0) as Named;
 `
 
@@ -127,7 +127,7 @@ func TestHoverOnAFieldSaysWhichTapeItReads(t *testing.T) {
 // struct and as colour as keywords, a field as a property, and the struct's own name as a
 // struct — the three places a name is not just a value.
 func TestSemanticTokensForStructs(t *testing.T) {
-	tokens := decode(SemanticTokensFor("struct Point { x, y };\nident p = Point(1, 2);\nprintd p.x;\n"))
+	tokens := decode(SemanticTokensFor("struct Point { x, y };\nident p = Point{1, 2};\nprintd p.x;\n"))
 
 	// struct, then the name it declares, then the two fields it names.
 	want := []uint{SemanticKeyword, SemanticStruct, SemanticProperty, SemanticProperty}

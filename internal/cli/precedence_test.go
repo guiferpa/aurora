@@ -74,8 +74,8 @@ func TestPrecedenceLadder(t *testing.T) {
 		{source: "printd -3 ^ 2;", want: "9", rule: "unary over ^"},
 		// Reading a field binds tighter than any operator, so p.x * p.y multiplies the two
 		// fields rather than reading a field of a product.
-		{source: "struct Point { x, y };\nident p = Point(3, 4);\nprintd p.x * p.y;", want: "12", rule: ". over *"},
-		{source: "struct Point { x, y };\nident p = Point(3, 4);\nprintd p.x + p.y;", want: "7", rule: ". over +"},
+		{source: "struct Point { x, y };\nident p = Point{3, 4};\nprintd p.x * p.y;", want: "12", rule: ". over *"},
+		{source: "struct Point { x, y };\nident p = Point{3, 4};\nprintd p.x + p.y;", want: "7", rule: ". over +"},
 
 		// -(2 * 3) and (-2) * 3 are the same tape, so this one cannot tell the rungs apart —
 		// it is here because it is what caught the minus being discarded on the way to the

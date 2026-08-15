@@ -17,12 +17,14 @@ All notable changes and release notes for Aurora are documented here.
     ident p = feed(0) as Point;
     p.x * p.y;
   };
-  printd area(Point(10, 20));   # 200
+  printd area(Point{10, 20});   # 200
   ```
 
-  A struct value is not a new kind of value: `Point(10, 20)` is two tapes laid end to end, which is exactly what a reel of two characters is — no header, no length, no tag. `Pair(97, 98) equals "ab"` is true, and two structs of the same width are the same value.
+  Braces build the value, as in Go — which is also what tells a construction from applying values to a scope: `Point(1, 2)` and `greet(1, 2)` are the same shape, `Point{1, 2}` is not.
 
-  `struct` and `as` are **directives for whoever writes the source**: they exist so the compiler can turn a name into an index, report a mistake where it was written, and tell the language server what is there. None of it reaches the IR or the binary, because the flow is static, the fields are positional and each one is exactly a tape wide. So the errors are the substance: a field the struct does not have, a value whose shape nothing declared, and a construction that miscounts the fields all stop the compilation. Reading a field past the end of a value does not — it gives the neutral value, as `head` and `feed` do.
+  A struct value is not a new kind of value: `Point{10, 20}` is two tapes laid end to end, which is exactly what a reel of two characters is — no header, no length, no tag. `Pair{97, 98} equals "ab"` is true, and two structs of the same width are the same value.
+
+  `struct` and `as` are **directives for whoever writes the source**: they exist so the compiler can turn a name into an index, report a mistake where it was written, and tell the language server what is there. None of it reaches the IR or the binary, because the flow is static, the fields are positional and each one is exactly a tape wide. So the errors are the substance: a field the struct does not have, a value whose shape nothing declared, a construction that miscounts the fields, a struct name used as a value, and a reel of several characters in a field all stop the compilation — a field is one tape, and quietly keeping the `e` of `"Guilherme"` is exactly the wrong answer the directive is there to prevent. Reading a field past the end of a value does not — it gives the neutral value, as `head` and `feed` do.
 
   `as` names the shape where the compiler cannot see it, which is above all when a value crosses into a scope. It claims rather than checks: there is nothing in a run of bytes to check against.
 

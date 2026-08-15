@@ -127,6 +127,10 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 	}()
 
 	var instsBuffer []emitter.Instruction
+	// One session is one file typed a line at a time, and a parser is built per line, so the
+	// struct directives are held here: a struct declared on one line has to still be known
+	// on the next.
+	directives := parser.NewDirectives()
 	histWarned := false
 	for {
 		text, err := reader.ReadLine()
@@ -163,6 +167,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 			Tokens:        tokens,
 			EnableLogging: slices.Contains(loggers, "parser"),
 			TapeSize:      tapeSize,
+			Directives:    directives,
 		}).Parse()
 		if err != nil {
 			fmt.Println(err)

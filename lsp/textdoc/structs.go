@@ -20,7 +20,7 @@ type structShapes struct {
 }
 
 // scanStructs reads the directives out of a token stream: `struct Point { x, y }` for the
-// fields, and `ident p = Point(...)` or `... as Point` for what a name is read as.
+// fields, and `ident p = Point{...}` or `... as Point` for what a name is read as.
 func scanStructs(tokens []lexer.Token) structShapes {
 	found := structShapes{
 		fields: make(map[string][]string),
@@ -35,7 +35,7 @@ func scanStructs(tokens []lexer.Token) structShapes {
 				i = next
 			}
 		case lexer.IDENT:
-			// `ident p = Point(` and `ident p = <anything> as Point` both say what p is.
+			// `ident p = Point{` and `ident p = <anything> as Point` both say what p is.
 			if name, shape := readBinding(tokens, i); shape != "" {
 				found.shapes[name] = shape
 			}
@@ -84,8 +84,8 @@ func readBinding(tokens []lexer.Token, i int) (string, string) {
 				return name, string(tokens[j+1].GetMatch())
 			}
 		case lexer.ID:
-			// A construction: the name of a struct in front of a parenthesis.
-			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == lexer.O_PAREN {
+			// A construction: the name of a struct in front of a brace.
+			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == lexer.O_CUR_BRK {
 				return name, string(tokens[j].GetMatch())
 			}
 		}

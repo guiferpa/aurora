@@ -21,6 +21,8 @@ const (
 	SemanticOperator
 	SemanticVariable
 	SemanticFunction
+	SemanticProperty
+	SemanticStruct
 )
 
 // SemanticModifierDeclaration is bit 0 of the modifier set (the only modifier reported).
@@ -35,6 +37,8 @@ var SemanticTokenTypes = []string{
 	"operator",
 	"variable",
 	"function",
+	"property",
+	"struct",
 }
 
 // SemanticTokenModifiers is the modifier legend sent in the server capabilities.
@@ -129,7 +133,8 @@ func semanticTypeOf(tag string) (int, bool) {
 	switch tag {
 	case lexer.IDENT, lexer.IF, lexer.ELSE, lexer.BRANCH, lexer.DEFER,
 		lexer.PRINTB, lexer.PRINTC, lexer.PRINTD, lexer.ASSERT, lexer.FEED,
-		lexer.HEAD, lexer.TAIL, lexer.PUSH, lexer.PULL, lexer.TRUE, lexer.FALSE:
+		lexer.HEAD, lexer.TAIL, lexer.PUSH, lexer.PULL, lexer.TRUE, lexer.FALSE,
+		lexer.STRUCT, lexer.AS:
 		return SemanticKeyword, true
 	case lexer.NUMBER:
 		return SemanticNumber, true
@@ -148,10 +153,28 @@ func semanticTypeOf(tag string) (int, bool) {
 // classifyIdentifier refines an ID by looking at its neighbours: "name(" is a call and
 // "ident name" is a declaration.
 func classifyIdentifier(tokens []lexer.Token, i int) (tokenType, modifiers int) {
+	prev := prevMeaningful(tokens, i)
+
+	// A name after a dot is a field, and a name after struct or as is the struct itself —
+	// the only places a name means something other than a value.
+	if prev != nil {
+		switch prev.GetTag().Id {
+		case lexer.DOT:
+			return SemanticProperty, 0
+		case lexer.STRUCT:
+			return SemanticStruct, SemanticModifierDeclaration
+		case lexer.AS:
+			return SemanticStruct, 0
+		}
+	}
+	if insideStructDeclaration(tokens, i) {
+		return SemanticProperty, SemanticModifierDeclaration
+	}
+
 	if next := nextMeaningful(tokens, i); next != nil && next.GetTag().Id == lexer.O_PAREN {
 		return SemanticFunction, 0
 	}
-	if prev := prevMeaningful(tokens, i); prev != nil && prev.GetTag().Id == lexer.IDENT {
+	if prev != nil && prev.GetTag().Id == lexer.IDENT {
 		return SemanticVariable, SemanticModifierDeclaration
 	}
 	return SemanticVariable, 0
@@ -165,6 +188,42 @@ func nextMeaningful(tokens []lexer.Token, i int) lexer.Token {
 		return tokens[j]
 	}
 	return nil
+}
+
+// insideStructDeclaration says whether a name sits between the braces of `struct X { … }`,
+// where every name is a field being declared rather than a value.
+func insideStructDeclaration(tokens []lexer.Token, i int) bool {
+	depth := 0
+	for j := i - 1; j >= 0; j-- {
+		switch tokens[j].GetTag().Id {
+		case lexer.C_CUR_BRK:
+			depth++
+		case lexer.O_CUR_BRK:
+			if depth > 0 {
+				depth--
+				continue
+			}
+			// The brace that opens the block this name is in: a struct declared it when the
+			// two things in front of it are a name and the struct keyword.
+			name := prevMeaningfulIndex(tokens, j)
+			if name < 0 || tokens[name].GetTag().Id != lexer.ID {
+				return false
+			}
+			keyword := prevMeaningfulIndex(tokens, name)
+			return keyword >= 0 && tokens[keyword].GetTag().Id == lexer.STRUCT
+		}
+	}
+	return false
+}
+
+func prevMeaningfulIndex(tokens []lexer.Token, i int) int {
+	for j := i - 1; j >= 0; j-- {
+		if isLayout(tokens[j].GetTag().Id) {
+			continue
+		}
+		return j
+	}
+	return -1
 }
 
 func prevMeaningful(tokens []lexer.Token, i int) lexer.Token {

@@ -122,7 +122,7 @@ func TestHoverInfo(t *testing.T) {
 }
 
 func TestCompletionItemsIncludeKeywordsAndDocumentIdents(t *testing.T) {
-	items := CompletionItemsFor("main.ar", "ident total = 1;\n")
+	items := CompletionItemsFor("main.ar", "ident total = 1;\n", lsp.Position{Line: 1, Character: 0})
 
 	var hasKeyword, hasIdent bool
 	for _, item := range items {
@@ -142,7 +142,7 @@ func TestCompletionItemsIncludeKeywordsAndDocumentIdents(t *testing.T) {
 }
 
 func TestCompletionItemsSurviveBrokenSource(t *testing.T) {
-	if items := CompletionItemsFor("main.ar", "ident @@@"); len(items) == 0 {
+	if items := CompletionItemsFor("main.ar", "ident @@@", lsp.Position{Line: 0, Character: 9}); len(items) == 0 {
 		t.Error("keywords should still be offered while the document does not parse")
 	}
 }

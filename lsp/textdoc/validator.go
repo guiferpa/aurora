@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/guiferpa/aurora/lexer"
@@ -154,6 +155,14 @@ func HoverInfo(filename, source string, pos lsp.Position) string {
 	case lexer.TRUE, lexer.FALSE:
 		return "boolean: " + match
 	case lexer.ID:
+		// A struct name or a field read out of one: the directive is what says these are
+		// anything other than a name, so it is what hover has to answer with.
+		if shape, fields, index := scanStructs(analysis.Tokens).structAt(analysis.Tokens, token); shape != "" {
+			if index < 0 {
+				return "struct " + shape + "\nfields: " + strings.Join(fields, ", ")
+			}
+			return "field " + match + " of struct " + shape + "\nreads tape " + strconv.Itoa(index) + " of the run"
+		}
 		if analysis.AST == nil {
 			return "identifier: " + match
 		}
@@ -167,8 +176,17 @@ func HoverInfo(filename, source string, pos lsp.Position) string {
 }
 
 // CompletionItemsFor offers the language keywords plus the identifiers declared in the
-// document being edited.
-func CompletionItemsFor(filename, source string) []CompletionItem {
+// document being edited — or, right after a dot on a value with a known shape, the fields
+// of that struct and nothing else.
+//
+// It takes a position for that last case: what to offer depends on what sits in front of
+// the cursor, and a document being edited usually does not parse.
+func CompletionItemsFor(filename, source string, pos lsp.Position) []CompletionItem {
+	analysis := Analyze(filename, source)
+	if fields := scanStructs(analysis.Tokens).fieldsBefore(analysis.Tokens, analysis.Mapper.Offset(pos)); len(fields) > 0 {
+		return fieldCompletions(fields)
+	}
+
 	items := make([]CompletionItem, 0)
 	for _, tag := range lexer.GetProcessableTags() {
 		items = append(items, CompletionItem{
@@ -178,7 +196,6 @@ func CompletionItemsFor(filename, source string) []CompletionItem {
 		})
 	}
 
-	analysis := Analyze(filename, source)
 	if analysis.AST == nil {
 		return items
 	}

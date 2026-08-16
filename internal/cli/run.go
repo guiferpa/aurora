@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"io"
-	"slices"
 
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/logger"
@@ -29,17 +28,16 @@ func Run(ctx context.Context, in RunInput) error {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return err
 	}
-	program, err := Compile(in.Source, in.TapeSize, in.Loggers)
+	program, err := Compile(in.Source, in.TapeSize, in.Loggers, in.Stdout)
 	if err != nil {
 		return err
 	}
 	ReportWarnings(in.Warnings, in.Source, program.Warnings)
 
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		EnableLogging: slices.Contains(in.Loggers, "evaluator"),
-		Output:        in.Stdout,
-		Args:          ParseArgs(in.Args),
-		TapeSize:      in.TapeSize,
+		Output:   in.Stdout,
+		Args:     ParseArgs(in.Args),
+		TapeSize: in.TapeSize,
 	})
 	if in.Player != nil {
 		ev.SetPlayer(in.Player)

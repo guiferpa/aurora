@@ -33,12 +33,16 @@ func init() {
 			value := editor.Call("getValue").String()
 			bs := bytes.NewBufferString(value)
 			debug := document.Call("getElementById", "debug-mode").Get("checked").Bool()
-			tokens, err := lexer.New(lexer.NewLexerOptions{
-				EnableLogging: debug,
-			}).GetFilledTokens(bs.Bytes())
+			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs.Bytes())
 			if err != nil {
 				fmt.Println(err)
 				return nil
+			}
+			if debug {
+				if err := trace.Tokens(os.Stdout, tokens); err != nil {
+					errorWriter.Write([]byte(err.Error()))
+					return nil
+				}
 			}
 			ast, err := parser.New(parser.NewParserOptions{
 				Tokens: tokens,
@@ -68,7 +72,6 @@ func init() {
 			}
 
 			ev := evaluator.New(evaluator.NewEvaluatorOptions{
-				EnableLogging: debug,
 				// The print builtins each format their own reading of a tape, so what
 				// arrives here is the finished line and the page only has to show it.
 				Output: ToPlaygroundWriter("output"),

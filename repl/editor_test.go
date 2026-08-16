@@ -51,6 +51,12 @@ func TestEditorLineEditing(t *testing.T) {
 		{"line feed submits", "abc\n", "abc"},
 		{"unknown escape is ignored", "a\x1b[Zb" + keyEnterS, "ab"},
 		{"lone control chars are ignored", "a\x0bb" + keyEnterS, "ab"},
+		{"ctrl+d at the end of the line is a no-op", "abc\x04" + keyEnterS, "abc"},
+		{"delete at the end of the line is a no-op", "abc" + keyDel + keyEnterS, "abc"},
+		// A terminal in application cursor mode sends ESC O A rather than ESC [ A, and the
+		// numbered forms of home and end are what several terminals send instead of H and F.
+		{"application mode arrows", "ab\x1bOD\x1bODX" + keyEnterS, "Xab"},
+		{"numbered home and end", "ab\x1b[1~X\x1b[4~Y" + keyEnterS, "XabY"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := readLine(t, LoadHistory(""), tt.input)
@@ -110,6 +116,16 @@ func TestEditorHistoryNavigation(t *testing.T) {
 		{"down at the end keeps the current line", keyDown + "x;" + keyEnterS, "x;"},
 		{"recalled line is editable", keyUp + "\x7f\x7f" + "2;" + keyEnterS, "a + 2;"},
 		{"typed line is stashed and restored", "part" + keyUp + keyDown + keyEnterS, "part"},
+		// Up at the oldest entry changes nothing but still takes the cursor to the end, which
+		// is the one place a key that does nothing still moves something.
+		{
+			"up at the oldest leaves the cursor at the end",
+			keyUp + keyUp + keyHome + keyUp + "X" + keyEnterS,
+			"ident a = 1;X",
+		},
+		// Down with nothing ahead restores the stash, and the stash is only written on the
+		// first Up — so this drops the line being typed. It is what the editor does today.
+		{"down with nothing to recall drops the line", "part" + keyDown + keyEnterS, ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := readLine(t, newHist(t), tt.input)

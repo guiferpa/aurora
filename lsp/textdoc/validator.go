@@ -151,7 +151,7 @@ func HoverInfo(filename, source string, pos lsp.Position) string {
 	case lexer.NUMBER:
 		return "number: " + match
 	case lexer.STRING:
-		return "reel (string): " + match
+		return "text: " + match + "\nits bytes, in one tape"
 	case lexer.TRUE, lexer.FALSE:
 		return "boolean: " + match
 	case lexer.ID:
@@ -266,8 +266,8 @@ func describeNode(node parser.Node) string {
 		return "number"
 	case parser.BooleanLiteral:
 		return "boolean"
-	case parser.ReelLiteral:
-		return "reel (string)"
+	case parser.TextLiteral:
+		return "text"
 	case parser.IdentifierLiteral:
 		return "identifier"
 	case parser.TapeBracketExpression:

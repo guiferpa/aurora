@@ -14,13 +14,9 @@ func tape(size int, value uint64) []byte {
 	return byteutil.PaddingTape(byteutil.FromUint64(value), size)
 }
 
-// reel concatenates one tape per character, which is what a string is.
-func reel(size int, text string) []byte {
-	out := make([]byte, 0, len(text)*size)
-	for _, char := range text {
-		out = append(out, tape(size, uint64(char))...)
-	}
-	return out
+// text builds the tape a text literal compiles to: its bytes, right aligned.
+func text(size int, s string) []byte {
+	return byteutil.PaddingTape([]byte(s), size)
 }
 
 // The three builtins are three readings of the same tape. These are the readings named in
@@ -41,28 +37,32 @@ func TestTheThreeReadingsOfATape(t *testing.T) {
 			chars: ",",
 		},
 		{
-			// 514 is beyond a byte, which is the point: a character is the number the
-			// tape holds, not the byte at its end.
-			name:  "514 is a letter outside ASCII",
-			value: tape(8, 514),
-			bytes: "[0 0 0 0 0 0 2 2]",
-			decs:  "514",
-			chars: "Ȃ",
+			// A number and a word are the same tape: 18537 is the bytes 72 and 105, which
+			// spell Hi. Nothing in the value says which reading was meant.
+			name:  "a number is a word is a tape",
+			value: tape(8, 18537),
+			bytes: "[0 0 0 0 0 0 72 105]",
+			decs:  "18537",
+			chars: "Hi",
 		},
 		{
-			name:  "a reel reads tape by tape",
-			value: reel(8, "hi"),
-			bytes: "[0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 105]",
-			decs:  "104 105",
+			name:  "a word is one tape",
+			value: text(8, "hi"),
+			bytes: "[0 0 0 0 0 0 104 105]",
+			decs:  "26729",
 			chars: "hi",
 		},
 		{
-			name:  "an accented reel survives whole",
-			value: reel(8, "café"),
-			decs:  "99 97 102 233",
+			// Which is what keeps an accent whole: café is five UTF-8 bytes.
+			name:  "an accented word survives whole",
+			value: text(8, "café"),
+			bytes: "[0 0 0 99 97 102 195 169]",
+			decs:  "426835887017",
 			chars: "café",
 		},
 		{
+			// A number is bytes too, and the byte 44 is a comma. Reading it back as text is
+			// reading those bytes.
 			name:  "a tape of zeros is the neutral value",
 			value: byteutil.FalseTape(8),
 			bytes: "[0 0 0 0 0 0 0 0]",
@@ -96,8 +96,7 @@ func TestTheThreeReadingsOfATape(t *testing.T) {
 	}
 }
 
-// A character outside ASCII used to be dropped: the reader kept only the last byte of the
-// tape and wrote it when it fell between 32 and 126.
+// Text outside ASCII is its UTF-8 bytes, and reading gives them back unchanged.
 func TestTextOfKeepsCharactersBeyondASCII(t *testing.T) {
 	cases := []struct {
 		name string
@@ -113,7 +112,7 @@ func TestTextOfKeepsCharactersBeyondASCII(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := TextOf(reel(8, tc.text), 8); got != tc.text {
+			if got := TextOf(text(32, tc.text), 32); got != tc.text {
 				t.Errorf("got %q, want %q", got, tc.text)
 			}
 		})
@@ -121,13 +120,24 @@ func TestTextOfKeepsCharactersBeyondASCII(t *testing.T) {
 }
 
 func TestTextOfAcrossTapeSizes(t *testing.T) {
-	// A one-byte tape only names characters up to 255, so this is ASCII.
-	if got := TextOf(reel(1, "hi"), 1); got != "hi" {
-		t.Errorf("one-byte tapes: got %q, want %q", got, "hi")
+	// A tape holds as many bytes as it is wide, and text is bytes.
+	if got := TextOf(text(2, "hi"), 2); got != "hi" {
+		t.Errorf("two-byte tapes: got %q, want %q", got, "hi")
 	}
-	// Two bytes reach beyond it.
-	if got := TextOf(reel(2, "café"), 2); got != "café" {
-		t.Errorf("two-byte tapes: got %q, want %q", got, "café")
+	if got := TextOf(text(8, "café"), 8); got != "café" {
+		t.Errorf("eight-byte tapes: got %q, want %q", got, "café")
+	}
+}
+
+// A run of tapes reads as one word: the zeros that pad each tape are dropped, so a struct
+// of one-character fields still spells something.
+func TestTextOfAcrossARunOfTapes(t *testing.T) {
+	run := make([]byte, 0, 16)
+	run = append(run, text(8, "a")...)
+	run = append(run, text(8, "b")...)
+
+	if got := TextOf(run, 8); got != "ab" {
+		t.Errorf("got %q, want %q", got, "ab")
 	}
 }
 
@@ -150,26 +160,21 @@ func TestReadingAnEmptyValue(t *testing.T) {
 	}
 }
 
-// A number naming no character has nothing to write, and must not corrupt what surrounds
-// it in the output.
-func TestTextOfSkipsWhatNamesNoCharacter(t *testing.T) {
-	value := make([]byte, 0)
-	value = append(value, tape(8, 'a')...)
-	value = append(value, tape(8, 0xD800)...) // a surrogate half: not a character on its own
-	value = append(value, tape(8, 'b')...)
-
-	if got := TextOf(value, 8); got != "ab" {
-		t.Errorf("got %q, want %q", got, "ab")
+// Bytes that are not text have nothing to write. The value is still whatever it is — this
+// is a reading, and one reading answering nothing says nothing about the others.
+func TestTextOfBytesThatAreNotText(t *testing.T) {
+	if got := TextOf([]byte{0xff, 0xfe}, 8); got != "" {
+		t.Errorf("got %q, want nothing", got)
 	}
 }
 
 func TestAssertFunction(t *testing.T) {
-	passed, err := AssertFunction(byteutil.TrueTape(8), reel(8, "unused"), 8)
+	passed, err := AssertFunction(byteutil.TrueTape(8), "unused")
 	if !passed || err != nil {
 		t.Errorf("a true condition passes: got (%v, %v)", passed, err)
 	}
 
-	passed, err = AssertFunction(byteutil.FalseTape(8), reel(8, "boom"), 8)
+	passed, err = AssertFunction(byteutil.FalseTape(8), "boom")
 	if passed {
 		t.Error("a false condition fails")
 	}
@@ -184,7 +189,7 @@ func TestAssertFunction(t *testing.T) {
 func TestAssertFunctionWithNarrowTapes(t *testing.T) {
 	for _, size := range []int{1, 2, 4, 8, 32} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
-			_, err := AssertFunction(byteutil.FalseTape(size), reel(size, "boom"), size)
+			_, err := AssertFunction(byteutil.FalseTape(size), "boom")
 			if err == nil {
 				t.Fatal("expected a failure")
 			}
@@ -196,7 +201,7 @@ func TestAssertFunctionWithNarrowTapes(t *testing.T) {
 }
 
 func TestAssertFunctionWithNoMessage(t *testing.T) {
-	_, err := AssertFunction(byteutil.FalseTape(8), nil, 8)
+	_, err := AssertFunction(byteutil.FalseTape(8), "")
 	if err == nil {
 		t.Fatal("expected a failure")
 	}
@@ -213,7 +218,7 @@ func TestTapesOf(t *testing.T) {
 		want     int
 	}{
 		{name: "one tape", value: tape(8, 1), tapeSize: 8, want: 1},
-		{name: "a reel of three", value: reel(8, "abc"), tapeSize: 8, want: 3},
+		{name: "a run of three", value: append(append(tape(8, 1), tape(8, 2)...), tape(8, 3)...), tapeSize: 8, want: 3},
 		{name: "narrower than a tape is still one", value: []byte{1, 2}, tapeSize: 8, want: 1},
 		{name: "not a whole number of tapes is one", value: make([]byte, 9), tapeSize: 8, want: 1},
 		{name: "empty", value: nil, tapeSize: 8, want: 0},

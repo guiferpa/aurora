@@ -171,18 +171,23 @@ func TestBooleansInArithmetic(t *testing.T) {
 	}
 }
 
-// A reel is a run of tapes, so its width follows the tape size too.
-func TestReelTapesFollowTheTapeSize(t *testing.T) {
-	for _, size := range []int{1, 8} {
+// Text is a tape holding its bytes, so it is one tape at every width, and how much text
+// fits is how wide the tape is.
+func TestTextIsATapeAtEveryWidth(t *testing.T) {
+	for _, size := range []int{2, 8, 32} {
 		t.Run(strconv.Itoa(size), func(t *testing.T) {
 			got := runWithTapeSize(t, `"hi";`, size)
-			if len(got) != 2*size {
-				t.Errorf(`"hi" produced %d bytes, want %d (two tapes)`, len(got), 2*size)
+			if len(got) != size {
+				t.Errorf(`"hi" produced %d bytes, want %d (one tape)`, len(got), size)
 			}
-			// Arithmetic on a reel uses its last tape: "a" is 97.
+			if want := byteutil.PaddingTape([]byte("hi"), size); !bytes.Equal(got, want) {
+				t.Errorf(`"hi" = %v, want %v`, got, want)
+			}
+
+			// Text of one character is the tape its number is, so arithmetic needs no rule
+			// of its own: 1 + "a" is 98.
 			sum := runWithTapeSize(t, `1 + "a";`, size)
-			want := byteutil.PaddingTape([]byte{98}, size)
-			if !bytes.Equal(sum, want) {
+			if want := byteutil.PaddingTape([]byte{98}, size); !bytes.Equal(sum, want) {
 				t.Errorf(`1 + "a" = %v, want %v`, sum, want)
 			}
 		})

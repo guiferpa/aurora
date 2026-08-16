@@ -25,7 +25,7 @@ Aurora is a **study-focused** language that compiles to the Ethereum Virtual Mac
   - [Run from file](#run-from-file)
   - [Compile to EVM bytecode](#compile-to-evm-bytecode)
   - [Writing some code](#writing-some-code)
-- [Language Design](docs/language-design.md) (Expressions only, Untyped, Tapes, Reels, Arithmetic)
+- [Language Design](docs/language-design.md) (Expressions only, Untyped, Tapes, Text, Arithmetic)
 - [Testing](docs/testing.md) — `assert` and `aurora test`
 - [Editor support](docs/lsp.md) — `aurorals` language server: coloring, diagnostics, hover, completion
 - [Try it out](#try-it-out) — [Playground](#playground)
@@ -186,13 +186,13 @@ printb pull t 4;       // shifts left, 4 enters at the right
 printb head t 2;       // the first two significant bytes
 ```
 
-For more — tapes, reels, branches, EVM-style callables — dig into the [examples folder](https://github.com/guiferpa/aurora/tree/main/examples) (e.g. `examples/evm/ident.ar`, `examples/simple_math.ar`). What's in and what's not yet: [CHANGELOG.md](CHANGELOG.md).
+For more — tapes, text, branches, EVM-style callables — dig into the [examples folder](https://github.com/guiferpa/aurora/tree/main/examples) (e.g. `examples/evm/ident.ar`, `examples/simple_math.ar`). What's in and what's not yet: [CHANGELOG.md](CHANGELOG.md).
 
 ## Language Design
 
-Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays), and strings (reels) are all byte arrays. Full reference:
+Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays) and text are all the same kind of value. Full reference:
 
-**[→ Language Design (Untyped, Tapes, Reels, Arithmetic)](docs/language-design.md)**
+**[→ Language Design (Untyped, Tapes, Text, Arithmetic)](docs/language-design.md)**
 
 <details>
 <summary>Quick reference</summary>
@@ -200,10 +200,10 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 - **Values** = tapes: a fixed run of bytes, 8 by default (`ident a = 3` → `[0,0,0,0,0,0,0,3]`). Booleans are tapes too: `true` is the same bytes as `1`.
 - **Tape size** is a compiler parameter: `tape_size` in `aurora.toml` or `--tape-size` (1 to 32, flag wins). A literal that does not fit is a compile-time error.
 - **Tapes** are shift registers: `pull` shifts left (value in at the right), `push` shifts right (value in at the left), `head`/`tail` slice the significant bytes; index `n` is modulo the tape size.
-- **Reels**: strings are runs of tapes, one per character.
+- **Text** is one more way of writing a tape, next to `1`, `[1, 2]` and `true`: `"hi"` is the tape holding its bytes. So `"a"` is 97, comparing text is comparing bytes, and how much text fits is how wide a tape is.
 - **Printing** is three readings of the same tape: `printb` the bytes, `printd` the number they spell, `printc` the character that number names, as UTF-8.
 - **Arithmetic**: a tape read as an unsigned big-endian integer, wrapping at the tape width.
-- **Structs** group values by naming the tapes of a run: `struct Point { x, y };` then `Point{10, 20}`. The names are a compile-time directive — a struct value is the same bytes as a reel of the same length, and nothing about the declaration reaches the binary.
+- **Structs** group values by naming the tapes of a run: `struct Point { x, y };` then `Point{10, 20}`. The names are a compile-time directive — a struct value is a run of tapes with nothing in it saying a struct built it, and nothing about the declaration reaches the binary.
 - **No signs**: a byte runs from 0 to 255 and no bit marks a value negative, so the language has no negative numbers. `-x` is x taken away from zero and wrapped — `-5 + 5` is 0, but `-5 bigger 5` is true.
 </details>
 

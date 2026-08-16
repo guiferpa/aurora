@@ -32,7 +32,7 @@ func TapeSize(size int) int {
 
 // PaddingTape returns bs as a tape of exactly size bytes: zero-padded on the left when
 // shorter, and cut to the last size bytes when longer — which is what keeps arithmetic on
-// a reel working on its last tape.
+// a run of tapes working on its last one.
 func PaddingTape(bs []byte, size int) []byte {
 	size = TapeSize(size)
 	if len(bs) == size {
@@ -57,7 +57,7 @@ func LeadingTape(bs []byte, size int) []byte {
 }
 
 // ToUint256 reads bs as an unsigned big-endian integer, normalizing to a tape first so a
-// reel contributes only its last tape.
+// run of tapes contributes only its last one.
 func ToUint256(bs []byte, size int) *uint256.Int {
 	return new(uint256.Int).SetBytes(PaddingTape(bs, size))
 }

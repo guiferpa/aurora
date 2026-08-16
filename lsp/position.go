@@ -9,7 +9,7 @@ import (
 //
 // The protocol counts lines from zero and characters in UTF-16 code units, while the
 // lexer reports 1-based lines and byte columns. Any source holding a non-ASCII rune (a
-// reel like "áé") drifts if byte columns are handed to a client directly, so positions
+// text like "áé") drifts if byte columns are handed to a client directly, so positions
 // are always derived here from the document text and a token's byte offset
 // (lexer.Token.GetCursor).
 type Mapper struct {

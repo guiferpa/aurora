@@ -30,11 +30,11 @@ What changes with a narrow tape is worth saying out loud:
 
 - **Arithmetic wraps at the tape width.** With `tape_size = 1`, `255 + 1` is `0` and `0 - 1` is `255`. A tape of N bytes holds values modulo 2^(8N).
 - **`head` and `tail` take the index modulo the width**, so with one byte the index is always 0.
-- **A reel is a run of tapes**, so with one byte per tape a string is one byte per character — plain ASCII.
+- **Text is a tape**, so the width is how much text fits: one byte per tape holds one character, thirty-two hold thirty-two of ASCII.
 
 ## Everything is a tape
 
-Numbers, conditions, reels, the neutral value and **deferred scopes** are all tapes of `tape_size` bytes. A `defer` produces the index of its scope, so `defer { }` is a tape holding 0 — the same bytes as `false` and as the number `0`.
+Numbers, conditions, text, the neutral value and **deferred scopes** are all tapes of `tape_size` bytes. A `defer` produces the index of its scope, so `defer { }` is a tape holding 0 — the same bytes as `false` and as the number `0`.
 
 That is the bargain of an untyped language: values that are the same bytes are the same value, and calling a number equal to a scope's index calls that scope.
 
@@ -183,37 +183,51 @@ ident h = pull [1, 2] [3, 4];  // Concatenate: [0, 0, 0, 0, 1, 2, 3, 4] (signifi
 
 Remember: Tapes are just a convenient way to create and work with 8-byte arrays. They're not a separate type - they're the same 8-byte arrays that Aurora uses for everything!
 
-## Reels
+## Text
 
-Reels are arrays of tapes, where each character in a string is represented as a tape (8 bytes). In Aurora, strings are reels - a more structured way to work with sequences of characters.
-
-### What are Reels?
-
-A reel is an array of tapes, where each tape represents a single character. This means:
-- **Every string is a reel**: When you write `"hello"`, it becomes a reel with 5 tapes (one for each character)
-- **Each character is a tape**: Each character is stored as an 8-byte tape
-- **Reels can contain multiple tapes**: A string like `"hello"` contains 5 tapes concatenated together
-
-### Creating Strings (Reels)
+Text is one more way of writing a tape, next to `1`, `0x2a`, `[1, 2]` and `true`. `"hi"` is
+the tape holding the bytes of `h` and `i` — not a kind of value of its own.
 
 ```javascript
-// Single character string (reel with one tape)
-ident a = "a";  // One tape: [0, 0, 0, 0, 0, 0, 0, 97]
-
-// Multi-character string (reel with multiple tapes)
-ident greeting = "hello";  // Five tapes concatenated:
-                           // [0,0,0,0,0,0,0,104] [0,0,0,0,0,0,0,101] [0,0,0,0,0,0,0,108] [0,0,0,0,0,0,0,108] [0,0,0,0,0,0,0,111]
-
-// Empty string (reel with one empty tape)
-ident empty = "";  // One empty tape: [0, 0, 0, 0, 0, 0, 0, 0]
+ident greeting = "hi";
+printb greeting;   // [0 0 0 0 0 0 104 105]
+printd greeting;   // 26729 — the number those bytes spell
+printc greeting;   // hi
 ```
 
-### Key Points
+### What follows from that
 
-- **Strings are reels**: Every string literal `"text"` creates a reel (array of tapes)
-- **Each character is a tape**: Each character in the string becomes an 8-byte tape
-- **Reels store complete strings**: Unlike single tapes, reels preserve all characters in a string
-- **Arithmetic works with reels**: When you do arithmetic with a string, it uses the last tape (last character) as the value
+- **`"a"` is 97.** A text of one character is the tape its number is, so `1 + "a"` is 98 and
+  needs no rule of its own.
+- **Comparing text is comparing bytes.** `"hi" equals 26729` is true, because they are the
+  same tape. Nothing in a value says it was written as text.
+- **The bytes are UTF-8.** `"café"` is five bytes, and `printc` gives it back whole.
+- **`""` is the neutral value**, a tape of zeros, like `false` and `0`.
+- **A tape holds `tape_size` bytes, so that is how much text fits.** Nine bytes at the
+  default eight is a compile error, reported where the text was written — the same rule a
+  number literal that does not fit follows. `--tape-size 16` makes room for sixteen.
+
+### Text longer than a tape
+
+There is none yet. Text that does not fit is rejected rather than split, and the way to hold
+more is a wider tape. Holding text of any length needs something the language does not have:
+building a value at runtime, and reading a position out of it with an index computed while
+it runs — `head` and `tail` take a literal.
+
+### Reels, and why they are gone
+
+Text used to be a **reel**: one tape per character, so `"hi"` was two tapes and 16 bytes at
+the default width, and `"Gui"` was 96 bytes at `--tape-size 32`. It was a way of holding more
+than a tape could, and it cost `tape_size - 1` bytes of zero for every character — a cost
+that grew exactly when the tape got wider.
+
+It also made text the one value that was not a tape, in a language whose premise is that
+everything is. Removing it made `"a"` and `97` the same value rather than a coincidence of
+one-character strings, and made text fit in a struct field, which a reel never could.
+
+**Breaking:** `printc` of a number is now its bytes as UTF-8, not the character that number
+names — `printc 44` is still `,`, but a character above ASCII is written as text rather than
+as its code point.
 
 ### Three Readings of a Tape
 
@@ -229,8 +243,9 @@ reading the same bytes, and there is one builtin per reading:
 Nothing is converted between them, and none of them changes the value: they are three ways of
 looking at it.
 
-A reel is a run of tapes, so each builtin reads it tape by tape — every byte for `printb`, one
-number per tape for `printd`, one character per tape for `printc`.
+A run of tapes — a struct, say — is read the same way: every byte for `printb`, one number
+per tape for `printd`, and for `printc` the bytes of the whole run, with the zeros that pad
+each tape dropped.
 
 ```javascript
 ident greeting = "hello";
@@ -269,15 +284,6 @@ ident empty = "";
 printc empty;    // Prints: (empty line)
 ```
 
-### Relationship Between Reels and Tapes
-
-- **Every reel is an array of tapes**: A reel is fundamentally a concatenation of multiple 8-byte tapes
-- **Not every tape is a reel**: A single tape (8 bytes) is not a reel - it's just a tape
-- **Reels preserve all characters**: Unlike single tapes which are limited to 8 bytes, reels can store multiple characters
-- **Arithmetic uses the last tape**: When doing arithmetic with a reel, only the last tape (last character) is used
-
-Remember: Strings in Aurora are reels - arrays of tapes where each character is a tape. This allows Aurora to work with text while maintaining its untyped, byte-array philosophy!
-
 ## Structs
 
 A struct names the tapes of a run:
@@ -290,10 +296,9 @@ printd p.x;   // 10
 printd p;     // 10 20 — the whole run
 ```
 
-`Point{10, 20}` is two tapes laid end to end. That is the same thing a reel of two
-characters is, and they are equal: `Pair{97, 98} equals "ab"` is true. There is no header,
-no length, no tag — a struct is not a new kind of value, and a field is exactly one tape
-wide, so the field at index *i* sits at `i × tape_size`.
+`Point{10, 20}` is two tapes laid end to end, with nothing in it saying a struct built it:
+no header, no length, no tag. A struct is not a new kind of value, and a field is exactly one
+tape wide, so the field at index *i* sits at `i × tape_size`.
 
 ### The directives die at compile time
 
@@ -337,9 +342,6 @@ and column where they were written:
 - reading a field the struct does not have;
 - reading a field of a value whose shape nothing declared;
 - building with the wrong number of values;
-- putting a reel of several characters in a field — a field is one tape wide, and keeping
-  only the last character of `"Guilherme"` is the kind of quiet wrong answer the directive
-  exists to stop;
 - using a struct name as a value: it is a directive, not something to load.
 
 Padding a short construction with the neutral value would match how `feed` and `head` never

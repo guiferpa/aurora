@@ -1,0 +1,51 @@
+#- Text
+#-
+#- Text is one more way of writing a tape, next to 1, 0x2a, [1, 2] and true.
+#- "hi" is the tape holding the bytes of h and i — not a kind of value of its
+#- own, and nothing in it says it was written as text.
+#-
+#- Which is why "a" and 97 are the same tape, and why comparing text is
+#- comparing bytes, with no rule of its own.
+#-
+#- Run: aurora run examples/text.ar
+#-
+#- Output:
+#-   [0 0 0 0 0 0 104 105]
+#-   26729
+#-   hi
+#-   97
+#-   97
+#-   1
+#-   b
+#-   [0 0 0 0 0 0 195 169]
+#-   é
+#-   [0 0 0 0 0 0 0 0]
+#-   12345678
+
+ident greeting = "hi";
+
+#- The same tape read three ways.
+printb greeting;
+printd greeting;
+printc greeting;
+
+#- A text of one character is the number of that character. Nothing was
+#- converted: it is the same tape.
+printd "a";
+printd 97;
+printd "a" equals 97;
+
+#- So arithmetic on text needs no rule of its own.
+printc 1 + "a";
+
+#- The bytes are UTF-8, so an accent is the two bytes it is.
+printb "é";
+printc "é";
+
+#- Empty text is no bytes, which is the neutral value.
+printb "";
+
+#- A tape holds tape_size bytes, so that is how much text fits. This is eight
+#- bytes and fits the default; nine would be a compile error, and running with
+#- --tape-size 16 would make room for sixteen.
+printc "12345678";

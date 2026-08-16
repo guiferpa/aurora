@@ -1,8 +1,8 @@
 #- Structs
 #-
 #- A struct groups values by giving names to the tapes of a run. It is not a new
-#- kind of value: Point{10, 20} is two tapes laid end to end, which is exactly
-#- what a reel of two characters is. There is no header, no length and no tag.
+#- kind of value: Point{10, 20} is two tapes laid end to end, and nothing in it
+#- says a struct built it. There is no header, no length and no tag.
 #-
 #- So `struct` and `as` are directives for whoever writes the source. They let
 #- the compiler turn a name into an index, point at a mistake where it was
@@ -19,8 +19,7 @@
 #-   200
 #-   14
 #-   1
-#-   1
-#-   97 98
+#-   24930 98
 #-   0
 
 struct Point { x, y };
@@ -55,15 +54,9 @@ printd twice(Point{3, 7});
 struct Pair { a, b };
 printd Point{1, 2} equals Pair{1, 2};
 
-#- Which is the same reason a struct and a reel of the same length are equal:
-#- "ab" is two tapes holding 97 and 98.
-printd Pair{97, 98} equals "ab";
-
-#- A field is one tape wide, and one character is one tape, so a reel of one
-#- character fits. A longer one does not, and it does not get quietly cut down
-#- to its last character either: Pair{"ab", 1} is a compile error, because a
-#- struct cannot hold text.
-printd Pair{"a", 98};
+#- A field is a tape, and text is a tape, so text goes in a field like anything
+#- else — as much of it as a tape holds.
+printd Pair{"ab", 98};
 
 #- Reading past the end gives the neutral value instead of stopping the program,
 #- the way head saturates and feed wraps. A claim can be wrong.

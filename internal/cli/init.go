@@ -25,6 +25,9 @@ version = "0.1.0"
 source = "src/main.ar"
 # Path where the compiled binary is written. Name matches the source filename (without extension). Used by 'aurora build' when no -o output is passed.
 binary = "bin/main"
+# Bytes per value. Every value is a tape this wide, text included — and the greeting in
+# src/main.ar is eleven bytes, which does not fit the default eight.
+tape_size = 16
 `
 
 // InitSourceTemplate is the program a new project starts from.
@@ -53,14 +56,14 @@ const InitTestTemplate = `#- Tests for main.ar.
 #- A test belongs to the source file of the same name: this file tests main.ar,
 #- which runs first, so greet is in scope here without being imported.
 #-
-#- A reel is a run of tapes, one per character, and arithmetic on one uses its
-#- last tape — so this checks that the greeting ends in the "e" of abide.
+#- Text is a tape holding its bytes, so two texts are equal when their bytes are
+#- — no special rule for comparing them.
 #-
 #- Run them with:
 #-
 #-   aurora test
 
-assert(greet() equals 101, "greet says its piece");
+assert(greet() equals "Abidu abide", "greet says its piece");
 `
 
 // InitInput is the input for the Init handler.

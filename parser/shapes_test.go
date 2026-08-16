@@ -93,23 +93,37 @@ func TestParseBooleanShape(t *testing.T) {
 	}
 }
 
-// A reel is a run of tapes, one per character.
-func TestParseReelShape(t *testing.T) {
-	reel := first[ReelLiteral](t, `"hi";`)
+// Text is one more way of writing a tape: its bytes, right aligned, like every other value.
+func TestParseTextShape(t *testing.T) {
+	text := first[TextLiteral](t, `"hi";`)
 
-	if len(reel.Value) != 2 {
-		t.Fatalf("%q produced %d tapes, want 2", "hi", len(reel.Value))
-	}
-	if got := reel.Value[0][len(reel.Value[0])-1]; got != 'h' {
-		t.Errorf("first tape ends in %d, want %d", got, 'h')
-	}
-	if got := reel.Value[1][len(reel.Value[1])-1]; got != 'i' {
-		t.Errorf("second tape ends in %d, want %d", got, 'i')
+	want := byteutil.PaddingTape([]byte("hi"), byteutil.DefaultTapeSize)
+	if string(text.Value) != string(want) {
+		t.Errorf(`"hi" = %v, want %v`, text.Value, want)
 	}
 
-	empty := first[ReelLiteral](t, `"";`)
-	if len(empty.Value) != 1 {
-		t.Errorf("an empty reel has %d tapes, want 1", len(empty.Value))
+	// Which makes a text of one character the same tape as its number.
+	one := first[TextLiteral](t, `"a";`)
+	if string(one.Value) != string(byteutil.PaddingTape([]byte{97}, byteutil.DefaultTapeSize)) {
+		t.Errorf(`"a" = %v, want the tape holding 97`, one.Value)
+	}
+
+	// An empty text is no bytes, which is the neutral value.
+	empty := first[TextLiteral](t, `"";`)
+	if string(empty.Value) != string(byteutil.FalseTape(byteutil.DefaultTapeSize)) {
+		t.Errorf(`"" = %v, want a tape of zeros`, empty.Value)
+	}
+}
+
+// A tape holds tape_size bytes, so text longer than that is rejected where it was written —
+// the same rule a number literal that does not fit follows.
+func TestTextLongerThanATapeIsRejected(t *testing.T) {
+	_, err := parseSource(t, `"123456789";`, "main.ar")
+	if err == nil {
+		t.Fatal("expected a compile error")
+	}
+	if !strings.Contains(err.Error(), "text is 9 bytes but a tape holds 8") {
+		t.Errorf("error = %q", err)
 	}
 }
 
@@ -292,8 +306,8 @@ func TestParseAssertShape(t *testing.T) {
 	if _, ok := assertion.Condition.(RelativeExpression); !ok {
 		t.Errorf("condition is %T, want a comparison", assertion.Condition)
 	}
-	if _, ok := assertion.Message.(ReelLiteral); !ok {
-		t.Errorf("message is %T, want a reel", assertion.Message)
+	if assertion.Message == "" {
+		t.Error("the message is empty, want the text that was written")
 	}
 }
 

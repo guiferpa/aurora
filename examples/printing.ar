@@ -6,10 +6,10 @@
 #-
 #-   printb   the bytes themselves
 #-   printd   the number they spell, big-endian
-#-   printc   the character that number names, written as UTF-8
+#-   printc   the text those bytes are, in UTF-8
 #-
 #- Nothing is converted between them. The tape holding 44 is one tape; read as
-#- bytes it is [0 0 0 0 0 0 0 44], as a number 44, as a character a comma.
+#- bytes it is [0 0 0 0 0 0 0 44], as a number 44, as text a comma.
 #-
 #- Run: aurora run examples/printing.ar
 #-
@@ -17,13 +17,11 @@
 #-   [0 0 0 0 0 0 0 44]
 #-   44
 #-   ,
-#-   [0 0 0 0 0 0 2 2]
-#-   514
-#-   Ȃ
-#-   [0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 105]
-#-   104 105
+#-   [0 0 0 0 0 0 104 105]
+#-   26729
 #-   hi
-#-   99 97 102 233
+#-   1
+#-   [0 0 0 99 97 102 195 169]
 #-   café
 #-   [0 0 0 0 0 0 0 0]
 #-   0
@@ -33,21 +31,18 @@ printb 44;
 printd 44;
 printc 44;
 
-#- A character is the whole number the tape holds, not the byte at its end. 514
-#- is past what a byte reaches, and it still names a letter.
-printb 514;
-printd 514;
-printc 514;
+#- printc reads the bytes as UTF-8, so a number with more than one byte spells
+#- more than one character: 26729 is the bytes 104 and 105, which are h and i.
+printb 26729;
+printd 26729;
+printc 26729;
 
-#- A reel is a run of tapes, one per character, so each builtin reads it tape by
-#- tape: the bytes of all of them, one number per tape, one character per tape.
-printb "hi";
-printd "hi";
-printc "hi";
+#- And "hi" is that same tape written another way, so it answers the same to all
+#- three. Text is not a kind of value: it is how those bytes were typed.
+printd "hi" equals 26729;
 
-#- Which is what keeps a character outside ASCII whole. "café" is four tapes,
-#- and the last one holds 233.
-printd "café";
+#- The bytes are UTF-8, which is what keeps an accent whole: é is two bytes.
+printb "café";
 printc "café";
 
 #- A tape of zeros is the neutral value. It spells zero and names no character,

@@ -98,7 +98,7 @@ func nodeEqual(a, b Node) bool {
 		if !ok {
 			return false
 		}
-		return TokenEqual(va.Token, vb.Token) && nodeEqual(va.Condition, vb.Condition) && nodeEqual(va.Message, vb.Message)
+		return TokenEqual(va.Token, vb.Token) && nodeEqual(va.Condition, vb.Condition) && va.Message == vb.Message
 	case UnaryExpression:
 		vb, ok := b.(UnaryExpression)
 		if !ok {

@@ -478,7 +478,8 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 // program that happens to hold one should not fail because of it.
 func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
 	cond := e.environ.GetTemp(byteutil.ToHex(left))
-	msg := e.environ.GetTemp(byteutil.ToHex(right))
+	// The message is written inline by the emitter, not held in a temp.
+	msg := string(right)
 
 	if !e.asserts {
 		e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
@@ -486,10 +487,10 @@ func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
 		return nil
 	}
 
-	passed, failure := builtin.AssertFunction(cond, msg, e.tapeSize)
+	passed, failure := builtin.AssertFunction(cond, msg)
 	result := AssertResult{Passed: passed}
 	if passed {
-		result.Message = builtin.TextOf(msg, e.tapeSize)
+		result.Message = msg
 	} else {
 		result.Message = failure.Error()
 	}

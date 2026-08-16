@@ -7,7 +7,7 @@ func (err *ErrEncode) Error() string {
 }
 
 // Encode renders bytes for display: a single tape becomes its decimal value, and a run of
-// tapes (a reel) becomes one value per tape.
+// tapes becomes one value per tape.
 //
 // There is no boolean case any more. Every value is a tape, so true is indistinguishable
 // from 1 and showing it otherwise would be inventing a type the language does not have.

@@ -167,18 +167,19 @@ func TestStructNameIsNotAValue(t *testing.T) {
 	}
 }
 
-// A field is one tape wide. A reel of one character is one tape and fits; a longer one is a
-// mistake caught where it was written, rather than a value quietly cut to its last letter.
-func TestReelOfSeveralCharactersInAFieldIsRejected(t *testing.T) {
-	if _, err := parseSource(t, `struct Person { name, age };
-ident p = Person{"Guilherme", 20};`, "main.ar"); err == nil {
-		t.Fatal("expected a compile error")
-	} else if !strings.Contains(err.Error(), "a struct cannot hold text") {
-		t.Errorf("error = %q", err)
+// A field is one tape wide and text is a tape, so text goes in a field like anything else.
+// What limits it is the width of a tape, and that is reported where the text was written.
+func TestTextInAField(t *testing.T) {
+	if _, err := parseSource(t, "struct Person { name, age };\nident p = Person{\"Gui\", 20};", "main.ar"); err != nil {
+		t.Errorf("text that fits a tape: %v", err)
 	}
 
-	if _, err := parseSource(t, "struct Pair { a, b };\nPair{\"a\", 1};", "main.ar"); err != nil {
-		t.Errorf("one character is one tape and fits: %v", err)
+	_, err := parseSource(t, "struct Person { name, age };\nident p = Person{\"Guilherme\", 20};", "main.ar")
+	if err == nil {
+		t.Fatal("expected a compile error: nine bytes do not fit an eight-byte tape")
+	}
+	if !strings.Contains(err.Error(), "text is 9 bytes but a tape holds 8") {
+		t.Errorf("error = %q", err)
 	}
 }
 

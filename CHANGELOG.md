@@ -8,6 +8,22 @@ All notable changes and release notes for Aurora are documented here.
 
 ### Language
 
+- **Text is a tape, and reels are gone.** `"hi"` is the tape holding its bytes, right aligned like every other value — one more way of writing a tape, next to `1`, `0x2a`, `[1, 2]` and `true`.
+
+  ```aurora
+  printb "hi";          # [0 0 0 0 0 0 104 105]
+  printd "hi";          # 26729
+  printd "a" equals 97; # 1 — the same tape, not a conversion
+  ```
+
+  Text used to be a **reel**: one tape per character, so `"hi"` was two tapes and `"Gui"` was 96 bytes at `--tape-size 32` — a cost that grew exactly when the tape got wider. It was also the one value in the language that was not a tape. Now `"a"` and `97` are the same value rather than a coincidence of one-character strings, arithmetic on text needs no rule of its own, and text fits in a struct field, which a reel never could.
+
+  A tape holds `tape_size` bytes, so that is how much text fits: nine bytes at the default eight is a compile error where the text was written, the same rule a number literal that does not fit follows. Text longer than a tape has no answer yet — that needs building a value at runtime and reading a position out of it, neither of which exists.
+
+  **Breaking:** `printc` of a number is its bytes as UTF-8 rather than the character that number names. `printc 44` is still `,`; a character above ASCII is written as text now, not as its code point. `printd` of text is one number per tape rather than one per character.
+
+- **An assert message is a literal, not a value.** It is written for whoever reads the result of a test, like a struct's field names are written for whoever reads the source, so it rides in the instruction as its bytes. That is also what keeps it longer than a tape, which a message usually is. **Breaking:** the message must be written as text, not computed.
+
 - **`struct`**, a way of grouping values by naming the tapes of a run.
 
   ```aurora
@@ -31,6 +47,8 @@ All notable changes and release notes for Aurora are documented here.
   Not supported on chain: like `if`, `call` and the prints, the two new instructions produce no EVM bytecode. At `--tape-size 32` a struct of N fields is exactly the ABI encoding of a tuple of N words, which is where that support would start.
 
 ### Tooling
+
+- `aurora init` writes `tape_size = 16` in the manifest it generates, since the greeting it also writes is eleven bytes. Its test compares the greeting to the text itself now, rather than to the number of its last character.
 
 - The language server knows about structs: completing after a dot offers that struct's fields and nothing else, hover lists a struct's fields and says which tape a field reads, and `struct`, `as`, the struct's name and the field names are coloured for what they are. It reads the tokens rather than the tree, because a document being edited hardly ever parses — and typing `p.` is exactly when completion is wanted.
 

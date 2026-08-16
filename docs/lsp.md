@@ -8,7 +8,7 @@
 
 | Capability | Method | What you get |
 |---|---|---|
-| **Semantic tokens** | `textDocument/semanticTokens/full` | Coloring for keywords, numbers, reels (strings), comments, operators, identifiers, calls and namespace segments |
+| **Semantic tokens** | `textDocument/semanticTokens/full` | Coloring for keywords, numbers, text, comments, operators, identifiers, calls, structs and fields |
 | **Diagnostics** | `textDocument/publishDiagnostics` | Lexer and parser errors underlined where they happen, republished on every change |
 | **Hover** | `textDocument/hover` | The description of the keyword under the cursor, or what an identifier was bound to |
 | **Completion** | `textDocument/completion` | Language keywords plus the identifiers declared in the open document |

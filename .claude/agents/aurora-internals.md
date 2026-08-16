@@ -80,7 +80,7 @@ Mental model: a cursor over the instruction slice plus a chain of `Environ` fram
 - Keywords are matched only for words starting with a **lowercase** letter (`scanWord`); an uppercase-initial word goes to `scanIdentifier` and can never be a keyword.
 - `isIdentChar` includes `-`, `!`, `?`, `>`, `<`, so **`a-b` lexes as one identifier**. Binary minus between identifiers needs spaces. `1-2` is fine only because a digit starts a number scan.
 - Comments are `#-` to end of line. Numbers accept `_` separators and `0x`/`0X` hex.
-- Strings are **reels**: one 8-byte tape per character, concatenated (`ParseReel`); `""` yields one zero tape.
+- **Text is a tape** holding its bytes, right aligned (`ParseText`): `"hi"` is one tape, `"a"` is the tape 97 is, and text longer than `tape_size` is a compile error. Reels — one tape per character — were removed; nothing in a value says it was written as text.
 - Recursive-descent, one token lookahead, `EatToken` for consumption. Precedence chain: `ParseExpr → ParseBoolExpr → ParseRelExpr → ParseAddExpr → ParseMultExpr → ParseExpoExpr → ParseUnaExpr → ParsePriExpr`. Only `ParseAddExpr` is left-associative (loop); the others recurse right — which is exactly why the EVM lowering has to reorder `Sub`/`Div`.
 - Every expression in a block/top level must end with `;` (`ParseExprs`).
 - `branch { test: value, ..., fallback; }` desugars into nested `IfExpression`s (`ParseBranchItem`).

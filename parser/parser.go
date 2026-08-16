@@ -133,34 +133,30 @@ func (p *pr) fitInTape(v uint64, tok lexer.Token) (NumberLiteral, error) {
 	return NumberLiteral{v, tok}, nil
 }
 
-func (p *pr) ParseReel() (ReelLiteral, error) {
+// ParseText reads `"text"` into one tape holding its bytes.
+//
+// The bytes are the text as written, in UTF-8, right aligned like every other value — so
+// "a" is the tape holding 97, which is the tape the number 97 is, and "café" is its five
+// UTF-8 bytes rather than four characters spread over four tapes.
+func (p *pr) ParseText() (TextLiteral, error) {
 	tok, err := p.EatToken(lexer.STRING)
 	if err != nil {
-		return ReelLiteral{}, err
+		return TextLiteral{}, err
 	}
-	// Remove surrounding quotes and get the string content
 	match := tok.GetMatch()
 	if len(match) < 2 {
-		return ReelLiteral{}, lexer.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
+		return TextLiteral{}, lexer.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
 	}
-	// Remove first and last character (quotes)
 	content := match[1 : len(match)-1]
 
-	// A reel is a run of tapes, one per character, and each tape holds the character's
-	// number. Ranging over the string rather than the bytes is what keeps a character
-	// outside ASCII whole: "café" is four characters, not five bytes.
-	reel := make([][]byte, 0, len(content))
-	for _, char := range string(content) {
-		tape := byteutil.PaddingTape(byteutil.FromUint64(uint64(char)), p.tapeSize)
-		reel = append(reel, tape)
+	// A value is a tape, and a tape is tape_size bytes: text that does not fit is rejected
+	// where it was written, the same way a number that does not fit is.
+	if len(content) > p.tapeSize {
+		return TextLiteral{}, lexer.NewError(tok, "text is %d bytes but a tape holds %d at line %d and column %d",
+			len(content), p.tapeSize, tok.GetLine(), tok.GetColumn())
 	}
 
-	// If empty string, create a reel with one empty tape
-	if len(reel) == 0 {
-		reel = append(reel, byteutil.FalseTape(p.tapeSize))
-	}
-
-	return ReelLiteral{reel, tok}, nil
+	return TextLiteral{byteutil.PaddingTape(content, p.tapeSize), tok}, nil
 }
 
 // ParsePriExpr reads a primary and then whatever binds to it tightest: a field, a shape.
@@ -201,11 +197,11 @@ func (p *pr) parsePrimaryExpr() (Node, error) {
 		return num, nil
 	}
 	if lookahead.GetTag().Id == lexer.STRING {
-		reel, err := p.ParseReel()
+		text, err := p.ParseText()
 		if err != nil {
 			return nil, err
 		}
-		return reel, nil
+		return text, nil
 	}
 	if lookahead.GetTag().Id == lexer.TRUE {
 		return p.ParseBooleanTrue()
@@ -824,17 +820,25 @@ func (p *pr) ParseAssert() (Node, error) {
 	if _, err := p.EatToken(lexer.COMMA); err != nil {
 		return nil, err
 	}
-	message, err := p.ParseExpr()
-	if err != nil {
+	// The message is a literal rather than an expression: it is text for whoever reads the
+	// result, and nothing in the language builds text anyway.
+	message := p.GetLookahead()
+	if message == nil || message.GetTag().Id != lexer.STRING {
+		return nil, lexer.NewError(message, "assert needs a message written as text at line %d and column %d",
+			t.GetLine(), t.GetColumn())
+	}
+	if _, err := p.EatToken(lexer.STRING); err != nil {
 		return nil, err
 	}
+	quoted := message.GetMatch()
+
 	if _, err := p.EatToken(lexer.C_PAREN); err != nil {
 		return nil, err
 	}
 
 	return AssertStatement{
 		Condition: condition,
-		Message:   message,
+		Message:   string(quoted[1 : len(quoted)-1]),
 		Token:     t,
 	}, nil
 }

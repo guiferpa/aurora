@@ -41,7 +41,7 @@ const (
 	PUSH         = "PUSH"      // push
 	SEMICOLON    = "SEMICOLON" // ;
 	SMALLER      = "SMALLER"   // smaller
-	STRING       = "STRING"    // string literal "text" (reel - array of tapes)
+	STRING       = "STRING"    // text literal "text" - one more way of writing a tape
 	STRUCT       = "STRUCT"    // struct - names the fields of a run of tapes
 	SUB          = "SUB"       // -
 	SUM          = "SUM"       // +
@@ -97,7 +97,7 @@ var (
 	TagPush       = Tag{PUSH, "push", "Push item in left to right"}
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagSmaller    = Tag{SMALLER, "smaller", ""}
-	TagString     = Tag{STRING, "", ""} // String literal: "text" (reel - array of tapes)
+	TagString     = Tag{STRING, "", ""} // Text literal: "text", the bytes it holds, in a tape
 	TagStruct     = Tag{STRUCT, "struct", "Name the fields of a run of tapes"}
 	TagSub        = Tag{SUB, "-", ""}
 	TagSum        = Tag{SUM, "+", ""}

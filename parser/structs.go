@@ -107,14 +107,6 @@ func (p *pr) ParseStructLiteral(id IdentifierLiteral) (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		// A field is one tape wide, so a reel of several characters would be cut down to its
-		// last one. That is visible right here, and silently keeping the "e" of "Guilherme"
-		// is exactly the kind of mistake the directive exists to point at.
-		if reel, ok := expr.(ReelLiteral); ok && len(reel.Value) > 1 {
-			return nil, lexer.NewError(reel.Token, "a field is one tape wide, but this reel is %d characters at line %d and column %d: a struct cannot hold text",
-				len(reel.Value), reel.Token.GetLine(), reel.Token.GetColumn())
-		}
-
 		values = append(values, expr)
 
 		if p.GetLookahead().GetTag().Id == lexer.C_CUR_BRK {

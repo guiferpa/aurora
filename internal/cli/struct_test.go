@@ -32,16 +32,16 @@ func TestStructReadsItsFields(t *testing.T) {
 	}
 }
 
-// The invariant the whole design rests on: the directive dies at compile time. A struct is
-// the same bytes as a reel of the same length, because it is one — so a program that builds
-// a struct and a program that builds the equivalent reel answer identically.
-func TestStructIsIndistinguishableFromAReel(t *testing.T) {
-	// "ab" is two characters, so the reel is two tapes holding 97 and 98.
-	viaStruct := output(t, "struct Pair { a, b };\nprintb Pair{97, 98};", 0)[0]
-	viaReel := output(t, "printb \"ab\";", 0)[0]
+// The invariant the whole design rests on: the directive dies at compile time. A struct
+// value is a run of tapes and carries nothing that says a struct built it, so two structs
+// of the same width are one value — checked below — and the tape at index 0 is just a tape.
+func TestStructCarriesNothingOfTheDirective(t *testing.T) {
+	// A field read out of a struct is the same value written on its own.
+	fromStruct := output(t, "struct Pair { a, b };\nprintb Pair{97, 98}.a;", 0)[0]
+	onItsOwn := output(t, "printb 97;", 0)[0]
 
-	if viaStruct != viaReel {
-		t.Errorf("struct wrote %s, reel wrote %s — they must be the same bytes", viaStruct, viaReel)
+	if fromStruct != onItsOwn {
+		t.Errorf("a field wrote %s, the value alone wrote %s — a field is just a tape", fromStruct, onItsOwn)
 	}
 }
 

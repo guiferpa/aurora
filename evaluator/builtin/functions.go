@@ -61,30 +61,32 @@ func FeedFunction(feed map[uint64][]byte, index uint64, tapeSize int) []byte {
 
 // AssertFunction evaluates an assert: the condition as a truth value, the message as text
 // to show when it does not hold.
-func AssertFunction(cond, msg []byte, tapeSize int) (bool, error) {
+func AssertFunction(cond []byte, msg string) (bool, error) {
 	if byteutil.ToBoolean(cond) {
 		return true, nil
 	}
-	return false, fmt.Errorf("assertion failed: %s", TextOf(msg, tapeSize))
+	return false, fmt.Errorf("assertion failed: %s", msg)
 }
 
-// TextOf reads a value as text: each tape holds the number of a character, and that
-// character is written as UTF-8.
+// TextOf reads a value as text: the bytes it holds, as UTF-8.
 //
-// Reading the tape as a number rather than as a single byte is what lets a character
-// outside ASCII survive — "café" holds 233 in its last tape, and 233 is é.
+// A tape is bytes, and text is those bytes — "café" is its five UTF-8 bytes, not four
+// character numbers. Zeros are dropped rather than written: they are the padding that fills
+// a tape out to its width, no text can contain one, and a UTF-8 sequence never does either.
+// That is also what lets a run of tapes each holding a character still read as one word.
 func TextOf(bs []byte, tapeSize int) string {
-	var text strings.Builder
-	for _, tape := range tapesOf(bs, tapeSize) {
-		char := rune(byteutil.ToUint256(tape, tapeSize).Uint64())
-		// A tape of zeros is the neutral value rather than a character, and a number that
-		// names no character has nothing to write.
-		if char == 0 || !utf8.ValidRune(char) {
+	text := make([]byte, 0, len(bs))
+	for _, b := range bs {
+		if b == 0 {
 			continue
 		}
-		text.WriteRune(char)
+		text = append(text, b)
 	}
-	return text.String()
+	if !utf8.Valid(text) {
+		// Bytes that are not text have nothing to write; the value is still whatever it is.
+		return ""
+	}
+	return string(text)
 }
 
 // DecimalOf reads a value as a number, or as one number per tape when it is a reel.

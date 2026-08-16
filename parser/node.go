@@ -61,12 +61,22 @@ func (nln NumberLiteral) Next() Node {
 	return nil
 }
 
-type ReelLiteral struct {
-	Value [][]byte    `json:"value"` // Reel as array of tapes: each char is a tape (8 bytes), stored as array of 8-byte arrays
+// TextLiteral is `"text"`: the bytes of the text, packed into one tape.
+//
+// It is one more way of writing a tape, next to `1`, `0x2a`, `[1, 2]` and `true` — not a
+// kind of value of its own.
+//
+// Text used to be a reel — one tape per character, so "Gui" was three tapes and 24 bytes at
+// the default width. That was a way of holding more than a tape could, and it cost
+// tape_size - 1 bytes of zero for every character. Text is now the bytes it is, right
+// aligned like every other value, so "Gui" is three bytes and "a" is 97, the same tape the
+// number 97 is.
+type TextLiteral struct {
+	Value []byte      `json:"value"`
 	Token lexer.Token `json:"-"`
 }
 
-func (rln ReelLiteral) Next() Node {
+func (tln TextLiteral) Next() Node {
 	return nil
 }
 
@@ -246,9 +256,15 @@ func (isn IdentLiteral) Next() Node {
 	return isn.Value
 }
 
+// AssertStatement is `assert(condition, "message")`.
+//
+// The message is a literal held as text, not as a value: it is written for whoever reads
+// the result of a test, the same way a struct's field names are written for whoever reads
+// the source. Keeping it out of the values is also what lets it be longer than a tape,
+// which a message usually is.
 type AssertStatement struct {
 	Condition Node        `json:"condition"`
-	Message   Node        `json:"message"`
+	Message   string      `json:"message"`
 	Token     lexer.Token `json:"-"`
 }
 

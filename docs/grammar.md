@@ -56,7 +56,7 @@ Every token the lexer produces. Keywords are only recognised when the word start
 
 The builtin that reads the nth value applied to a scope is **`feed`**. It used to be `arguments`.
 
-The rename follows the design of `defer` (see [defer_and_scope_callable_philosofy.md](defer_and_scope_callable_philosofy.md)): Aurora has no functions, so it has no signature, no arity and no parameters. Execution is *the application of a vector of values to a scope*. "Argument" is a word that only means something against "parameter" — it dragged in the very vocabulary the design refuses, and it was the only word in the language to borrow from outside. Everything else — `tape`, `reel`, `pull`, `push`, `head`, `tail` — speaks of tape and scope.
+The rename follows the design of `defer` (see [defer_and_scope_callable_philosofy.md](defer_and_scope_callable_philosofy.md)): Aurora has no functions, so it has no signature, no arity and no parameters. Execution is *the application of a vector of values to a scope*. "Argument" is a word that only means something against "parameter" — it dragged in the very vocabulary the design refuses, and it was the only word in the language to borrow from outside. Everything else — `tape`, `pull`, `push`, `head`, `tail` — speaks of tape and scope.
 
 `feed` says what happens: a scope is fed values, and `feed(n)` reads the nth one. It is also four characters instead of nine, in a construct that repeats several times per line.
 
@@ -168,10 +168,9 @@ _field  -> _prie DOT _id
 _shape  -> _prie AS _id
 ```
 
-A struct names the tapes of a run. `Point{10, 20}` is two tapes laid end to end — the same
-value a reel of two characters is, since a reel is a run of tapes too. There is no header,
-no length and no tag, and a field is exactly one tape wide, so the field at index *i* sits
-at `i × tape_size`.
+A struct names the tapes of a run. `Point{10, 20}` is two tapes laid end to end, with
+nothing in it saying a struct built it: no header, no length and no tag. A field is exactly
+one tape wide, so the field at index *i* sits at `i × tape_size`.
 
 `struct` and `as` are **directives**: they exist for the compiler to turn a name into an
 index, to report a mistake where it was written, and to tell the language server what is
@@ -207,9 +206,7 @@ load under it.
 
 Because the directive exists to catch mistakes, these are compile errors: a field the struct
 does not have, a value whose shape nothing declared, a construction that miscounts the
-fields, and a reel of several characters in a field — a field is one tape, and quietly
-keeping the last character of `"Guilherme"` is exactly what the directive is there to
-prevent. Reading a field past the end of a value is not one — it gives the neutral value, the
+and a struct name used as a value. Reading a field past the end of a value is not one — it gives the neutral value, the
 way `head` saturates and `feed` wraps.
 
 Reading a field binds tighter than any operator, so `p.x * p.y` multiplies two fields.
@@ -236,7 +233,7 @@ was 5 and `10 + -5` was 15.
 _prie -> _feed
        | O_PAREN _expr C_PAREN
        | _tape
-       | _num | _reel | TRUE | FALSE
+       | _num | _text | TRUE | FALSE
        | _block
        | _ident
        | _callee
@@ -357,7 +354,7 @@ _assert -> ASSERT O_PAREN _expr COMMA _expr C_PAREN
 
 The three print builtins are three readings of the same tape, and the suffix names the
 reading: `printb` the bytes, `printd` the decimal number they spell, `printc` the character
-that number names. A reel is read tape by tape.
+those bytes are, in UTF-8.
 
 ```
 printb 44;   [0 0 0 0 0 0 0 44]

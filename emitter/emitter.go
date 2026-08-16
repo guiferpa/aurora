@@ -268,10 +268,11 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		return l
 	}
 	if n, ok := expr.(parser.AssertStatement); ok {
+		// The message rides in the instruction as the bytes it is, not as a value: it is
+		// written for whoever reads the result, and a value would have to fit in a tape.
 		cond := EmitInstruction(tc, insts, n.Condition, tapeSize)
-		msg := EmitInstruction(tc, insts, n.Message, tapeSize)
 		l := GenerateLabel(tc)
-		*insts = append(*insts, NewInstruction(l, OpAssert, cond, msg))
+		*insts = append(*insts, NewInstruction(l, OpAssert, cond, []byte(n.Message)))
 		return l
 	}
 	if n, ok := expr.(parser.FeedExpression); ok {
@@ -306,16 +307,10 @@ func EmitInstruction(tc *int, insts *[]Instruction, expr parser.Node, tapeSize i
 		*insts = append(*insts, NewInstruction(l, OpSave, byteutil.PaddingTape(byteutil.FromUint64(n.Value), tapeSize), nil))
 		return l
 	}
-	if n, ok := expr.(parser.ReelLiteral); ok {
-		// Reel is an array of tapes (each char is a tape of 8 bytes)
-		// Store the complete reel by concatenating all tapes
+	if n, ok := expr.(parser.TextLiteral); ok {
+		// Text is a tape holding its bytes, so it saves like any other value.
 		l := GenerateLabel(tc)
-		// Concatenate all tapes into a single byte array
-		reelBytes := make([]byte, 0, len(n.Value)*byteutil.TapeSize(tapeSize))
-		for _, tape := range n.Value {
-			reelBytes = append(reelBytes, tape...)
-		}
-		*insts = append(*insts, NewInstruction(l, OpSave, reelBytes, nil))
+		*insts = append(*insts, NewInstruction(l, OpSave, n.Value, nil))
 		return l
 	}
 	if n, ok := expr.(parser.BooleanLiteral); ok {

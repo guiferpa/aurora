@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/fatih/color"
 	"github.com/guiferpa/aurora/byteutil"
@@ -21,10 +20,6 @@ import (
 )
 
 // isString reports whether the value looks like a reel: more than one tape, all printable.
-func isString(v []byte, tapeSize int) bool {
-	return len(v) > tapeSize && len(v)%tapeSize == 0 && utf8.Valid(v)
-}
-
 // render prints the value of the line that was typed — the temp left by its last
 // instruction. Printing the whole temp map would spill every intermediate value of the
 // expression, in map order, which is no order at all.
@@ -44,12 +39,10 @@ func render(w io.Writer, temps map[string][]byte, result string, eerr error, tap
 		return // nothing to show: the line produced no value
 	}
 
-	// Every value is a tape of bytes, so there is nothing to render as "true" or as a
-	// distinct neutral value: true is a tape holding 1 and nothing is a tape of zeros.
-	if isString(value, tapeSize) {
-		_, _ = fmt.Fprintf(w, format, marker, literals(string(value)))
-		return
-	}
+	// Every value is a tape of bytes, so there is nothing to render as "true", as a distinct
+	// neutral value, or as text: true is a tape holding 1, nothing is a tape of zeros, and
+	// "a" is the tape holding 97. Guessing text from the bytes was possible while a reel was
+	// several tapes; now there is nothing to guess with, and printc is how text is read.
 	er, err := byteutil.Encode(value, tapeSize)
 	if err != nil {
 		_, _ = fmt.Fprint(w, errors(err))

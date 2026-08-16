@@ -28,7 +28,7 @@ For the other way of working — a manifest with named profiles — see [project
 | [callables.ar](callables.ar) | `defer` and `feed`: applying values to a scope |
 | [recursion.ar](recursion.ar) | factorial and fibonacci |
 | [tapes.ar](tapes.ar) | tape literals, `pull`, `push`, `head`, `tail` |
-| [reels.ar](reels.ar) | strings as runs of tapes, `printc` |
+| [text.ar](text.ar) | text as a tape of bytes, and why `"a"` is 97 |
 | [tape_size.ar](tape_size.ar) | the same file compiled at different tape widths |
 | [defer_capacity.ar](defer_capacity.ar) | how many scopes a tape can name, and the warning when they do not fit |
 | [structs.ar](structs.ar) | `struct` and `as`: naming the tapes of a run |

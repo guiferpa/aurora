@@ -99,8 +99,15 @@ func TestInitProjectRunsAndPasses(t *testing.T) {
 	}
 	t.Chdir(dir)
 
+	// Resolved the way the command does, so the manifest the boilerplate wrote is what
+	// decides the tape width — the greeting needs a wider tape than the default.
+	target, err := ResolveTarget("")
+	if err != nil {
+		t.Fatalf("resolving the main profile: %v", err)
+	}
+
 	out := &strings.Builder{}
-	if err := Run(t.Context(), RunInput{Source: filepath.Join("src", "main.ar"), Stdout: out}); err != nil {
+	if err := Run(t.Context(), RunInput{Source: target.Source, TapeSize: target.TapeSize, Stdout: out}); err != nil {
 		t.Fatalf("the program init wrote does not run: %v", err)
 	}
 
@@ -126,10 +133,16 @@ func TestInitGreets(t *testing.T) {
 	}
 	t.Chdir(dir)
 
+	target, err := ResolveTarget("")
+	if err != nil {
+		t.Fatalf("resolving the main profile: %v", err)
+	}
+
 	out := &strings.Builder{}
 	if err := Run(t.Context(), RunInput{
-		Source: filepath.Join("src", "main.ar"),
-		Stdout: out,
+		Source:   target.Source,
+		TapeSize: target.TapeSize,
+		Stdout:   out,
 	}); err != nil {
 		t.Fatalf("Run: %v", err)
 	}

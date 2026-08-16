@@ -21,7 +21,7 @@ Document sync is **full** (`textDocumentSync: 1`): the client resends the whole 
 
 - The parser stops at the first error, so **one diagnostic per pass**. Fix it and the next one appears.
 - No go-to-definition, no code actions, no formatting, no incremental sync.
-- Semantic token types are decided lexically. A call is anything followed by `(`, a namespace segment anything followed by `::`.
+- Semantic token types are decided lexically. A call is anything followed by `(`, a struct anything after `struct` or `as`, a field anything after `.`.
 
 ---
 

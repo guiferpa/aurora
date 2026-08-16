@@ -110,7 +110,7 @@ Everything it declares at the top level, for now. A `private`/`export` distincti
 
 Worth deciding before implementation, not during:
 
-1. **Accessor syntax.** `m.add` reads naturally and matches most languages. `m::add` was the old syntax and stands out more, at the cost of a heavier token. If tapes ever get field access, `.` may be wanted there instead.
+1. **Accessor syntax.** `m.add` reads naturally and matches most languages. `m::add` was the old syntax and stands out more, at the cost of a heavier token. Note that `.` is taken: it reads a struct field since structs landed, so a module accessor would have to share it or pick something else.
 2. **Non-relative specifiers.** Do they resolve from the project root (the directory holding `aurora.toml`), or from a `src`/`lib` path the manifest declares? The manifest is the natural place to say.
 3. **Cycles.** Reject outright, or allow and initialize lazily? Rejecting is simpler to explain and simpler to build.
 4. **Manifest involvement.** Should `aurora.toml` list dependencies, or is the filesystem the whole story until third-party packages exist?

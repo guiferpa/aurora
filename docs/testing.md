@@ -75,10 +75,12 @@ With a path ending in `.test.ar`, only that file runs, and no manifest is needed
 ## `assert`
 
 ```aurora
-assert(<condition>, <message>);
+assert(<condition>, "<message>");
 ```
 
-The condition is any expression; a tape of zeros is false and anything else is true. The message names the check, and it is what the report prints — for a passing assertion as well as a failing one.
+The condition is any expression; a tape of zeros is false and anything else is true.
+
+The message names the check, and it is what the report prints — for a passing assertion as well as a failing one. It is written as text, not computed: it is meant for whoever reads the result, the same way a struct's field names are meant for whoever reads the source. That is also why it is not limited to the width of a tape, which a message would usually exceed.
 
 A file is only allowed to hold assertions if it is named `*.test.ar`. In any other file it is a compile error:
 

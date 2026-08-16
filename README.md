@@ -173,7 +173,7 @@ ident x = 10;
 ident y = 20;
 printb x + y;          // 30, as the bytes it is
 printd x + y;          // 30, as a number
-printc 44;             // the character 44 names: ,
+printc 44;             // , — the byte 44, read as text
 
 ident flag = true;
 if flag bigger 0 then 1 else 0;   // if is an expression, returns a value

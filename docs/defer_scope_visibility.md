@@ -26,7 +26,7 @@ Because name resolution walks this chain, the defer body sees:
 ```aurora
 ident x = 10;
 ident r = defer { printb x; };
-r();   // caller is the same scope that has x → sees x, prints 10
+r();   #- caller is the same scope that has x → sees x, prints 10
 ```
 
 ### What the defer body does not see
@@ -35,15 +35,23 @@ The defer body **does not capture** the scope **where the defer was defined**.
 
 If the defer is **invoked from another scope**, it no longer sees the variables that existed in the definition scope — because that environment **is not stored** in the defer value.
 
-**Example:** defer defined inside a block, invoked from outside — block variable is not in the caller.
+**Example:** the same scope, called from two places. It is the caller that decides what the
+body sees, so the first call works and the second does not.
 
 ```aurora
-ident r = {
+ident show = defer { printb x; };
+
+ident caller = defer {
   ident x = 10;
-  defer { printb x; }
+  show();     #- the caller has x → prints [0 0 0 0 0 0 0 10]
 };
-r();   // invoked "from outside" → caller does not have x → x is not visible
+
+caller();
+show();       #- called from the top, where there is no x → identifier x not found
 ```
+
+Note that `show` is defined where no `x` exists at all, and still prints one: nothing about
+the definition site is stored.
 
 The defer value only stores a reference to the code range and the return key (`from`, `to`, `returnKey`). The definition-time environment is not stored (no closure).
 

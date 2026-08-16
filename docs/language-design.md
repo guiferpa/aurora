@@ -69,10 +69,10 @@ Aurora has no keyword for "no value". An expression that has nothing to say prod
 - **Where it appears**: an empty block `{ }`, an `if` without `else` whose test fails, the value of a binding (`ident a = 1;` itself evaluates to zeros), and a scope that returns no value.
 - **How to write it**: use `false` when the neutral value is the point, or `0` when it reads better as a number. They are the same bytes.
 
-```javascript
-ident x = false;      // the neutral value
-if false { 1; };      // no else: the whole expression is zeros
-{ };                  // an empty block is zeros
+```aurora
+ident x = false;   #- the neutral value
+if false { 1; };   #- no else: the whole expression is zeros
+{ };   #- an empty block is zeros
 ```
 
 > A `nothing` keyword existed until it became indistinguishable from `false`. It was removed rather than kept as a second name for one value; source using it now reads `nothing` as an ordinary identifier, which will not resolve.
@@ -93,11 +93,11 @@ This means that `3` (8 bytes) and `[1, 2]` (8 bytes) are just different represen
 
 ### Example
 
-```javascript
-ident a = 3;        // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 3]
-ident b = [1, 2];   // 8 bytes: [0, 0, 0, 0, 0, 0, 1, 2] (tape values as direct bytes, right-aligned)
-ident c = [];       // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
-ident d = true;     // [0, 0, 0, 0, 0, 0, 0, 1] (same bytes as the number 1)
+```aurora
+ident a = 3;   #- 8 bytes: [0, 0, 0, 0, 0, 0, 0, 3]
+ident b = [1, 2];   #- 8 bytes: [0, 0, 0, 0, 0, 0, 1, 2] (tape values as direct bytes, right-aligned)
+ident c = [];   #- 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
+ident d = true;   #- [0, 0, 0, 0, 0, 0, 0, 1] (same bytes as the number 1)
 ```
 
 Note: Tapes (arrays) store values directly as bytes, not as unsigned 64-bit integers. So `[1, 2, 3]` is represented as `[0, 0, 0, 0, 0, 1, 2, 3]` (8 bytes, right-aligned), not as 24 bytes (3 × 8 bytes). All tapes have the same width (`tape_size`, 8 by default). The width never changes: an operation that would need more room discards what reaches the far end (see Tape Operations).
@@ -112,17 +112,17 @@ Tapes use the bracket syntax `[value1, value2, ...]` to create an 8-byte array w
 
 ### Creating Tapes
 
-```javascript
-// Empty tape - creates 8 bytes all zeros
-ident a = [];  // [0, 0, 0, 0, 0, 0, 0, 0]
+```aurora
+#- Empty tape - creates 8 bytes all zeros
+ident a = [];   #- [0, 0, 0, 0, 0, 0, 0, 0]
 
-// Tape with values - values stored as direct bytes (right-aligned)
-ident b = [1, 2, 3];        // [0, 0, 0, 0, 0, 1, 2, 3]
-ident c = [0, 0, 0, 0, 0, 244, 254];  // [0, 0, 0, 0, 0, 244, 254]
+#- Tape with values - values stored as direct bytes (right-aligned)
+ident b = [1, 2, 3];   #- [0, 0, 0, 0, 0, 1, 2, 3]
+ident c = [0, 0, 0, 0, 0, 244, 254];   #- [0, 0, 0, 0, 0, 244, 254]
 
-// Equivalent ways to create 8 bytes of zeros
-ident d = 0;   // [0, 0, 0, 0, 0, 0, 0, 0] (number 0)
-ident e = [];  // [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
+#- Equivalent ways to create 8 bytes of zeros
+ident d = 0;   #- [0, 0, 0, 0, 0, 0, 0, 0] (number 0)
+ident e = [];   #- [0, 0, 0, 0, 0, 0, 0, 0] (empty tape)
 ```
 
 ### Key Points
@@ -165,20 +165,20 @@ Since all tapes have the same width, the index `n` in `head` and `tail` operatio
 
 ### Examples
 
-```javascript
-// Create a tape and manipulate it
-ident a = [1, 2, 3];        // [0, 0, 0, 0, 0, 1, 2, 3]
-ident b = pull a 4;         // 4 enters at the right: [0, 0, 0, 0, 1, 2, 3, 4]
-ident c = push b 5;         // 5 enters at the left, the 4 falls off the right: [5, 0, 0, 0, 0, 1, 2, 3]
+```aurora
+#- Create a tape and manipulate it
+ident a = [1, 2, 3];   #- [0, 0, 0, 0, 0, 1, 2, 3]
+ident b = pull a 4;   #- 4 enters at the right: [0, 0, 0, 0, 1, 2, 3, 4]
+ident c = push b 5;   #- 5 enters at the left, the 4 falls off the right: [5, 0, 0, 0, 0, 1, 2, 3]
 
-// Extract parts of a tape
-ident d = head [1, 2, 3, 4, 5] 2;      // First 2 bytes: [0, 0, 0, 0, 0, 0, 1, 2]
-ident e = tail [1, 2, 3, 4, 5] 2;      // Skip first 2 bytes: [0, 0, 0, 0, 0, 3, 4, 5]
-ident f = head [1, 2, 3, 4, 5, 6, 7, 8] 10;  // 10 % 8 = 2, first 2 bytes: [0, 0, 0, 0, 0, 0, 1, 2]
-ident g = tail [1, 2, 3, 4, 5, 6, 7, 8] 18;  // 18 % 8 = 2, skip first 2 bytes: [0, 0, 3, 4, 5, 6, 7, 8]
+#- Extract parts of a tape
+ident d = head [1, 2, 3, 4, 5] 2;   #- First 2 bytes: [0, 0, 0, 0, 0, 0, 1, 2]
+ident e = tail [1, 2, 3, 4, 5] 2;   #- Skip first 2 bytes: [0, 0, 0, 0, 0, 3, 4, 5]
+ident f = head [1, 2, 3, 4, 5, 6, 7, 8] 10;   #- 10 % 8 = 2, first 2 bytes: [0, 0, 0, 0, 0, 0, 1, 2]
+ident g = tail [1, 2, 3, 4, 5, 6, 7, 8] 18;   #- 18 % 8 = 2, skip first 2 bytes: [0, 0, 3, 4, 5, 6, 7, 8]
 
-// Combine tapes (using pull)
-ident h = pull [1, 2] [3, 4];  // Concatenate: [0, 0, 0, 0, 1, 2, 3, 4] (significant bytes concatenated)
+#- Combine tapes (using pull)
+ident h = pull [1, 2] [3, 4];   #- Concatenate: [0, 0, 0, 0, 1, 2, 3, 4] (significant bytes concatenated)
 ```
 
 Remember: Tapes are just a convenient way to create and work with 8-byte arrays. They're not a separate type - they're the same 8-byte arrays that Aurora uses for everything!
@@ -188,11 +188,11 @@ Remember: Tapes are just a convenient way to create and work with 8-byte arrays.
 Text is one more way of writing a tape, next to `1`, `0x2a`, `[1, 2]` and `true`. `"hi"` is
 the tape holding the bytes of `h` and `i` — not a kind of value of its own.
 
-```javascript
+```aurora
 ident greeting = "hi";
-printb greeting;   // [0 0 0 0 0 0 104 105]
-printd greeting;   // 26729 — the number those bytes spell
-printc greeting;   // hi
+printb greeting;   #- [0 0 0 0 0 0 104 105]
+printd greeting;   #- 26729 — the number those bytes spell
+printc greeting;   #- hi
 ```
 
 ### What follows from that
@@ -247,53 +247,55 @@ A run of tapes — a struct, say — is read the same way: every byte for `print
 per tape for `printd`, and for `printc` the bytes of the whole run, with the zeros that pad
 each tape dropped.
 
-```javascript
+```aurora
 ident greeting = "hello";
-printb greeting;  // [0 0 0 0 0 0 0 104 0 0 0 0 0 0 0 101 ...]
-printd greeting;  // 104 101 108 108 111
-printc greeting;  // hello
+printb greeting;   #- [0 0 0 104 101 108 108 111]
+printd greeting;   #- 448378203247
+printc greeting;   #- hello
 ```
 
-`printc` writes the character named by the whole tape, not by its last byte, which is what
-keeps text outside ASCII intact:
+`printc` reads the bytes as UTF-8, which is what keeps text outside ASCII intact — `é` is
+the two bytes it is:
 
-```javascript
-printc "café";   // café — the last tape holds 233, which is é
-printc 514;      // Ȃ — past what a single byte reaches
+```aurora
+printc "café";   #- café
+printb "café";   #- [0 0 0 99 97 102 195 169]
+printc 44;       #- , — the byte 44
+printc 26729;    #- hi — the bytes 104 and 105
 ```
 
-A tape of zeros is the neutral value rather than a character, so it spells `0` and `printc`
-writes nothing for it. A number that names no character — a lone surrogate half, say — is
-skipped the same way.
+A tape of zeros is the neutral value, so it spells `0` and `printc` writes nothing for it.
+Bytes that are not UTF-8 have nothing to write either; the value is still whatever it is.
 
 ### Examples
 
-```javascript
-// Arithmetic with strings (uses last character)
-ident a = "a";   // Last tape: [0, 0, 0, 0, 0, 0, 0, 97] (ASCII 'a' = 97)
-ident result = 1 + a;  // 1 + 97 = 98
-printc result;   // Prints: b (ASCII 98)
+```aurora
+#- Text of one character is the tape its number is, so arithmetic needs no rule
+#- of its own.
+ident a = "a";         #- the tape holding 97
+ident result = 1 + a;  #- 98
+printc result;         #- b
 
-// String with numbers
+#- Digits are their bytes, not the number they read as.
 ident num_str = "123";
-printc num_str;  // Prints: 123
-printd num_str;  // Prints: 49 50 51 — the numbers of the characters, not the number 123
+printc num_str;   #- 123
+printd num_str;   #- 3224115 — the bytes 49, 50 and 51, not one hundred and twenty-three
 
-// Empty string
+#- Empty text is no bytes, which is the neutral value.
 ident empty = "";
-printc empty;    // Prints: (empty line)
+printb empty;     #- [0 0 0 0 0 0 0 0]
 ```
 
 ## Structs
 
 A struct names the tapes of a run:
 
-```javascript
+```aurora
 struct Point { x, y };
 
 ident p = Point{10, 20};
-printd p.x;   // 10
-printd p;     // 10 20 — the whole run
+printd p.x;   #- 10
+printd p;   #- 10 20 — the whole run
 ```
 
 `Point{10, 20}` is two tapes laid end to end, with nothing in it saying a struct built it:
@@ -322,12 +324,14 @@ at runtime.
 Behaviour lives in `defer`, and a `defer` receives values through `feed`, which hands over
 bytes and nothing else. The shape does not survive that crossing, so it is named again:
 
-```javascript
+```aurora
+struct Point { x, y };
+
 ident area = defer {
   ident q = feed(0) as Point;
   q.x * q.y;
 };
-printd area(Point{10, 20});   // 200
+printd area(Point{10, 20});   #- 200
 ```
 
 `as` is a claim, not a cast: there is nothing in a run of bytes to check it against. A wrong
@@ -356,41 +360,45 @@ Arithmetic reads a tape as an unsigned big-endian integer and writes the result 
 ### How It Works
 
 1. **Values < 8 bytes**: Padded with zeros on the left (right-aligned)
-   ```javascript
-   ident a = 3;  // Becomes [0, 0, 0, 0, 0, 0, 0, 3] → interpreted as unsigned 64-bit integer (3)
-   ```
+   ```aurora
+   ident a = 3;   #- Becomes [0, 0, 0, 0, 0, 0, 0, 3] → interpreted as unsigned 64-bit integer (3)
+   
+```
 
 2. **Values = 8 bytes**: Used directly
-   ```javascript
-   ident a = 1_000;  // [0, 0, 0, 0, 0, 0, 3, 232] → interpreted as unsigned 64-bit integer (1000)
-   ```
+   ```aurora
+   ident a = 1_000;   #- [0, 0, 0, 0, 0, 0, 3, 232] → interpreted as unsigned 64-bit integer (1000)
+   
+```
 
 3. **Tapes (arrays)**: Values are stored directly as bytes, padded to 8 bytes for arithmetic
-   ```javascript
-   ident a = [1, 2, 3];  // 8 bytes: [0, 0, 0, 0, 0, 1, 2, 3]
-   // Interpreted as unsigned 64-bit integer: bytes are right-aligned, so this becomes 0x0000000000010203
-   // For arithmetic, it's treated as a single 8-byte value
-   ```
+   ```aurora
+   ident a = [1, 2, 3];   #- 8 bytes: [0, 0, 0, 0, 0, 1, 2, 3]
+   #- Interpreted as unsigned 64-bit integer: bytes are right-aligned, so this becomes 0x0000000000010203
+   #- For arithmetic, it's treated as a single 8-byte value
+   
+```
 
 ### Examples
 
-```javascript
-// Simple arithmetic
+```aurora
+#- Simple arithmetic
 ident a = 10;
 ident b = 20;
-printb a + b;  // = 30
+printb a + b;   #- [0 0 0 0 0 0 0 30]
 
-// All values are treated as unsigned 64-bit integers for arithmetic
-ident x = 3;           // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 3]
-ident y = [1, 1];      // 8 bytes: [0, 0, 0, 0, 0, 1, 1] (tape as direct bytes)
-printb x + y;           // y interpreted as unsigned 64-bit integer from bytes [0, 0, 0, 0, 0, 1, 1]
-                       // Result depends on how bytes are interpreted as unsigned 64-bit integer
+#- A tape is read as one unsigned number, whatever it was written as: [1, 1] is
+#- the bytes 1 and 1, which spell 257, so this is 260.
+ident x = 3;
+ident y = [1, 1];
+printb x + y;   #- [0 0 0 0 0 0 1 4]
+printd x + y;   #- 260
 
-// Booleans in arithmetic
-ident t = true;        // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 1]
-ident f = false;       // 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0]
-printb true + 1;        // [0, 0, 0, 0, 0, 0, 0, 1] + [0, 0, 0, 0, 0, 0, 0, 1] = 2
-printb false + 1;       // [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 1
+#- Booleans in arithmetic
+ident t = true;   #- 8 bytes: [0, 0, 0, 0, 0, 0, 0, 1]
+ident f = false;   #- 8 bytes: [0, 0, 0, 0, 0, 0, 0, 0]
+printb true + 1;   #- [0, 0, 0, 0, 0, 0, 0, 1] + [0, 0, 0, 0, 0, 0, 0, 1] = 2
+printb false + 1;   #- [0, 0, 0, 0, 0, 0, 0, 0] + [0, 0, 0, 0, 0, 0, 0, 1] = 1
 ```
 
 ### No signs, and no negative numbers
@@ -401,25 +409,27 @@ a negative number and no operation can produce one.
 
 So `-x` is not "negative x". It is x taken away from zero, wrapping at the tape width:
 
-```javascript
-printd -5;    // 18446744073709551611, which is 2^64 - 5 with the default 8-byte tape
-printd -5;    // 251 with --tape-size 1, which is 2^8 - 5
-printb -1;    // [255 255 255 255 255 255 255 255]
+```aurora
+printd -5;   #- 18446744073709551611, which is 2^64 - 5 at the default width
+printb -1;   #- [255 255 255 255 255 255 255 255]
 ```
+
+The width decides how far it wraps: the same `printd -5;` writes `251` under
+`--tape-size 1`, which is 2^8 - 5.
 
 That value stands in for -5 wherever wrapping is the whole story:
 
-```javascript
-printd -5 + 5;      // 0 — it comes back
-printd 1 - 2 + 1;   // 0 — the wrap in the middle cancels
+```aurora
+printd -5 + 5;   #- 0 — it comes back
+printd 1 - 2 + 1;   #- 0 — the wrap in the middle cancels
 ```
 
 and stops standing in for it the moment an operation has to know the sign:
 
-```javascript
-printd -5 bigger 5;   // 1, true: 2^64 - 5 is an enormous number, not a small one
-printd -5 smaller 5;  // 0
-printd -5 / 2;        // 9223372036854775805 — half of an enormous number, not -2
+```aurora
+printd -5 bigger 5;   #- 1, true: 2^64 - 5 is an enormous number, not a small one
+printd -5 smaller 5;   #- 0
+printd -5 / 2;   #- 9223372036854775805 — half of an enormous number, not -2
 ```
 
 Comparison and division read the bytes as unsigned, like everything else does. A program that

@@ -39,7 +39,7 @@ For the other way of working — a manifest with named profiles — see [project
 
 ## Reading the output
 
-Every value is a tape — a fixed run of bytes, 8 wide by default — and the three print builtins are three readings of it. `printb` writes the bytes, which is why a result looks like `[0 0 0 0 0 0 0 42]`; `printd` writes the number they spell, `42`; `printc` writes the character that number names. See [printing.ar](printing.ar).
+Every value is a tape — a fixed run of bytes, 8 wide by default — and the three print builtins are three readings of it. `printb` writes the bytes, which is why a result looks like `[0 0 0 0 0 0 0 42]`; `printd` writes the number they spell, `42`; `printc` writes those bytes as UTF-8 text. See [printing.ar](printing.ar).
 
 One file is one program: the compiler's unit is the file, so these examples share a directory without their names colliding.
 

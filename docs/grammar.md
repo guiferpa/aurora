@@ -76,9 +76,11 @@ go under the old pair: reading a tape as a decimal number was possible only by c
 bytes by hand.
 
 `echo` also read one byte per byte, and kept it only when it fell in printable ASCII, so
-every character above 127 was silently dropped — `printc "café"` used to write `caf`. It now
-reads the number the whole tape holds and writes it as UTF-8, which is what makes 233 an é
-and 514 an Ȃ.
+every character above 127 was silently dropped — `printc "café"` used to write `caf`.
+`printc` read the number a whole tape held after that, which made `printc 514` write `Ȃ`;
+since text became a tape of bytes it reads the bytes as UTF-8 instead, so `printc "café"`
+is right either way and a character above ASCII is written as text rather than as its
+code point.
 
 **Breaking change:** `print` and `echo` no longer parse; both are ordinary identifiers now,
 which will not resolve. `print x` becomes `printb x`, `echo x` becomes `printc x`.
@@ -88,7 +90,7 @@ which will not resolve. `print x` becomes `printb x`, `echo x` becomes `printc x
 | Name | Reference | Representation |
 |---|---|---|
 | Logical | **_log** | `true \| false` |
-| Character | **_char** | *One tape (`tape_size` bytes, 8 by default)* |
+| Text | **_text** | `"…"` — *its bytes, in one tape of `tape_size`* |
 | Integer | **_int** | `[0-9]+` |
 | Identifier | **_id** | `[a-zA-Z_?!]` |
 
@@ -349,17 +351,23 @@ significant bytes, with the index taken modulo the tape width.
 ### Builtins
 ```
 _print  -> (PRINTB | PRINTC | PRINTD) _expr
-_assert -> ASSERT O_PAREN _expr COMMA _expr C_PAREN
+_assert -> ASSERT O_PAREN _expr COMMA _text C_PAREN
 ```
 
 The three print builtins are three readings of the same tape, and the suffix names the
-reading: `printb` the bytes, `printd` the decimal number they spell, `printc` the character
-those bytes are, in UTF-8.
+reading: `printb` the bytes, `printd` the number they spell, `printc` those bytes as UTF-8
+text.
 
 ```
-printb 44;   [0 0 0 0 0 0 0 44]
-printd 44;   44
-printc 44;   ,
+printb 44;      [0 0 0 0 0 0 0 44]
+printd 44;      44
+printc 44;      ,      the byte 44 is a comma
+printc 26729;   hi     the bytes 104 and 105
 ```
 
 `assert` is only accepted in files named `*.test.ar`.
+
+Its message is a **literal**, not an expression: it is written for whoever reads the result
+of a test, the same way a struct's field names are written for whoever reads the source. It
+rides in the instruction as its bytes rather than as a value, which is also what lets it be
+longer than a tape — a message usually is.

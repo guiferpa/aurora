@@ -1,5 +1,9 @@
 # State Management in Aurora
 
+**Status: proposal. Nothing here is implemented.** There is no `state` keyword, no `name!`
+form, no node and no opcode for any of it — the compiler will reject every example below.
+The document is kept because it records a decided shape for whoever builds it.
+
 ## Overview
 
 Aurora provides state management through **stateful functions** (functions ending with `!`) that encapsulate mutable state. Each stateful function maintains its own private state that persists for the lifetime of the process, similar to RAM memory.

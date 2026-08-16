@@ -84,8 +84,7 @@ Mental model: a cursor over the instruction slice plus a chain of `Environ` fram
 - Recursive-descent, one token lookahead, `EatToken` for consumption. Precedence chain: `ParseExpr → ParseBoolExpr → ParseRelExpr → ParseAddExpr → ParseMultExpr → ParseExpoExpr → ParseUnaExpr → ParsePriExpr`. Only `ParseAddExpr` is left-associative (loop); the others recurse right — which is exactly why the EVM lowering has to reorder `Sub`/`Div`.
 - Every expression in a block/top level must end with `;` (`ParseExprs`).
 - `branch { test: value, ..., fallback; }` desugars into nested `IfExpression`s (`ParseBranchItem`).
-- `assert(cond, msg)` is rejected outside `*.test.ar` files.
-- `docs/grammar.md` documents parametrized blocks `(a, b) { }` and keyed list literals — **neither exists**; `defer` + `arguments(n)` replaced the former, `TapeBracketExpression` is the only bracket form.
+- `assert(cond, "msg")` is rejected outside `*.test.ar` files. The message is a **literal**, held as a string on the node and written into the instruction as raw bytes — it is not a value and has no tape-width limit.
 
 ## EVM backend (`builder/evm/`)
 

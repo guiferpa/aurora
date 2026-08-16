@@ -68,6 +68,118 @@ func (e *editor) setRestore(f func()) {
 	e.restore = f
 }
 
+// line is what is being typed and everything that moves inside it: the runes, where the
+// cursor sits, how far back the history has been walked, and the line that was stashed when
+// that walk began.
+//
+// It exists so that a key is a small function with a name — insert, backspace, historyBack —
+// instead of three lines of slice arithmetic in the middle of a switch, which is what took
+// ReadLine to 35 of cognitive complexity.
+type line struct {
+	buf  []rune
+	pos  int
+	hist *History
+	// histIdx walks the history; hist.Len() means "the line being typed".
+	histIdx int
+	stash   string
+}
+
+// text is the line as it would be submitted.
+func (l *line) text() string { return string(l.buf) }
+
+// insert puts a rune where the cursor is and steps over it.
+func (l *line) insert(r rune) {
+	l.buf = append(l.buf, 0)
+	copy(l.buf[l.pos+1:], l.buf[l.pos:])
+	l.buf[l.pos] = r
+	l.pos++
+}
+
+// backspace removes the rune before the cursor.
+func (l *line) backspace() {
+	if l.pos == 0 {
+		return
+	}
+	l.buf = append(l.buf[:l.pos-1], l.buf[l.pos:]...)
+	l.pos--
+}
+
+// deleteUnder removes the rune the cursor is on, and does nothing at the end of the line.
+func (l *line) deleteUnder() {
+	if l.pos < len(l.buf) {
+		l.buf = append(l.buf[:l.pos], l.buf[l.pos+1:]...)
+	}
+}
+
+func (l *line) left() {
+	if l.pos > 0 {
+		l.pos--
+	}
+}
+
+func (l *line) right() {
+	if l.pos < len(l.buf) {
+		l.pos++
+	}
+}
+
+func (l *line) toStart() { l.pos = 0 }
+
+func (l *line) toEnd() { l.pos = len(l.buf) }
+
+// historyBack moves one entry towards the past, stashing the line being typed on the first
+// move. At the oldest entry it changes nothing and still takes the cursor to the end.
+func (l *line) historyBack() {
+	if l.histIdx <= 0 {
+		l.toEnd()
+		return
+	}
+	if l.histIdx == l.hist.Len() {
+		l.stash = l.text()
+	}
+	l.histIdx--
+	l.buf = []rune(l.hist.At(l.histIdx))
+	l.toEnd()
+}
+
+// historyForward moves one entry towards the present, restoring the stashed line at the end
+// of the walk.
+func (l *line) historyForward() {
+	if l.histIdx >= l.hist.Len() {
+		l.buf = []rune(l.stash)
+		l.toEnd()
+		return
+	}
+	l.histIdx++
+	l.buf = []rune(l.stash)
+	if l.histIdx < l.hist.Len() {
+		l.buf = []rune(l.hist.At(l.histIdx))
+	}
+	l.toEnd()
+}
+
+// The keys that change the line without ending it. Ctrl+D is here for the line it deletes
+// from; on an empty line it ends the session instead, which ReadLine answers before looking
+// here.
+var editKeys = map[rune]func(l *line){
+	keyBackspace: (*line).backspace,
+	keyCtrlH:     (*line).backspace,
+	keyCtrlD:     (*line).deleteUnder,
+	keyCtrlA:     (*line).toStart,
+	keyCtrlE:     (*line).toEnd,
+}
+
+// The same, for the keys that arrive as an escape sequence.
+var escapeKeys = map[escKey]func(l *line){
+	escUp:     (*line).historyBack,
+	escDown:   (*line).historyForward,
+	escLeft:   (*line).left,
+	escRight:  (*line).right,
+	escHome:   (*line).toStart,
+	escEnd:    (*line).toEnd,
+	escDelete: (*line).deleteUnder,
+}
+
 // ReadLine reads one line. It returns io.EOF on Ctrl+D with an empty buffer and
 // errInterrupt on Ctrl+C.
 func (e *editor) ReadLine() (string, error) {
@@ -80,13 +192,8 @@ func (e *editor) ReadLine() (string, error) {
 		defer e.Restore()
 	}
 
-	buf := make([]rune, 0)
-	pos := 0
-	// histIdx walks the history; hist.Len() means "the line being typed".
-	histIdx := e.hist.Len()
-	stash := ""
-
-	e.redraw(buf, pos)
+	l := &line{buf: make([]rune, 0), hist: e.hist, histIdx: e.hist.Len()}
+	e.redraw(l)
 
 	for {
 		r, _, err := e.in.ReadRune()
@@ -94,99 +201,49 @@ func (e *editor) ReadLine() (string, error) {
 			return "", err
 		}
 
-		switch r {
-		case keyEnter, keyLineFeed:
-			_, _ = fmt.Fprint(e.out, "\r\n")
-			return string(buf), nil
-
-		case keyCtrlC:
-			_, _ = fmt.Fprint(e.out, "\r\n")
-			return "", errInterrupt
-
-		case keyCtrlD:
-			if len(buf) == 0 {
-				_, _ = fmt.Fprint(e.out, "\r\n")
-				return "", io.EOF
-			}
-			if pos < len(buf) {
-				buf = append(buf[:pos], buf[pos+1:]...)
-			}
-
-		case keyBackspace, keyCtrlH:
-			if pos > 0 {
-				buf = append(buf[:pos-1], buf[pos:]...)
-				pos--
-			}
-
-		case keyCtrlA:
-			pos = 0
-
-		case keyCtrlE:
-			pos = len(buf)
-
-		case keyEscape:
+		switch {
+		case r == keyEnter || r == keyLineFeed:
+			return e.end(l.text(), nil)
+		case r == keyCtrlC:
+			return e.end("", errInterrupt)
+		case r == keyCtrlD && len(l.buf) == 0:
+			return e.end("", io.EOF)
+		case r == keyEscape:
 			// A lone ESC blocks until the next key arrives; acceptable for a REPL.
-			switch e.readEscape() {
-			case escUp:
-				buf, pos, histIdx, stash = e.historyBack(buf, histIdx, stash)
-			case escDown:
-				buf, pos, histIdx = e.historyForward(histIdx, stash)
-			case escLeft:
-				if pos > 0 {
-					pos--
-				}
-			case escRight:
-				if pos < len(buf) {
-					pos++
-				}
-			case escHome:
-				pos = 0
-			case escEnd:
-				pos = len(buf)
-			case escDelete:
-				if pos < len(buf) {
-					buf = append(buf[:pos], buf[pos+1:]...)
-				}
-			}
-
+			apply(escapeKeys[e.readEscape()], l)
 		default:
-			if r < 0x20 {
-				continue // other control characters are ignored
-			}
-			buf = append(buf, 0)
-			copy(buf[pos+1:], buf[pos:])
-			buf[pos] = r
-			pos++
+			e.press(r, l)
 		}
 
-		e.redraw(buf, pos)
+		e.redraw(l)
 	}
 }
 
-// historyBack moves one entry towards the past, stashing the line being typed on the first move.
-func (e *editor) historyBack(buf []rune, histIdx int, stash string) ([]rune, int, int, string) {
-	if histIdx <= 0 {
-		return buf, len(buf), histIdx, stash
+// press applies a key that does not end the line: one of the editing keys, the rune itself,
+// or nothing at all.
+func (e *editor) press(r rune, l *line) {
+	if edit, ok := editKeys[r]; ok {
+		edit(l)
+		return
 	}
-	if histIdx == e.hist.Len() {
-		stash = string(buf)
+	if r < 0x20 {
+		return // other control characters are ignored
 	}
-	histIdx--
-	next := []rune(e.hist.At(histIdx))
-	return next, len(next), histIdx, stash
+	l.insert(r)
 }
 
-// historyForward moves one entry towards the present, restoring the stashed line at the end.
-func (e *editor) historyForward(histIdx int, stash string) ([]rune, int, int) {
-	if histIdx >= e.hist.Len() {
-		return []rune(stash), len([]rune(stash)), histIdx
+// apply runs a key that may not be there: an escape sequence the editor does not know reads
+// as no key, and no key does nothing.
+func apply(edit func(l *line), l *line) {
+	if edit != nil {
+		edit(l)
 	}
-	histIdx++
-	next := []rune(stash)
-	if histIdx < e.hist.Len() {
-		next = []rune(e.hist.At(histIdx))
-	}
-	return next, len(next), histIdx
+}
+
+// end closes the line off on the terminal and answers with what it was.
+func (e *editor) end(text string, err error) (string, error) {
+	_, _ = fmt.Fprint(e.out, "\r\n")
+	return text, err
 }
 
 type escKey int
@@ -267,9 +324,9 @@ func finalToKey(final rune, params string) escKey {
 // then walks the cursor back when it is not at the end.
 //
 // Lines longer than the terminal width are not reflowed (known limitation).
-func (e *editor) redraw(buf []rune, pos int) {
-	_, _ = fmt.Fprintf(e.out, "\r\x1b[K%s%s", e.prompt, string(buf))
-	if back := len(buf) - pos; back > 0 {
+func (e *editor) redraw(l *line) {
+	_, _ = fmt.Fprintf(e.out, "\r\x1b[K%s%s", e.prompt, l.text())
+	if back := len(l.buf) - l.pos; back > 0 {
 		_, _ = fmt.Fprintf(e.out, "\x1b[%dD", back)
 	}
 }

@@ -51,7 +51,9 @@ without it.
 - **`.claude/agents/aurora-internals.md`** — how the compiler actually works, verified
   against the code rather than the docs.
 - **`docs/`** for the end user, **`docs/contributing/`** for contributors (English),
-  **`rfcs/`** for proposals and debt (Portuguese).
+  **`rfcs/`** for proposals and debt (Portuguese). A document still being discussed says so
+  at the top — `Status: proposal` or `Estado: proposta` — which is what keeps the suite from
+  running the examples of a language that does not exist yet.
 - **`docs/roadmap.md`** is the direction: anything the user can perceive gets an entry there.
 
 Conversation is usually pt-BR; code, comments and `docs/` stay in English.

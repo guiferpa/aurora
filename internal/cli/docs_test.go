@@ -97,6 +97,12 @@ func documentationFiles(t *testing.T) []string {
 }
 
 // isProposal answers whether a document declares itself one, which it does at the top.
+//
+// In either language: what is written for the end user is in English and lives in docs/, and
+// what is still being discussed is in Portuguese and lives in rfcs/. A marker that only
+// spoke English would make every RFC look like documentation of a language that exists.
+//
+// The emphasis is stripped first, so a header reads the same whether or not it is bold.
 func isProposal(t *testing.T, path string) bool {
 	t.Helper()
 
@@ -108,7 +114,9 @@ func isProposal(t *testing.T, path string) bool {
 	if len(head) > 800 {
 		head = head[:800]
 	}
-	return strings.Contains(head, "Status: proposal")
+	head = strings.ReplaceAll(head, "*", "")
+
+	return strings.Contains(head, "Status: proposal") || strings.Contains(head, "Estado: proposta")
 }
 
 // runSnippet runs one standalone block and checks it did what it said it would.
@@ -250,5 +258,37 @@ func TestNoDocumentWithAuroraEscapesTheCheck(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("walking the repository: %v", err)
+	}
+}
+
+// A document that says it is a proposal is skipped, and it says so in the language it is
+// written in: docs/ is English and rfcs/ is Portuguese. Getting this wrong is quiet in the
+// worst way — the suite would run the examples of a language that does not exist yet, or
+// stop running the examples of one that does.
+func TestProposalIsRecognisedInEitherLanguage(t *testing.T) {
+	cases := []struct {
+		name string
+		head string
+		want bool
+	}{
+		{name: "english", head: "# Something\n\nStatus: proposal\n", want: true},
+		{name: "english in bold", head: "# Something\n\n**Status:** proposal · 2026-08-16\n", want: true},
+		{name: "portuguese", head: "# Alguma coisa\n\nEstado: proposta\n", want: true},
+		{name: "portuguese in bold", head: "# Alguma coisa\n\n**Estado:** proposta · 2026-08-16\n", want: true},
+		{name: "a document that claims nothing", head: "# Grammar\n\nHow Aurora reads.\n", want: false},
+		{name: "the word further down the page", head: "# Grammar\n\n" + strings.Repeat("x", 900) + "\nStatus: proposal\n", want: false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "doc.md")
+			if err := os.WriteFile(path, []byte(tc.head), 0o644); err != nil {
+				t.Fatalf("writing the document: %v", err)
+			}
+
+			if got := isProposal(t, path); got != tc.want {
+				t.Errorf("isProposal = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

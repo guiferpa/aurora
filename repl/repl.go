@@ -15,6 +15,7 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/internal/trace"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 )
@@ -152,23 +153,32 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		}
 
 		ast, err := parser.New(parser.NewParserOptions{
-			Tokens:        tokens,
-			EnableLogging: slices.Contains(loggers, "parser"),
-			TapeSize:      tapeSize,
-			Directives:    directives,
+			Tokens:     tokens,
+			TapeSize:   tapeSize,
+			Directives: directives,
 		}).Parse()
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
+		// The phases return what they made; showing it is decided here.
+		if slices.Contains(loggers, "parser") {
+			if err := trace.AST(os.Stdout, ast); err != nil {
+				fmt.Println(err)
+			}
+		}
 
 		program, err := emitter.New(emitter.NewEmitterOptions{
-			EnableLogging: slices.Contains(loggers, "emitter"),
-			TapeSize:      tapeSize,
+			TapeSize: tapeSize,
 		}).EmitProgram(ast)
 		if err != nil {
 			fmt.Println(err)
 			continue
+		}
+		if slices.Contains(loggers, "emitter") {
+			if err := trace.Instructions(os.Stdout, program.Instructions); err != nil {
+				fmt.Println(err)
+			}
 		}
 
 		// Append to buffer so defer from/to indices stay valid when calling later.

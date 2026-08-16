@@ -42,24 +42,19 @@ false;
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
-		tokens, err := lexer.New(lexer.NewLexerOptions{
-			EnableLogging: false,
-		}).GetFilledTokens(bs)
+		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
 		ast, err := parser.New(parser.NewParserOptions{
-			Tokens:        tokens,
-			EnableLogging: false,
+			Tokens: tokens,
 		}).Parse()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		insts, err := emitter.New(emitter.NewEmitterOptions{
-			EnableLogging: false,
-		}).Emit(ast)
+		insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return

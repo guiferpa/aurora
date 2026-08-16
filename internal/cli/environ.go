@@ -7,9 +7,9 @@ import (
 // Environ holds project root, loaded manifest, and the selected profile.
 // Commands that need the manifest use LoadEnviron once and then AbsPath, Profile, etc.
 type Environ struct {
-	Root    string
+	Root     string
 	Manifest *manifest.Manifest
-	Profile manifest.Profile
+	Profile  manifest.Profile
 }
 
 // LoadEnviron finds project root, loads the manifest, and returns Environ for the given profile.

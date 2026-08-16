@@ -11,9 +11,9 @@ All notable changes and release notes for Aurora are documented here.
 - **Text is a tape, and reels are gone.** `"hi"` is the tape holding its bytes, right aligned like every other value — one more way of writing a tape, next to `1`, `0x2a`, `[1, 2]` and `true`.
 
   ```aurora
-  printb "hi";          # [0 0 0 0 0 0 104 105]
-  printd "hi";          # 26729
-  printd "a" equals 97; # 1 — the same tape, not a conversion
+  printb "hi";   #- [0 0 0 0 0 0 104 105]
+  printd "hi";   #- 26729
+  printd "a" equals 97;   #- 1 — the same tape, not a conversion
   ```
 
   Text used to be a **reel**: one tape per character, so `"hi"` was two tapes and `"Gui"` was 96 bytes at `--tape-size 32` — a cost that grew exactly when the tape got wider. It was also the one value in the language that was not a tape. Now `"a"` and `97` are the same value rather than a coincidence of one-character strings, arithmetic on text needs no rule of its own, and text fits in a struct field, which a reel never could.
@@ -33,7 +33,7 @@ All notable changes and release notes for Aurora are documented here.
     ident p = feed(0) as Point;
     p.x * p.y;
   };
-  printd area(Point{10, 20});   # 200
+  printd area(Point{10, 20});   #- 200
   ```
 
   Braces build the value, as in Go — which is also what tells a construction from applying values to a scope: `Point(1, 2)` and `greet(1, 2)` are the same shape, `Point{1, 2}` is not.

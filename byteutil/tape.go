@@ -1,6 +1,11 @@
 package byteutil
 
-import "github.com/holiman/uint256"
+import (
+	"strconv"
+	"strings"
+
+	"github.com/holiman/uint256"
+)
 
 // A tape is how every value in Aurora is represented: a fixed run of bytes, big-endian,
 // right-aligned. How many bytes is a property of the program being compiled, not of the
@@ -26,6 +31,21 @@ func TapeSize(size int) int {
 	}
 	if size > MaxTapeSize {
 		return MaxTapeSize
+	}
+	return size
+}
+
+// ParseTapeSize reads a tape size written as text, answering with fallback when the text is
+// not a number a tape can be.
+//
+// It exists for a host that takes the size from outside the program — a form control, a
+// query string — where the value arrives as text and a bad one is not worth stopping for.
+// The fallback is the caller's because a host may start from a width of its own: the
+// playground opens at 32, not at the language's 8.
+func ParseTapeSize(text string, fallback int) int {
+	size, err := strconv.Atoi(strings.TrimSpace(text))
+	if err != nil || size < MinTapeSize || size > MaxTapeSize {
+		return fallback
 	}
 	return size
 }

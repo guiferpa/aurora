@@ -3,6 +3,10 @@ name: Pipeline
 on:
   push:
     branches: [main]
+  # Every change arrives as a pull request, so this has to run on the thing being reviewed
+  # rather than only on what was already merged.
+  pull_request:
+    branches: [main]
 
 jobs:
   test:
@@ -23,13 +27,36 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      # Through the Makefile, so a failure here is reproducible with one command locally.
+      # It writes coverage.out, which is also what `make cover-html` reads.
       - name: Running test
-        run: go test $(go list ./... | grep -v examples) -race -covermode atomic -coverprofile=covprofile
+        run: make test
 
       - name: Send coverage
         uses: shogo82148/actions-goveralls@v1
         with:
-          path-to-profile: covprofile
+          path-to-profile: coverage.out
+
+  build:
+    runs-on: ubuntu-24.04
+    name: Build
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Through the Makefile, so CI and a laptop run the same thing.
+      - name: Compile every package
+        run: make build
+
+      # The playground is the only target that does not come out of `go build ./...`, and
+      # the only one that breaks without anything noticing.
+      - name: Compile for the browser
+        run: make wasm
 
   lint:
     runs-on: ubuntu-24.04

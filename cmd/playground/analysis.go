@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"syscall/js"
 
+	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/lsp/textdoc"
 )
 
@@ -37,6 +38,20 @@ func documentFrom(args []js.Value) textdoc.Document {
 	}
 }
 
+// positionFrom reads the place in the document a call is asking about. Both counts start at
+// zero here, as they do in the protocol; the page is what converts, since it is the editor
+// that counts from one.
+func positionFrom(args []js.Value) lsp.Position {
+	pos := lsp.Position{}
+	if len(args) > 1 {
+		pos.Line = args[1].Int()
+	}
+	if len(args) > 2 {
+		pos.Character = args[2].Int()
+	}
+	return pos
+}
+
 // marshal answers with JSON, which is what crosses to the page. A value that cannot be
 // encoded answers as nothing rather than as a broken string: an editor that colours nothing
 // is a worse day than one that colours late, and neither is worth stopping the page for.
@@ -62,6 +77,16 @@ func analyses() []js.Func {
 		return marshal(textdoc.SemanticTokensFor(documentFrom(args).Source))
 	})
 
+	hover := js.FuncOf(func(this js.Value, args []js.Value) any {
+		return marshal(textdoc.HoverInfo(documentFrom(args), positionFrom(args)))
+	})
+
+	// Snippets are always on: the page is one editor and it is known to expand them, where a
+	// language server has to ask because it does not know who is listening.
+	completions := js.FuncOf(func(this js.Value, args []js.Value) any {
+		return marshal(textdoc.CompletionItemsFor(documentFrom(args), positionFrom(args), true))
+	})
+
 	// The legend names what the numbers in the token data mean, and the page has to be given
 	// it rather than told to keep a copy: the order is the wire format.
 	semanticLegend := js.FuncOf(func(this js.Value, args []js.Value) any {
@@ -74,6 +99,8 @@ func analyses() []js.Func {
 	js.Global().Set("auroraDiagnostics", diagnostics)
 	js.Global().Set("auroraSemanticTokens", semanticTokens)
 	js.Global().Set("auroraSemanticLegend", semanticLegend)
+	js.Global().Set("auroraHover", hover)
+	js.Global().Set("auroraCompletions", completions)
 
-	return []js.Func{diagnostics, semanticTokens, semanticLegend}
+	return []js.Func{diagnostics, semanticTokens, semanticLegend, hover, completions}
 }

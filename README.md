@@ -199,7 +199,7 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 <summary>Quick reference</summary>
 
 - **Values** = tapes: a fixed run of bytes, 8 by default (`ident a = 3` → `[0,0,0,0,0,0,0,3]`). Booleans are tapes too: `true` is the same bytes as `1`.
-- **Tape size** is a compiler parameter: `tape_size` in `aurora.toml` or `--tape-size` (1 to 32, flag wins). A literal that does not fit is a compile-time error.
+- **Tape size** is a compiler parameter: `tape_size` under `[project]` in `aurora.toml`, or `--tape-size` (1 to 32, flag wins). It is the dialect the whole project is written in, so it is the project's and not a profile's. A literal that does not fit is a compile-time error.
 - **Tapes** are shift registers: `pull` shifts left (value in at the right), `push` shifts right (value in at the left), `head`/`tail` slice the significant bytes; index `n` is modulo the tape size.
 - **Text** is one more way of writing a tape, next to `1`, `[1, 2]` and `true`: `"hi"` is the tape holding its bytes. So `"a"` is 97, comparing text is comparing bytes, and how much text fits is how wide a tape is.
 - **Printing** is three readings of the same tape: `printb` the bytes, `printd` the number they spell, `printc` the character that number names, as UTF-8.

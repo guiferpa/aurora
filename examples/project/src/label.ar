@@ -1,0 +1,27 @@
+#- The "label" profile points here, so "aurora run label" runs this file and
+#- "aurora build label" writes bin/label.
+#-
+#- A project holds as many profiles as it has things to build: this one is a
+#- second program next to src/main.ar, with a binary of its own. What it does
+#- is unrelated — that is the point of a profile.
+#-
+#- Output:
+#-   box
+#-   [0 0 0 0 0 0 0 20]
+#-   20
+
+struct Box { width, height };
+
+ident area = defer {
+  ident b = feed(0) as Box;
+  b.width * b.height;
+};
+
+ident box = Box{4, 5};
+
+#- Text is a tape of its bytes, so a short label is an ordinary value.
+printc "box";
+
+#- The same number, read two ways: as the bytes it is, and as a decimal.
+printb area(box);
+printd area(box);

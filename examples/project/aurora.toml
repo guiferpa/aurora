@@ -19,6 +19,8 @@
     source = "src/main.ar"
     binary = "bin/main"
 
-  [profiles.tiny]
-    source = "src/tiny.ar"
-    binary = "bin/tiny"
+  # A project holds as many profiles as it has things to build. This one is a
+  # second program with a binary of its own.
+  [profiles.label]
+    source = "src/label.ar"
+    binary = "bin/label"

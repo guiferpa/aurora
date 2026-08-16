@@ -129,6 +129,10 @@ func main() {
 	evalrunner := eval()
 	defer evalrunner.Release()
 
+	for _, analysis := range analyses() {
+		defer analysis.Release()
+	}
+
 	document.Call("getElementById", "version").Set("innerText", fmt.Sprintf("Aurora version: %s", version.VERSION))
 	document.Call("getElementById", "runner").Call("addEventListener", "click", evalrunner)
 

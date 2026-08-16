@@ -1,3 +1,5 @@
+import { registerAuroraLanguage } from './language.js';
+
 function nothing(result) {
   return "<nothing>";
 }
@@ -25,9 +27,25 @@ async function init() {
       go.importObject,
     );
     document.getElementById("runner").disabled = false;
-    await go.run(instance);
+    // go.run never resolves: the Go program blocks so that what it published stays callable.
+    // It does run main up to that block before returning, which is when the analyses and the
+    // runner appear.
+    go.run(instance).catch((err) => console.error(err));
   } catch (err) {
     console.error(err);
+  }
+}
+
+// whenEditorReady runs fn with the editor and the monaco it belongs to, whichever of the two
+// finished loading first: this module and the editor's loader race, and either order is fine.
+//
+// Both are handed over by the event rather than read off the window, because the loader sets
+// the global at a moment of its own — reading it here found it undefined about as often as
+// not.
+function whenEditorReady(fn) {
+  document.addEventListener('editor-ready', (event) => fn(event.detail), { once: true });
+  if (window.editor && window.monaco) {
+    fn({ monaco: window.monaco, editor: window.editor });
   }
 }
 
@@ -107,10 +125,33 @@ document.addEventListener("DOMContentLoaded", () => {
   mob.observe($output, { childList: true });
 
   const $clear = document.getElementById('clear');
-  $clear.addEventListener('click', () => {
+  const clearOutput = () => {
     $output.innerHTML = '';
     $clear.disabled = true;
+  };
+  $clear.addEventListener('click', clearOutput);
+
+  // The width of a tape decides what a program means — at one byte 255 + 1 is 0 — so what
+  // is on screen stops being the output of the program the moment it changes. Rather than
+  // leave the two disagreeing, the program runs again at the new width.
+  //
+  // The button is disabled until the wasm module is ready, and a click on a disabled button
+  // does nothing, so this cannot run before there is anything to run it with.
+  const $tapeSize = document.getElementById('tape-size');
+  $tapeSize.addEventListener('change', () => {
+    clearOutput();
+    document.getElementById('runner').click();
   });
 
-  init();
+  const running = init();
+
+  // The editor is told what the language is only once both halves are up: the colours and
+  // the marks come from the wasm module, and the editor is what they are attached to.
+  let registered = false;
+  whenEditorReady(async ({ monaco, editor }) => {
+    await running;
+    if (registered) return; // the event and the check above can both fire
+    registered = true;
+    registerAuroraLanguage(monaco, editor);
+  });
 });

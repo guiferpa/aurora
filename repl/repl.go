@@ -19,11 +19,10 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-// isString reports whether the value looks like a reel: more than one tape, all printable.
 // render prints the value of the line that was typed — the temp left by its last
 // instruction. Printing the whole temp map would spill every intermediate value of the
 // expression, in map order, which is no order at all.
-func render(w io.Writer, temps map[string][]byte, result string, eerr error, tapeSize int) {
+func render(w io.Writer, temps map[string][]byte, result string, eerr error) {
 	marker := color.New(color.FgWhite, color.Bold).Sprint("=")
 	literals := color.New(color.FgHiYellow).SprintFunc()
 	errors := color.New(color.FgRed).SprintFunc()
@@ -39,16 +38,12 @@ func render(w io.Writer, temps map[string][]byte, result string, eerr error, tap
 		return // nothing to show: the line produced no value
 	}
 
-	// Every value is a tape of bytes, so there is nothing to render as "true", as a distinct
-	// neutral value, or as text: true is a tape holding 1, nothing is a tape of zeros, and
-	// "a" is the tape holding 97. Guessing text from the bytes was possible while a reel was
-	// several tapes; now there is nothing to guess with, and printc is how text is read.
-	er, err := byteutil.Encode(value, tapeSize)
-	if err != nil {
-		_, _ = fmt.Fprint(w, errors(err))
-		return
-	}
-	_, _ = fmt.Fprintf(w, format, marker, literals(er))
+	// The tape itself, not a reading of it. A value is a run of bytes and nothing else —
+	// there is no "true", no neutral value and no text to show, because true is a tape
+	// holding 1, nothing is a tape of zeros and "a" is the tape holding 97. Writing the
+	// decimal picked one of the three readings and hid the value behind it; printb, printd
+	// and printc are how a program asks for a reading.
+	_, _ = fmt.Fprintf(w, format, marker, literals(fmt.Sprintf("%v", value)))
 }
 
 const prompt = ">> "
@@ -184,7 +179,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		// where it happens rather than all of them at the end.
 		for _, expr := range program.Expressions {
 			temps, err := ev.EvaluateRange(instsBuffer, uint64(offset+expr.From), uint64(offset+expr.To))
-			render(os.Stdout, temps, byteutil.ToHex(expr.Label), err, tapeSize)
+			render(os.Stdout, temps, byteutil.ToHex(expr.Label), err)
 			if err != nil {
 				break
 			}

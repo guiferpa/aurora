@@ -95,9 +95,8 @@ func newLineReader(in io.Reader) (lineReader, *History) {
 func Start(in io.Reader, loggers []string, tapeSize int) {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		EnableLogging: slices.Contains(loggers, "evaluator"),
-		Output:        os.Stdout,
-		TapeSize:      tapeSize,
+		Output:   os.Stdout,
+		TapeSize: tapeSize,
 	})
 
 	reader, hist := newLineReader(in)
@@ -144,12 +143,15 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 
 		line := bytes.NewBufferString(text)
 
-		tokens, err := lexer.New(lexer.NewLexerOptions{
-			EnableLogging: slices.Contains(loggers, "lexer"),
-		}).GetFilledTokens(line.Bytes())
+		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(line.Bytes())
 		if err != nil {
 			fmt.Println(err)
 			continue
+		}
+		if slices.Contains(loggers, "lexer") {
+			if err := trace.Tokens(os.Stdout, tokens); err != nil {
+				fmt.Println(err)
+			}
 		}
 
 		ast, err := parser.New(parser.NewParserOptions{

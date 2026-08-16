@@ -234,9 +234,7 @@ func TestGetTokens(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		tokens, err := New(NewLexerOptions{
-			EnableLogging: false,
-		}).GetTokens(c.Buffer)
+		tokens, err := New(NewLexerOptions{}).GetTokens(c.Buffer)
 		if err != nil {
 			t.Errorf("param: %v, %v", string(c.Buffer), err)
 		}

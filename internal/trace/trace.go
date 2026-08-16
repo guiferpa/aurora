@@ -19,9 +19,24 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 )
+
+// Tokens writes what the lexer read, one token per line: the tag, then the bytes it
+// matched.
+func Tokens(w io.Writer, tokens []lexer.Token) error {
+	for _, token := range tokens {
+		id := color.New(color.FgHiCyan).Sprint(token.GetTag().Id)
+		match := color.New(color.FgHiYellow).Sprint(byteutil.ToHexBloom(token.GetMatch()))
+		if _, err := fmt.Fprintf(w, "%s: %s\n", id, match); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // AST writes the tree the parser produced, as JSON.
 func AST(w io.Writer, ast parser.AST) error {

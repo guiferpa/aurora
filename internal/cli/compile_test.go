@@ -20,7 +20,7 @@ func TestCompile(t *testing.T) {
 	dir := t.TempDir()
 	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprintb a + 1;\n")
 
-	program, err := Compile(source, 0, nil)
+	program, err := Compile(source, 0, nil, nil)
 	if err != nil {
 		t.Fatalf("Compile: %v", err)
 	}
@@ -41,7 +41,7 @@ func TestCompileIgnoresNeighbouringFiles(t *testing.T) {
 	writeFile(t, dir, "other.ar", "ident a = 2;\nprintb a;\n")
 	writeFile(t, dir, "third.ar", "ident a = 3;\n")
 
-	if _, err := Compile(source, 0, nil); err != nil {
+	if _, err := Compile(source, 0, nil, nil); err != nil {
 		t.Fatalf("a neighbour must not be compiled in: %v", err)
 	}
 }
@@ -66,7 +66,7 @@ func TestCompileReportsErrors(t *testing.T) {
 				tapeSize = 1
 			}
 			source := writeFile(t, dir, strings.ReplaceAll(tc.name, " ", "_")+".ar", tc.source)
-			_, err := Compile(source, tapeSize, nil)
+			_, err := Compile(source, tapeSize, nil, nil)
 			if err == nil {
 				t.Fatal("expected an error")
 			}
@@ -78,7 +78,7 @@ func TestCompileReportsErrors(t *testing.T) {
 }
 
 func TestCompileFailsWhenSourceMissing(t *testing.T) {
-	if _, err := Compile(filepath.Join(t.TempDir(), "nope.ar"), 0, nil); err == nil {
+	if _, err := Compile(filepath.Join(t.TempDir(), "nope.ar"), 0, nil, nil); err == nil {
 		t.Error("expected an error for a missing file")
 	}
 }
@@ -88,10 +88,10 @@ func TestCompileHonoursTestFileRule(t *testing.T) {
 	dir := t.TempDir()
 	const source = "assert(1 equals 1, \"ok\");\n"
 
-	if _, err := Compile(writeFile(t, dir, "checks.test.ar", source), 0, nil); err != nil {
+	if _, err := Compile(writeFile(t, dir, "checks.test.ar", source), 0, nil, nil); err != nil {
 		t.Errorf("assert should be accepted in a .test.ar file: %v", err)
 	}
-	if _, err := Compile(writeFile(t, dir, "checks.ar", source), 0, nil); err == nil {
+	if _, err := Compile(writeFile(t, dir, "checks.ar", source), 0, nil, nil); err == nil {
 		t.Error("assert should be rejected outside .test.ar")
 	}
 }

@@ -230,9 +230,7 @@ func TestEvaluateOr_False(t *testing.T) {
 }
 
 func TestEvaluateSave(t *testing.T) {
-	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-	})
+	ev := New(NewEvaluatorOptions{})
 	val := byteutil.FromUint64(42)
 	if err := ev.EvaluateSave([]byte("00"), val, nil); err != nil {
 		t.Errorf("Error evaluating save: %v", err)
@@ -245,9 +243,7 @@ func TestEvaluateSave(t *testing.T) {
 }
 
 func TestEvaluateLoad(t *testing.T) {
-	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-	})
+	ev := New(NewEvaluatorOptions{})
 	expected := byteutil.FromUint64(13)
 	ev.environ.SetIdent(byteutil.ToHex([]byte("00")), expected)
 	if err := ev.EvaluateLoad([]byte("01"), []byte("00"), nil); err != nil {
@@ -261,7 +257,7 @@ func TestEvaluateLoad(t *testing.T) {
 }
 
 func TestEvaluateReturn(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
 	ev.environ = ev.environ.Ahead(next)
 
@@ -283,8 +279,7 @@ func TestEvaluateGetArg(t *testing.T) {
 	args := make([]byte, 32)
 	binary.BigEndian.PutUint64(args[24:], 77) // last 8 bytes = 77
 	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-		Args:          args,
+		Args: args,
 	})
 	if err := ev.EvaluateGetArg([]byte("00"), byteutil.FromUint64(0), nil); err != nil {
 		t.Errorf("Error evaluating get arg: %v", err)
@@ -301,8 +296,7 @@ func TestEvaluateGetArg(t *testing.T) {
 
 func TestEvaluatePushArg(t *testing.T) {
 	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-		Args:          make([]byte, 0),
+		Args: make([]byte, 0),
 	})
 	label := []byte("00")
 	val := byteutil.FromUint64(99)
@@ -319,7 +313,7 @@ func TestEvaluatePushArg(t *testing.T) {
 
 func TestEvaluateIf(t *testing.T) {
 	t.Run("True", func(t *testing.T) {
-		ev := New(NewEvaluatorOptions{EnableLogging: false})
+		ev := New(NewEvaluatorOptions{})
 		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 		ev.cursor = 0
 		if err := ev.EvaluateIf([]byte("01"), []byte("00"), byteutil.FromUint64(10)); err != nil {
@@ -332,7 +326,7 @@ func TestEvaluateIf(t *testing.T) {
 	})
 
 	t.Run("False", func(t *testing.T) {
-		ev := New(NewEvaluatorOptions{EnableLogging: false})
+		ev := New(NewEvaluatorOptions{})
 		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 		ev.cursor = 0
 		if err := ev.EvaluateIf([]byte("01"), []byte("00"), byteutil.FromUint64(3)); err != nil {
@@ -346,9 +340,7 @@ func TestEvaluateIf(t *testing.T) {
 }
 
 func TestEvaluateJump(t *testing.T) {
-	ev := New(NewEvaluatorOptions{
-		EnableLogging: false,
-	})
+	ev := New(NewEvaluatorOptions{})
 	ev.cursor = 0
 	if err := ev.EvaluateJump([]byte("00"), byteutil.FromUint64(2), nil); err != nil {
 		t.Errorf("Error evaluating jump: %v", err)
@@ -389,7 +381,7 @@ func TestEvaluatePrintBuiltins(t *testing.T) {
 }
 
 func TestCanReadInstructions(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructions([]emitter.Instruction{
 		emitter.NewInstruction([]byte("00"), emitter.OpSave, nil, nil),
 		emitter.NewInstruction([]byte("01"), emitter.OpAdd, nil, nil),
@@ -410,7 +402,7 @@ func TestCanReadInstructions(t *testing.T) {
 }
 
 func TestGetInstruction(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	inst0 := emitter.NewInstruction([]byte("00"), emitter.OpSave, []byte{1}, nil)
 	inst1 := emitter.NewInstruction([]byte("01"), emitter.OpAdd, []byte("00"), []byte("01"))
 	ev.SetInstructions([]emitter.Instruction{inst0, inst1})
@@ -428,7 +420,7 @@ func TestGetInstruction(t *testing.T) {
 }
 
 func TestSetInstructions(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	insts := []emitter.Instruction{
 		emitter.NewInstruction([]byte("00"), emitter.OpSave, nil, nil),
 	}
@@ -442,7 +434,7 @@ func TestSetInstructions(t *testing.T) {
 }
 
 func TestSetInstructionsOffset(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructions([]emitter.Instruction{
 		emitter.NewInstruction([]byte("00"), emitter.OpSave, nil, nil),
 		emitter.NewInstruction([]byte("01"), emitter.OpSave, nil, nil),
@@ -461,7 +453,7 @@ func TestSetInstructionsOffset(t *testing.T) {
 }
 
 func TestGetInstructionsOffset(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructionsOffset(2, 5)
 	cursor, end := ev.GetInstructionsOffset()
 	if cursor != 2 || end != 5 {
@@ -470,7 +462,7 @@ func TestGetInstructionsOffset(t *testing.T) {
 }
 
 func TestIncrementCursor(t *testing.T) {
-	ev := New(NewEvaluatorOptions{EnableLogging: false})
+	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructionsOffset(0, 3)
 
 	ev.IncrementCursor()
@@ -517,9 +509,7 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 		t.Run(c.Name, func(t *testing.T) {
 			bs := bytes.NewBufferString(c.SourceCode).Bytes()
 
-			tokens, err := lexer.New(lexer.NewLexerOptions{
-				EnableLogging: false,
-			}).GetFilledTokens(bs)
+			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
@@ -540,9 +530,7 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 				return
 			}
 
-			ev := New(NewEvaluatorOptions{
-				EnableLogging: options.EnableLogging,
-			})
+			ev := New(NewEvaluatorOptions{})
 			m, err := ev.Evaluate(insts)
 
 			if c.TestFn != nil {
@@ -1215,9 +1203,7 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			bs := bytes.NewBufferString(c.SourceCode).Bytes()
-			tokens, err := lexer.New(lexer.NewLexerOptions{
-				EnableLogging: false,
-			}).GetFilledTokens(bs)
+			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
@@ -1237,7 +1223,6 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 				return
 			}
 			ev := New(NewEvaluatorOptions{
-				EnableLogging: false,
 				// Assertions only run under a runner that asked for them.
 				Asserts: true,
 			})

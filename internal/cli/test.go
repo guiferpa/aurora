@@ -176,23 +176,22 @@ func runTestFile(path string, tapeSize int, loggers []string) FileReport {
 		return report
 	}
 
-	sourceProgram, err := Compile(source, tapeSize, loggers)
+	sourceProgram, err := Compile(source, tapeSize, loggers, io.Discard)
 	if err != nil {
 		report.Err = fmt.Errorf("%s: %w", filepath.Base(source), err)
 		return report
 	}
 
-	testProgram, err := Compile(path, tapeSize, loggers)
+	testProgram, err := Compile(path, tapeSize, loggers, io.Discard)
 	if err != nil {
 		report.Err = err
 		return report
 	}
 
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		EnableLogging: slices.Contains(loggers, "evaluator"),
-		Output:        io.Discard,
-		TapeSize:      tapeSize,
-		Asserts:       true,
+		Output:   io.Discard,
+		TapeSize: tapeSize,
+		Asserts:  true,
 	})
 
 	// Both programs go into one instruction stream, and each is run as a range of it. A

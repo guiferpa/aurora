@@ -54,9 +54,6 @@ func (l *Lexer) GetTokens(bs []byte) ([]Token, error) {
 				Length:  1,
 			}
 		}
-		if _, err := l.logger.Println(tag, match); err != nil {
-			return tokens, err
-		}
 		if !isComment {
 			tokens = append(tokens, tok{line, col, cursor, tag, match})
 		}

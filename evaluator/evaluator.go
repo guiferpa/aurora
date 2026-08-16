@@ -63,7 +63,6 @@ type Evaluator struct {
 	player        *Player
 	cursor        uint64
 	end           uint64
-	logger        *Logger
 	insts         []emitter.Instruction
 	assertResults []AssertResult // what each assertion did, in the order they ran
 	asserts       bool           // whether assertions are evaluated at all
@@ -657,9 +656,6 @@ func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error
 
 	for e.CanReadInstructions() {
 		inst := e.GetInstruction()
-		if err := e.logger.Println(inst); err != nil {
-			return nil, err
-		}
 		if err := e.ExecuteInstruction(inst); err != nil {
 			return nil, err
 		}
@@ -671,9 +667,6 @@ func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error
 func (e *Evaluator) Evaluate(insts []emitter.Instruction) (ReturnsPerLabel, error) {
 	e.SetInstructions(insts)
 	returns, err := e.ExecuteInstructions(0, uint64(len(e.insts)))
-	if err := e.logger.Close(); err != nil {
-		return nil, err
-	}
 	return returns, err
 }
 
@@ -684,15 +677,11 @@ func (e *Evaluator) EvaluateRange(insts []emitter.Instruction, from, to uint64) 
 	e.SetInstructions(insts)
 	e.environ.ClearTemps()
 	returns, err := e.ExecuteInstructions(from, to)
-	if err := e.logger.Close(); err != nil {
-		return nil, err
-	}
 	return returns, err
 }
 
 type NewEvaluatorOptions struct {
-	EnableLogging bool
-	Player        *Player
+	Player *Player
 	// Output receives what the print builtins write, already formatted.
 	Output io.Writer
 	Args   []byte
@@ -711,7 +700,6 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		player:        options.Player,
 		cursor:        0,
 		end:           0,
-		logger:        NewLogger(options.EnableLogging),
 		insts:         make([]emitter.Instruction, 0),
 		assertResults: make([]AssertResult, 0),
 		asserts:       options.Asserts,

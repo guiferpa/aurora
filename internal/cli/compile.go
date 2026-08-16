@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"io"
 	"os"
 	"slices"
 
@@ -19,17 +20,26 @@ import (
 // directory as the unit and compiled every .ar file next to the entry point, which made
 // independent programs in one folder collide; it was removed until the module system is
 // designed (see docs/module_system_design.md).
-func Compile(source string, tapeSize int, loggers []string) (emitter.Program, error) {
+// traces receives what each phase produced, for the loggers that were asked for. Nil
+// discards it, which is what a caller that asked for none wants.
+func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (emitter.Program, error) {
+	if traces == nil {
+		traces = io.Discard
+	}
+
 	bs, err := os.ReadFile(source)
 	if err != nil {
 		return emitter.Program{}, err
 	}
 
-	tokens, err := lexer.New(lexer.NewLexerOptions{
-		EnableLogging: slices.Contains(loggers, "lexer"),
-	}).GetFilledTokens(bs)
+	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
 	if err != nil {
 		return emitter.Program{}, err
+	}
+	if slices.Contains(loggers, "lexer") {
+		if err := trace.Tokens(traces, tokens); err != nil {
+			return emitter.Program{}, err
+		}
 	}
 
 	ast, err := parser.New(parser.NewParserOptions{
@@ -43,7 +53,7 @@ func Compile(source string, tapeSize int, loggers []string) (emitter.Program, er
 	// A phase returns what it made and does not show it; showing is decided here, once the
 	// phase has finished, which is why the output is no longer on-time.
 	if slices.Contains(loggers, "parser") {
-		if err := trace.AST(os.Stdout, ast); err != nil {
+		if err := trace.AST(traces, ast); err != nil {
 			return emitter.Program{}, err
 		}
 	}
@@ -55,7 +65,7 @@ func Compile(source string, tapeSize int, loggers []string) (emitter.Program, er
 		return emitter.Program{}, err
 	}
 	if slices.Contains(loggers, "emitter") {
-		if err := trace.Instructions(os.Stdout, program.Instructions); err != nil {
+		if err := trace.Instructions(traces, program.Instructions); err != nil {
 			return emitter.Program{}, err
 		}
 	}

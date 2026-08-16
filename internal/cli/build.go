@@ -48,7 +48,7 @@ func Build(ctx context.Context, in BuildInput) (BuildReport, error) {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return report, err
 	}
-	program, err := Compile(in.Source, in.TapeSize, in.Loggers)
+	program, err := Compile(in.Source, in.TapeSize, in.Loggers, in.Stdout)
 	if err != nil {
 		return report, err
 	}

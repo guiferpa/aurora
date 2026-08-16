@@ -30,6 +30,7 @@ Aurora is a **study-focused** language that compiles to the Ethereum Virtual Mac
 - [Editor support](docs/lsp.md) — `aurorals` language server: coloring, diagnostics, hover, completion
 - [Try it out](#try-it-out) — [Playground](#playground)
 - [Extra options](#extra-options) — [Debug flag](#debug-flag)
+- [Roadmap](docs/roadmap.md) — what the language does not do yet, and what each thing would take
 - [Development](docs/development.md) (build, tests, coverage, lint, CI) — for contributors
 - [Publishing releases](docs/releasing.md) (maintainers)
 

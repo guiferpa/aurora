@@ -67,6 +67,16 @@ $(LINTER):
 	@echo "==> Installing linter..."
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/f7cf900a4f6021580b7b962645872bbd453f11f2/install.sh | sh -s -- -b ${GOBIN} v2.7.2
 
+# Report how complex the code is, without failing: it is the instrument, not the gate.
+#
+# Cognitive complexity is the number that matters and the one `make lint` enforces — it
+# measures how hard a function is to follow. Cyclomatic complexity comes along as
+# information only: it counts branches, so it punishes a flat lookup switch that anyone
+# reads in seconds (ResolveOpCode scores 105 and is trivial) while missing deep nesting.
+complexity: $(LINTER)
+	@$(LINTER) run ./... --timeout 10m --no-config --default=none \
+		--enable=gocognit --enable=gocyclo --enable=funlen --enable=nestif || true
+
 # This jobs is to simulate github ci environment for tests github action workflows
 act: $(ACT_BIN)
 	$(ACT_BIN) --container-architecture linux/amd64 --platform ubuntu-latest=node:buster --rm
@@ -83,4 +93,4 @@ $(TPARSE_BIN):
 	@echo "==> Installing tparse..."
 	@go install github.com/mfridman/tparse@latest
 
-.PHONY: all check build wasm build-force aurora aurorals test bench lint act cover-html clean
+.PHONY: all check build wasm build-force aurora aurorals test bench lint complexity act cover-html clean

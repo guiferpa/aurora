@@ -541,9 +541,8 @@ ident t = pull [1, 2] 3;
 	}
 
 	ast, err := New(NewParserOptions{
-		Filename:      "main.ar",
-		Tokens:        tokens,
-		EnableLogging: true,
+		Filename: "main.ar",
+		Tokens:   tokens,
 	}).Parse()
 	if err != nil {
 		t.Fatalf("parsing with logging on: %v", err)

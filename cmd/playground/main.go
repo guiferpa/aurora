@@ -5,11 +5,13 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"syscall/js"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/internal/trace"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/version"
@@ -39,19 +41,30 @@ func init() {
 				return nil
 			}
 			ast, err := parser.New(parser.NewParserOptions{
-				Tokens:        tokens,
-				EnableLogging: debug,
+				Tokens: tokens,
 			}).Parse()
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
 			}
-			program, err := emitter.New(emitter.NewEmitterOptions{
-				EnableLogging: debug,
-			}).EmitProgram(ast)
+			// The phases return what they made; the page decides to show it. In wasm this
+			// lands in the browser console, which is where the debug checkbox points.
+			if debug {
+				if err := trace.AST(os.Stdout, ast); err != nil {
+					errorWriter.Write([]byte(err.Error()))
+					return nil
+				}
+			}
+			program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(ast)
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
+			}
+			if debug {
+				if err := trace.Instructions(os.Stdout, program.Instructions); err != nil {
+					errorWriter.Write([]byte(err.Error()))
+					return nil
+				}
 			}
 
 			ev := evaluator.New(evaluator.NewEvaluatorOptions{

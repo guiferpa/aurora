@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/internal/trace"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 )
@@ -32,17 +33,32 @@ func Compile(source string, tapeSize int, loggers []string) (emitter.Program, er
 	}
 
 	ast, err := parser.New(parser.NewParserOptions{
-		Filename:      source,
-		Tokens:        tokens,
-		EnableLogging: slices.Contains(loggers, "parser"),
-		TapeSize:      tapeSize,
+		Filename: source,
+		Tokens:   tokens,
+		TapeSize: tapeSize,
 	}).Parse()
 	if err != nil {
 		return emitter.Program{}, err
 	}
+	// A phase returns what it made and does not show it; showing is decided here, once the
+	// phase has finished, which is why the output is no longer on-time.
+	if slices.Contains(loggers, "parser") {
+		if err := trace.AST(os.Stdout, ast); err != nil {
+			return emitter.Program{}, err
+		}
+	}
 
-	return emitter.New(emitter.NewEmitterOptions{
-		EnableLogging: slices.Contains(loggers, "emitter"),
-		TapeSize:      tapeSize,
+	program, err := emitter.New(emitter.NewEmitterOptions{
+		TapeSize: tapeSize,
 	}).EmitProgram(ast)
+	if err != nil {
+		return emitter.Program{}, err
+	}
+	if slices.Contains(loggers, "emitter") {
+		if err := trace.Instructions(os.Stdout, program.Instructions); err != nil {
+			return emitter.Program{}, err
+		}
+	}
+
+	return program, nil
 }

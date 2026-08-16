@@ -20,7 +20,6 @@ type pr struct {
 	filename string
 	cursor   int
 	tokens   []lexer.Token
-	logger   *Logger
 	tapeSize int
 	// directives is what `struct` and `as` leave behind, and nothing more: it turns `p.x`
 	// into an index and never reaches the tree, the IR or the binary. It is held by
@@ -916,23 +915,14 @@ func (p *pr) Parse() (AST, error) {
 		return AST{}, err
 	}
 
-	ast := AST{Filename: p.filename, Nodes: nodes}
-
-	if p.logger != nil {
-		if _, err := p.logger.JSON(ast); err != nil {
-			return AST{}, err
-		}
-	}
-
-	return ast, nil
+	return AST{Filename: p.filename, Nodes: nodes}, nil
 }
 
 type NewParserOptions struct {
 	// Filename is the source path. It decides file-scoped rules: assert is only
 	// accepted inside *.test.ar.
-	Filename      string
-	Tokens        []lexer.Token
-	EnableLogging bool
+	Filename string
+	Tokens   []lexer.Token
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 	// Directives carries the struct directives across parses of the same file. Nil starts
@@ -950,7 +940,6 @@ func New(opts NewParserOptions) Parser {
 		filename:   opts.Filename,
 		cursor:     0,
 		tokens:     opts.Tokens,
-		logger:     NewLogger(opts.EnableLogging),
 		tapeSize:   byteutil.TapeSize(opts.TapeSize),
 		directives: directives,
 	}

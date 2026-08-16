@@ -526,18 +526,15 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 			}
 
 			ast, err := parser.New(parser.NewParserOptions{
-				Filename:      options.Filename,
-				Tokens:        tokens,
-				EnableLogging: false,
+				Filename: options.Filename,
+				Tokens:   tokens,
 			}).Parse()
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
 
-			insts, err := emitter.New(emitter.NewEmitterOptions{
-				EnableLogging: false,
-			}).Emit(ast)
+			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
@@ -1227,17 +1224,14 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 			}
 			ast, err := parser.New(parser.NewParserOptions{
 				// assert is only accepted in a test file
-				Filename:      "assert.test.ar",
-				Tokens:        tokens,
-				EnableLogging: false,
+				Filename: "assert.test.ar",
+				Tokens:   tokens,
 			}).Parse()
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			insts, err := emitter.New(emitter.NewEmitterOptions{
-				EnableLogging: false,
-			}).Emit(ast)
+			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return

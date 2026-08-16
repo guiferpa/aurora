@@ -33,8 +33,7 @@ type Program struct {
 }
 
 type emt struct {
-	enableLogging bool
-	tapeSize      int
+	tapeSize int
 }
 
 func GenerateLabel(tc *int) []byte {
@@ -355,11 +354,10 @@ func (e *emt) EmitProgram(ast parser.AST) (Program, error) {
 }
 
 type NewEmitterOptions struct {
-	EnableLogging bool
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 }
 
 func New(options NewEmitterOptions) *emt {
-	return &emt{enableLogging: options.EnableLogging, tapeSize: byteutil.TapeSize(options.TapeSize)}
+	return &emt{tapeSize: byteutil.TapeSize(options.TapeSize)}
 }

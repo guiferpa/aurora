@@ -34,6 +34,21 @@ func ASTEqual(got, want AST) bool {
 	return true
 }
 
+// sameKind answers whether b is the kind of node a is, and whether the two then compare
+// alike.
+//
+// Every case used to spell out the same three lines — assert the kind, give up if it is
+// another one, compare — so the comparison, which is the only part that differed, was buried
+// in the middle of twenty-one repetitions of the same shape. That is what carried nodeEqual
+// to 107 of cognitive complexity, the highest in the project.
+func sameKind[T Node](b Node, a T, alike func(a, b T) bool) bool {
+	vb, ok := b.(T)
+	return ok && alike(a, vb)
+}
+
+// nodeEqual answers whether two trees are the same tree. The kind of node picks how it is
+// compared; a kind with no case falls back to a deep comparison, which is what keeps a node
+// added tomorrow comparable before anyone writes one for it.
 func nodeEqual(a, b Node) bool {
 	if a == nil && b == nil {
 		return true
@@ -43,171 +58,96 @@ func nodeEqual(a, b Node) bool {
 	}
 	switch va := a.(type) {
 	case NumberLiteral:
-		vb, ok := b.(NumberLiteral)
-		if !ok {
-			return false
-		}
-		return va.Value == vb.Value && TokenEqual(va.Token, vb.Token)
+		return sameKind(b, va, numberEqual)
 	case BooleanLiteral:
-		vb, ok := b.(BooleanLiteral)
-		if !ok {
-			return false
-		}
-		return bytes.Equal(va.Value, vb.Value) && TokenEqual(va.Token, vb.Token)
+		return sameKind(b, va, booleanEqual)
 	case BinaryExpression:
-		vb, ok := b.(BinaryExpression)
-		if !ok {
-			return false
-		}
-		return nodeEqual(va.Left, vb.Left) && nodeEqual(va.Right, vb.Right) && opEqual(va.Operation, vb.Operation)
+		return sameKind(b, va, binaryEqual)
 	case IfExpression:
-		vb, ok := b.(IfExpression)
-		if !ok {
-			return false
-		}
-		if !nodeEqual(va.Test, vb.Test) || !nodesEqual(va.Body, vb.Body) {
-			return false
-		}
-		if (va.Else == nil) != (vb.Else == nil) {
-			return false
-		}
-		if va.Else != nil && !elseEqual(*va.Else, *vb.Else) {
-			return false
-		}
-		return true
+		return sameKind(b, va, ifEqual)
 	case BlockExpression:
-		vb, ok := b.(BlockExpression)
-		if !ok {
-			return false
-		}
-		return nodesEqual(va.Body, vb.Body)
+		return sameKind(b, va, blockEqual)
 	case IdentLiteral:
-		vb, ok := b.(IdentLiteral)
-		if !ok {
-			return false
-		}
-		return va.Id == vb.Id && TokenEqual(va.Token, vb.Token) && nodeEqual(va.Value, vb.Value)
+		return sameKind(b, va, identEqual)
 	case PrintStatement:
-		vb, ok := b.(PrintStatement)
-		if !ok {
-			return false
-		}
-		return va.Format == vb.Format && nodeEqual(va.Param, vb.Param)
+		return sameKind(b, va, printEqual)
 	case AssertStatement:
-		vb, ok := b.(AssertStatement)
-		if !ok {
-			return false
-		}
-		return TokenEqual(va.Token, vb.Token) && nodeEqual(va.Condition, vb.Condition) && va.Message == vb.Message
+		return sameKind(b, va, assertEqual)
 	case UnaryExpression:
-		vb, ok := b.(UnaryExpression)
-		if !ok {
-			return false
-		}
-		return nodeEqual(va.Expression, vb.Expression) && opEqual(va.Operation, vb.Operation)
+		return sameKind(b, va, unaryEqual)
 	case StructDeclaration:
-		vb, ok := b.(StructDeclaration)
-		if !ok {
-			return false
-		}
-		return va.Name == vb.Name && slices.Equal(va.Fields, vb.Fields)
+		return sameKind(b, va, structDeclarationEqual)
 	case StructLiteral:
-		vb, ok := b.(StructLiteral)
-		if !ok || va.Name != vb.Name || len(va.Values) != len(vb.Values) {
-			return false
-		}
-		for i := range va.Values {
-			if !nodeEqual(va.Values[i], vb.Values[i]) {
-				return false
-			}
-		}
-		return true
+		return sameKind(b, va, structLiteralEqual)
 	case FieldExpression:
-		vb, ok := b.(FieldExpression)
-		if !ok {
-			return false
-		}
-		return va.Index == vb.Index && nodeEqual(va.Expression, vb.Expression)
+		return sameKind(b, va, fieldEqual)
 	case ShapedExpression:
-		vb, ok := b.(ShapedExpression)
-		if !ok {
-			return false
-		}
-		return va.Struct == vb.Struct && nodeEqual(va.Expression, vb.Expression)
+		return sameKind(b, va, shapedEqual)
 	case DeferExpression:
-		vb, ok := b.(DeferExpression)
-		if !ok {
-			return false
-		}
-		return blockEqual(va.Block, vb.Block)
+		return sameKind(b, va, deferEqual)
 	case CalleeLiteral:
-		vb, ok := b.(CalleeLiteral)
-		if !ok {
-			return false
-		}
-		if !identifierEqual(va.Id, vb.Id) {
-			return false
-		}
-		if len(va.Params) != len(vb.Params) {
-			return false
-		}
-		for i := range va.Params {
-			if !nodeEqual(va.Params[i].Expression, vb.Params[i].Expression) {
-				return false
-			}
-		}
-		return true
+		return sameKind(b, va, calleeEqual)
 	case IdentifierLiteral:
-		vb, ok := b.(IdentifierLiteral)
-		if !ok {
-			return false
-		}
-		return va.Value == vb.Value && TokenEqual(va.Token, vb.Token)
+		return sameKind(b, va, identifierEqual)
 	case OperationLiteral:
-		vb, ok := b.(OperationLiteral)
-		if !ok {
-			return false
-		}
-		return opEqual(va, vb)
+		return sameKind(b, va, opEqual)
 	case TapeBracketExpression:
-		vb, ok := b.(TapeBracketExpression)
-		if !ok {
-			return false
-		}
-		if len(va.Items) != len(vb.Items) {
-			return false
-		}
-		for i := range va.Items {
-			if !nodeEqual(va.Items[i], vb.Items[i]) {
-				return false
-			}
-		}
-		return true
+		return sameKind(b, va, tapeEqual)
 	case FeedExpression:
-		vb, ok := b.(FeedExpression)
-		if !ok {
-			return false
-		}
-		return va.Nth.Value == vb.Nth.Value && TokenEqual(va.Nth.Token, vb.Nth.Token)
+		return sameKind(b, va, feedEqual)
 	case RelativeExpression:
-		vb, ok := b.(RelativeExpression)
-		if !ok {
-			return false
-		}
-		return nodeEqual(va.Left, vb.Left) && nodeEqual(va.Right, vb.Right) && opEqual(va.Operation, vb.Operation)
+		return sameKind(b, va, relativeEqual)
 	case BooleanExpression:
-		vb, ok := b.(BooleanExpression)
-		if !ok {
-			return false
-		}
-		return nodeEqual(va.Left, vb.Left) && nodeEqual(va.Right, vb.Right) && opEqual(va.Operation, vb.Operation)
+		return sameKind(b, va, booleanExpressionEqual)
 	default:
 		return reflect.DeepEqual(a, b)
 	}
 }
 
+func numberEqual(a, b NumberLiteral) bool {
+	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+}
+
+func booleanEqual(a, b BooleanLiteral) bool {
+	return bytes.Equal(a.Value, b.Value) && TokenEqual(a.Token, b.Token)
+}
+
 func opEqual(a, b OperationLiteral) bool {
 	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+}
+
+func identifierEqual(a, b IdentifierLiteral) bool {
+	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+}
+
+// The three expressions with two operands differ only in what they mean, and the operator is
+// compared in all of them: it is the half of the tree that says which one it is.
+func binaryEqual(a, b BinaryExpression) bool {
+	return nodeEqual(a.Left, b.Left) && nodeEqual(a.Right, b.Right) && opEqual(a.Operation, b.Operation)
+}
+
+func relativeEqual(a, b RelativeExpression) bool {
+	return nodeEqual(a.Left, b.Left) && nodeEqual(a.Right, b.Right) && opEqual(a.Operation, b.Operation)
+}
+
+func booleanExpressionEqual(a, b BooleanExpression) bool {
+	return nodeEqual(a.Left, b.Left) && nodeEqual(a.Right, b.Right) && opEqual(a.Operation, b.Operation)
+}
+
+func unaryEqual(a, b UnaryExpression) bool {
+	return nodeEqual(a.Expression, b.Expression) && opEqual(a.Operation, b.Operation)
+}
+
+// An if is equal to another when both take the same branch on the same test — so an else
+// that only one of them has is already a difference, before its body is read.
+func ifEqual(a, b IfExpression) bool {
+	if !nodeEqual(a.Test, b.Test) || !nodesEqual(a.Body, b.Body) {
+		return false
+	}
+	if (a.Else == nil) != (b.Else == nil) {
+		return false
+	}
+	return a.Else == nil || elseEqual(*a.Else, *b.Else)
 }
 
 func blockEqual(a, b BlockExpression) bool {
@@ -218,8 +158,58 @@ func elseEqual(a, b ElseExpression) bool {
 	return nodesEqual(a.Body, b.Body)
 }
 
-func identifierEqual(a, b IdentifierLiteral) bool {
-	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+func deferEqual(a, b DeferExpression) bool {
+	return blockEqual(a.Block, b.Block)
+}
+
+func identEqual(a, b IdentLiteral) bool {
+	return a.Id == b.Id && TokenEqual(a.Token, b.Token) && nodeEqual(a.Value, b.Value)
+}
+
+func printEqual(a, b PrintStatement) bool {
+	return a.Format == b.Format && nodeEqual(a.Param, b.Param)
+}
+
+func assertEqual(a, b AssertStatement) bool {
+	return TokenEqual(a.Token, b.Token) && nodeEqual(a.Condition, b.Condition) && a.Message == b.Message
+}
+
+// A struct's fields are positional, so their order is part of the shape and not a detail of
+// how the declaration was written.
+func structDeclarationEqual(a, b StructDeclaration) bool {
+	return a.Name == b.Name && slices.Equal(a.Fields, b.Fields)
+}
+
+func structLiteralEqual(a, b StructLiteral) bool {
+	return a.Name == b.Name && nodesEqual(a.Values, b.Values)
+}
+
+func fieldEqual(a, b FieldExpression) bool {
+	return a.Index == b.Index && nodeEqual(a.Expression, b.Expression)
+}
+
+func shapedEqual(a, b ShapedExpression) bool {
+	return a.Struct == b.Struct && nodeEqual(a.Expression, b.Expression)
+}
+
+func calleeEqual(a, b CalleeLiteral) bool {
+	if !identifierEqual(a.Id, b.Id) || len(a.Params) != len(b.Params) {
+		return false
+	}
+	for i := range a.Params {
+		if !nodeEqual(a.Params[i].Expression, b.Params[i].Expression) {
+			return false
+		}
+	}
+	return true
+}
+
+func tapeEqual(a, b TapeBracketExpression) bool {
+	return nodesEqual(a.Items, b.Items)
+}
+
+func feedEqual(a, b FeedExpression) bool {
+	return numberEqual(a.Nth, b.Nth)
 }
 
 func nodesEqual(a, b []Node) bool {

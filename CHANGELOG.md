@@ -4,6 +4,33 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## Unreleased
+
+### Manifest
+
+- **`tape_size` moved from a profile to the project.** It is not a path or a setting: it is the dialect the source is written in. At one byte `255 + 1` is `0` and `"Gui"` does not compile; at eight both answer otherwise.
+
+  ```toml
+  [project]
+    tape_size = 16
+  ```
+
+  As a profile field it made one file mean two things inside the same project, and left everything reading the project as a whole with no width to answer for.
+
+  **Breaking:** a manifest still carrying `tape_size` inside a profile is refused, naming where it sits and where it goes. Reading it and doing nothing would leave a project pinned to one byte compiling at eight without a word.
+
+### Tooling
+
+- **The editor reads a file in its project's width.** The language server parsed every document at the default eight, so in a project written at sixteen it underlined `"Guilherme"` as too long for a tape while `aurora run` compiled it without complaint. The same for a number that does not fit and a tape literal with too many items.
+
+  The width is found by walking up from the file, and re-read when the manifest changes — widening a project reaches the next keystroke, not the next restart.
+
+- **A file compiles the same named by path or by profile.** `aurora run src/main.ar` read the file at eight bytes while `aurora run` read the same file at the project's width. A loose file now takes the width of the project it sits in; a file outside any project still needs no manifest at all.
+
+- **`aurora init`** writes `tape_size` under `[project]`.
+
+---
+
 ## v0.4.0-alpha — 2026-08-15
 
 ### Language

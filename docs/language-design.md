@@ -8,9 +8,12 @@ Every value in Aurora is a **tape**: a fixed run of bytes, big-endian, right-ali
 
 ```toml
 # aurora.toml
-[profiles.main]
+[project]
   tape_size = 1
 ```
+
+It belongs to the project because it decides what the source *means*, not how it is built:
+the same file cannot be one dialect for one profile and another for the next.
 
 ```sh
 aurora build --tape-size 2    # the flag wins over the manifest

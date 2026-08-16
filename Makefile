@@ -1,5 +1,11 @@
 SHELL=/bin/sh
 GOBIN ?= $(shell go env GOBIN)
+# `go env GOBIN` is empty unless someone set it, and `go install` then falls back to
+# GOPATH/bin. Without this the tool paths below point at /tparse and /golangci-lint, which
+# exist nowhere — it works on a machine with GOBIN set and fails everywhere else.
+ifeq ($(GOBIN),)
+GOBIN := $(shell go env GOPATH)/bin
+endif
 BIN ?= ./target/bin
 PKGS = $(shell go list ./... | grep -v examples)
 # Every Go file plus the module files: prerequisites of the binary, so editing source

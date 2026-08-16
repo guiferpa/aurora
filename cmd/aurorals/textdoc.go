@@ -59,7 +59,7 @@ func TextdocCompletionHandler(l *log.Logger, s *state.State, contents []byte) an
 	}
 
 	uri := req.Params.TextDocument.URI
-	items := textdoc.CompletionItemsFor(textdoc.PathFromURI(uri), s.GetDocument(string(uri)), req.Params.Position)
+	items := textdoc.CompletionItemsFor(textdoc.PathFromURI(uri), s.GetDocument(string(uri)), req.Params.Position, s.SnippetSupport())
 
 	return textdoc.NewCompletionResponse(req.ID, items)
 }

@@ -45,7 +45,7 @@ func TestCompletionAfterADotOffersTheFields(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			items := CompletionItemsFor("main.ar", tc.source, tc.pos)
+			items := CompletionItemsFor("main.ar", tc.source, tc.pos, false)
 
 			got := make([]string, 0, len(items))
 			for _, item := range items {
@@ -69,7 +69,7 @@ func TestCompletionAfterADotWorksWhileBroken(t *testing.T) {
 		t.Fatal("this source is supposed not to parse; the test is about that")
 	}
 
-	items := CompletionItemsFor("main.ar", source, lsp.Position{Line: 5, Character: 9})
+	items := CompletionItemsFor("main.ar", source, lsp.Position{Line: 5, Character: 9}, false)
 	if len(items) != 2 || items[0].Label != "x" {
 		t.Errorf("offered %v, want the fields of Point", items)
 	}
@@ -77,7 +77,7 @@ func TestCompletionAfterADotWorksWhileBroken(t *testing.T) {
 
 // Anywhere else the ordinary list is what comes back.
 func TestCompletionAwayFromADotIsUnchanged(t *testing.T) {
-	items := CompletionItemsFor("main.ar", structSource, lsp.Position{Line: 5, Character: 0})
+	items := CompletionItemsFor("main.ar", structSource, lsp.Position{Line: 5, Character: 0}, false)
 
 	var hasKeyword bool
 	for _, item := range items {

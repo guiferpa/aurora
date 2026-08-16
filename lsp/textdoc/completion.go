@@ -45,12 +45,25 @@ type CompletionRequest struct {
 	Params CompletionParams `json:"params"`
 }
 
+// InsertTextFormat says how InsertText is read by the client. (Snippet is taken here by the
+// item kind of the same name, so these carry the suffix.)
+const (
+	PlainTextFormat = 1
+	SnippetFormat   = 2
+)
+
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItem
 type CompletionItem struct {
 	Label         string             `json:"label"`
 	Detail        string             `json:"detail"`
 	Documentation string             `json:"documentation"`
 	Kind          CompletionItemKind `json:"kind"`
+	// InsertText is what lands in the buffer, when it differs from the label — a snippet
+	// with the places to fill in. Left empty, the client inserts the label.
+	InsertText string `json:"insertText,omitempty"`
+	// InsertTextFormat is Snippet only for a client that said it expands them: the
+	// placeholders are literal text to anyone else.
+	InsertTextFormat int `json:"insertTextFormat,omitempty"`
 }
 
 type CompletionResult struct {

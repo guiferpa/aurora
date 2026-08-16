@@ -18,5 +18,8 @@ func InitializeHandler(l *log.Logger, s *state.State, contents []byte) any {
 	if client := req.Params.ClientInfo; client != nil {
 		l.Printf("Connected to: %s %s", client.Name, client.Version)
 	}
+	// Snippets are only offered to a client that expands them; to anyone else the
+	// placeholders are literal text.
+	s.SetSnippetSupport(req.SnippetSupport())
 	return initialize.NewResponse(req.ID)
 }

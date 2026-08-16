@@ -181,20 +181,21 @@ func HoverInfo(filename, source string, pos lsp.Position) string {
 //
 // It takes a position for that last case: what to offer depends on what sits in front of
 // the cursor, and a document being edited usually does not parse.
-func CompletionItemsFor(filename, source string, pos lsp.Position) []CompletionItem {
+func CompletionItemsFor(filename, source string, pos lsp.Position, snippets bool) []CompletionItem {
 	analysis := Analyze(filename, source)
-	if fields := scanStructs(analysis.Tokens).fieldsBefore(analysis.Tokens, analysis.Mapper.Offset(pos)); len(fields) > 0 {
+	shapes := scanStructs(analysis.Tokens)
+
+	// Right after a dot the fields are the answer, and the only one: nothing else can
+	// follow it.
+	if fields := shapes.fieldsBefore(analysis.Tokens, analysis.Mapper.Offset(pos)); len(fields) > 0 {
 		return fieldCompletions(fields)
 	}
 
 	items := make([]CompletionItem, 0)
 	for _, tag := range lexer.GetProcessableTags() {
-		items = append(items, CompletionItem{
-			Label:  tag.Keyword,
-			Detail: tag.Description,
-			Kind:   Keyword,
-		})
+		items = append(items, keywordCompletion(tag, snippets))
 	}
+	items = append(items, structCompletions(shapes, snippets)...)
 
 	if analysis.AST == nil {
 		return items

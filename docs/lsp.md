@@ -10,10 +10,45 @@
 |---|---|---|
 | **Semantic tokens** | `textDocument/semanticTokens/full` | Coloring for keywords, numbers, text, comments, operators, identifiers, calls, structs and fields |
 | **Diagnostics** | `textDocument/publishDiagnostics` | Lexer and parser errors underlined where they happen, republished on every change |
-| **Hover** | `textDocument/hover` | The description of the keyword under the cursor, or what an identifier was bound to |
-| **Completion** | `textDocument/completion` | Language keywords plus the identifiers declared in the open document |
+| **Hover** | `textDocument/hover` | The description of the keyword under the cursor, what an identifier was bound to, a struct's fields, or which tape a field reads |
+| **Completion** | `textDocument/completion` | Keywords as snippets, the identifiers and structs declared in the document, and — right after a `.` — the fields of that struct |
 
 Document sync is **full** (`textDocumentSync: 1`): the client resends the whole file on each change.
+
+### Completion
+
+Three things come back, depending on where the cursor is.
+
+**Right after a dot**, the fields of that struct and nothing else. The shape comes from the
+directives — `ident p = Point{...}` or `... as Point` — read straight from the tokens rather
+than from the tree, because a document being edited hardly ever parses: the moment someone
+types `p.` there is no field name yet, and that is exactly when completion is wanted. The
+dot is declared as a trigger character, so the client asks on its own.
+
+**Everywhere else**, the keywords and whatever the document declares. A declared struct comes
+back as a way of building one, with its own field names as the places to fill in:
+
+```
+struct Point { x, y };   ->   Point{${1:x}, ${2:y}}
+```
+
+**Keywords expand into their shape**, for the forms that have one to get wrong:
+
+| Typing | Gets |
+|---|---|
+| `defer` | `defer {` … `}` |
+| `ident` | `ident name = value;` |
+| `if` | `if condition {` … `}` |
+| `branch` | `branch {` test`:` value`,` fallback`; }` |
+| `struct` | `struct Name { field };` |
+| `assert` | `assert(condition, "message");` |
+| `printb` `printc` `printd` | `printb value;` |
+| `feed` | `feed(0)` |
+| `pull` `push` `head` `tail` | `pull tape value` |
+
+Snippets are offered **only to a client that said it expands them** (`snippetSupport` at
+initialize). To anyone else the placeholders would land in the buffer as the literal text
+they are, so that client gets the bare keyword.
 
 **Scope:** the server analyses the **open document alone** — it lexes and parses it, and never evaluates. That is what diagnostics and coloring need, and it stays within what the compiler can actually do: resolution of `use ns as alias` across files is not implemented yet (see [import_design.md](import_design.md)).
 

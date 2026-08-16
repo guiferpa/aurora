@@ -4,7 +4,7 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
-## Unreleased
+## v0.4.0-alpha — 2026-08-15
 
 ### Language
 
@@ -48,12 +48,18 @@ All notable changes and release notes for Aurora are documented here.
 
 ### Tooling
 
-- **The language server completes and expands.** A declared struct comes back as a way of building one, with its own field names as the places to fill in (`Point{${1:x}, ${2:y}}`), and the keywords expand into the forms that have a shape to get wrong — where the semicolon goes, that a `branch` ends in a fallback with no test, that the index of `head` is a literal number. Field completion after a `.` already worked; the dot is declared as a trigger character now, so the client asks for it on its own instead of waiting to be prodded. Snippets go only to a client that said it expands them — to anyone else the placeholders are literal text.
+- **The language server learned structs, and learned to type for you.** Completing after a `.` offers that struct's fields and nothing else; hover lists a struct's fields and says which tape a field reads; and `struct`, `as`, a struct's name and its field names are coloured for what they are. All of it reads the tokens rather than the tree, because a document being edited hardly ever parses — and typing `p.` is exactly when completion is wanted, which is also why the dot is now declared as a trigger character rather than waiting to be prodded.
+
+  Keywords come back as the forms that have a shape to get wrong — where the semicolon goes, that a `branch` ends in a fallback with no test, that the index of `head` is a literal number — and a declared struct comes back as a way of building one, with its own field names as the places to fill in (`Point{${1:x}, ${2:y}}`). Snippets go only to a client that said it expands them; to anyone else the placeholders would be literal text in the buffer.
 - **The REPL writes the tape, not the decimal.** A value is a run of bytes, and the decimal was one of the three readings a program can ask for — showing it hid the value behind a choice the line never made. `byteutil.Encode` existed for that one caller and is gone with it.
 - **[docs/roadmap.md](docs/roadmap.md)**, a working list of what the language does not do yet: values that outlive a tape (text of any length, a computed index, building a value while the program runs — one piece of work, and the largest), closures and calling a scope held in a value, the module resolver and loader, and the silent gaps in the EVM backend. Every entry was checked against the compiler.
 - `aurora init` writes `tape_size = 16` in the manifest it generates, since the greeting it also writes is eleven bytes. Its test compares the greeting to the text itself now, rather than to the number of its last character.
 
-- The language server knows about structs: completing after a dot offers that struct's fields and nothing else, hover lists a struct's fields and says which tape a field reads, and `struct`, `as`, the struct's name and the field names are coloured for what they are. It reads the tokens rather than the tree, because a document being edited hardly ever parses — and typing `p.` is exactly when completion is wanted.
+### Documentation
+
+- **Every Aurora snippet in the docs runs.** They are checked by being executed rather than by being read, and every number in them was taken off a run. That turned up a `defer` example that never demonstrated what it claimed, arithmetic examples whose comments said "the result depends on how bytes are interpreted" rather than the result, and a negation example printing the same line twice with one commented as if it had been run at another tape width.
+- **The language has no signs**, said plainly for the first time: a byte runs from 0 to 255, nothing marks a value negative, and `-x` is x taken away from zero. `-5 + 5` is 0 and `-5 bigger 5` is true, which is the part worth knowing. Two claims that contradicted it are gone — `head` and `tail` were documented as taking negative indices, which never parsed.
+- **[docs/state_management.md](docs/state_management.md) says at the top that it is a proposal**, as [docs/module_system_design.md](docs/module_system_design.md) already did. It documents a `state` keyword and `name!` functions that have no token, no node and no opcode: the compiler rejects every example in it.
 
 ### Fixed
 

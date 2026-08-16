@@ -1,3 +1,5 @@
+import { registerAuroraLanguage } from './language.js';
+
 function nothing(result) {
   return "<nothing>";
 }
@@ -25,10 +27,23 @@ async function init() {
       go.importObject,
     );
     document.getElementById("runner").disabled = false;
-    await go.run(instance);
+    // go.run never resolves: the Go program blocks so that what it published stays callable.
+    // It does run main up to that block before returning, which is when the analyses and the
+    // runner appear.
+    go.run(instance).catch((err) => console.error(err));
   } catch (err) {
     console.error(err);
   }
+}
+
+// whenEditorReady runs fn once the editor exists, whichever of the two finished loading
+// first — the module and the editor's loader race, and either order is fine.
+function whenEditorReady(fn) {
+  if (window.editor) {
+    fn();
+    return;
+  }
+  document.addEventListener('editor-ready', fn, { once: true });
 }
 
 function toDecimal(result) {
@@ -125,5 +140,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('runner').click();
   });
 
-  init();
+  const running = init();
+
+  // The editor is told what the language is only once both halves are up: the colours and
+  // the marks come from the wasm module, and the editor is what they are attached to.
+  whenEditorReady(async () => {
+    await running;
+    registerAuroraLanguage(window.monaco, window.editor);
+  });
 });

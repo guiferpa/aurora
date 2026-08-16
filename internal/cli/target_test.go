@@ -10,6 +10,7 @@ import (
 const manifestWithProfiles = `[project]
   name = "example"
   version = "0.1.0"
+  tape_size = 1
 
 [profiles]
   [profiles.main]
@@ -19,7 +20,6 @@ const manifestWithProfiles = `[project]
   [profiles.tiny]
     source = "src/tiny.ar"
     binary = "bin/tiny"
-    tape_size = 1
 `
 
 // projectDir builds a project with a manifest and makes it the working directory.
@@ -44,7 +44,8 @@ func TestResolveTargetFromProfile(t *testing.T) {
 		wantTape   int
 		wantName   string
 	}{
-		{name: "no argument means main", arg: "", wantSource: "src/main.ar", wantBinary: "bin/main", wantName: "main"},
+		// The width is the project's, so every profile of it compiles the same dialect.
+		{name: "no argument means main", arg: "", wantSource: "src/main.ar", wantBinary: "bin/main", wantTape: 1, wantName: "main"},
 		{name: "a name selects a profile", arg: "tiny", wantSource: "src/tiny.ar", wantBinary: "bin/tiny", wantTape: 1, wantName: "tiny"},
 	}
 
@@ -70,7 +71,9 @@ func TestResolveTargetFromProfile(t *testing.T) {
 	}
 }
 
-// A path is taken as it is: no manifest is read, so a loose file runs anywhere.
+// A path is taken as it is: it names no profile, so nothing is inherited from one. The
+// width is the exception, and it is not the profile's — a file inside a project is written
+// in that project's dialect however it was named.
 func TestResolveTargetFromPath(t *testing.T) {
 	projectDir(t)
 
@@ -86,10 +89,68 @@ func TestResolveTargetFromPath(t *testing.T) {
 			if got.FromProfile() {
 				t.Error("a path must not resolve to a profile")
 			}
-			if got.Binary != "" || got.TapeSize != 0 {
+			if got.Binary != "" {
 				t.Errorf("a loose file carries no profile settings: %+v", got)
 			}
 		})
+	}
+}
+
+// A file named by its path and the same file named by its profile have to compile the same
+// way. They did not: the width was the profile's, so `aurora run src/main.ar` read the file
+// at eight bytes while `aurora run` read it at the project's width.
+func TestALooseFileTakesTheWidthOfTheProjectItIsIn(t *testing.T) {
+	projectDir(t) // its manifest says tape_size = 1
+
+	byPath, err := ResolveTarget(filepath.Join("src", "main.ar"))
+	if err != nil {
+		t.Fatalf("ResolveTarget by path: %v", err)
+	}
+	byProfile, err := ResolveTarget("")
+	if err != nil {
+		t.Fatalf("ResolveTarget by profile: %v", err)
+	}
+
+	if byPath.TapeSize != 1 {
+		t.Errorf("by path the tape size is %d, want the project's 1", byPath.TapeSize)
+	}
+	if byPath.TapeSize != byProfile.TapeSize {
+		t.Errorf("the same file reads %d bytes by path and %d by profile", byPath.TapeSize, byProfile.TapeSize)
+	}
+}
+
+// A file outside any project keeps the default, which is what makes trying the language out
+// cheap: no manifest, no project, still runs.
+func TestALooseFileOutsideAProjectHasNoWidthOfItsOwn(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	got, err := ResolveTarget("program.ar")
+	if err != nil {
+		t.Fatalf("ResolveTarget: %v", err)
+	}
+	if got.TapeSize != 0 {
+		t.Errorf("tape size = %d, want it unset so the default applies", got.TapeSize)
+	}
+}
+
+// A manifest that cannot be read is said out loud rather than answered with the default: a
+// project pinned to one byte compiling at eight in silence is what this guards against.
+func TestALooseFileReportsABrokenManifest(t *testing.T) {
+	dir := t.TempDir()
+	const oldField = `[project]
+name = "p"
+
+[profiles.main]
+source = "src/main.ar"
+tape_size = 1
+`
+	if err := os.WriteFile(filepath.Join(dir, "aurora.toml"), []byte(oldField), 0o644); err != nil {
+		t.Fatalf("writing manifest: %v", err)
+	}
+	t.Chdir(dir)
+
+	if _, err := ResolveTarget("src/main.ar"); err == nil {
+		t.Error("the manifest was read and its refusal ignored")
 	}
 }
 

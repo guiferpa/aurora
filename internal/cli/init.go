@@ -18,6 +18,9 @@ const InitManifestTemplate = `# Aurora project manifest.
 name = %q
 # Project version (semantic version recommended).
 version = "0.1.0"
+# Bytes per value. Every value is a tape this wide, text included — and the greeting in
+# src/main.ar is eleven bytes, which does not fit the default eight.
+tape_size = 16
 
 [profiles.main]
 # Default profile. Commands like 'aurora build' or 'aurora run' use these paths when no file is given.
@@ -25,9 +28,6 @@ version = "0.1.0"
 source = "src/main.ar"
 # Path where the compiled binary is written. Name matches the source filename (without extension). Used by 'aurora build' when no -o output is passed.
 binary = "bin/main"
-# Bytes per value. Every value is a tape this wide, text included — and the greeting in
-# src/main.ar is eleven bytes, which does not fit the default eight.
-tape_size = 16
 `
 
 // InitSourceTemplate is the program a new project starts from.

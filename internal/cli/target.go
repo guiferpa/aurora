@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/guiferpa/aurora/manifest"
 )
 
 // SourceExtension is what an Aurora source file is called.
@@ -16,7 +18,7 @@ const DefaultProfile = "main"
 type Target struct {
 	Source   string // path of the file to compile
 	Binary   string // output path from the profile; empty for a loose file
-	TapeSize int    // tape width from the profile; zero means the default
+	TapeSize int    // tape width of the project the file belongs to; zero means the default
 	Profile  string // profile name; empty for a loose file
 }
 
@@ -36,7 +38,11 @@ func (t Target) FromProfile() bool {
 // require a project to exist — so this path never looks for aurora.toml.
 func ResolveTarget(arg string) (Target, error) {
 	if strings.HasSuffix(arg, SourceExtension) {
-		return Target{Source: arg}, nil
+		tapeSize, err := ProjectTapeSize(arg)
+		if err != nil {
+			return Target{}, err
+		}
+		return Target{Source: arg, TapeSize: tapeSize}, nil
 	}
 
 	if arg != "" && looksLikePath(arg) {
@@ -56,9 +62,32 @@ func ResolveTarget(arg string) (Target, error) {
 	return Target{
 		Source:   env.AbsPath(env.Profile.Source),
 		Binary:   env.AbsPath(env.Profile.Binary),
-		TapeSize: env.Profile.TapeSize,
+		TapeSize: env.Manifest.Project.TapeSize,
 		Profile:  name,
 	}, nil
+}
+
+// ProjectTapeSize answers the width of the project a file sits in, and zero when it sits in
+// none.
+//
+// A loose file does not require a project to exist — that is what keeps trying the language
+// out cheap — but when it is inside one it is written in that project's dialect, the same as
+// the file a profile names. Reading the same file two widths depending on how it was named
+// is the bug this closes.
+func ProjectTapeSize(source string) (int, error) {
+	dir, err := filepath.Abs(filepath.Dir(source))
+	if err != nil {
+		return 0, err
+	}
+	root, err := manifest.FindProjectRootFrom(dir)
+	if err != nil {
+		return 0, nil // no project: the default width applies
+	}
+	m, err := manifest.Load(root)
+	if err != nil {
+		return 0, err
+	}
+	return m.Project.TapeSize, nil
 }
 
 // looksLikePath catches an argument that was meant as a file but lost its extension, so

@@ -9,6 +9,9 @@
 [project]
   name = "aurora-example-project"
   version = "0.1.0"
+  # Bytes per value, for the whole project: the dialect its source is written in.
+  # Optional, 8 by default, and --tape-size wins over it for a single run.
+  # tape_size = 16
 
 [profiles]
   # "main" is what you get when no profile is named.
@@ -16,9 +19,6 @@
     source = "src/main.ar"
     binary = "bin/main"
 
-  # A profile can pin the tape size, so the project compiles the same way for
-  # whoever runs it. The --tape-size flag still wins over this.
   [profiles.tiny]
     source = "src/tiny.ar"
     binary = "bin/tiny"
-    tape_size = 1

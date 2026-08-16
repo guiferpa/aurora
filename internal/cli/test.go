@@ -120,7 +120,13 @@ func Test(ctx context.Context, in TestInput) (TestReport, error) {
 // testFiles resolves the target into the files to run and the tape size to use.
 func testFiles(target string, tapeSize int) ([]string, int, error) {
 	if strings.HasSuffix(target, TestExtension) {
-		return []string{target}, tapeSize, nil
+		// A test file named directly is still a file of its project, and it has to run at
+		// the width the source it tests was written in.
+		project, err := ProjectTapeSize(target)
+		if err != nil {
+			return nil, 0, err
+		}
+		return []string{target}, ResolveTapeSize(tapeSize, project), nil
 	}
 
 	resolved, err := ResolveTarget(target)

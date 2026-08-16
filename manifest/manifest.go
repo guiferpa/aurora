@@ -37,6 +37,15 @@ type DeployState struct {
 type Project struct {
 	Name    string `toml:"name"`
 	Version string `toml:"version"`
+	// TapeSize is the width in bytes of every value in this project. Zero means the
+	// default (8). A command-line flag overrides it.
+	//
+	// It belongs to the project rather than to a profile because it is not a path or a
+	// setting: it is the dialect the source is written in. At one byte 255 + 1 is 0 and
+	// "Gui" does not compile; at eight both answer otherwise. Two profiles with two widths
+	// made one file mean two things, and left anything reading the project as a whole —
+	// the language server above all — with no width to answer for.
+	TapeSize int `toml:"tape_size"`
 }
 
 // Profile holds a profile section (e.g. [profiles.main]).
@@ -45,9 +54,6 @@ type Profile struct {
 	Binary  string `toml:"binary"`
 	RPC     string `toml:"rpc"`
 	Privkey string `toml:"privkey"`
-	// TapeSize is the width in bytes of every value in this project. Zero means the
-	// default (8). A command-line flag overrides it.
-	TapeSize int `toml:"tape_size"`
 }
 
 // FindProjectRoot returns the directory that contains aurora.toml, starting from the current directory and walking up. Returns an error if not found.
@@ -56,6 +62,13 @@ func FindProjectRoot() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return FindProjectRootFrom(dir)
+}
+
+// FindProjectRootFrom is the same walk, from a directory given rather than the working one.
+// It is what a caller holding a file uses: the project a file belongs to is decided by where
+// the file is, not by where the process happens to have been started.
+func FindProjectRootFrom(dir string) (string, error) {
 	for {
 		path := filepath.Join(dir, Filename)
 		if _, err := os.Stat(path); err == nil {
@@ -79,8 +92,12 @@ type deploysFile struct {
 func Load(projectRoot string) (*Manifest, error) {
 	path := filepath.Join(projectRoot, Filename)
 	var m Manifest
-	if _, err := toml.DecodeFile(path, &m); err != nil {
+	md, err := toml.DecodeFile(path, &m)
+	if err != nil {
 		return nil, fmt.Errorf("decode %s: %w", path, err)
+	}
+	if err := refuseProfileTapeSize(md); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if m.Profiles == nil {
 		m.Profiles = make(map[string]Profile)
@@ -103,6 +120,21 @@ func loadDeploysFile(projectRoot string) map[string]DeployState {
 		return nil
 	}
 	return f.Deploys
+}
+
+// refuseProfileTapeSize turns a manifest still carrying tape_size inside a profile into an
+// error naming where it sits.
+//
+// It was a profile field until the width became the project's. Reading it and doing nothing
+// would be worse than refusing: a project pinned to one byte would go on compiling at eight
+// without a word, and every value in it would change meaning.
+func refuseProfileTapeSize(md toml.MetaData) error {
+	for _, key := range md.Undecoded() {
+		if len(key) == 3 && key[0] == "profiles" && key[2] == "tape_size" {
+			return fmt.Errorf("tape_size is the project's, not a profile's: move it from [profiles.%s] to [project]", key[1])
+		}
+	}
+	return nil
 }
 
 // Profile returns the named profile (e.g. "main") or an error if missing.

@@ -216,16 +216,16 @@ func TestNameDeclaredInBothFilesConflicts(t *testing.T) {
 	}
 }
 
-func TestUsesTheProfileTapeSize(t *testing.T) {
+func TestUsesTheProjectTapeSize(t *testing.T) {
 	dir := t.TempDir()
 	manifest := `[project]
   name = "demo"
+  tape_size = 1
 
 [profiles]
   [profiles.main]
     source = "src/main.ar"
     binary = "bin/main"
-    tape_size = 1
 `
 	if err := os.WriteFile(filepath.Join(dir, "aurora.toml"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("writing manifest: %v", err)
@@ -240,7 +240,7 @@ func TestUsesTheProfileTapeSize(t *testing.T) {
 		t.Fatalf("Test: %v", err)
 	}
 	if report.Failed != 0 {
-		t.Errorf("the profile's tape size should have applied: %+v", report.Files[0].Results)
+		t.Errorf("the project's tape size should have applied: %+v", report.Files[0].Results)
 	}
 }
 

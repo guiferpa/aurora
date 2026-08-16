@@ -27,7 +27,7 @@ Anything after the target is passed to the program and read with feed(n).`,
 }
 
 func init() {
-	runCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), evaluator)")
+	runCmd.Flags().StringSliceP("loggers", "l", []string{}, "show what each phase produced (valid: lexer, parser, emitter)")
 	runCmd.Flags().BoolP("player", "r", false, "enable player mode (stdin)")
 	runCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }

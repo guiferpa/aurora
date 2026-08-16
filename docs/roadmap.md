@@ -122,6 +122,12 @@ value already; this one is the exception, and it is the only thing lost.
 
 ## Tooling
 
+- **The playground has nothing testing it.** `cmd/playground` builds only for `js/wasm`, so
+  `go test ./...` never compiles it, and there is no runner for the page itself. What can be
+  tested has been pushed down — reading a tape size out of text lives in `byteutil`, with its
+  own cases — and the rest, the control and the re-run it triggers, is checked by looking at
+  the page. A `go_js_wasm_exec` harness, or a headless page driving Run, would close it.
+
 - The playground workflow runs on push to `main`, which at a version bump happens seconds
   before the tag exists — the deployed page then reports the previous version. Every release
   needs `gh workflow run playground.yml` by hand. Triggering on `push: tags` would fix it.

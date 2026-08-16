@@ -29,6 +29,8 @@ All notable changes and release notes for Aurora are documented here.
 
 - **`aurora init`** writes `tape_size` under `[project]`.
 
+- **The playground picks its tape size**, and starts at 32 bytes rather than the language's 8. The page opens on `printc "Hello, World!";` — thirteen bytes, which does not fit an eight-byte tape, so the first thing it used to do was refuse its own example. Changing the width re-runs the program at once: the output on screen is never the output of a different width than the one shown.
+
 ---
 
 ## v0.4.0-alpha — 2026-08-15

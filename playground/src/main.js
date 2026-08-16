@@ -36,14 +36,17 @@ async function init() {
   }
 }
 
-// whenEditorReady runs fn once the editor exists, whichever of the two finished loading
-// first — the module and the editor's loader race, and either order is fine.
+// whenEditorReady runs fn with the editor and the monaco it belongs to, whichever of the two
+// finished loading first: this module and the editor's loader race, and either order is fine.
+//
+// Both are handed over by the event rather than read off the window, because the loader sets
+// the global at a moment of its own — reading it here found it undefined about as often as
+// not.
 function whenEditorReady(fn) {
-  if (window.editor) {
-    fn();
-    return;
+  document.addEventListener('editor-ready', (event) => fn(event.detail), { once: true });
+  if (window.editor && window.monaco) {
+    fn({ monaco: window.monaco, editor: window.editor });
   }
-  document.addEventListener('editor-ready', fn, { once: true });
 }
 
 function toDecimal(result) {
@@ -144,8 +147,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // The editor is told what the language is only once both halves are up: the colours and
   // the marks come from the wasm module, and the editor is what they are attached to.
-  whenEditorReady(async () => {
+  let registered = false;
+  whenEditorReady(async ({ monaco, editor }) => {
     await running;
-    registerAuroraLanguage(window.monaco, window.editor);
+    if (registered) return; // the event and the check above can both fire
+    registered = true;
+    registerAuroraLanguage(monaco, editor);
   });
 });

@@ -30,6 +30,12 @@ function call(name, ...args) {
   }
 }
 
+// The protocol counts lines and characters from zero; Monaco counts lines and columns from
+// one. Everything crossing between the two goes through here.
+function toProtocol(position) {
+  return [position.lineNumber - 1, position.column - 1];
+}
+
 // Diagnostics count lines and characters from zero, and Monaco counts both from one.
 function toMarker(diagnostic) {
   const { start, end } = diagnostic.range;
@@ -52,6 +58,40 @@ function markDocument(monaco, model) {
   monaco.editor.setModelMarkers(model, OWNER, diagnostics.map(toMarker));
 }
 
+// What the compiler calls a completion and what Monaco calls one are the same list in a
+// different order, so the kinds are matched by name rather than by number.
+//
+// A kind with no entry is left to Monaco's default, which is a plain text suggestion: an
+// item is worth offering even when its icon is not the right one.
+const KINDS = {
+  5: 'Field',
+  6: 'Variable',
+  14: 'Keyword',
+  22: 'Struct',
+};
+
+const SNIPPET_FORMAT = 2;
+
+function toSuggestion(monaco, item, range) {
+  const kind = monaco.languages.CompletionItemKind[KINDS[item.kind]];
+  const suggestion = {
+    label: item.label,
+    detail: item.detail,
+    documentation: item.documentation,
+    kind: kind === undefined ? monaco.languages.CompletionItemKind.Text : kind,
+    insertText: item.insertText || item.label,
+    range,
+  };
+  // Monaco names this enum in the singular and its own documentation names it in the plural,
+  // so take whichever this build has. Reading the wrong one is not a missing snippet: it
+  // throws inside the provider and the suggestions never appear at all.
+  const rules = monaco.languages.CompletionItemInsertTextRule || monaco.languages.CompletionItemInsertTextRules;
+  if (item.insertTextFormat === SNIPPET_FORMAT && rules) {
+    suggestion.insertTextRules = rules.InsertAsSnippet;
+  }
+  return suggestion;
+}
+
 // The legend names what the numbers in the token data mean, and it is asked for rather than
 // kept here: its order is the wire format, and a copy would be one more thing to keep in
 // step with the lexer.
@@ -64,6 +104,42 @@ function semanticProvider(monaco, legend) {
       return { data: new Uint32Array(data) };
     },
     releaseDocumentSemanticTokens: () => {},
+  };
+}
+
+// Hover answers with lines, and Monaco renders markdown, where a single newline is not a
+// break. Each line becomes a paragraph of its own so it reads as it was written.
+function hoverProvider() {
+  return {
+    provideHover: (model, position) => {
+      const info = call('auroraHover', model.getValue(), ...toProtocol(position));
+      if (!info) return null;
+      return { contents: info.split('\n').map((value) => ({ value })) };
+    },
+  };
+}
+
+// What is offered depends on what sits in front of the cursor — right after a dot it is the
+// fields of that struct and nothing else — which is why the position goes across too.
+function completionProvider(monaco) {
+  return {
+    triggerCharacters: ['.'],
+    provideCompletionItems: (model, position) => {
+      const items = call('auroraCompletions', model.getValue(), ...toProtocol(position));
+      if (items === null) return { suggestions: [] };
+
+      // The word being typed is what the suggestion replaces. Without it Monaco inserts at
+      // the cursor and the half already typed stays where it is.
+      const word = model.getWordUntilPosition(position);
+      const range = {
+        startLineNumber: position.lineNumber,
+        endLineNumber: position.lineNumber,
+        startColumn: word.startColumn,
+        endColumn: word.endColumn,
+      };
+
+      return { suggestions: items.map((item) => toSuggestion(monaco, item, range)) };
+    },
   };
 }
 
@@ -92,14 +168,22 @@ function configureLanguage(monaco) {
 export function registerAuroraLanguage(monaco, editor) {
   configureLanguage(monaco);
 
-  // Semantic colouring is off until it is asked for. A theme can ask for it and this one
-  // does not — the editor is on the stock dark theme — so the editor is told directly. The
-  // token types are named after what a theme already colours (keyword, number, string), so
-  // vs-dark knows what to do with them without a rule of our own.
-  editor.updateOptions({ 'semanticHighlighting.enabled': true });
+  editor.updateOptions({
+    // Semantic colouring is off until it is asked for. A theme can ask for it and this one
+    // does not — the editor is on the stock dark theme — so the editor is told directly. The
+    // token types are named after what a theme already colours (keyword, number, string),
+    // so vs-dark knows what to do with them without a rule of our own.
+    'semanticHighlighting.enabled': true,
+    // Otherwise Monaco offers every word already in the document, next to what the compiler
+    // answered: after a dot, where the fields of a struct are the only thing that can
+    // follow, it would still offer "struct" and "ident" because they appear further up.
+    wordBasedSuggestions: 'off',
+  });
 
   const legend = call('auroraSemanticLegend') || { tokenTypes: [], tokenModifiers: [] };
   monaco.languages.registerDocumentSemanticTokensProvider(LANGUAGE, semanticProvider(monaco, legend));
+  monaco.languages.registerHoverProvider(LANGUAGE, hoverProvider());
+  monaco.languages.registerCompletionItemProvider(LANGUAGE, completionProvider(monaco));
 
   const model = editor.getModel();
   let settling = null;

@@ -29,6 +29,8 @@ All notable changes and release notes for Aurora are documented here.
 
 - **`aurora init`** writes `tape_size` under `[project]`.
 
+- **The playground answers what a word is and what can follow it.** Hover shows what the compiler knows — a keyword's description, an identifier's value, which tape of a run a field reads — and completion offers the keywords as snippets, the structs declared in the document, and, right after a dot, the fields of that struct and nothing else. The same answers the language server gives an editor, in the page.
+
 - **The playground colours the code and marks what does not compile**, using the same analyses the language server answers editors with — the colours are the lexer's semantic tokens and the marks are the parser's diagnostics. Nothing about the language is written a second time in JavaScript, so a keyword added to Aurora shows up in the page without anyone remembering to add it twice. Changing the tape size re-marks the document, since the width decides what fits.
 
   The page also registers the language properly now: `monaco.languages.register` sat outside the editor loader's callback, where Monaco does not exist yet, so the language was never registered at all.

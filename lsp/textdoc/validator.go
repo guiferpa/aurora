@@ -33,13 +33,27 @@ type Analysis struct {
 	Err    error
 }
 
-// Analyze lexes and parses source. filename decides file-scoped rules — the parser only
-// accepts "assert" inside *.test.ar, and the project the file belongs to says how wide a
-// value is — so callers should pass the path behind the URI.
-func Analyze(filename, source string) *Analysis {
-	analysis := &Analysis{Source: source, Mapper: lsp.NewMapper(source)}
+// Document is what an analysis reads: the source, the path behind the URI — which decides
+// file-scoped rules, since the parser only accepts "assert" inside *.test.ar — and how wide
+// a value is.
+//
+// The width is given rather than discovered because finding it is the host's business and
+// each host finds it differently: the language server walks up from the file to the project
+// manifest, and the playground reads the control on the page. This package takes values and
+// answers with values, which is also what lets it run where there is no filesystem at all.
+//
+// A zero width means the language's default.
+type Document struct {
+	Filename string
+	Source   string
+	TapeSize int
+}
 
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+// Analyze lexes and parses a document.
+func Analyze(doc Document) *Analysis {
+	analysis := &Analysis{Source: doc.Source, Mapper: lsp.NewMapper(doc.Source)}
+
+	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(doc.Source))
 	analysis.Tokens = tokens
 	if err != nil {
 		analysis.Err = err
@@ -47,11 +61,11 @@ func Analyze(filename, source string) *Analysis {
 	}
 
 	ast, err := parser.New(parser.NewParserOptions{
-		Filename: filename,
+		Filename: doc.Filename,
 		Tokens:   tokens,
 		// How wide a value is decides what fits in one, so the document is read in the
-		// dialect its project is written in rather than in the default.
-		TapeSize: tapeSizeFor(filename),
+		// dialect it belongs to rather than in the default.
+		TapeSize: doc.TapeSize,
 	}).Parse()
 	if err != nil {
 		analysis.Err = err
@@ -131,14 +145,14 @@ func (a *Analysis) TokenAt(pos lsp.Position) lexer.Token {
 }
 
 // ValidateCode is the entry point used by the didOpen and didChange handlers.
-func ValidateCode(filename, source string) Diagnostics {
-	return Analyze(filename, source).Diagnostics()
+func ValidateCode(doc Document) Diagnostics {
+	return Analyze(doc).Diagnostics()
 }
 
 // HoverInfo describes what sits under the cursor: the description the lexer already
 // carries for keywords, or the declaration of an identifier when it can be found.
-func HoverInfo(filename, source string, pos lsp.Position) string {
-	analysis := Analyze(filename, source)
+func HoverInfo(doc Document, pos lsp.Position) string {
+	analysis := Analyze(doc)
 	token := analysis.TokenAt(pos)
 	if token == nil {
 		return ""
@@ -185,8 +199,8 @@ func HoverInfo(filename, source string, pos lsp.Position) string {
 //
 // It takes a position for that last case: what to offer depends on what sits in front of
 // the cursor, and a document being edited usually does not parse.
-func CompletionItemsFor(filename, source string, pos lsp.Position, snippets bool) []CompletionItem {
-	analysis := Analyze(filename, source)
+func CompletionItemsFor(doc Document, pos lsp.Position, snippets bool) []CompletionItem {
+	analysis := Analyze(doc)
 	shapes := scanStructs(analysis.Tokens)
 
 	// Right after a dot the fields are the answer, and the only one: nothing else can

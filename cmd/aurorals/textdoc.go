@@ -3,9 +3,22 @@ package main
 import (
 	"log"
 
+	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/lsp/state"
 	"github.com/guiferpa/aurora/lsp/textdoc"
 )
+
+// document gathers what an analysis needs about the file behind a URI. Where the width comes
+// from is the server's business — it walks up to the project manifest — and this is the one
+// place that knows it.
+func document(uri lsp.URI, text string) textdoc.Document {
+	path := textdoc.PathFromURI(uri)
+	return textdoc.Document{
+		Filename: path,
+		Source:   text,
+		TapeSize: tapeSizeFor(path),
+	}
+}
 
 func TextdocDidOpenHandler(l *log.Logger, s *state.State, contents []byte) any {
 	noti, err := textdoc.ParseDidOpenNotification(contents)
@@ -18,7 +31,7 @@ func TextdocDidOpenHandler(l *log.Logger, s *state.State, contents []byte) any {
 	text := noti.Params.TextDocument.Text
 	s.UpdateDocument(string(uri), text)
 
-	return textdoc.NewDiagnosticsNotification(uri, textdoc.ValidateCode(textdoc.PathFromURI(uri), text))
+	return textdoc.NewDiagnosticsNotification(uri, textdoc.ValidateCode(document(uri, text)))
 }
 
 func TextdocDidChangeHandler(l *log.Logger, s *state.State, contents []byte) any {
@@ -38,7 +51,7 @@ func TextdocDidChangeHandler(l *log.Logger, s *state.State, contents []byte) any
 
 	// Published on every change, including when it comes back empty: that is what clears
 	// an error the user just fixed.
-	return textdoc.NewDiagnosticsNotification(uri, textdoc.ValidateCode(textdoc.PathFromURI(uri), text))
+	return textdoc.NewDiagnosticsNotification(uri, textdoc.ValidateCode(document(uri, text)))
 }
 
 func TextdocDidCloseHandler(l *log.Logger, s *state.State, contents []byte) any {
@@ -59,7 +72,7 @@ func TextdocCompletionHandler(l *log.Logger, s *state.State, contents []byte) an
 	}
 
 	uri := req.Params.TextDocument.URI
-	items := textdoc.CompletionItemsFor(textdoc.PathFromURI(uri), s.GetDocument(string(uri)), req.Params.Position, s.SnippetSupport())
+	items := textdoc.CompletionItemsFor(document(uri, s.GetDocument(string(uri))), req.Params.Position, s.SnippetSupport())
 
 	return textdoc.NewCompletionResponse(req.ID, items)
 }
@@ -72,7 +85,7 @@ func TextdocHoverHandler(l *log.Logger, s *state.State, contents []byte) any {
 	}
 
 	uri := req.Params.TextDocument.URI
-	info := textdoc.HoverInfo(textdoc.PathFromURI(uri), s.GetDocument(string(uri)), req.Params.Position)
+	info := textdoc.HoverInfo(document(uri, s.GetDocument(string(uri))), req.Params.Position)
 	if info == "" {
 		return nil
 	}

@@ -32,7 +32,15 @@ jobs:
       - name: Running test
         run: make test
 
+      # Only one job in the matrix uploads. Coveralls closes a build when it receives a
+      # job for it, so the second upload of the same commit is rejected with 422 "Build is
+      # closed" — whichever Go version happened to finish last failed the pipeline for a
+      # reason that had nothing to do with the code.
+      #
+      # The coverage is identical either way: it is the same source, and the number is not
+      # a property of the toolchain.
       - name: Send coverage
+        if: matrix.go == '1.24'
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: coverage.out

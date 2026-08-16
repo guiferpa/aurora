@@ -529,126 +529,98 @@ func (e *Evaluator) AddCursor(offset uint64) {
 	e.cursor += offset
 }
 
+// operation is what an opcode runs: the label the result is written under, and the two
+// operands the emitter wrote beside it.
+type operation func(e *Evaluator, label, left, right []byte) error
+
+// Which operation each opcode runs.
+//
+// This was a chain of thirty ifs, each asking the opcode again, so reaching an assertion
+// meant answering twenty-nine questions that had nothing to do with it — and every new
+// instruction in the language made the chain one question longer. The table answers in one
+// step and, more to the point, an opcode and its operation now sit on the same line.
+//
+// It is filled in init rather than where it is declared because a call runs a body of
+// instructions: EvaluateCall reaches ExecuteInstruction, which reads this table, and Go
+// reads that as a variable initialising itself.
+var operations map[byte]operation
+
+func init() {
+	operations = map[byte]operation{
+		// Arithmetic
+		emitter.OpAdd:         (*Evaluator).EvaluateAdd,
+		emitter.OpSubtract:    (*Evaluator).EvaluateSubtract,
+		emitter.OpMultiply:    (*Evaluator).EvaluateMultiply,
+		emitter.OpDivide:      (*Evaluator).EvaluateDivide,
+		emitter.OpExponential: (*Evaluator).EvaluateExponential,
+
+		// Comparison
+		emitter.OpDiff:    (*Evaluator).EvaluateDiff,
+		emitter.OpEquals:  (*Evaluator).EvaluateEquals,
+		emitter.OpBigger:  (*Evaluator).EvaluateBigger,
+		emitter.OpSmaller: (*Evaluator).EvaluateSmaller,
+
+		// Logic
+		emitter.OpAnd: (*Evaluator).EvaluateAnd,
+		emitter.OpOr:  (*Evaluator).EvaluateOr,
+
+		// Builtins. A print reads one operand, and the opcode is the whole difference between
+		// the three readings of it.
+		emitter.OpPrintBytes: func(e *Evaluator, label, left, _ []byte) error {
+			return e.EvaluatePrintBytes(label, left)
+		},
+		emitter.OpPrintChars: func(e *Evaluator, label, left, _ []byte) error {
+			return e.EvaluatePrintChars(label, left)
+		},
+		emitter.OpPrintDecimal: func(e *Evaluator, label, left, _ []byte) error {
+			return e.EvaluatePrintDecimal(label, left)
+		},
+
+		// Memory
+		emitter.OpSave:  (*Evaluator).EvaluateSave,
+		emitter.OpLoad:  (*Evaluator).EvaluateLoad,
+		emitter.OpIdent: (*Evaluator).EvaluateIdent,
+
+		// Control flow
+		emitter.OpIf:         (*Evaluator).EvaluateIf,
+		emitter.OpJump:       (*Evaluator).EvaluateJump,
+		emitter.OpBeginScope: (*Evaluator).EvaluateBeginScope,
+		emitter.OpReturn:     (*Evaluator).EvaluateReturn,
+
+		// Arguments
+		emitter.OpPushFeed: (*Evaluator).EvaluatePushArg,
+		emitter.OpGetFeed:  (*Evaluator).EvaluateGetArg,
+
+		// Defer and call
+		emitter.OpDefer: (*Evaluator).EvaluateDefer,
+		emitter.OpCall:  (*Evaluator).EvaluateCall,
+
+		// Tape operations
+		emitter.OpPull:  (*Evaluator).EvaluatePull,
+		emitter.OpPush:  (*Evaluator).EvaluatePush,
+		emitter.OpJoin:  (*Evaluator).EvaluateJoin,
+		emitter.OpField: (*Evaluator).EvaluateField,
+		emitter.OpHead:  (*Evaluator).EvaluateHead,
+		emitter.OpTail:  (*Evaluator).EvaluateTail,
+
+		// Assertions
+		emitter.OpAssert: (*Evaluator).EvaluateAssert,
+	}
+}
+
+// ExecuteInstruction runs one instruction: the opcode names the operation, and the operation
+// moves the cursor itself, since where it lands is part of what the instruction does.
+//
+// An opcode with no operation behind it is stepped over rather than refused. OpPreCall is
+// declared and never emitted, and an instruction the evaluator does not know is exactly what
+// a half-wired new opcode looks like — a running program does not stop for it.
 func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
-	// Arithmetic operations
-	if inst.GetOpCode() == emitter.OpAdd {
-		return e.EvaluateAdd(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	op, ok := operations[inst.GetOpCode()]
+	if !ok {
+		e.IncrementCursor()
+		return nil
 	}
-	if inst.GetOpCode() == emitter.OpSubtract {
-		return e.EvaluateSubtract(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpMultiply {
-		return e.EvaluateMultiply(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpDivide {
-		return e.EvaluateDivide(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpExponential {
-		return e.EvaluateExponential(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Comparison operations
-	if inst.GetOpCode() == emitter.OpDiff {
-		return e.EvaluateDiff(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpEquals {
-		return e.EvaluateEquals(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpBigger {
-		return e.EvaluateBigger(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpSmaller {
-		return e.EvaluateSmaller(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Logical operations
-	if inst.GetOpCode() == emitter.OpAnd {
-		return e.EvaluateAnd(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpOr {
-		return e.EvaluateOr(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Builtins operations
-	if inst.GetOpCode() == emitter.OpPrintBytes {
-		return e.EvaluatePrintBytes(inst.GetLabel(), inst.GetLeft())
-	}
-	if inst.GetOpCode() == emitter.OpPrintChars {
-		return e.EvaluatePrintChars(inst.GetLabel(), inst.GetLeft())
-	}
-	if inst.GetOpCode() == emitter.OpPrintDecimal {
-		return e.EvaluatePrintDecimal(inst.GetLabel(), inst.GetLeft())
-	}
-
-	// Memory operations
-	if inst.GetOpCode() == emitter.OpSave {
-		return e.EvaluateSave(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpLoad {
-		return e.EvaluateLoad(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpIdent {
-		return e.EvaluateIdent(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Control flow operations
-	if inst.GetOpCode() == emitter.OpIf {
-		return e.EvaluateIf(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpJump {
-		return e.EvaluateJump(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpBeginScope {
-		return e.EvaluateBeginScope(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpReturn {
-		return e.EvaluateReturn(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Arguments operations
-	if inst.GetOpCode() == emitter.OpPushFeed {
-		return e.EvaluatePushArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpGetFeed {
-		return e.EvaluateGetArg(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Defer and call
-	if inst.GetOpCode() == emitter.OpDefer {
-		return e.EvaluateDefer(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpCall {
-		return e.EvaluateCall(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Tape operations
-	if inst.GetOpCode() == emitter.OpPull {
-		return e.EvaluatePull(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpPush {
-		return e.EvaluatePush(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpJoin {
-		return e.EvaluateJoin(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpField {
-		return e.EvaluateField(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpHead {
-		return e.EvaluateHead(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-	if inst.GetOpCode() == emitter.OpTail {
-		return e.EvaluateTail(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	// Assertions
-	if inst.GetOpCode() == emitter.OpAssert {
-		return e.EvaluateAssert(inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-	}
-
-	e.IncrementCursor()
-
-	return nil
+	return op(e, inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 }
 
 func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error) {

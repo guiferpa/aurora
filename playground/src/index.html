@@ -197,6 +197,11 @@ license that can be found in the LICENSE file.
               Bytes per value. Every value in Aurora is a tape this wide, so the width
               decides what a program means: at one byte 255 + 1 is 0, and text only fits
               while it is shorter than a tape.
+
+              The value of each option is what the compiler reads, and it has to stay a bare
+              number: the unit belongs in the label. A value of "32 bytes" is not a size, and
+              the reader falls back to the default rather than failing — so the control would
+              go on looking right while every width compiled at 32.
             -->
             <label id="tape-size-label" for="tape-size" title="Bytes per value: every value is a tape this wide">
               <span id="tape-size-text">Tape</span>

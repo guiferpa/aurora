@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	MIN_BYTECODE_LEN      = 12             // init code (CODECOPY + RETURN) is at least 12 bytes
+	MIN_BYTECODE_LEN      = 12 // init code (CODECOPY + RETURN) is at least 12 bytes
 	DEPLOY_GAS_LIMIT      = 3_000_000
 	RECEIPT_POLL_INTERVAL = 3 * time.Second
 	RECEIPT_POLL_TIMEOUT  = 10 * time.Minute // allow time for congested networks and indexer delay
@@ -27,11 +27,11 @@ const (
 
 // DeployInput is the input for the Deploy handler.
 type DeployInput struct {
-	BinaryPath   string // path to compiled binary (raw bytes or 0x-prefixed hex)
-	RPC          string
-	Privkey      string // private key in hex (no 0x prefix)
-	MinTipGwei   int    // min priority fee in Gwei (0 = use default)
-	MinMaxFeeGwei int   // min max fee per gas in Gwei (0 = use default)
+	BinaryPath    string // path to compiled binary (raw bytes or 0x-prefixed hex)
+	RPC           string
+	Privkey       string // private key in hex (no 0x prefix)
+	MinTipGwei    int    // min priority fee in Gwei (0 = use default)
+	MinMaxFeeGwei int    // min max fee per gas in Gwei (0 = use default)
 }
 
 // decodeBytecode reads raw bytes from the file. If content starts with "0x" or "0X", it is decoded as hex; otherwise it is used as raw bytecode.

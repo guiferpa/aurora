@@ -65,7 +65,7 @@ false;
 			return
 		}
 
-		builder := NewBuilder(insts, NewBuilderOptions{EnableLogging: false})
+		builder := NewBuilder(insts, NewBuilderOptions{})
 		rc, err := builder.PickRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
@@ -236,7 +236,7 @@ func TestPickDeferAtCursor(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			b := NewBuilder(c.Insts, NewBuilderOptions{EnableLogging: false})
+			b := NewBuilder(c.Insts, NewBuilderOptions{})
 			d, nextCursor, ok := b.PickDeferAtCursor(c.Cursor, c.Offset)
 			if ok != c.WantOK {
 				t.Errorf("ok = %v, want %v", ok, c.WantOK)

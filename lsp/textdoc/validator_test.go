@@ -9,7 +9,7 @@ import (
 )
 
 func TestValidateCodeAcceptsValidSource(t *testing.T) {
-	diagnostics := ValidateCode("main.ar", "ident a = 1;\nprintb a + 1;\n")
+	diagnostics := ValidateCode(Document{Filename: "main.ar", Source: "ident a = 1;\nprintb a + 1;\n"})
 	if len(diagnostics) != 0 {
 		t.Fatalf("expected no diagnostics, got %v", diagnostics)
 	}
@@ -51,7 +51,7 @@ func TestValidateCodeReportsPositions(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			diagnostics := ValidateCode("main.ar", tc.source)
+			diagnostics := ValidateCode(Document{Filename: "main.ar", Source: tc.source})
 			if len(diagnostics) != 1 {
 				t.Fatalf("expected 1 diagnostic, got %d: %v", len(diagnostics), diagnostics)
 			}
@@ -78,10 +78,10 @@ func TestValidateCodeReportsPositions(t *testing.T) {
 func TestValidateCodeHonoursTestFileRule(t *testing.T) {
 	const source = "assert(1 equals 1, \"ok\");\n"
 
-	if diagnostics := ValidateCode("math.test.ar", source); len(diagnostics) != 0 {
+	if diagnostics := ValidateCode(Document{Filename: "math.test.ar", Source: source}); len(diagnostics) != 0 {
 		t.Errorf("assert should be accepted in a .test.ar file, got %v", diagnostics)
 	}
-	diagnostics := ValidateCode("math.ar", source)
+	diagnostics := ValidateCode(Document{Filename: "math.ar", Source: source})
 	if len(diagnostics) != 1 {
 		t.Fatalf("assert should be rejected outside .test.ar, got %v", diagnostics)
 	}
@@ -107,7 +107,7 @@ func TestHoverInfo(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := HoverInfo("main.ar", source, tc.pos)
+			got := HoverInfo(Document{Filename: "main.ar", Source: source}, tc.pos)
 			if tc.want == "" {
 				if got != "" {
 					t.Errorf("hover = %q, want empty", got)
@@ -122,7 +122,7 @@ func TestHoverInfo(t *testing.T) {
 }
 
 func TestCompletionItemsIncludeKeywordsAndDocumentIdents(t *testing.T) {
-	items := CompletionItemsFor("main.ar", "ident total = 1;\n", lsp.Position{Line: 1, Character: 0}, false)
+	items := CompletionItemsFor(Document{Filename: "main.ar", Source: "ident total = 1;\n"}, lsp.Position{Line: 1, Character: 0}, false)
 
 	var hasKeyword, hasIdent bool
 	for _, item := range items {
@@ -142,7 +142,7 @@ func TestCompletionItemsIncludeKeywordsAndDocumentIdents(t *testing.T) {
 }
 
 func TestCompletionItemsSurviveBrokenSource(t *testing.T) {
-	if items := CompletionItemsFor("main.ar", "ident @@@", lsp.Position{Line: 0, Character: 9}, false); len(items) == 0 {
+	if items := CompletionItemsFor(Document{Filename: "main.ar", Source: "ident @@@"}, lsp.Position{Line: 0, Character: 9}, false); len(items) == 0 {
 		t.Error("keywords should still be offered while the document does not parse")
 	}
 }

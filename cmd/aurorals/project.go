@@ -1,4 +1,4 @@
-package textdoc
+package main
 
 import (
 	"os"

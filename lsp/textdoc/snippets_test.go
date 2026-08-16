@@ -38,7 +38,7 @@ func TestKeywordSnippets(t *testing.T) {
 		{keyword: "pull", want: "pull ${1:tape} ${0:value}"},
 	}
 
-	items := CompletionItemsFor("main.ar", "", lsp.Position{}, true)
+	items := CompletionItemsFor(Document{Filename: "main.ar", Source: ""}, lsp.Position{}, true)
 	for _, tc := range cases {
 		t.Run(tc.keyword, func(t *testing.T) {
 			item := find(items, tc.keyword)
@@ -58,7 +58,7 @@ func TestKeywordSnippets(t *testing.T) {
 // A client that does not expand snippets gets the keyword and nothing else: the
 // placeholders would land in the buffer as the literal text they are.
 func TestNoSnippetsForAClientThatCannotExpandThem(t *testing.T) {
-	items := CompletionItemsFor("main.ar", "struct Point { x, y };", lsp.Position{}, false)
+	items := CompletionItemsFor(Document{Filename: "main.ar", Source: "struct Point { x, y };"}, lsp.Position{}, false)
 
 	for _, item := range items {
 		if item.InsertText != "" || item.InsertTextFormat != 0 {
@@ -75,7 +75,7 @@ func TestNoSnippetsForAClientThatCannotExpandThem(t *testing.T) {
 func TestStructCompletion(t *testing.T) {
 	const source = "struct Point { x, y };\nstruct Named { label, value, tag };\n"
 
-	items := CompletionItemsFor("main.ar", source, lsp.Position{Line: 2}, true)
+	items := CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 2}, true)
 
 	point := find(items, "Point")
 	if point == nil {
@@ -104,7 +104,7 @@ func TestStructCompletion(t *testing.T) {
 // are expanded.
 func TestFieldsAreNotSnippets(t *testing.T) {
 	source := "struct Point { x, y };\nident p = Point{1, 2};\np."
-	items := CompletionItemsFor("main.ar", source, lsp.Position{Line: 2, Character: 2}, true)
+	items := CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 2, Character: 2}, true)
 
 	if len(items) != 2 {
 		t.Fatalf("offered %d items, want the two fields", len(items))

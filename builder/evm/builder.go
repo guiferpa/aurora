@@ -40,7 +40,6 @@ type Builder struct {
 	cursor       int
 	insts        []emitter.Instruction
 	operands     [][]byte
-	logger       *Logger
 	identManager *IdentManager
 }
 
@@ -135,32 +134,31 @@ func (b *Builder) WriteRuntimeBlock(bs io.Writer, rc *RuntimeCode) (int, error) 
 	return WriteBodyCode(bs, rc.Dispatchers, rc.Root)
 }
 
-func (b *Builder) Build(w io.Writer) (int, error) {
+// Build assembles the program into bytecode and returns it.
+//
+// It returns the bytes rather than writing them: a phase takes values and gives values
+// back, and deciding where bytecode lands — a file, a deployment, a test — belongs to
+// whoever asked for it.
+func (b *Builder) Build() ([]byte, error) {
 	rc, err := b.PickRuntimeCode()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	bs := bytes.NewBuffer(make([]byte, 0))
-	out := io.MultiWriter(bs, w)
+	out := bytes.NewBuffer(make([]byte, 0))
 
 	if _, err := WriteInstantiateBlock(out, byte(GetRuntimeCodeLength(rc))); err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	if _, err := b.WriteRuntimeBlock(out, rc); err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	if err := b.logger.Scanln(bs.Bytes()); err != nil {
-		return 0, err
-	}
-
-	return bs.Len(), nil
+	return out.Bytes(), nil
 }
 
 type NewBuilderOptions struct {
-	EnableLogging bool
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 }
@@ -172,6 +170,5 @@ func NewBuilder(insts []emitter.Instruction, options NewBuilderOptions) *Builder
 		identManager: NewIdentManager(),
 		cursor:       0,
 		insts:        insts,
-		logger:       NewLogger(options.EnableLogging),
 	}
 }

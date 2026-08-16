@@ -28,15 +28,11 @@ func build(t *testing.T, source string, tapeSize int) []byte {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	out := bytes.NewBuffer(nil)
-	written, err := NewBuilder(insts, NewBuilderOptions{TapeSize: tapeSize}).Build(out)
+	bytecode, err := NewBuilder(insts, NewBuilderOptions{TapeSize: tapeSize}).Build()
 	if err != nil {
 		t.Fatalf("builder: %v", err)
 	}
-	if written != out.Len() {
-		t.Errorf("Build reported %d bytes but wrote %d", written, out.Len())
-	}
-	return out.Bytes()
+	return bytecode
 }
 
 // Every contract opens with the instantiate block, which copies the runtime code out and
@@ -322,56 +318,6 @@ func TestBuildIsDeterministic(t *testing.T) {
 		t.Error("the same source produced different bytecode")
 	}
 }
-
-// The logger disassembles what was written; it runs only with logging on, and a shape it
-// cannot read would fail in front of whoever turned it on.
-func TestBuildWithLoggingEnabled(t *testing.T) {
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte("ident add = defer { feed(0) + 1; };\nident a = 2;\n"))
-	if err != nil {
-		t.Fatalf("lexer: %v", err)
-	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
-	if err != nil {
-		t.Fatalf("parser: %v", err)
-	}
-	insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
-	if err != nil {
-		t.Fatalf("emitter: %v", err)
-	}
-
-	out := bytes.NewBuffer(nil)
-	if _, err := NewBuilder(insts, NewBuilderOptions{EnableLogging: true}).Build(out); err != nil {
-		t.Fatalf("building with logging on: %v", err)
-	}
-	if out.Len() == 0 {
-		t.Error("expected bytecode")
-	}
-}
-
-// A writer that fails has to surface as an error rather than silently truncating the
-// contract.
-func TestBuildReportsAWriteFailure(t *testing.T) {
-	tokens, _ := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte("ident a = 1;\n"))
-	ast, _ := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
-	insts, _ := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
-
-	_, err := NewBuilder(insts, NewBuilderOptions{}).Build(failingWriter{})
-	if err == nil {
-		t.Error("expected the write failure to be reported")
-	}
-}
-
-type failingWriter struct{}
-
-func (failingWriter) Write([]byte) (int, error) {
-	return 0, errWriteFailed
-}
-
-var errWriteFailed = &writeError{}
-
-type writeError struct{}
-
-func (e *writeError) Error() string { return "write failed" }
 
 func TestWriteCodeEndsInStop(t *testing.T) {
 	buf := bytes.NewBuffer(nil)

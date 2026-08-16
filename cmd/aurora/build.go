@@ -25,7 +25,7 @@ involved:
 }
 
 func init() {
-	buildCmd.Flags().StringSliceP("loggers", "l", []string{}, "enable loggers for show deep dive logs from all phases (valid: lexer, parser, emitter (not implemented yet), builder)")
+	buildCmd.Flags().StringSliceP("loggers", "l", []string{}, "show what each phase produced (valid: lexer, parser, emitter)")
 	buildCmd.Flags().StringP("output", "o", "", "output path for compiled binary (default: binary from aurora.toml, or the file name without extension)")
 	buildCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }

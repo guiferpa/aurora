@@ -34,7 +34,8 @@ type Analysis struct {
 }
 
 // Analyze lexes and parses source. filename decides file-scoped rules — the parser only
-// accepts "assert" inside *.test.ar — so callers should pass the path behind the URI.
+// accepts "assert" inside *.test.ar, and the project the file belongs to says how wide a
+// value is — so callers should pass the path behind the URI.
 func Analyze(filename, source string) *Analysis {
 	analysis := &Analysis{Source: source, Mapper: lsp.NewMapper(source)}
 
@@ -48,6 +49,9 @@ func Analyze(filename, source string) *Analysis {
 	ast, err := parser.New(parser.NewParserOptions{
 		Filename: filename,
 		Tokens:   tokens,
+		// How wide a value is decides what fits in one, so the document is read in the
+		// dialect its project is written in rather than in the default.
+		TapeSize: tapeSizeFor(filename),
 	}).Parse()
 	if err != nil {
 		analysis.Err = err

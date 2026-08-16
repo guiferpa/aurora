@@ -37,8 +37,12 @@ without it.
   when it cannot be cut that small, discuss the scope first.
 - **Every new feature goes through a pull request** saying what it gives the user. A fix
   straight to `main` is called by the maintainer, not assumed.
-- `make test`, `make lint`, `make complexity`. Cognitive complexity is the gate; cyclomatic
-  is information.
+- **Every action goes through the Makefile, without exception**: `make check` before
+  committing (build, wasm, test, lint), `make complexity` to measure. When a target does not
+  exist, add it in a pull request instead of working around it.
+- **Never run the binary by hand against a scrap of source.** If a behaviour needs checking,
+  write the test and run `make test` — that way the check survives. Cognitive complexity is
+  the gate; cyclomatic is information.
 
 ## Where things are written
 

@@ -13,6 +13,21 @@ TPARSE_BIN = $(GOBIN)/tparse
 # Execute all meaningful jobs from Makefile to release the project's binary
 all: test lint build-force
 
+# Everything a change has to survive before it is committed: it compiles for both targets,
+# the tests pass and the linter is quiet.
+#
+# The wasm build is in here because the playground is the one target that does not come out
+# of `go build ./...`, and it is the one that breaks silently — nothing else compiles for it.
+check: build wasm test lint
+
+# Compile every package, without producing binaries.
+build:
+	@go build ./...
+
+# Compile for the browser, which is what the playground runs on.
+wasm:
+	@GOOS=js GOARCH=wasm go build ./...
+
 build-force: clean aurora aurorals
 
 aurora: $(BIN)/aurora
@@ -62,4 +77,4 @@ $(TPARSE_BIN):
 	@echo "==> Installing tparse..."
 	@go install github.com/mfridman/tparse@latest
 
-.PHONY: all build build-force aurora aurorals test bench lint act cover-html clean
+.PHONY: all check build wasm build-force aurora aurorals test bench lint act cover-html clean

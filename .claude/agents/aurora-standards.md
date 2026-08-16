@@ -63,6 +63,21 @@ The code says *what*; the comment says *why it is not otherwise*. The most valua
 
 Write that, not "emits the unary expression".
 
+## Every action goes through the Makefile
+
+Build, test, lint, measure — through a `make` target, **without exception**. When the target
+you need does not exist, add it in a pull request rather than working around it with a raw
+command: the next person needs the same thing, and a command that only lives in someone's
+shell history is not part of the project.
+
+**Never run the binary by hand against a scrap of source to see what happens.** If a
+behaviour needs checking, the test that checks it is the answer, and `make test` runs it.
+That way the check survives; a run in a terminal proves something once and leaves nothing
+behind — which is how this repository ended up with documentation and examples that had
+been verified and then drifted.
+
+`make check` — build, wasm, test, lint — is what a change survives before being committed.
+
 ## Delivery
 
 - **A commit is one concern, and it compiles and passes on its own.** Verify a series with `git worktree` before pushing.
@@ -90,15 +105,17 @@ written — with the tests, the linter and `make complexity` in hand.
 
 ## What you run
 
-Start from the change itself, never from memory of it:
+Start from the change itself, never from memory of it, and through the Makefile as
+everything here does:
 
 ```sh
 git status --short
-git diff                      # or: git diff origin/main...HEAD for a branch
-go test ./... -race
-make lint
-make complexity               # compare against what the change touched
+git diff                 # or: git diff origin/main...HEAD for a branch
+make check               # build, wasm, test, lint
+make complexity          # compare against what the change touched
 ```
+
+A change verified by hand is a finding: say so, and name the test it should have been.
 
 A finding you cannot point at with a file and a line is not a finding yet.
 

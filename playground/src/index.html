@@ -180,8 +180,11 @@ license that can be found in the LICENSE file.
         }
 
         // Monaco arrives through its own loader, so the modules below cannot know when the
-        // editor exists. This is how they are told.
-        document.dispatchEvent(new CustomEvent('editor-ready'));
+        // editor exists. This is how they are told — and both are handed over rather than
+        // left to be read off the window, which is not set at the same moment.
+        document.dispatchEvent(new CustomEvent('editor-ready', {
+          detail: { monaco: monaco, editor: window.editor },
+        }));
       });
     </script>
     <script src="wasm_exec.js"></script>

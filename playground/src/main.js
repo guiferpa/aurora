@@ -107,9 +107,22 @@ document.addEventListener("DOMContentLoaded", () => {
   mob.observe($output, { childList: true });
 
   const $clear = document.getElementById('clear');
-  $clear.addEventListener('click', () => {
+  const clearOutput = () => {
     $output.innerHTML = '';
     $clear.disabled = true;
+  };
+  $clear.addEventListener('click', clearOutput);
+
+  // The width of a tape decides what a program means — at one byte 255 + 1 is 0 — so what
+  // is on screen stops being the output of the program the moment it changes. Rather than
+  // leave the two disagreeing, the program runs again at the new width.
+  //
+  // The button is disabled until the wasm module is ready, and a click on a disabled button
+  // does nothing, so this cannot run before there is anything to run it with.
+  const $tapeSize = document.getElementById('tape-size');
+  $tapeSize.addEventListener('change', () => {
+    clearOutput();
+    document.getElementById('runner').click();
   });
 
   init();

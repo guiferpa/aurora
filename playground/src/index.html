@@ -115,14 +115,23 @@ license that can be found in the LICENSE file.
       #output > li.error {
         color: #ff0000;
       }
-      #debug-mode-label {
+      #settings {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #debug-mode-label, #tape-size-label {
         display: flex;
         align-items: center;
         gap: 4px;
         padding: 4px;
       }
-      #debug-mode-label:hover {
+      #debug-mode-label:hover, #tape-size-label:hover {
         cursor: pointer;
+      }
+      #tape-size {
+        font: inherit;
+        padding: 2px;
       }
       #divider {
         width: 1px;
@@ -183,10 +192,28 @@ license that can be found in the LICENSE file.
       <div id="actions">
         <div id="info">
           <span id="version"></span>
+          <div id="settings">
+            <!--
+              Bytes per value. Every value in Aurora is a tape this wide, so the width
+              decides what a program means: at one byte 255 + 1 is 0, and text only fits
+              while it is shorter than a tape.
+            -->
+            <label id="tape-size-label" for="tape-size" title="Bytes per value: every value is a tape this wide">
+              <span id="tape-size-text">Tape</span>
+              <select id="tape-size">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="4">4</option>
+                <option value="8">8</option>
+                <option value="16">16</option>
+                <option value="32" selected>32</option>
+              </select>
+            </label>
             <label id="debug-mode-label" for="debug-mode">
               <input type="checkbox" id="debug-mode">
               <span id="debug-mode-text">Debug</span>
             </label>
+          </div>
         </div>
         <ul id="output"></ul>
         <div id="controls">

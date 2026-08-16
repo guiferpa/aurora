@@ -17,10 +17,30 @@ import (
 	"github.com/guiferpa/aurora/version"
 )
 
+// defaultTapeSize is the width the playground starts at, and it is wider than the language's
+// default of 8 on purpose.
+//
+// Someone meeting Aurora here writes text before they write anything else, and the page opens
+// on printc "Hello, World!" — thirteen bytes, which does not fit an eight-byte tape. Being
+// told so as a first experience teaches nothing about tapes and everything about giving up.
+// The control says what the width is, so the number is on screen rather than assumed.
+const defaultTapeSize = 32
+
 var (
 	document js.Value
 	eval     func() js.Func
 )
+
+// tapeSize reads the width the page is set to. Anything the page cannot answer for — no
+// control, a value that is not a number, a number outside what a tape can be — falls back to
+// the playground's own default rather than to the language's.
+func tapeSize() int {
+	el := document.Call("getElementById", "tape-size")
+	if !el.Truthy() {
+		return defaultTapeSize
+	}
+	return byteutil.ParseTapeSize(el.Get("value").String(), defaultTapeSize)
+}
 
 func init() {
 	document = js.Global().Get("document")
@@ -33,6 +53,8 @@ func init() {
 			value := editor.Call("getValue").String()
 			bs := bytes.NewBufferString(value)
 			debug := document.Call("getElementById", "debug-mode").Get("checked").Bool()
+			// Read for every run, so changing the width is a matter of running again.
+			size := tapeSize()
 			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs.Bytes())
 			if err != nil {
 				fmt.Println(err)
@@ -45,7 +67,8 @@ func init() {
 				}
 			}
 			ast, err := parser.New(parser.NewParserOptions{
-				Tokens: tokens,
+				Tokens:   tokens,
+				TapeSize: size,
 			}).Parse()
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
@@ -59,7 +82,9 @@ func init() {
 					return nil
 				}
 			}
-			program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(ast)
+			program, err := emitter.New(emitter.NewEmitterOptions{
+				TapeSize: size,
+			}).EmitProgram(ast)
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
@@ -74,7 +99,8 @@ func init() {
 			ev := evaluator.New(evaluator.NewEvaluatorOptions{
 				// The print builtins each format their own reading of a tape, so what
 				// arrives here is the finished line and the page only has to show it.
-				Output: ToPlaygroundWriter("output"),
+				Output:   ToPlaygroundWriter("output"),
+				TapeSize: size,
 			})
 
 			// One top-level expression at a time, reporting its value before moving on.

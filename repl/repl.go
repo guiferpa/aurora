@@ -74,10 +74,10 @@ func (s *scannerReader) ReadLine() (string, error) {
 
 // newLineReader picks the editor for a terminal and the scanner for anything else.
 // The history is shared with the caller so it can record accepted lines.
-func newLineReader(in io.Reader) (lineReader, *History) {
+func newLineReader(in io.Reader, out io.Writer) (lineReader, *History) {
 	f, ok := in.(*os.File)
 	if !ok || !isTTY(f) {
-		return &scannerReader{scanner: bufio.NewScanner(in), out: os.Stdout}, LoadHistory("")
+		return &scannerReader{scanner: bufio.NewScanner(in), out: out}, LoadHistory("")
 	}
 
 	// Without a home directory the history stays in memory; that is no reason to break the REPL.
@@ -87,19 +87,25 @@ func newLineReader(in io.Reader) (lineReader, *History) {
 	}
 	hist := LoadHistory(path)
 
-	return newEditor(f, os.Stdout, prompt, hist, func() (func(), error) {
+	return newEditor(f, out, prompt, hist, func() (func(), error) {
 		return enterRaw(f)
 	}), hist
 }
 
-func Start(in io.Reader, loggers []string, tapeSize int) {
+// Start runs a session, reading from in and writing everything it has to say to out — the
+// prompt, the value of each line, and the errors that did not stop the session.
+//
+// Where it writes is the host's to decide, and it used to be os.Stdout from the inside,
+// which is also why nothing could read a session back: the REPL is one of the two places the
+// language proves itself and no test could see a single line of it.
+func Start(in io.Reader, out io.Writer, loggers []string, tapeSize int) {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		Output:   os.Stdout,
+		Output:   out,
 		TapeSize: tapeSize,
 	})
 
-	reader, hist := newLineReader(in)
+	reader, hist := newLineReader(in, out)
 	editing, interactive := reader.(*editor)
 
 	csig := make(chan os.Signal, 1)
@@ -110,7 +116,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		if interactive {
 			editing.Restore()
 		}
-		fmt.Println("Bye :)")
+		_, _ = fmt.Fprintln(out, "Bye :)")
 		os.Exit(0)
 	}()
 
@@ -127,7 +133,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		}
 		if err != nil { // Ctrl+D or end of piped input
 			if interactive {
-				fmt.Println("Bye :)")
+				_, _ = fmt.Fprintln(out, "Bye :)")
 			}
 			return
 		}
@@ -145,12 +151,12 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 
 		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(line.Bytes())
 		if err != nil {
-			fmt.Println(err)
+			_, _ = fmt.Fprintln(out, err)
 			continue
 		}
 		if slices.Contains(loggers, "lexer") {
-			if err := trace.Tokens(os.Stdout, tokens); err != nil {
-				fmt.Println(err)
+			if err := trace.Tokens(out, tokens); err != nil {
+				_, _ = fmt.Fprintln(out, err)
 			}
 		}
 
@@ -160,13 +166,13 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 			Directives: directives,
 		}).Parse()
 		if err != nil {
-			fmt.Println(err)
+			_, _ = fmt.Fprintln(out, err)
 			continue
 		}
 		// The phases return what they made; showing it is decided here.
 		if slices.Contains(loggers, "parser") {
-			if err := trace.AST(os.Stdout, ast); err != nil {
-				fmt.Println(err)
+			if err := trace.AST(out, ast); err != nil {
+				_, _ = fmt.Fprintln(out, err)
 			}
 		}
 
@@ -174,12 +180,12 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 			TapeSize: tapeSize,
 		}).EmitProgram(ast)
 		if err != nil {
-			fmt.Println(err)
+			_, _ = fmt.Fprintln(out, err)
 			continue
 		}
 		if slices.Contains(loggers, "emitter") {
-			if err := trace.Instructions(os.Stdout, program.Instructions); err != nil {
-				fmt.Println(err)
+			if err := trace.Instructions(out, program.Instructions); err != nil {
+				_, _ = fmt.Fprintln(out, err)
 			}
 		}
 
@@ -191,7 +197,7 @@ func Start(in io.Reader, loggers []string, tapeSize int) {
 		// where it happens rather than all of them at the end.
 		for _, expr := range program.Expressions {
 			temps, err := ev.EvaluateRange(instsBuffer, uint64(offset+expr.From), uint64(offset+expr.To))
-			render(os.Stdout, temps, byteutil.ToHex(expr.Label), err)
+			render(out, temps, byteutil.ToHex(expr.Label), err)
 			if err != nil {
 				break
 			}

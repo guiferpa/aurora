@@ -29,7 +29,7 @@ var replCmd = &cobra.Command{
 		if err := cli.ValidateTapeSize(tapeSize); err != nil {
 			return err
 		}
-		repl.Start(os.Stdin, loggers, tapeSize)
+		repl.Start(os.Stdin, os.Stdout, loggers, tapeSize)
 		return nil
 	},
 }

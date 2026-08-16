@@ -1,0 +1,10 @@
+struct Point { x, y };
+ident p = Point{10, 20};
+ident area = defer { ident q = feed(0) as Point; q.x * q.y; };
+ident t = [1, 2, 3];
+ident r = { pull t 4; };
+printb head t 2;
+printd -5 + area(p);
+printc "hi";
+if 1 bigger 0 { 1; } else { 0; };
+branch { 1 equals 1: 10, 0; };

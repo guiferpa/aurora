@@ -47,7 +47,7 @@ ident caller = defer {
 };
 
 caller();
-show();       #- called from the top, where there is no x → identifier x not found
+show();       #- fails: identifier x not found — called from the top, where x does not exist
 ```
 
 Note that `show` is defined where no `x` exists at all, and still prints one: nothing about

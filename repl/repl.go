@@ -92,6 +92,108 @@ func newLineReader(in io.Reader, out io.Writer) (lineReader, *History) {
 	}), hist
 }
 
+// session is one file typed a line at a time: what a line needs to be compiled and run, and
+// what it leaves behind for the line after it.
+//
+// It is a type rather than a handful of variables inside a loop because everything here
+// outlives the line that filled it — a name, a struct directive and a defer all have to
+// still be there on the next one.
+type session struct {
+	ev       *evaluator.Evaluator
+	out      io.Writer
+	tapeSize int
+	loggers  []string
+
+	// A parser is built per line, so the struct directives are held here: a struct declared
+	// on one line has to still be known on the next.
+	directives *parser.Directives
+	// Every line's instructions go into the same buffer, which is what keeps the range a
+	// defer recorded valid when it is called on a later line.
+	insts []emitter.Instruction
+
+	hist       *History
+	histWarned bool
+}
+
+// run compiles a line and runs it. An error is written and swallowed: a session survives a
+// line that does not compile, which is most of what a REPL is for.
+func (s *session) run(text string) {
+	program, err := s.compile(text)
+	if err != nil {
+		_, _ = fmt.Fprintln(s.out, err)
+		return
+	}
+	s.evaluate(program)
+}
+
+// compile takes the line through the three phases, showing what each one produced when -l
+// asked for it.
+func (s *session) compile(text string) (emitter.Program, error) {
+	line := bytes.NewBufferString(text)
+
+	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(line.Bytes())
+	if err != nil {
+		return emitter.Program{}, err
+	}
+	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
+
+	ast, err := parser.New(parser.NewParserOptions{
+		Tokens:     tokens,
+		TapeSize:   s.tapeSize,
+		Directives: s.directives,
+	}).Parse()
+	if err != nil {
+		return emitter.Program{}, err
+	}
+	s.trace("parser", func(w io.Writer) error { return trace.AST(w, ast) })
+
+	program, err := emitter.New(emitter.NewEmitterOptions{
+		TapeSize: s.tapeSize,
+	}).EmitProgram(ast)
+	if err != nil {
+		return emitter.Program{}, err
+	}
+	s.trace("emitter", func(w io.Writer) error { return trace.Instructions(w, program.Instructions) })
+
+	return program, nil
+}
+
+// trace writes what a phase produced, when -l named that phase. The phases return what they
+// made; showing it is decided here, in the host.
+func (s *session) trace(phase string, write func(w io.Writer) error) {
+	if !slices.Contains(s.loggers, phase) {
+		return
+	}
+	if err := write(s.out); err != nil {
+		_, _ = fmt.Fprintln(s.out, err)
+	}
+}
+
+// evaluate runs the line's expressions one at a time, so a line holding several of them
+// answers where each one happens rather than all of them at the end.
+func (s *session) evaluate(program emitter.Program) {
+	offset := len(s.insts)
+	s.insts = append(s.insts, program.Instructions...)
+
+	for _, expr := range program.Expressions {
+		temps, err := s.ev.EvaluateRange(s.insts, uint64(offset+expr.From), uint64(offset+expr.To))
+		render(s.out, temps, byteutil.ToHex(expr.Label), err)
+		if err != nil {
+			return
+		}
+	}
+}
+
+// remember records the line before it is evaluated, so a line that fails to compile is still
+// recallable. A history that cannot be written is said once, on stderr — it is about the
+// environment and not about the session, which carries on either way.
+func (s *session) remember(text string) {
+	if err := s.hist.Append(text); err != nil && !s.histWarned {
+		s.histWarned = true
+		_, _ = fmt.Fprintf(os.Stderr, "warning: could not write history: %v\n", err)
+	}
+}
+
 // Start runs a session, reading from in and writing everything it has to say to out — the
 // prompt, the value of each line, and the errors that did not stop the session.
 //
@@ -100,32 +202,28 @@ func newLineReader(in io.Reader, out io.Writer) (lineReader, *History) {
 // language proves itself and no test could see a single line of it.
 func Start(in io.Reader, out io.Writer, loggers []string, tapeSize int) {
 	tapeSize = byteutil.TapeSize(tapeSize)
-	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		Output:   out,
-		TapeSize: tapeSize,
-	})
-
 	reader, hist := newLineReader(in, out)
-	editing, interactive := reader.(*editor)
 
-	csig := make(chan os.Signal, 1)
-	signal.Notify(csig, os.Interrupt)
-	go func() {
-		<-csig
+	s := &session{
+		ev: evaluator.New(evaluator.NewEvaluatorOptions{
+			Output:   out,
+			TapeSize: tapeSize,
+		}),
+		out:        out,
+		tapeSize:   tapeSize,
+		loggers:    loggers,
+		directives: parser.NewDirectives(),
+		hist:       hist,
+	}
+
+	editing, interactive := reader.(*editor)
+	leaveOnInterrupt(out, func() {
 		// os.Exit skips defers, so leave raw mode here before quitting.
 		if interactive {
 			editing.Restore()
 		}
-		_, _ = fmt.Fprintln(out, "Bye :)")
-		os.Exit(0)
-	}()
+	})
 
-	var instsBuffer []emitter.Instruction
-	// One session is one file typed a line at a time, and a parser is built per line, so the
-	// struct directives are held here: a struct declared on one line has to still be known
-	// on the next.
-	directives := parser.NewDirectives()
-	histWarned := false
 	for {
 		text, err := reader.ReadLine()
 		if errors.Is(err, errInterrupt) { // Ctrl+C: drop the line, prompt again
@@ -141,66 +239,19 @@ func Start(in io.Reader, out io.Writer, loggers []string, tapeSize int) {
 			continue
 		}
 
-		// Record before evaluating so a line that fails to compile is still recallable.
-		if err := hist.Append(text); err != nil && !histWarned {
-			histWarned = true
-			_, _ = fmt.Fprintf(os.Stderr, "warning: could not write history: %v\n", err)
-		}
-
-		line := bytes.NewBufferString(text)
-
-		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(line.Bytes())
-		if err != nil {
-			_, _ = fmt.Fprintln(out, err)
-			continue
-		}
-		if slices.Contains(loggers, "lexer") {
-			if err := trace.Tokens(out, tokens); err != nil {
-				_, _ = fmt.Fprintln(out, err)
-			}
-		}
-
-		ast, err := parser.New(parser.NewParserOptions{
-			Tokens:     tokens,
-			TapeSize:   tapeSize,
-			Directives: directives,
-		}).Parse()
-		if err != nil {
-			_, _ = fmt.Fprintln(out, err)
-			continue
-		}
-		// The phases return what they made; showing it is decided here.
-		if slices.Contains(loggers, "parser") {
-			if err := trace.AST(out, ast); err != nil {
-				_, _ = fmt.Fprintln(out, err)
-			}
-		}
-
-		program, err := emitter.New(emitter.NewEmitterOptions{
-			TapeSize: tapeSize,
-		}).EmitProgram(ast)
-		if err != nil {
-			_, _ = fmt.Fprintln(out, err)
-			continue
-		}
-		if slices.Contains(loggers, "emitter") {
-			if err := trace.Instructions(out, program.Instructions); err != nil {
-				_, _ = fmt.Fprintln(out, err)
-			}
-		}
-
-		// Append to buffer so defer from/to indices stay valid when calling later.
-		offset := len(instsBuffer)
-		instsBuffer = append(instsBuffer, program.Instructions...)
-
-		// One expression at a time, so a line holding several of them prints each value
-		// where it happens rather than all of them at the end.
-		for _, expr := range program.Expressions {
-			temps, err := ev.EvaluateRange(instsBuffer, uint64(offset+expr.From), uint64(offset+expr.To))
-			render(out, temps, byteutil.ToHex(expr.Label), err)
-			if err != nil {
-				break
-			}
-		}
+		s.remember(text)
+		s.run(text)
 	}
+}
+
+// leaveOnInterrupt says goodbye on Ctrl+C, after giving the terminal back.
+func leaveOnInterrupt(out io.Writer, restore func()) {
+	csig := make(chan os.Signal, 1)
+	signal.Notify(csig, os.Interrupt)
+	go func() {
+		<-csig
+		restore()
+		_, _ = fmt.Fprintln(out, "Bye :)")
+		os.Exit(0)
+	}()
 }

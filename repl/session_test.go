@@ -9,8 +9,8 @@ import (
 // took its writer. These go in the way a shell pipe does — lines in, everything the session
 // said out — so what is pinned here is the REPL as someone uses it, not its parts.
 
-// session types the lines given and answers with everything that was written back.
-func session(t *testing.T, lines string, loggers []string, tapeSize int) string {
+// typed types the lines given and answers with everything the session wrote back.
+func typed(t *testing.T, lines string, loggers []string, tapeSize int) string {
 	t.Helper()
 	out := &strings.Builder{}
 	Start(strings.NewReader(lines), out, loggers, tapeSize)
@@ -66,7 +66,7 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := session(t, tc.lines, nil, 0)
+			got := typed(t, tc.lines, nil, 0)
 			for _, want := range tc.want {
 				if !strings.Contains(got, want) {
 					t.Errorf("session wrote %q, want it to contain %q", got, want)
@@ -78,7 +78,7 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 
 // The width of a value is the session's, so a narrower tape wraps rather than growing.
 func TestSessionHonoursTheTapeSize(t *testing.T) {
-	got := session(t, "255 + 1;\n", nil, 1)
+	got := typed(t, "255 + 1;\n", nil, 1)
 
 	if !strings.Contains(got, "= [0]") {
 		t.Errorf("session wrote %q, want a one-byte tape holding zero", got)
@@ -100,7 +100,7 @@ func TestSessionSurvivesALineThatFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := session(t, tc.lines, nil, 0)
+			got := typed(t, tc.lines, nil, 0)
 
 			if !strings.Contains(got, tc.fails) {
 				t.Errorf("session wrote %q, want it to say %q", got, tc.fails)
@@ -114,7 +114,7 @@ func TestSessionSurvivesALineThatFails(t *testing.T) {
 
 // A blank line is not an expression: it prompts again and says nothing.
 func TestSessionSaysNothingForABlankLine(t *testing.T) {
-	got := session(t, "\n   \n", nil, 0)
+	got := typed(t, "\n   \n", nil, 0)
 
 	if strings.Contains(got, "=") {
 		t.Errorf("session wrote %q, want nothing but prompts", got)
@@ -136,7 +136,7 @@ func TestSessionShowsOnlyThePhaseThatWasAsked(t *testing.T) {
 
 	for phase, mark := range marks {
 		t.Run(phase, func(t *testing.T) {
-			got := session(t, line, []string{phase}, 0)
+			got := typed(t, line, []string{phase}, 0)
 
 			if !strings.Contains(got, mark) {
 				t.Errorf("asked for %s, session wrote %q", phase, got)
@@ -152,7 +152,7 @@ func TestSessionShowsOnlyThePhaseThatWasAsked(t *testing.T) {
 		})
 	}
 
-	if got := session(t, line, nil, 0); strings.Contains(got, "OpAdd") {
+	if got := typed(t, line, nil, 0); strings.Contains(got, "OpAdd") {
 		t.Errorf("a session that asked for nothing wrote %q", got)
 	}
 }

@@ -10,27 +10,31 @@ import (
 	"testing"
 )
 
-// Every example must run. The header of each file documents the output it produces, and
-// that output was pasted from a real run — this keeps them from rotting.
-func TestExamplesRun(t *testing.T) {
+// exampleSources lists every example that runs on its own, the project ones included.
+//
+// A test file belongs to the source of the same name and needs it in scope, so it runs under
+// TestExamplesTestsPass rather than by itself.
+func exampleSources() ([]string, error) {
 	root := filepath.Join("..", "..", "examples")
 
-	var sources []string
+	sources := make([]string, 0)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(d.Name(), ".ar") {
-			return nil
-		}
-		// A test file belongs to the source of the same name and needs it in scope, so it
-		// runs under TestExamplesTestsPass rather than on its own.
-		if strings.HasSuffix(d.Name(), TestExtension) {
+		if d.IsDir() || !strings.HasSuffix(d.Name(), SourceExtension) || strings.HasSuffix(d.Name(), TestExtension) {
 			return nil
 		}
 		sources = append(sources, path)
 		return nil
 	})
+	return sources, err
+}
+
+// Every example must run. The header of each file documents the output it produces, and
+// that output was pasted from a real run — this keeps them from rotting.
+func TestExamplesRun(t *testing.T) {
+	sources, err := exampleSources()
 	if err != nil {
 		t.Fatalf("walking examples: %v", err)
 	}
@@ -103,21 +107,21 @@ func declaredOutput(t *testing.T, source string) []string {
 // It caught three of them the day text stopped being a reel, which is exactly the drift it
 // exists for — the checking was done by hand then, and by hand it does not last.
 func TestExamplesMatchTheirDeclaredOutput(t *testing.T) {
-	root := filepath.Join("..", "..", "examples")
-
-	entries, err := os.ReadDir(root)
+	// The whole tree, not only the top of it: the sources inside examples/project declare
+	// what they print like every other example, and nothing was comparing them — the header
+	// of one was checked by running it in a terminal, which is how the last three rotted.
+	sources, err := exampleSources()
 	if err != nil {
-		t.Fatalf("reading examples: %v", err)
+		t.Fatalf("walking examples: %v", err)
 	}
 
 	checked := 0
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, SourceExtension) || strings.HasSuffix(name, TestExtension) {
-			continue
+	for _, source := range sources {
+		name, err := filepath.Rel(filepath.Join("..", ".."), source)
+		if err != nil {
+			name = source
 		}
 
-		source := filepath.Join(root, name)
 		declared := declaredOutput(t, source)
 		if len(declared) == 0 {
 			continue

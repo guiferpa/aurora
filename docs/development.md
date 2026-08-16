@@ -53,7 +53,7 @@ Note that both targets build with `-race`: great for catching data races, ~20MB 
 ```sh
 go run ./cmd/aurora run examples/recursion.ar   # a file: no manifest needed
 go run ./cmd/aurora run                         # the "main" profile from aurora.toml
-go run ./cmd/aurora run tiny                    # another profile
+go run ./cmd/aurora run label                   # another profile
 ```
 
 A path ends in `.ar`; anything else is a profile name, looked up in the nearest `aurora.toml` (walking up from the working directory). Only the profile form needs a manifest — `examples/project/` has one to try it against.

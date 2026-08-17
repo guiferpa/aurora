@@ -86,6 +86,28 @@ func TestInstructionsAreOnePerLine(t *testing.T) {
 	}
 }
 
+// The token stream is the first thing -l can show, and it was the one of the three that
+// nothing asked about.
+func TestTokensAreOnePerLine(t *testing.T) {
+	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte("ident a = 1;\n"))
+	if err != nil {
+		t.Fatalf("lexing: %v", err)
+	}
+
+	out := bytes.NewBuffer(nil)
+	if err := Tokens(out, tokens); err != nil {
+		t.Fatalf("Tokens: %v", err)
+	}
+
+	written := strings.TrimRight(out.String(), "\n")
+	if lines := strings.Count(written, "\n") + 1; lines < 4 {
+		t.Errorf("wrote %d lines for a line of source:\n%s", lines, written)
+	}
+	if !strings.Contains(written, "IDENT") {
+		t.Errorf("a keyword should name its tag:\n%s", written)
+	}
+}
+
 // failing is a writer that cannot be written to, which is what a closed pipe is.
 type failing struct{}
 
@@ -102,5 +124,10 @@ func TestWriterErrorsAreReturned(t *testing.T) {
 	}
 	if err := Instructions(failing{}, program.Instructions); err == nil {
 		t.Error("Instructions swallowed the writer error")
+	}
+
+	tokens, _ := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte("1;\n"))
+	if err := Tokens(failing{}, tokens); err == nil {
+		t.Error("Tokens swallowed the writer error")
 	}
 }

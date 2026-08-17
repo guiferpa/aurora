@@ -125,3 +125,88 @@ func TestFindProjectRootFromSaysWhenThereIsNoProject(t *testing.T) {
 		t.Errorf("the error says %q, want it to name %s", err, Filename)
 	}
 }
+
+// A command names a profile and gets what it says, or is told the name is not there — the
+// second is what someone typing "aurora run dveloper" meets, so it has to say which name it
+// looked for.
+func TestProfile(t *testing.T) {
+	dir := write(t, `
+[project]
+name = "p"
+
+[profiles.main]
+source = "src/main.ar"
+
+[profiles.tiny]
+source = "src/tiny.ar"
+`)
+	m, err := Load(dir)
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+
+	profile, err := m.Profile("tiny")
+	if err != nil {
+		t.Fatalf("Profile(tiny): %v", err)
+	}
+	if profile.Source != "src/tiny.ar" {
+		t.Errorf("source is %q, want src/tiny.ar", profile.Source)
+	}
+
+	_, err = m.Profile("dveloper")
+	if err == nil {
+		t.Fatal("a profile that is not there came back without an error")
+	}
+	if !strings.Contains(err.Error(), "dveloper") {
+		t.Errorf("the error says %q, want it to name what was asked for", err)
+	}
+}
+
+// Paths in a manifest are written relative to the project, which is what makes a manifest
+// movable — but one written absolute is left alone, so an absolute source still works.
+func TestAbsPath(t *testing.T) {
+	cases := []struct {
+		name string
+		path string
+		want string
+	}{
+		{name: "relative to the project", path: "src/main.ar", want: filepath.Join("/project", "src/main.ar")},
+		{name: "already absolute", path: "/elsewhere/main.ar", want: "/elsewhere/main.ar"},
+		{name: "nothing", path: "", want: "/project"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := AbsPath("/project", tc.path); got != tc.want {
+				t.Errorf("AbsPath = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The walk from the working directory is what every command does before anything else.
+func TestFindProjectRoot(t *testing.T) {
+	root := write(t, "[project]\nname = \"p\"\n")
+	deep := filepath.Join(root, "src")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
+		t.Fatalf("making the directories: %v", err)
+	}
+	t.Chdir(deep)
+
+	got, err := FindProjectRoot()
+	if err != nil {
+		t.Fatalf("walking up: %v", err)
+	}
+	want, _ := filepath.EvalSymlinks(root)
+	if resolved, _ := filepath.EvalSymlinks(got); resolved != want {
+		t.Errorf("found %q, want %q", got, want)
+	}
+}
+
+func TestFindProjectRootWithNoProject(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	if _, err := FindProjectRoot(); err == nil {
+		t.Error("a directory with no manifest was taken for a project")
+	}
+}

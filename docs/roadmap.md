@@ -78,10 +78,11 @@ pick something else.
 ## The EVM backend
 
 The point of the backend is that **the same program answers the same thing on a chain and off
-it**. Since the differential harness exists (`internal/cli/evm_harness_test.go`) that is no
+it**. Since the differential harness exists (`hosting/cli/evm_harness_test.go`) that is no
 longer a hope: an EVM is built in memory, the contract is deployed and called, and the answer
-is compared against the evaluator. Arithmetic across a dispatcher is proved; everything below
-is not.
+is compared against the evaluator. Arithmetic across a dispatcher is proved, at any tape width
+— a result that leaves the width is cut back to it, the way the evaluator does — and
+everything below is not.
 
 The gap is wider than it looks, and it is silent, which is the dangerous part: a contract
 using any of the following **compiles successfully and does nothing on chain**.
@@ -93,9 +94,6 @@ using any of the following **compiles successfully and does nothing on chain**.
   return address. They are simply not written yet.
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.
-- **Arithmetic is not masked to the tape width.** At `--tape-size 1`, `255 + 1` is `0` in the
-  evaluator and `256` on chain: the EVM wraps at 2²⁵⁶ and the tape wraps at 2⁸. The harness
-  reports it; the fix is a mask after every operation.
 - **Events are missing entirely.** `LOG0`–`LOG4` (`0xA0`–`0xA4`) are not in the opcode table.
   On chain they are the only way a contract says anything, and they are the honest target for
   whatever Aurora ends up calling logging.

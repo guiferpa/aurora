@@ -68,7 +68,8 @@ barato de mover: 37 + 41 linhas de declaração, sem comportamento. Depois disso
 > meio.
 
 **3. A árvore vira `wire`.** Mesmo desenho, custo maior: o emitter faz `switch` sobre vinte e
-um tipos concretos de nó.
+um tipos concretos de nó. A comparação de árvores vai junto — é pergunta sobre a forma, não
+sobre quem a construiu.
 
 **4. `logger` vira util de formatação.** Hoje ele escreve em `os.Stderr` e chama `os.Exit(2)`
 — um pacote decidindo o fim do processo. Passa a devolver a mensagem formatada; cada hosting
@@ -88,6 +89,19 @@ coisas a decidir junto, e nenhuma é detalhe:
   linhas e depois estoura não pode perder as três;
 - o usuário deixa de ver a saída **na hora**. Num programa longo, e principalmente no REPL,
   muda quando a linha aparece.
+
+## Achado ao mover a árvore
+
+**`Next()` não é chamado em lugar nenhum.** É o único método da interface `Node`, implementado
+vinte e cinco vezes, e nada no projeto o usa: a interface existe para marcar um tipo como nó, e
+faz isso através de um método que ninguém chama.
+
+Trocar por um método não exportado (`node()`) resolveria duas coisas de uma vez: some com umas
+setenta e cinco linhas mortas, e **fecha o conjunto** — ninguém de fora do `wire/ast` passa a
+poder inventar um nó, o que é exatamente o que a linguagem quer, já que o emitter faz `switch`
+sobre a lista inteira.
+
+Fica registrado em vez de feito: é mudança de desenho, não de lugar, e o passo era mover.
 
 ## Consequência para o que já foi feito
 

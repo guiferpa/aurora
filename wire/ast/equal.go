@@ -1,6 +1,7 @@
-// Package parser: test helpers for AST comparison (same package so tests can use them without import cycle).
+// Comparing two trees is a question about the shape, so it travels with the shape: whoever
+// asks it — a parser test today, anything else tomorrow — should not need the parser to do it.
 
-package parser
+package ast
 
 import (
 	"bytes"
@@ -10,19 +11,11 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// TokenEqual compares two token.Token by value (GetMatch, GetTag).
-func TokenEqual(a, b token.Token) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	return bytes.Equal(a.GetMatch(), b.GetMatch()) && a.GetTag() == b.GetTag()
-}
-
-// ASTEqual compares two parsed files by structure and token value (ignores pointer identity).
-func ASTEqual(got, want AST) bool {
+// Equal compares two trees by structure and by the tokens they carry, ignoring pointer
+// identity. It travels with the tree: comparing two of them is a question about the shape,
+// and whoever asks it — a parser test today, anything else tomorrow — should not need the
+// parser to do it.
+func Equal(got, want AST) bool {
 	if got.Filename != want.Filename || len(got.Nodes) != len(want.Nodes) {
 		return false
 	}
@@ -105,19 +98,19 @@ func nodeEqual(a, b Node) bool {
 }
 
 func numberEqual(a, b NumberLiteral) bool {
-	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+	return a.Value == b.Value && token.Equal(a.Token, b.Token)
 }
 
 func booleanEqual(a, b BooleanLiteral) bool {
-	return bytes.Equal(a.Value, b.Value) && TokenEqual(a.Token, b.Token)
+	return bytes.Equal(a.Value, b.Value) && token.Equal(a.Token, b.Token)
 }
 
 func opEqual(a, b OperationLiteral) bool {
-	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+	return a.Value == b.Value && token.Equal(a.Token, b.Token)
 }
 
 func identifierEqual(a, b IdentifierLiteral) bool {
-	return a.Value == b.Value && TokenEqual(a.Token, b.Token)
+	return a.Value == b.Value && token.Equal(a.Token, b.Token)
 }
 
 // The three expressions with two operands differ only in what they mean, and the operator is
@@ -163,7 +156,7 @@ func deferEqual(a, b DeferExpression) bool {
 }
 
 func identEqual(a, b IdentLiteral) bool {
-	return a.Id == b.Id && TokenEqual(a.Token, b.Token) && nodeEqual(a.Value, b.Value)
+	return a.Id == b.Id && token.Equal(a.Token, b.Token) && nodeEqual(a.Value, b.Value)
 }
 
 func printEqual(a, b PrintStatement) bool {
@@ -171,7 +164,7 @@ func printEqual(a, b PrintStatement) bool {
 }
 
 func assertEqual(a, b AssertStatement) bool {
-	return TokenEqual(a.Token, b.Token) && nodeEqual(a.Condition, b.Condition) && a.Message == b.Message
+	return token.Equal(a.Token, b.Token) && nodeEqual(a.Condition, b.Condition) && a.Message == b.Message
 }
 
 // A struct's fields are positional, so their order is part of the shape and not a detail of

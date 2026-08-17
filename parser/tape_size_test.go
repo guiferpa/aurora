@@ -7,10 +7,11 @@ import (
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-func parseWithTapeSize(t *testing.T, source string, tapeSize int) (AST, error) {
+func parseWithTapeSize(t *testing.T, source string, tapeSize int) (ast.AST, error) {
 	t.Helper()
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 	if err != nil {
@@ -96,7 +97,7 @@ func TestBooleanLiteralWidth(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse: %v", err)
 		}
-		literal, ok := ns.Nodes[0].(BooleanLiteral)
+		literal, ok := ns.Nodes[0].(ast.BooleanLiteral)
 		if !ok {
 			t.Fatalf("unexpected node: %T", ns.Nodes[0])
 		}
@@ -114,7 +115,7 @@ func TestDefaultTapeSizeIsEightBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if got := len(ns.Nodes[0].(BooleanLiteral).Value); got != byteutil.DefaultTapeSize {
+	if got := len(ns.Nodes[0].(ast.BooleanLiteral).Value); got != byteutil.DefaultTapeSize {
 		t.Errorf("unset tape size produced %d bytes, want %d", got, byteutil.DefaultTapeSize)
 	}
 }

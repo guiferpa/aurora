@@ -9,35 +9,36 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ast"
 )
 
 // compile runs the front end over source, which is what a host hands to trace.
-func compile(t *testing.T, source string) (parser.AST, emitter.Program) {
+func compile(t *testing.T, source string) (ast.AST, emitter.Program) {
 	t.Helper()
 
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(ast)
+	program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}
-	return ast, program
+	return tree, program
 }
 
 // The tree is shown with every node labelled by its type, which is the first thing anyone
 // reading a tree looks for. Positions are left out: a token carries its whole location, and
 // printing that drowns the tree it belongs to.
 func TestASTNamesEveryNode(t *testing.T) {
-	ast, _ := compile(t, "ident a = 1 + 2;\n")
+	tree, _ := compile(t, "ident a = 1 + 2;\n")
 
 	out := bytes.NewBuffer(nil)
-	if err := AST(out, ast); err != nil {
+	if err := AST(out, tree); err != nil {
 		t.Fatalf("AST: %v", err)
 	}
 
@@ -52,10 +53,10 @@ func TestASTNamesEveryNode(t *testing.T) {
 // An empty program is still a tree, and showing it must not fail: a host asks for the tree
 // before knowing whether there is anything in it.
 func TestASTOfAnEmptyProgram(t *testing.T) {
-	ast, _ := compile(t, "")
+	tree, _ := compile(t, "")
 
 	out := bytes.NewBuffer(nil)
-	if err := AST(out, ast); err != nil {
+	if err := AST(out, tree); err != nil {
 		t.Errorf("AST of an empty program: %v", err)
 	}
 	if out.Len() == 0 {
@@ -94,9 +95,9 @@ func (failing) Write([]byte) (int, error) { return 0, errors.New("broken pipe") 
 // something that has gone away has to hear about it — that is the whole reason this lives
 // on the host side rather than printing from inside a phase.
 func TestWriterErrorsAreReturned(t *testing.T) {
-	ast, program := compile(t, "1 + 2;\n")
+	tree, program := compile(t, "1 + 2;\n")
 
-	if err := AST(failing{}, ast); err == nil {
+	if err := AST(failing{}, tree); err == nil {
 		t.Error("AST swallowed the writer error")
 	}
 	if err := Instructions(failing{}, program.Instructions); err == nil {

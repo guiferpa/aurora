@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
 type Parser interface {
 	GetLookahead() token.Token
 	EatToken(tokenId string) (token.Token, error)
-	Parse() (AST, error)
+	Parse() (ast.AST, error)
 }
 
 type pr struct {
@@ -29,27 +30,27 @@ type pr struct {
 }
 
 // Helper functions to validate node types for tape operations
-func isValidTapeTarget(node Node) bool {
+func isValidTapeTarget(node ast.Node) bool {
 	switch node.(type) {
-	case TapeBracketExpression, NumberLiteral, IdentifierLiteral,
-		PullExpression, PushExpression, HeadExpression, TailExpression:
+	case ast.TapeBracketExpression, ast.NumberLiteral, ast.IdentifierLiteral,
+		ast.PullExpression, ast.PushExpression, ast.HeadExpression, ast.TailExpression:
 		return true
 	default:
 		return false
 	}
 }
 
-func isValidTapeItem(node Node) bool {
+func isValidTapeItem(node ast.Node) bool {
 	switch node.(type) {
-	case TapeBracketExpression, NumberLiteral, IdentifierLiteral:
+	case ast.TapeBracketExpression, ast.NumberLiteral, ast.IdentifierLiteral:
 		return true
 	default:
 		return false
 	}
 }
 
-func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
-	params := make([]ParameterLiteral, 0)
+func (p *pr) ParseCallee(id ast.IdentifierLiteral) (ast.Node, error) {
+	params := make([]ast.ParameterLiteral, 0)
 	if p.GetLookahead().GetTag().Id != token.O_PAREN {
 		return id, nil
 	}
@@ -61,7 +62,7 @@ func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		params = append(params, ParameterLiteral{expr})
+		params = append(params, ast.ParameterLiteral{Expression: expr})
 		if p.GetLookahead().GetTag().Id == token.C_PAREN {
 			break
 		}
@@ -72,38 +73,38 @@ func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 	if _, err := p.EatToken(token.C_PAREN); err != nil {
 		return nil, err
 	}
-	return CalleeLiteral{id, params}, nil
+	return ast.CalleeLiteral{Id: id, Params: params}, nil
 }
 
 // ParseIdentifier reads a plain name.
-func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
+func (p *pr) ParseIdentifier() (ast.IdentifierLiteral, error) {
 	tok, err := p.EatToken(token.ID)
 	if err != nil {
-		return IdentifierLiteral{}, err
+		return ast.IdentifierLiteral{}, err
 	}
-	return IdentifierLiteral{Value: string(tok.GetMatch()), Token: tok}, nil
+	return ast.IdentifierLiteral{Value: string(tok.GetMatch()), Token: tok}, nil
 }
 
-func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
+func (p *pr) ParseBooleanTrue() (ast.BooleanLiteral, error) {
 	tok, err := p.EatToken(token.TRUE)
 	if err != nil {
-		return BooleanLiteral{}, err
+		return ast.BooleanLiteral{}, err
 	}
-	return BooleanLiteral{byteutil.TrueTape(p.tapeSize), tok}, nil
+	return ast.BooleanLiteral{Value: byteutil.TrueTape(p.tapeSize), Token: tok}, nil
 }
 
-func (p *pr) ParseBooleanFalse() (BooleanLiteral, error) {
+func (p *pr) ParseBooleanFalse() (ast.BooleanLiteral, error) {
 	tok, err := p.EatToken(token.FALSE)
 	if err != nil {
-		return BooleanLiteral{}, err
+		return ast.BooleanLiteral{}, err
 	}
-	return BooleanLiteral{byteutil.FalseTape(p.tapeSize), tok}, nil
+	return ast.BooleanLiteral{Value: byteutil.FalseTape(p.tapeSize), Token: tok}, nil
 }
 
-func (p *pr) ParseNumber() (NumberLiteral, error) {
+func (p *pr) ParseNumber() (ast.NumberLiteral, error) {
 	tok, err := p.EatToken(token.NUMBER)
 	if err != nil {
-		return NumberLiteral{}, err
+		return ast.NumberLiteral{}, err
 	}
 
 	raw := strings.ReplaceAll(string(tok.GetMatch()), "_", "")
@@ -113,23 +114,23 @@ func (p *pr) ParseNumber() (NumberLiteral, error) {
 		if n, err := strconv.ParseUint(raw[2:], 16, 64); err == nil {
 			return p.fitInTape(n, tok)
 		}
-		return NumberLiteral{}, err
+		return ast.NumberLiteral{}, err
 	}
 
 	// Parse as decimal
 	if n, err := strconv.ParseUint(raw, 10, 64); err == nil {
 		return p.fitInTape(n, tok)
 	}
-	return NumberLiteral{}, err
+	return ast.NumberLiteral{}, err
 }
 
 // fitInTape rejects a literal that the configured tape cannot hold, instead of letting it
 // be truncated silently at emission.
-func (p *pr) fitInTape(v uint64, tok token.Token) (NumberLiteral, error) {
+func (p *pr) fitInTape(v uint64, tok token.Token) (ast.NumberLiteral, error) {
 	if !byteutil.FitsInTape(v, p.tapeSize) {
-		return NumberLiteral{}, token.NewError(tok, "value %d does not fit in a %d-byte tape (max %d)", v, p.tapeSize, byteutil.MaxTapeValue(p.tapeSize))
+		return ast.NumberLiteral{}, token.NewError(tok, "value %d does not fit in a %d-byte tape (max %d)", v, p.tapeSize, byteutil.MaxTapeValue(p.tapeSize))
 	}
-	return NumberLiteral{v, tok}, nil
+	return ast.NumberLiteral{Value: v, Token: tok}, nil
 }
 
 // ParseText reads `"text"` into one tape holding its bytes.
@@ -137,29 +138,29 @@ func (p *pr) fitInTape(v uint64, tok token.Token) (NumberLiteral, error) {
 // The bytes are the text as written, in UTF-8, right aligned like every other value — so
 // "a" is the tape holding 97, which is the tape the number 97 is, and "café" is its five
 // UTF-8 bytes rather than four characters spread over four tapes.
-func (p *pr) ParseText() (TextLiteral, error) {
+func (p *pr) ParseText() (ast.TextLiteral, error) {
 	tok, err := p.EatToken(token.STRING)
 	if err != nil {
-		return TextLiteral{}, err
+		return ast.TextLiteral{}, err
 	}
 	match := tok.GetMatch()
 	if len(match) < 2 {
-		return TextLiteral{}, token.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
+		return ast.TextLiteral{}, token.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
 	}
 	content := match[1 : len(match)-1]
 
 	// A value is a tape, and a tape is tape_size bytes: text that does not fit is rejected
 	// where it was written, the same way a number that does not fit is.
 	if len(content) > p.tapeSize {
-		return TextLiteral{}, token.NewError(tok, "text is %d bytes but a tape holds %d at line %d and column %d",
+		return ast.TextLiteral{}, token.NewError(tok, "text is %d bytes but a tape holds %d at line %d and column %d",
 			len(content), p.tapeSize, tok.GetLine(), tok.GetColumn())
 	}
 
-	return TextLiteral{byteutil.PaddingTape(content, p.tapeSize), tok}, nil
+	return ast.TextLiteral{Value: byteutil.PaddingTape(content, p.tapeSize), Token: tok}, nil
 }
 
 // ParsePriExpr reads a primary and then whatever binds to it tightest: a field, a shape.
-func (p *pr) ParsePriExpr() (Node, error) {
+func (p *pr) ParsePriExpr() (ast.Node, error) {
 	expr, err := p.parsePrimaryExpr()
 	if err != nil {
 		return nil, err
@@ -167,7 +168,7 @@ func (p *pr) ParsePriExpr() (Node, error) {
 	return p.parsePostfix(expr)
 }
 
-func (p *pr) parsePrimaryExpr() (Node, error) {
+func (p *pr) parsePrimaryExpr() (ast.Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == token.FEED {
 		return p.ParseFeed()
@@ -232,11 +233,11 @@ func (p *pr) parsePrimaryExpr() (Node, error) {
 	return id, nil
 }
 
-func (p *pr) ParseTapeBrk() (Node, error) {
+func (p *pr) ParseTapeBrk() (ast.Node, error) {
 	if _, err := p.EatToken(token.O_BRK); err != nil {
 		return nil, err
 	}
-	items := make([]Node, 0)
+	items := make([]ast.Node, 0)
 	for p.GetLookahead().GetTag().Id != token.C_BRK {
 		expr, err := p.ParseExpr()
 		if err != nil {
@@ -245,7 +246,7 @@ func (p *pr) ParseTapeBrk() (Node, error) {
 
 		// Validate: if item is a number literal, it must be between 0 and 255
 		// (since tapes store values as direct bytes)
-		if numNode, ok := expr.(NumberLiteral); ok {
+		if numNode, ok := expr.(ast.NumberLiteral); ok {
 			if numNode.Value > byteutil.MAX_BYTES {
 				return nil, fmt.Errorf("tape values must be between 0 and %d, got %d", byteutil.MAX_BYTES, numNode.Value)
 			}
@@ -266,10 +267,10 @@ func (p *pr) ParseTapeBrk() (Node, error) {
 	if len(items) > p.tapeSize {
 		return nil, token.NewError(closing, "tape literal has %d values but a tape holds %d bytes", len(items), p.tapeSize)
 	}
-	return TapeBracketExpression{Items: items}, nil
+	return ast.TapeBracketExpression{Items: items}, nil
 }
 
-func (p *pr) ParsePull() (Node, error) {
+func (p *pr) ParsePull() (ast.Node, error) {
 	if _, err := p.EatToken(token.PULL); err != nil {
 		return nil, err
 	}
@@ -289,10 +290,10 @@ func (p *pr) ParsePull() (Node, error) {
 	if !isValidTapeItem(expr) {
 		return nil, errors.New("it is not a valid append item")
 	}
-	return PullExpression{Target: target, Item: expr}, nil
+	return ast.PullExpression{Target: target, Item: expr}, nil
 }
 
-func (p *pr) ParseHead() (Node, error) {
+func (p *pr) ParseHead() (ast.Node, error) {
 	if _, err := p.EatToken(token.HEAD); err != nil {
 		return nil, err
 	}
@@ -308,10 +309,10 @@ func (p *pr) ParseHead() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return HeadExpression{Expression: expr, Length: length.Value}, nil
+	return ast.HeadExpression{Expression: expr, Length: length.Value}, nil
 }
 
-func (p *pr) ParseTail() (Node, error) {
+func (p *pr) ParseTail() (ast.Node, error) {
 	if _, err := p.EatToken(token.TAIL); err != nil {
 		return nil, err
 	}
@@ -327,10 +328,10 @@ func (p *pr) ParseTail() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return TailExpression{Expression: expr, Length: length.Value}, nil
+	return ast.TailExpression{Expression: expr, Length: length.Value}, nil
 }
 
-func (p *pr) ParsePush() (Node, error) {
+func (p *pr) ParsePush() (ast.Node, error) {
 	if _, err := p.EatToken(token.PUSH); err != nil {
 		return nil, err
 	}
@@ -350,10 +351,10 @@ func (p *pr) ParsePush() (Node, error) {
 	if !isValidTapeItem(expr) {
 		return nil, errors.New("it is not a valid push item")
 	}
-	return PushExpression{Target: target, Item: expr}, nil
+	return ast.PushExpression{Target: target, Item: expr}, nil
 }
 
-func (p *pr) ParseUnaExpr() (Node, error) {
+func (p *pr) ParseUnaExpr() (ast.Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead.GetTag().Id == token.SUB {
 		op, err := p.EatToken(token.SUB)
@@ -364,12 +365,12 @@ func (p *pr) ParseUnaExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return UnaryExpression{expr, OperationLiteral{string(op.GetMatch()), op}}, nil
+		return ast.UnaryExpression{Expression: expr, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	return p.ParsePriExpr()
 }
 
-func (p *pr) ParseExpoExpr() (Node, error) {
+func (p *pr) ParseExpoExpr() (ast.Node, error) {
 	left, err := p.ParseUnaExpr()
 	if err != nil {
 		return nil, err
@@ -385,7 +386,7 @@ func (p *pr) ParseExpoExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}, nil
+		return ast.BinaryExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 
 	return left, nil
@@ -398,7 +399,7 @@ func (p *pr) ParseExpoExpr() (Node, error) {
 // as 20 / (5 / 2) and answered 10 instead of 2, and `4 / 2 * 6` read as 4 / (2 * 6) and
 // answered 0 instead of 12. Multiplication hid it — it is associative, so only a chain mixing
 // it with division gives a different answer.
-func (p *pr) ParseMultExpr() (Node, error) {
+func (p *pr) ParseMultExpr() (ast.Node, error) {
 	left, err := p.ParseExpoExpr()
 	if err != nil {
 		return nil, err
@@ -414,7 +415,7 @@ func (p *pr) ParseMultExpr() (Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
+			left = ast.BinaryExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 			continue
 		}
 		if lookahead.GetTag().Id == token.DIV {
@@ -426,7 +427,7 @@ func (p *pr) ParseMultExpr() (Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
+			left = ast.BinaryExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 			continue
 		}
 		break
@@ -435,7 +436,7 @@ func (p *pr) ParseMultExpr() (Node, error) {
 }
 
 // ParseAddExpr parses additive expressions left-associatively: a - b - c => (a - b) - c, a + b + c => (a + b) + c.
-func (p *pr) ParseAddExpr() (Node, error) {
+func (p *pr) ParseAddExpr() (ast.Node, error) {
 	left, err := p.ParseMultExpr()
 	if err != nil {
 		return nil, err
@@ -451,7 +452,7 @@ func (p *pr) ParseAddExpr() (Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
+			left = ast.BinaryExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 			continue
 		}
 		if lookahead.GetTag().Id == token.SUB {
@@ -463,7 +464,7 @@ func (p *pr) ParseAddExpr() (Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
+			left = ast.BinaryExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 			continue
 		}
 		break
@@ -471,7 +472,7 @@ func (p *pr) ParseAddExpr() (Node, error) {
 	return left, nil
 }
 
-func (p *pr) ParseRelExpr() (Node, error) {
+func (p *pr) ParseRelExpr() (ast.Node, error) {
 	left, err := p.ParseAddExpr()
 	if err != nil {
 		return nil, err
@@ -486,7 +487,7 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
+		return ast.RelativeExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == token.DIFFERENT {
 		op, err := p.EatToken(token.DIFFERENT)
@@ -497,7 +498,7 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
+		return ast.RelativeExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == token.BIGGER {
 		op, err := p.EatToken(token.BIGGER)
@@ -508,7 +509,7 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
+		return ast.RelativeExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	if lookahead.GetTag().Id == token.SMALLER {
 		op, err := p.EatToken(token.SMALLER)
@@ -519,7 +520,7 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
+		return ast.RelativeExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
 	return left, nil
 }
@@ -530,7 +531,7 @@ func (p *pr) ParseRelExpr() (Node, error) {
 // read as `a and (b or c)`: `false and true or true` answered false where every language
 // that gives `and` the tighter binding answers true. Splitting them into two levels is what
 // makes `and` bind tighter, and the loop is what groups a chain to the left.
-func (p *pr) ParseBoolExpr() (Node, error) {
+func (p *pr) ParseBoolExpr() (ast.Node, error) {
 	left, err := p.ParseAndExpr()
 	if err != nil {
 		return nil, err
@@ -544,13 +545,13 @@ func (p *pr) ParseBoolExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = BooleanExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}
+		left = ast.BooleanExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 	}
 	return left, nil
 }
 
 // ParseAndExpr parses `and`, which binds tighter than `or` and looser than a comparison.
-func (p *pr) ParseAndExpr() (Node, error) {
+func (p *pr) ParseAndExpr() (ast.Node, error) {
 	left, err := p.ParseRelExpr()
 	if err != nil {
 		return nil, err
@@ -564,12 +565,12 @@ func (p *pr) ParseAndExpr() (Node, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = BooleanExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}
+		left = ast.BooleanExpression{Left: left, Right: right, Operation: ast.OperationLiteral{Value: string(op.GetMatch()), Token: op}}
 	}
 	return left, nil
 }
 
-func (p *pr) ParseBranchItem() (Node, error) {
+func (p *pr) ParseBranchItem() (ast.Node, error) {
 	expr, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
@@ -582,10 +583,10 @@ func (p *pr) ParseBranchItem() (Node, error) {
 		return expr, nil
 	}
 
-	_, isBoolean := expr.(BooleanExpression)
-	_, isRel := expr.(RelativeExpression)
-	_, isLiteralBool := expr.(BooleanLiteral)
-	_, isId := expr.(IdentifierLiteral)
+	_, isBoolean := expr.(ast.BooleanExpression)
+	_, isRel := expr.(ast.RelativeExpression)
+	_, isLiteralBool := expr.(ast.BooleanLiteral)
+	_, isId := expr.(ast.IdentifierLiteral)
 	if !isBoolean && !isRel && !isLiteralBool && !isId {
 		return nil, errors.New("branch must have boolean expression as test")
 	}
@@ -608,14 +609,14 @@ func (p *pr) ParseBranchItem() (Node, error) {
 		return nil, err
 	}
 
-	return IfExpression{
+	return ast.IfExpression{
 		Test: expr,
-		Body: []Node{body},
-		Else: &ElseExpression{Body: []Node{euzeb}},
+		Body: []ast.Node{body},
+		Else: &ast.ElseExpression{Body: []ast.Node{euzeb}},
 	}, nil
 }
 
-func (p *pr) ParseBranch() (Node, error) {
+func (p *pr) ParseBranch() (ast.Node, error) {
 	if _, err := p.EatToken(token.BRANCH); err != nil {
 		return nil, err
 	}
@@ -636,7 +637,7 @@ func (p *pr) ParseBranch() (Node, error) {
 	return item, nil
 }
 
-func (p *pr) ParseBlockExpr() (Node, error) {
+func (p *pr) ParseBlockExpr() (ast.Node, error) {
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
@@ -647,10 +648,10 @@ func (p *pr) ParseBlockExpr() (Node, error) {
 	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	return BlockExpression{Body: exprs}, nil
+	return ast.BlockExpression{Body: exprs}, nil
 }
 
-func (p *pr) ParseDefer() (Node, error) {
+func (p *pr) ParseDefer() (ast.Node, error) {
 	if _, err := p.EatToken(token.DEFER); err != nil {
 		return nil, err
 	}
@@ -664,11 +665,11 @@ func (p *pr) ParseDefer() (Node, error) {
 	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	block := BlockExpression{Body: exprs}
-	return DeferExpression{Block: block}, nil
+	block := ast.BlockExpression{Body: exprs}
+	return ast.DeferExpression{Block: block}, nil
 }
 
-func (p *pr) ParseIf() (Node, error) {
+func (p *pr) ParseIf() (ast.Node, error) {
 	if _, err := p.EatToken(token.IF); err != nil {
 		return nil, err
 	}
@@ -688,12 +689,12 @@ func (p *pr) ParseIf() (Node, error) {
 	}
 	if p.GetLookahead().GetTag().Id == token.ELSE {
 		euze, err := p.ParseElse()
-		return IfExpression{test, body, euze}, err
+		return ast.IfExpression{Test: test, Body: body, Else: euze}, err
 	}
-	return IfExpression{test, body, nil}, nil
+	return ast.IfExpression{Test: test, Body: body, Else: nil}, nil
 }
 
-func (p *pr) ParseElse() (*ElseExpression, error) {
+func (p *pr) ParseElse() (*ast.ElseExpression, error) {
 	if _, err := p.EatToken(token.ELSE); err != nil {
 		return nil, err
 	}
@@ -707,10 +708,10 @@ func (p *pr) ParseElse() (*ElseExpression, error) {
 	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	return &ElseExpression{body}, nil
+	return &ast.ElseExpression{Body: body}, nil
 }
 
-func (p *pr) ParseIdent() (Node, error) {
+func (p *pr) ParseIdent() (ast.Node, error) {
 	if _, err := p.EatToken(token.IDENT); err != nil {
 		return nil, err
 	}
@@ -733,10 +734,10 @@ func (p *pr) ParseIdent() (Node, error) {
 	if shape := p.shapeOf(expr); shape != "" {
 		p.directives.Shapes[string(id.GetMatch())] = shape
 	}
-	return IdentLiteral{string(id.GetMatch()), id, expr}, nil
+	return ast.IdentLiteral{Id: string(id.GetMatch()), Token: id, Value: expr}, nil
 }
 
-func (p *pr) ParseExpr() (Node, error) {
+func (p *pr) ParseExpr() (ast.Node, error) {
 	lookahead := p.GetLookahead()
 	if lookahead == nil {
 		return nil, fmt.Errorf("unexpected end of input")
@@ -781,13 +782,13 @@ func (p *pr) ParseExpr() (Node, error) {
 }
 
 // printFormats maps each print builtin to the reading it asks for.
-var printFormats = map[string]PrintFormat{
-	token.PRINTB: PrintBytes,
-	token.PRINTC: PrintChars,
-	token.PRINTD: PrintDecimal,
+var printFormats = map[string]ast.PrintFormat{
+	token.PRINTB: ast.PrintBytes,
+	token.PRINTC: ast.PrintChars,
+	token.PRINTD: ast.PrintDecimal,
 }
 
-func (p *pr) ParsePrint(token string, format PrintFormat) (Node, error) {
+func (p *pr) ParsePrint(token string, format ast.PrintFormat) (ast.Node, error) {
 	if _, err := p.EatToken(token); err != nil {
 		return nil, err
 	}
@@ -795,10 +796,10 @@ func (p *pr) ParsePrint(token string, format PrintFormat) (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return PrintStatement{Format: format, Param: expr}, nil
+	return ast.PrintStatement{Format: format, Param: expr}, nil
 }
 
-func (p *pr) ParseAssert() (Node, error) {
+func (p *pr) ParseAssert() (ast.Node, error) {
 	// Validate that assert can only be used in .test.ar files
 	if !strings.HasSuffix(p.filename, ".test.ar") {
 		lookahead := p.GetLookahead()
@@ -835,7 +836,7 @@ func (p *pr) ParseAssert() (Node, error) {
 		return nil, err
 	}
 
-	return AssertStatement{
+	return ast.AssertStatement{
 		Condition: condition,
 		Message:   string(quoted[1 : len(quoted)-1]),
 		Token:     t,
@@ -843,7 +844,7 @@ func (p *pr) ParseAssert() (Node, error) {
 }
 
 // ParseFeed parses the builtin "feed": feed(index), or feed index without parentheses.
-func (p *pr) ParseFeed() (Node, error) {
+func (p *pr) ParseFeed() (ast.Node, error) {
 	if _, err := p.EatToken(token.FEED); err != nil {
 		return nil, err
 	}
@@ -858,17 +859,17 @@ func (p *pr) ParseFeed() (Node, error) {
 		if _, err := p.EatToken(token.C_PAREN); err != nil {
 			return nil, err
 		}
-		return FeedExpression{nth}, nil
+		return ast.FeedExpression{Nth: nth}, nil
 	}
 	nth, err := p.ParseNumber()
 	if err != nil {
 		return nil, err
 	}
-	return FeedExpression{nth}, nil
+	return ast.FeedExpression{Nth: nth}, nil
 }
 
-func (p *pr) ParseExprs(t token.Tag) ([]Node, error) {
-	exprs := make([]Node, 0)
+func (p *pr) ParseExprs(t token.Tag) ([]ast.Node, error) {
+	exprs := make([]ast.Node, 0)
 	for {
 		lookahead := p.GetLookahead()
 		if lookahead == nil || lookahead.GetTag().Id == t.Id {
@@ -909,13 +910,13 @@ func (p *pr) EatToken(tokenId string) (token.Token, error) {
 	return currtok, nil
 }
 
-func (p *pr) Parse() (AST, error) {
+func (p *pr) Parse() (ast.AST, error) {
 	nodes, err := p.ParseExprs(token.TagEOF)
 	if err != nil {
-		return AST{}, err
+		return ast.AST{}, err
 	}
 
-	return AST{Filename: p.filename, Nodes: nodes}, nil
+	return ast.AST{Filename: p.filename, Nodes: nodes}, nil
 }
 
 type NewParserOptions struct {

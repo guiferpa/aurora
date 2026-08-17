@@ -138,7 +138,7 @@ func (s *session) compile(text string) (emitter.Program, error) {
 	}
 	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
 
-	ast, err := parser.New(parser.NewParserOptions{
+	tree, err := parser.New(parser.NewParserOptions{
 		Tokens:     tokens,
 		TapeSize:   s.tapeSize,
 		Directives: s.directives,
@@ -146,11 +146,11 @@ func (s *session) compile(text string) (emitter.Program, error) {
 	if err != nil {
 		return emitter.Program{}, err
 	}
-	s.trace("parser", func(w io.Writer) error { return trace.AST(w, ast) })
+	s.trace("parser", func(w io.Writer) error { return trace.AST(w, tree) })
 
 	program, err := emitter.New(emitter.NewEmitterOptions{
 		TapeSize: s.tapeSize,
-	}).EmitProgram(ast)
+	}).EmitProgram(tree)
 	if err != nil {
 		return emitter.Program{}, err
 	}

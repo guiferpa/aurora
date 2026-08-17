@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ast"
 )
 
 // A Warning is something worth saying about a program that is not a reason to refuse it.
@@ -37,7 +37,7 @@ func (w Warning) Positioned() bool {
 // This is a warning rather than an error because the count is static: it cannot know how
 // often a scope actually runs. And it is never checked at runtime — a program that is
 // already running should not be stopped by a limit its shape implied.
-func checkDeferCapacity(nodes []parser.Node, tapeSize int) []Warning {
+func checkDeferCapacity(nodes []ast.Node, tapeSize int) []Warning {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	if tapeSize >= 8 {
 		// A scope would need more than 2^64 defers to wrap; nothing to say.
@@ -46,8 +46,8 @@ func checkDeferCapacity(nodes []parser.Node, tapeSize int) []Warning {
 	capacity := uint64(1) << (8 * tapeSize)
 
 	warnings := make([]Warning, 0)
-	var walk func(scope []parser.Node)
-	walk = func(scope []parser.Node) {
+	var walk func(scope []ast.Node)
+	walk = func(scope []ast.Node) {
 		defers := 0
 		for _, node := range scope {
 			if countDefers(node, &defers, walk) {
@@ -69,13 +69,13 @@ func checkDeferCapacity(nodes []parser.Node, tapeSize int) []Warning {
 // An assertion belongs to "aurora test"; a plain run consumes it and moves on, so the
 // point of the warning is to say that out loud rather than let someone believe a check
 // ran. Each one is named by position, so an editor can jump to it.
-func checkAsserts(nodes []parser.Node) []Warning {
+func checkAsserts(nodes []ast.Node) []Warning {
 	warnings := make([]Warning, 0)
 
-	var walk func(scope []parser.Node)
-	walk = func(scope []parser.Node) {
+	var walk func(scope []ast.Node)
+	walk = func(scope []ast.Node) {
 		for _, node := range scope {
-			if assertion, ok := node.(parser.AssertStatement); ok {
+			if assertion, ok := node.(ast.AssertStatement); ok {
 				warning := Warning{Message: "assert only runs under 'aurora test'; ignored here"}
 				if assertion.Token != nil {
 					warning.Line = assertion.Token.GetLine()
@@ -93,31 +93,31 @@ func checkAsserts(nodes []parser.Node) []Warning {
 }
 
 // childScopesOf returns the expressions a node holds, so a walk reaches what is nested.
-func childScopesOf(node parser.Node) []parser.Node {
+func childScopesOf(node ast.Node) []ast.Node {
 	switch n := node.(type) {
-	case parser.IdentLiteral:
-		return []parser.Node{n.Value}
-	case parser.BlockExpression:
+	case ast.IdentLiteral:
+		return []ast.Node{n.Value}
+	case ast.BlockExpression:
 		return n.Body
-	case parser.DeferExpression:
+	case ast.DeferExpression:
 		return n.Block.Body
-	case parser.IfExpression:
-		body := make([]parser.Node, 0, len(n.Body)+1)
+	case ast.IfExpression:
+		body := make([]ast.Node, 0, len(n.Body)+1)
 		body = append(body, n.Body...)
 		if n.Else != nil {
 			body = append(body, n.Else.Body...)
 		}
 		return body
-	case parser.PrintStatement:
-		return []parser.Node{n.Param}
-	case parser.StructLiteral:
+	case ast.PrintStatement:
+		return []ast.Node{n.Param}
+	case ast.StructLiteral:
 		// A field can hold a deferred scope, so the values of a struct are walked like any
 		// other place a scope can hide.
 		return n.Values
-	case parser.FieldExpression:
-		return []parser.Node{n.Expression}
-	case parser.ShapedExpression:
-		return []parser.Node{n.Expression}
+	case ast.FieldExpression:
+		return []ast.Node{n.Expression}
+	case ast.ShapedExpression:
+		return []ast.Node{n.Expression}
 	default:
 		return nil
 	}
@@ -125,31 +125,31 @@ func childScopesOf(node parser.Node) []parser.Node {
 
 // countDefers adds node's own defers to count and walks the scopes it opens, since each of
 // those keeps its own tally.
-func countDefers(node parser.Node, count *int, walk func([]parser.Node)) bool {
+func countDefers(node ast.Node, count *int, walk func([]ast.Node)) bool {
 	switch n := node.(type) {
-	case parser.DeferExpression:
+	case ast.DeferExpression:
 		*count++
 		walk(n.Block.Body)
-	case parser.IdentLiteral:
+	case ast.IdentLiteral:
 		return countDefers(n.Value, count, walk)
-	case parser.BlockExpression:
+	case ast.BlockExpression:
 		walk(n.Body)
-	case parser.IfExpression:
+	case ast.IfExpression:
 		walk(n.Body)
 		if n.Else != nil {
 			walk(n.Else.Body)
 		}
-	case parser.PrintStatement:
+	case ast.PrintStatement:
 		return countDefers(n.Param, count, walk)
-	case parser.StructLiteral:
+	case ast.StructLiteral:
 		for _, value := range n.Values {
 			if !countDefers(value, count, walk) {
 				return false
 			}
 		}
-	case parser.FieldExpression:
+	case ast.FieldExpression:
 		return countDefers(n.Expression, count, walk)
-	case parser.ShapedExpression:
+	case ast.ShapedExpression:
 		return countDefers(n.Expression, count, walk)
 	}
 	return true

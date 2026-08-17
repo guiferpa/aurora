@@ -15,11 +15,11 @@ func compileWith(t *testing.T, source string, tapeSize int) Program {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	program, err := New(NewEmitterOptions{TapeSize: tapeSize}).EmitProgram(ast)
+	program, err := New(NewEmitterOptions{TapeSize: tapeSize}).EmitProgram(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}
@@ -64,8 +64,8 @@ func TestEmitMatchesEmitProgram(t *testing.T) {
 	program := compile(t, source)
 
 	tokens, _ := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
-	ast, _ := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
-	insts, err := New(NewEmitterOptions{}).Emit(ast)
+	tree, _ := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
+	insts, err := New(NewEmitterOptions{}).Emit(tree)
 	if err != nil {
 		t.Fatalf("Emit: %v", err)
 	}

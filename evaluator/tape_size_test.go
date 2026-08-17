@@ -22,14 +22,14 @@ func runWithTapeSize(t *testing.T, source string, tapeSize int) []byte {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{
+	tree, err := parser.New(parser.NewParserOptions{
 		Filename: "main.ar", Tokens: tokens,
 		TapeSize: tapeSize,
 	}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(ast)
+	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}
@@ -59,7 +59,7 @@ func runAndError(t *testing.T, source string, tapeSize int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	ast, err := parser.New(parser.NewParserOptions{
+	tree, err := parser.New(parser.NewParserOptions{
 		Filename: "main.ar",
 		Tokens:   tokens,
 		TapeSize: tapeSize,
@@ -67,7 +67,7 @@ func runAndError(t *testing.T, source string, tapeSize int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(ast)
+	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(tree)
 	if err != nil {
 		return nil, err
 	}

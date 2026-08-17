@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -27,7 +28,7 @@ func TestFieldResolvesToItsIndex(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.source, func(t *testing.T) {
 			nodes := parse(t, tc.source)
-			field, ok := nodes[len(nodes)-1].(FieldExpression)
+			field, ok := nodes[len(nodes)-1].(ast.FieldExpression)
 			if !ok {
 				t.Fatalf("last node is %T, want a FieldExpression", nodes[len(nodes)-1])
 			}
@@ -139,7 +140,7 @@ func TestStructNameIsOnlyADirective(t *testing.T) {
 // are the same shape, so telling them apart needed the directive; `Point{1, 2}` does not.
 func TestConstructionUsesBraces(t *testing.T) {
 	nodes := parse(t, "struct Point { x, y };\nPoint{1, 2};")
-	if _, ok := nodes[1].(StructLiteral); !ok {
+	if _, ok := nodes[1].(ast.StructLiteral); !ok {
 		t.Errorf("Point{1, 2} parsed as %T, want a StructLiteral", nodes[1])
 	}
 
@@ -151,7 +152,7 @@ func TestConstructionUsesBraces(t *testing.T) {
 
 	// Parentheses still apply values to a scope.
 	nodes = parse(t, "ident greet = defer { 1; };\ngreet();")
-	if _, ok := nodes[1].(CalleeLiteral); !ok {
+	if _, ok := nodes[1].(ast.CalleeLiteral); !ok {
 		t.Errorf("greet() parsed as %T, want a CalleeLiteral", nodes[1])
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -34,7 +35,7 @@ func NewDirectives() *Directives {
 }
 
 // ParseStruct reads `struct Point { x, y };`.
-func (p *pr) ParseStruct() (Node, error) {
+func (p *pr) ParseStruct() (ast.Node, error) {
 	tok, err := p.EatToken(token.STRUCT)
 	if err != nil {
 		return nil, err
@@ -85,7 +86,7 @@ func (p *pr) ParseStruct() (Node, error) {
 	}
 
 	p.directives.Structs[structName] = fields
-	return StructDeclaration{Name: structName, Fields: fields, Token: tok}, nil
+	return ast.StructDeclaration{Name: structName, Fields: fields, Token: tok}, nil
 }
 
 // ParseStructLiteral reads `Point{10, 20}`: one value per field, in the declared order.
@@ -95,13 +96,13 @@ func (p *pr) ParseStruct() (Node, error) {
 // only a construction when the name was declared, because `if flag { … }` also puts a brace
 // after a name; declaring a struct called `flag` and testing on it is the one ambiguity left,
 // and it is the same one Go has.
-func (p *pr) ParseStructLiteral(id IdentifierLiteral) (Node, error) {
+func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
 	fields := p.directives.Structs[id.Value]
 
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	values := make([]Node, 0, len(fields))
+	values := make([]ast.Node, 0, len(fields))
 	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != token.C_CUR_BRK {
 		expr, err := p.ParseExpr()
 		if err != nil {
@@ -128,13 +129,13 @@ func (p *pr) ParseStructLiteral(id IdentifierLiteral) (Node, error) {
 			id.Value, len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
 	}
 
-	return StructLiteral{Name: id.Value, Values: values, Token: id.Token}, nil
+	return ast.StructLiteral{Name: id.Value, Values: values, Token: id.Token}, nil
 }
 
 // parsePostfix applies what binds tightest of all: reading a field, and naming the shape a
 // value is read with. Both are left to right, so `feed(0) as Point.x` reads the field of
 // the shaped value.
-func (p *pr) parsePostfix(expr Node) (Node, error) {
+func (p *pr) parsePostfix(expr ast.Node) (ast.Node, error) {
 	for {
 		lookahead := p.GetLookahead()
 		if lookahead == nil {
@@ -158,7 +159,7 @@ func (p *pr) parsePostfix(expr Node) (Node, error) {
 
 // parseField resolves `.x` to the index x was declared at. The name does not survive into
 // the tree as anything the emitter reads.
-func (p *pr) parseField(expr Node) (Node, error) {
+func (p *pr) parseField(expr ast.Node) (ast.Node, error) {
 	if _, err := p.EatToken(token.DOT); err != nil {
 		return nil, err
 	}
@@ -181,12 +182,12 @@ func (p *pr) parseField(expr Node) (Node, error) {
 			shape, field, name.GetLine(), name.GetColumn(), strings.Join(fields, ", "))
 	}
 
-	return FieldExpression{Expression: expr, Index: uint64(index), Field: field, Token: name}, nil
+	return ast.FieldExpression{Expression: expr, Index: uint64(index), Field: field, Token: name}, nil
 }
 
 // parseShape reads `as Point`. It claims a shape rather than checking one: a value is a run
 // of bytes and there is nothing in it to check against.
-func (p *pr) parseShape(expr Node) (Node, error) {
+func (p *pr) parseShape(expr ast.Node) (ast.Node, error) {
 	tok, err := p.EatToken(token.AS)
 	if err != nil {
 		return nil, err
@@ -201,18 +202,18 @@ func (p *pr) parseShape(expr Node) (Node, error) {
 			structName, name.GetLine(), name.GetColumn())
 	}
 
-	return ShapedExpression{Expression: expr, Struct: structName, Token: tok}, nil
+	return ast.ShapedExpression{Expression: expr, Struct: structName, Token: tok}, nil
 }
 
 // shapeOf answers which struct a value is read as, or empty when nothing said. A field is
 // one tape wide, so reading a field of a field is never known.
-func (p *pr) shapeOf(node Node) string {
+func (p *pr) shapeOf(node ast.Node) string {
 	switch n := node.(type) {
-	case StructLiteral:
+	case ast.StructLiteral:
 		return n.Name
-	case ShapedExpression:
+	case ast.ShapedExpression:
 		return n.Struct
-	case IdentifierLiteral:
+	case ast.IdentifierLiteral:
 		return p.directives.Shapes[n.Value]
 	}
 	return ""

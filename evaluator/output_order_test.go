@@ -32,11 +32,11 @@ func runInOrder(t *testing.T, source string) []string {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(ast)
+	program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}

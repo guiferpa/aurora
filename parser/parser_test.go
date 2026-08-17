@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -120,24 +121,24 @@ func TestParse(t *testing.T) {
 		tok{[]byte("tok17"), token.TagSemicolon},
 		tok{[]byte("tok18"), token.TagEOF},
 	}
-	expected := AST{
+	expected := ast.AST{
 		Filename: "testing.ar",
-		Nodes: []Node{
-			IdentLiteral{
+		Nodes: []ast.Node{
+			ast.IdentLiteral{
 				Id:    "a",
 				Token: tokens[1],
-				Value: IfExpression{
-					Test: RelativeExpression{
-						Left:      NumberLiteral{Value: 10, Token: tokens[4]},
-						Right:     NumberLiteral{Value: 11, Token: tokens[6]},
-						Operation: OperationLiteral{Value: "tok6", Token: tokens[5]},
+				Value: ast.IfExpression{
+					Test: ast.RelativeExpression{
+						Left:      ast.NumberLiteral{Value: 10, Token: tokens[4]},
+						Right:     ast.NumberLiteral{Value: 11, Token: tokens[6]},
+						Operation: ast.OperationLiteral{Value: "tok6", Token: tokens[5]},
 					},
-					Body: []Node{
-						NumberLiteral{Value: 0, Token: tokens[8]},
+					Body: []ast.Node{
+						ast.NumberLiteral{Value: 0, Token: tokens[8]},
 					},
-					Else: &ElseExpression{
-						Body: []Node{
-							NumberLiteral{Value: 1, Token: tokens[13]},
+					Else: &ast.ElseExpression{
+						Body: []ast.Node{
+							ast.NumberLiteral{Value: 1, Token: tokens[13]},
 						},
 					},
 				},
@@ -145,11 +146,11 @@ func TestParse(t *testing.T) {
 		},
 	}
 	p := &pr{filename: "testing.ar", cursor: 0, tokens: tokens}
-	ast, err := p.Parse()
+	tree, err := p.Parse()
 	if err != nil {
 		t.Errorf("param: %v, %v", tokens, err)
 	}
-	if !ASTEqual(ast, expected) {
-		t.Errorf("\nexpected: %+v,\ngot: %+v", expected, ast)
+	if !ast.Equal(tree, expected) {
+		t.Errorf("\nexpected: %+v,\ngot: %+v", expected, tree)
 	}
 }

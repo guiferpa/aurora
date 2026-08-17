@@ -241,14 +241,14 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
-			ast, err := parser.New(parser.NewParserOptions{
+			tree, err := parser.New(parser.NewParserOptions{
 				Tokens: tokens,
 			}).Parse()
 			if err != nil {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
-			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
+			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
 			if err != nil {
 				t.Errorf("%v: %v", tc.name, err)
 				return

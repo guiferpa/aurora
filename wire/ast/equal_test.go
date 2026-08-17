@@ -1,4 +1,4 @@
-package parser
+package ast
 
 import (
 	"testing"
@@ -20,10 +20,10 @@ func word(v string) IdentifierLiteral     { return IdentifierLiteral{Value: v} }
 func operation(v string) OperationLiteral { return OperationLiteral{Value: v} }
 
 var (
-	one = tok{[]byte("1"), token.TagNumber}
-	two = tok{[]byte("2"), token.TagNumber}
+	one = token.New([]byte("1"), token.TagNumber, 0, 0, 0)
+	two = token.New([]byte("2"), token.TagNumber, 0, 0, 0)
 	// Same text, different tag: TokenEqual reads both, and a token is not only its match.
-	oneAsIdent = tok{[]byte("1"), token.TagIdent}
+	oneAsIdent = token.New([]byte("1"), token.TagIdent, 0, 0, 0)
 )
 
 var comparisonCases = []struct {
@@ -466,34 +466,10 @@ func TestASTEqualComparesTheFilename(t *testing.T) {
 	a := AST{Filename: "main.ar", Nodes: []Node{number(1)}}
 	b := AST{Filename: "other.ar", Nodes: []Node{number(1)}}
 
-	if !ASTEqual(a, a) {
+	if !Equal(a, a) {
 		t.Error("a file does not compare equal to itself")
 	}
-	if ASTEqual(a, b) {
+	if Equal(a, b) {
 		t.Error("two filenames compared equal")
-	}
-}
-
-// TokenEqual reads both halves of a token, and nothing else about it.
-func TestTokenEqual(t *testing.T) {
-	cases := []struct {
-		name string
-		a, b token.Token
-		want bool
-	}{
-		{name: "nothing against nothing", want: true},
-		{name: "nothing against a token", b: one, want: false},
-		{name: "a token against nothing", a: one, want: false},
-		{name: "alike", a: one, b: tok{[]byte("1"), token.TagNumber}, want: true},
-		{name: "another match", a: one, b: two, want: false},
-		{name: "another tag", a: one, b: oneAsIdent, want: false},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := TokenEqual(tc.a, tc.b); got != tc.want {
-				t.Errorf("answered %v, want %v", got, tc.want)
-			}
-		})
 	}
 }

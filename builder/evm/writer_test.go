@@ -130,15 +130,17 @@ func TestWriteLoad(t *testing.T) {
 	}
 }
 
+// An argument arrives as a whole 32-byte word and is cut to the tape on the way in, the same
+// as the evaluator does when it narrows the arguments it was handed.
 func TestWriteGetArg(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	index := byteutil.FromUint64(0)
-	if _, err := WriteGetArg(bs, index); err != nil {
+	if _, err := WriteGetArg(bs, index, byteutil.DefaultTapeSize); err != nil {
 		t.Errorf("Error writing get arg: %v", err)
 		return
 	}
 	got := bs.Bytes()
-	expected := []byte{OpPush1, 0x20, OpCallDataLoad}
+	expected := []byte{OpPush1, 0x20, OpCallDataLoad, OpPush8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, OpAnd}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("GetArg: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -241,5 +243,43 @@ func TestWriteBodyCode(t *testing.T) {
 		if got, expected := bs.Bytes(), c.FnExpected(); !bytes.Equal(got, expected) {
 			t.Errorf("EVM body code: name: %v, got: %v, expected: %v", c.Name, byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 		}
+	}
+}
+
+// A tape of N bytes holds values modulo 2^(8N), and the EVM wraps at 2^256 — so every result
+// that could have left the width is cut back to it. At the full width there is nothing to
+// cut, and the common case pays nothing.
+func TestWriteMask(t *testing.T) {
+	cases := []struct {
+		name string
+		size int
+		want []byte
+	}{
+		{name: "one byte", size: 1, want: []byte{OpPush1, 0xff, OpAnd}},
+		{name: "two bytes", size: 2, want: []byte{OpPush2, 0xff, 0xff, OpAnd}},
+		{
+			name: "the default",
+			size: byteutil.DefaultTapeSize,
+			want: []byte{OpPush8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, OpAnd},
+		},
+		{name: "the full word masks nothing", size: byteutil.MaxTapeSize, want: []byte{}},
+		// Zero means unset, which is the default width rather than a mask of nothing.
+		{
+			name: "unset",
+			size: 0,
+			want: []byte{OpPush8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, OpAnd},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bytes.NewBuffer(make([]byte, 0))
+			if _, err := WriteMask(bs, tc.size); err != nil {
+				t.Fatalf("WriteMask: %v", err)
+			}
+			if got := bs.Bytes(); !bytes.Equal(got, tc.want) {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

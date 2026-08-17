@@ -95,6 +95,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				WritePush(want, byteutil.FromUint64(4294967295), byteutil.DefaultTapeSize)
 				WritePush(want, byteutil.FromUint64(4294967295), byteutil.DefaultTapeSize)
 				WriteAdd(want)
+				WriteMask(want, byteutil.DefaultTapeSize)
 				WriteReturn(want)
 				WriteIdent(want, NewIdentManager(), []byte("a"))
 				WriteStop(want)
@@ -126,9 +127,10 @@ func TestPickRuntimeCode(t *testing.T) {
 			//nolint:errcheck
 			func(got []byte) error {
 				want := bytes.NewBuffer(make([]byte, 0))
-				WriteGetArg(want, byteutil.FromUint64(1))
-				WriteGetArg(want, byteutil.FromUint64(0))
+				WriteGetArg(want, byteutil.FromUint64(1), byteutil.DefaultTapeSize)
+				WriteGetArg(want, byteutil.FromUint64(0), byteutil.DefaultTapeSize)
 				WriteSubtract(want)
+				WriteMask(want, byteutil.DefaultTapeSize)
 				WriteReturn(want)
 				WriteIdent(want, NewIdentManager(), []byte("a"))
 				WriteStop(want)

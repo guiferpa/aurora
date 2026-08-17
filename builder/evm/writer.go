@@ -22,6 +22,28 @@ func WritePush(w io.Writer, operand []byte, size int) (int, error) {
 	return 0, nil
 }
 
+// WriteMask cuts the value on top of the stack down to the tape width.
+//
+// A tape of N bytes holds values modulo 2^(8N) — that is what the evaluator does, keeping the
+// last N bytes of every result. The EVM works in words of 32 bytes and wraps at 2^256, so
+// without this the same program answers two different things: at one byte, 255 + 1 is 0 in
+// the evaluator and 256 on chain.
+//
+// At the full width the mask is every bit set, so nothing is written: the common case pays
+// nothing for this.
+func WriteMask(w io.Writer, size int) (int, error) {
+	size = byteutil.TapeSize(size)
+	if size >= byteutil.MaxTapeSize {
+		return 0, nil
+	}
+
+	mask := bytes.Repeat([]byte{0xff}, size)
+	if _, err := w.Write(append([]byte{OpPush1 + byte(size-1)}, mask...)); err != nil {
+		return 0, err
+	}
+	return w.Write([]byte{OpAnd})
+}
+
 // WriteAdd emits ADD. Lowering guarantees [left, right] on stack (LIFO); Builder is mechanical.
 func WriteAdd(w io.Writer) (int, error) {
 	return w.Write([]byte{OpAdd})
@@ -84,13 +106,21 @@ func WriteReturn(w io.Writer) (int, error) {
 	return w.Write([]byte{OpPush1, 0x20, OpPush1, 0x00, OpReturn})
 }
 
-func WriteGetArg(w io.Writer, left []byte) (int, error) {
+// WriteGetArg reads an argument out of the calldata and cuts it to the tape width.
+//
+// An argument arrives as a 32-byte word whatever the tape is, and the evaluator narrows it to
+// a tape on the way in (environ.NewEnviron). Reading the whole word here would let a caller
+// hand a contract a value its own language cannot hold.
+func WriteGetArg(w io.Writer, left []byte, size int) (int, error) {
 	index := byteutil.ToUint64(left)
 	offset := GetCalldataArgsOffset(index)
 	if _, err := w.Write([]byte{OpPush1, offset}); err != nil {
 		return 0, err
 	}
-	return w.Write([]byte{OpCallDataLoad})
+	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
+		return 0, err
+	}
+	return WriteMask(w, size)
 }
 
 func WriteStop(w io.Writer) (int, error) {
@@ -196,16 +226,25 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize 
 			if _, err := WriteAdd(bs); err != nil {
 				return 0, err
 			}
+			if _, err := WriteMask(bs, tapeSize); err != nil {
+				return 0, err
+			}
 		}
 
 		if op == ir.OpMultiply {
 			if _, err := WriteMultiply(bs); err != nil {
 				return 0, err
 			}
+			if _, err := WriteMask(bs, tapeSize); err != nil {
+				return 0, err
+			}
 		}
 
 		if op == ir.OpSubtract {
 			if _, err := WriteSubtract(bs); err != nil {
+				return 0, err
+			}
+			if _, err := WriteMask(bs, tapeSize); err != nil {
 				return 0, err
 			}
 		}
@@ -241,7 +280,7 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize 
 		}
 
 		if op == ir.OpGetFeed {
-			if _, err := WriteGetArg(bs, inst.GetLeft()); err != nil {
+			if _, err := WriteGetArg(bs, inst.GetLeft(), tapeSize); err != nil {
 				return 0, err
 			}
 		}

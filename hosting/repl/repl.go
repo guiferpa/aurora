@@ -129,12 +129,12 @@ func (s *session) run(text string) {
 
 // compile takes the line through the three phases, showing what each one produced when -l
 // asked for it.
-func (s *session) compile(text string) (emitter.Program, error) {
+func (s *session) compile(text string) (ir.Program, error) {
 	line := bytes.NewBufferString(text)
 
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(line.Bytes())
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
 
@@ -144,7 +144,7 @@ func (s *session) compile(text string) (emitter.Program, error) {
 		Directives: s.directives,
 	}).Parse()
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 	s.trace("parser", func(w io.Writer) error { return trace.AST(w, tree) })
 
@@ -152,7 +152,7 @@ func (s *session) compile(text string) (emitter.Program, error) {
 		TapeSize: s.tapeSize,
 	}).EmitProgram(tree)
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 	s.trace("emitter", func(w io.Writer) error { return trace.Instructions(w, program.Instructions) })
 
@@ -172,7 +172,7 @@ func (s *session) trace(phase string, write func(w io.Writer) error) {
 
 // evaluate runs the line's expressions one at a time, so a line holding several of them
 // answers where each one happens rather than all of them at the end.
-func (s *session) evaluate(program emitter.Program) {
+func (s *session) evaluate(program ir.Program) {
 	offset := len(s.insts)
 	s.insts = append(s.insts, program.Instructions...)
 

@@ -5,27 +5,8 @@ import (
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/diag"
 )
-
-// A Warning is something worth saying about a program that is not a reason to refuse it.
-// Compilation carries on and the program runs.
-//
-// Line and Column are 1-based and zero when the warning is about the program as a whole
-// rather than a place in it.
-type Warning struct {
-	Message string
-	Line    int
-	Column  int
-}
-
-func (w Warning) String() string {
-	return w.Message
-}
-
-// Positioned reports whether the warning points at a place in the source.
-func (w Warning) Positioned() bool {
-	return w.Line > 0
-}
 
 // checkDeferCapacity reports scopes holding more deferred scopes than a tape can index.
 //
@@ -37,7 +18,7 @@ func (w Warning) Positioned() bool {
 // This is a warning rather than an error because the count is static: it cannot know how
 // often a scope actually runs. And it is never checked at runtime — a program that is
 // already running should not be stopped by a limit its shape implied.
-func checkDeferCapacity(nodes []ast.Node, tapeSize int) []Warning {
+func checkDeferCapacity(nodes []ast.Node, tapeSize int) []diag.Warning {
 	tapeSize = byteutil.TapeSize(tapeSize)
 	if tapeSize >= 8 {
 		// A scope would need more than 2^64 defers to wrap; nothing to say.
@@ -45,7 +26,7 @@ func checkDeferCapacity(nodes []ast.Node, tapeSize int) []Warning {
 	}
 	capacity := uint64(1) << (8 * tapeSize)
 
-	warnings := make([]Warning, 0)
+	warnings := make([]diag.Warning, 0)
 	var walk func(scope []ast.Node)
 	walk = func(scope []ast.Node) {
 		defers := 0
@@ -55,7 +36,7 @@ func checkDeferCapacity(nodes []ast.Node, tapeSize int) []Warning {
 			}
 		}
 		if uint64(defers) > capacity {
-			warnings = append(warnings, Warning{Message: fmt.Sprintf(
+			warnings = append(warnings, diag.Warning{Message: fmt.Sprintf(
 				"%d deferred scopes in one scope, but a %d-byte tape can only name %d: calls past that reach the wrong scope",
 				defers, tapeSize, capacity)})
 		}
@@ -69,14 +50,14 @@ func checkDeferCapacity(nodes []ast.Node, tapeSize int) []Warning {
 // An assertion belongs to "aurora test"; a plain run consumes it and moves on, so the
 // point of the warning is to say that out loud rather than let someone believe a check
 // ran. Each one is named by position, so an editor can jump to it.
-func checkAsserts(nodes []ast.Node) []Warning {
-	warnings := make([]Warning, 0)
+func checkAsserts(nodes []ast.Node) []diag.Warning {
+	warnings := make([]diag.Warning, 0)
 
 	var walk func(scope []ast.Node)
 	walk = func(scope []ast.Node) {
 		for _, node := range scope {
 			if assertion, ok := node.(ast.AssertStatement); ok {
-				warning := Warning{Message: "assert only runs under 'aurora test'; ignored here"}
+				warning := diag.Warning{Message: "assert only runs under 'aurora test'; ignored here"}
 				if assertion.Token != nil {
 					warning.Line = assertion.Token.GetLine()
 					warning.Column = assertion.Token.GetColumn()

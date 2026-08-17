@@ -1,12 +1,13 @@
 package emitter
 
 import (
+	"github.com/guiferpa/aurora/wire/diag"
 	"strconv"
 	"strings"
 	"testing"
 )
 
-func warningsFor(t *testing.T, source string, tapeSize int) []Warning {
+func warningsFor(t *testing.T, source string, tapeSize int) []diag.Warning {
 	t.Helper()
 	return compileWith(t, source, tapeSize).Warnings
 }

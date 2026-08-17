@@ -10,27 +10,7 @@ import (
 
 type Emitter interface {
 	Emit(tree ast.AST) ([]ir.Instruction, error)
-	EmitProgram(tree ast.AST) (Program, error)
-}
-
-// Expression is one top-level expression of a program: the range of instructions it
-// compiled to, and the label the temp holding its value ends up under.
-//
-// A caller that wants to report values in source order needs this. Reading the temp map
-// after the whole program has run cannot give it: the map has no order, and everything
-// written by print along the way has already been emitted.
-type Expression struct {
-	From  int // index of its first instruction
-	To    int // index one past its last instruction
-	Label []byte
-}
-
-// Program is what a source file compiled to: the instruction stream, where each top-level
-// expression sits inside it, and anything worth saying that did not stop the compilation.
-type Program struct {
-	Instructions []ir.Instruction
-	Expressions  []Expression
-	Warnings     []Warning
+	EmitProgram(tree ast.AST) (ir.Program, error)
 }
 
 type emt struct {
@@ -43,8 +23,6 @@ func GenerateLabel(tc *int) []byte {
 	return t
 }
 
-type Label []byte
-
 // printOpCodes maps each reading of a value to the instruction that writes it.
 var printOpCodes = map[ast.PrintFormat]byte{
 	ast.PrintBytes:   ir.OpPrintBytes,
@@ -52,7 +30,7 @@ var printOpCodes = map[ast.PrintFormat]byte{
 	ast.PrintDecimal: ir.OpPrintDecimal,
 }
 
-func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize int) Label {
+func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize int) ir.Label {
 	switch n := expr.(type) {
 	case ast.IdentLiteral:
 		return emitIdentLiteral(tc, insts, n, tapeSize)
@@ -111,7 +89,7 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 }
 
 // emitIdentLiteral binds a name to a value.
-func emitIdentLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentLiteral, tapeSize int) Label {
+func emitIdentLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentLiteral, tapeSize int) ir.Label {
 	ll := n.Token.GetMatch()
 	lr := EmitInstruction(tc, insts, n.Value, tapeSize)
 	l := GenerateLabel(tc)
@@ -124,7 +102,7 @@ func emitIdentLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentLiteral, tape
 }
 
 // emitBlockExpression opens a scope and returns the value its body ended with.
-func emitBlockExpression(tc *int, insts *[]ir.Instruction, n ast.BlockExpression, tapeSize int) Label {
+func emitBlockExpression(tc *int, insts *[]ir.Instruction, n ast.BlockExpression, tapeSize int) ir.Label {
 	var l []byte
 	body := make([]ir.Instruction, 0)
 	for _, ins := range n.Body {
@@ -142,7 +120,7 @@ func emitBlockExpression(tc *int, insts *[]ir.Instruction, n ast.BlockExpression
 }
 
 // emitDeferExpression stores a scope to be run later, and skips over its body.
-func emitDeferExpression(tc *int, insts *[]ir.Instruction, n ast.DeferExpression, tapeSize int) Label {
+func emitDeferExpression(tc *int, insts *[]ir.Instruction, n ast.DeferExpression, tapeSize int) ir.Label {
 	body := make([]ir.Instruction, 0)
 	l := EmitInstruction(tc, &body, n.Block, tapeSize)
 	bodylength := uint64(len(body))
@@ -154,7 +132,7 @@ func emitDeferExpression(tc *int, insts *[]ir.Instruction, n ast.DeferExpression
 }
 
 // emitUnaryExpression negates: a tape is unsigned, so this is zero minus the value.
-func emitUnaryExpression(tc *int, insts *[]ir.Instruction, n ast.UnaryExpression, tapeSize int) Label {
+func emitUnaryExpression(tc *int, insts *[]ir.Instruction, n ast.UnaryExpression, tapeSize int) ir.Label {
 	// A tape is unsigned, so negating is taking the value away from zero and letting it
 	// wrap: -5 is the same tape as 0 - 5. Emitting the subtraction says exactly that,
 	// and every stage below — the evaluator, the lowering, the EVM writer — already
@@ -174,7 +152,7 @@ func emitUnaryExpression(tc *int, insts *[]ir.Instruction, n ast.UnaryExpression
 }
 
 // emitRelativeExpression compares two values.
-func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpression, tapeSize int) Label {
+func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpression, tapeSize int) ir.Label {
 	ll := EmitInstruction(tc, insts, n.Left, tapeSize)
 	lr := EmitInstruction(tc, insts, n.Right, tapeSize)
 	var op byte
@@ -196,7 +174,7 @@ func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpr
 }
 
 // emitBooleanExpression combines two truth values.
-func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpression, tapeSize int) Label {
+func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpression, tapeSize int) ir.Label {
 	ll := EmitInstruction(tc, insts, n.Left, tapeSize)
 	lr := EmitInstruction(tc, insts, n.Right, tapeSize)
 	var op byte
@@ -213,7 +191,7 @@ func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpres
 }
 
 // emitTapeBracketExpression builds a tape byte by byte.
-func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBracketExpression, tapeSize int) Label {
+func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBracketExpression, tapeSize int) ir.Label {
 	// Create the initial tape, all zeros
 	l := GenerateLabel(tc)
 	tape := byteutil.FalseTape(tapeSize)
@@ -231,7 +209,7 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 }
 
 // emitStructDeclaration answers the neutral value: a directive does no work.
-func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclaration, tapeSize int) Label {
+func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclaration, tapeSize int) ir.Label {
 	// A directive emits no work. It still answers with a value, because everything in
 	// Aurora is an expression, and the neutral one is what a declaration is worth.
 	l := GenerateLabel(tc)
@@ -241,7 +219,7 @@ func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclara
 }
 
 // emitStructLiteral lays one tape per field, end to end.
-func emitStructLiteral(tc *int, insts *[]ir.Instruction, n ast.StructLiteral, tapeSize int) Label {
+func emitStructLiteral(tc *int, insts *[]ir.Instruction, n ast.StructLiteral, tapeSize int) ir.Label {
 	// One tape per field, laid end to end — the shape a reel of the same length has.
 	// Instructions carry two operands, so the run is built by chaining, the way a tape
 	// literal chains ir.OpPull.
@@ -263,7 +241,7 @@ func emitStructLiteral(tc *int, insts *[]ir.Instruction, n ast.StructLiteral, ta
 }
 
 // emitFieldExpression reads one tape out of a run, by an index resolved while parsing.
-func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression, tapeSize int) Label {
+func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression, tapeSize int) ir.Label {
 	// The index was resolved while parsing, so it goes in as an immediate — the same
 	// shape head and tail use. Nothing here knows the field had a name.
 	lv := EmitInstruction(tc, insts, n.Expression, tapeSize)
@@ -274,7 +252,7 @@ func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression
 }
 
 // emitShapedExpression emits what was shaped: `as` is a claim, not an operation.
-func emitShapedExpression(tc *int, insts *[]ir.Instruction, n ast.ShapedExpression, tapeSize int) Label {
+func emitShapedExpression(tc *int, insts *[]ir.Instruction, n ast.ShapedExpression, tapeSize int) ir.Label {
 	// `as` says how to read a value, which is a question the compiler answers and the
 	// program never asks: what is left is the value itself.
 	return EmitInstruction(tc, insts, n.Expression, tapeSize)
@@ -282,7 +260,7 @@ func emitShapedExpression(tc *int, insts *[]ir.Instruction, n ast.ShapedExpressi
 }
 
 // emitPullExpression shifts a tape left, the value entering at the right.
-func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, tapeSize int) Label {
+func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, tapeSize int) ir.Label {
 	lt := EmitInstruction(tc, insts, n.Target, tapeSize)
 	li := EmitInstruction(tc, insts, n.Item, tapeSize)
 	l := GenerateLabel(tc)
@@ -292,7 +270,7 @@ func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, 
 }
 
 // emitHeadExpression keeps the first bytes of a tape.
-func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, tapeSize int) Label {
+func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, tapeSize int) ir.Label {
 	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	ln := byteutil.FromUint64(n.Length)
 	l := GenerateLabel(tc)
@@ -302,7 +280,7 @@ func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, 
 }
 
 // emitTailExpression drops the first bytes of a tape.
-func emitTailExpression(tc *int, insts *[]ir.Instruction, n ast.TailExpression, tapeSize int) Label {
+func emitTailExpression(tc *int, insts *[]ir.Instruction, n ast.TailExpression, tapeSize int) ir.Label {
 	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	ln := byteutil.FromUint64(n.Length)
 	l := GenerateLabel(tc)
@@ -312,7 +290,7 @@ func emitTailExpression(tc *int, insts *[]ir.Instruction, n ast.TailExpression, 
 }
 
 // emitPushExpression shifts a tape right, the value entering at the left.
-func emitPushExpression(tc *int, insts *[]ir.Instruction, n ast.PushExpression, tapeSize int) Label {
+func emitPushExpression(tc *int, insts *[]ir.Instruction, n ast.PushExpression, tapeSize int) ir.Label {
 	lt := EmitInstruction(tc, insts, n.Target, tapeSize)
 	li := EmitInstruction(tc, insts, n.Item, tapeSize)
 	l := GenerateLabel(tc)
@@ -322,7 +300,7 @@ func emitPushExpression(tc *int, insts *[]ir.Instruction, n ast.PushExpression, 
 }
 
 // emitIfExpression lays out the test, the body and the else, with the jumps between them.
-func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tapeSize int) Label {
+func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tapeSize int) ir.Label {
 	var bl, eul []byte
 
 	/*Extract Else body*/
@@ -357,7 +335,7 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 }
 
 // emitCalleeLiteral applies values to a scope.
-func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, tapeSize int) Label {
+func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, tapeSize int) ir.Label {
 	for i, p := range n.Params {
 		ll := EmitInstruction(tc, insts, p.Expression, tapeSize)
 		l := GenerateLabel(tc)
@@ -370,7 +348,7 @@ func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, ta
 }
 
 // emitPrintStatement writes a value in one of the three readings.
-func emitPrintStatement(tc *int, insts *[]ir.Instruction, n ast.PrintStatement, tapeSize int) Label {
+func emitPrintStatement(tc *int, insts *[]ir.Instruction, n ast.PrintStatement, tapeSize int) ir.Label {
 	ll := EmitInstruction(tc, insts, n.Param, tapeSize)
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, printOpCodes[n.Format], ll, nil))
@@ -379,7 +357,7 @@ func emitPrintStatement(tc *int, insts *[]ir.Instruction, n ast.PrintStatement, 
 }
 
 // emitAssertStatement checks a condition, carrying its message as bytes.
-func emitAssertStatement(tc *int, insts *[]ir.Instruction, n ast.AssertStatement, tapeSize int) Label {
+func emitAssertStatement(tc *int, insts *[]ir.Instruction, n ast.AssertStatement, tapeSize int) ir.Label {
 	// The message rides in the instruction as the bytes it is, not as a value: it is
 	// written for whoever reads the result, and a value would have to fit in a tape.
 	cond := EmitInstruction(tc, insts, n.Condition, tapeSize)
@@ -390,7 +368,7 @@ func emitAssertStatement(tc *int, insts *[]ir.Instruction, n ast.AssertStatement
 }
 
 // emitFeedExpression reads the nth value applied to this scope.
-func emitFeedExpression(tc *int, insts *[]ir.Instruction, n ast.FeedExpression, tapeSize int) Label {
+func emitFeedExpression(tc *int, insts *[]ir.Instruction, n ast.FeedExpression, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpGetFeed, byteutil.FromUint64(n.Nth.Value), nil))
 	return l
@@ -398,7 +376,7 @@ func emitFeedExpression(tc *int, insts *[]ir.Instruction, n ast.FeedExpression, 
 }
 
 // emitBinaryExpression does arithmetic on two values.
-func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpression, tapeSize int) Label {
+func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpression, tapeSize int) ir.Label {
 	ll := EmitInstruction(tc, insts, n.Left, tapeSize)
 	lr := EmitInstruction(tc, insts, n.Right, tapeSize)
 	var op byte
@@ -423,7 +401,7 @@ func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpressi
 }
 
 // emitNumberLiteral saves a number as a tape.
-func emitNumberLiteral(tc *int, insts *[]ir.Instruction, n ast.NumberLiteral, tapeSize int) Label {
+func emitNumberLiteral(tc *int, insts *[]ir.Instruction, n ast.NumberLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, byteutil.PaddingTape(byteutil.FromUint64(n.Value), tapeSize), nil))
 	return l
@@ -431,7 +409,7 @@ func emitNumberLiteral(tc *int, insts *[]ir.Instruction, n ast.NumberLiteral, ta
 }
 
 // emitTextLiteral saves text as the tape of its bytes.
-func emitTextLiteral(tc *int, insts *[]ir.Instruction, n ast.TextLiteral, tapeSize int) Label {
+func emitTextLiteral(tc *int, insts *[]ir.Instruction, n ast.TextLiteral, tapeSize int) ir.Label {
 	// Text is a tape holding its bytes, so it saves like any other value.
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, n.Value, nil))
@@ -440,7 +418,7 @@ func emitTextLiteral(tc *int, insts *[]ir.Instruction, n ast.TextLiteral, tapeSi
 }
 
 // emitBooleanLiteral saves true or false, which are tapes like any other.
-func emitBooleanLiteral(tc *int, insts *[]ir.Instruction, n ast.BooleanLiteral, tapeSize int) Label {
+func emitBooleanLiteral(tc *int, insts *[]ir.Instruction, n ast.BooleanLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, n.Value, nil))
 	return l
@@ -448,7 +426,7 @@ func emitBooleanLiteral(tc *int, insts *[]ir.Instruction, n ast.BooleanLiteral, 
 }
 
 // emitIdentifierLiteral loads what a name is bound to.
-func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLiteral, tapeSize int) Label {
+func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpLoad, n.Token.GetMatch(), nil))
 	return l
@@ -465,18 +443,18 @@ func (e *emt) Emit(tree ast.AST) ([]ir.Instruction, error) {
 
 // EmitProgram compiles ast and records where each top-level expression landed, so a caller
 // can run them one at a time and report each value as it is produced.
-func (e *emt) EmitProgram(tree ast.AST) (Program, error) {
+func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 	tc := 0
 	insts := make([]ir.Instruction, 0)
-	exprs := make([]Expression, 0, len(tree.Nodes))
+	exprs := make([]ir.Expression, 0, len(tree.Nodes))
 
 	for _, node := range tree.Nodes {
 		from := len(insts)
 		label := EmitInstruction(&tc, &insts, node, e.tapeSize)
-		exprs = append(exprs, Expression{From: from, To: len(insts), Label: label})
+		exprs = append(exprs, ir.Expression{From: from, To: len(insts), Label: label})
 	}
 
-	return Program{
+	return ir.Program{
 		Instructions: insts,
 		Expressions:  exprs,
 		Warnings:     append(checkDeferCapacity(tree.Nodes, e.tapeSize), checkAsserts(tree.Nodes)...),

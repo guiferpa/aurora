@@ -9,6 +9,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/shared/trace"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // Compile turns a source file into a program: read, lex, parse, emit.
@@ -22,23 +23,23 @@ import (
 // designed (see docs/module_system_design.md).
 // traces receives what each phase produced, for the loggers that were asked for. Nil
 // discards it, which is what a caller that asked for none wants.
-func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (emitter.Program, error) {
+func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (ir.Program, error) {
 	if traces == nil {
 		traces = io.Discard
 	}
 
 	bs, err := os.ReadFile(source)
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 	if slices.Contains(loggers, "lexer") {
 		if err := trace.Tokens(traces, tokens); err != nil {
-			return emitter.Program{}, err
+			return ir.Program{}, err
 		}
 	}
 
@@ -48,13 +49,13 @@ func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (e
 		TapeSize: tapeSize,
 	}).Parse()
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 	// A phase returns what it made and does not show it; showing is decided here, once the
 	// phase has finished, which is why the output is no longer on-time.
 	if slices.Contains(loggers, "parser") {
 		if err := trace.AST(traces, tree); err != nil {
-			return emitter.Program{}, err
+			return ir.Program{}, err
 		}
 	}
 
@@ -62,11 +63,11 @@ func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (e
 		TapeSize: tapeSize,
 	}).EmitProgram(tree)
 	if err != nil {
-		return emitter.Program{}, err
+		return ir.Program{}, err
 	}
 	if slices.Contains(loggers, "emitter") {
 		if err := trace.Instructions(traces, program.Instructions); err != nil {
-			return emitter.Program{}, err
+			return ir.Program{}, err
 		}
 	}
 

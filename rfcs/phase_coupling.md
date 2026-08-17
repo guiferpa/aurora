@@ -59,10 +59,16 @@ consumidores — `builder/evm`, `evaluator`, `internal/cli`, `internal/trace`, `
 barato de mover: 37 + 41 linhas de declaração, sem comportamento. Depois disso, `emitter`,
 `evaluator` e `builder/evm` dependem do mesmo pacote e de nenhum outro.
 
-**2. A árvore vira `wire`.** Mesmo desenho, custo maior: o emitter faz `switch` sobre vinte e
-um tipos concretos de nó.
+**2. A cadeia de tokens vira `wire`.** `Token`, as tags e o erro posicionado saem do `lexer`.
 
-**3. A cadeia de tokens vira `wire`.** `Token` e as tags saem do `lexer`.
+> A ordem aqui era a inversa, e mudou ao aplicar: **a árvore guarda tokens** — cada nó tem um
+> campo `Token`. Mover a árvore primeiro faria `wire/ast` importar o `lexer`, que é vital.
+> Também não é uma mudança de arquivo inteiro: `token.go` guarda o contrato **e** a leitura, e
+> `tag.go` guarda o vocabulário **e** o casamento de token, então os dois foram cortados ao
+> meio.
+
+**3. A árvore vira `wire`.** Mesmo desenho, custo maior: o emitter faz `switch` sobre vinte e
+um tipos concretos de nó.
 
 **4. `logger` vira util de formatação.** Hoje ele escreve em `os.Stderr` e chama `os.Exit(2)`
 — um pacote decidindo o fim do processo. Passa a devolver a mensagem formatada; cada hosting

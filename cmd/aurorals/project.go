@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/guiferpa/aurora/manifest"
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 // The width of a value is the project's, and the parser needs it: it refuses a number that

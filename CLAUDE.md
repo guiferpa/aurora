@@ -37,7 +37,7 @@ Between parentheses are the phases; between braces, what crosses between them.
 | **wire** | what crosses: tokens, tree, IR, warnings | util, and nothing else of the project | everyone |
 | **util** | reusable behaviour that never touches the world: `byteutil`, `logger` | **nothing of the project** | everyone |
 | **hosting** | one interaction: `internal/cli`, `repl`, `lsp` | wire, util, shared | `main` |
-| **shared** | serves the hosting layer, not one interaction: `fileutil`, `manifest`, `internal/trace` | wire, util | hosting, `main` |
+| **shared** | serves the hosting layer, not one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
 
 **The four rules that follow:**
 

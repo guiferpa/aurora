@@ -36,11 +36,11 @@ Between parentheses are the phases; between braces, what crosses between them. T
 | **wire** | what crosses a boundary: the token chain, the tree, the IR, a warning | util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` as a formatter | **nothing of the project** | everyone |
 | **hosting** | one kind of interaction: `internal/cli`, `repl`, `lsp` | wire, util, shared | `main` |
-| **shared** | serves the hosting *layer*, not one interaction: `fileutil`, `manifest`, `internal/trace` | wire, util | hosting, `main` |
+| **shared** | serves the hosting *layer*, not one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
 
 The two that are easy to confuse:
 
-- **wire against util.** A util is behaviour you may reuse and nobody is obliged to. A wire package is *data crossing a boundary*, and two phases sharing exactly that type is the point — a phase declaring its own version of it is the mistake the kind exists to prevent. Wire holds the shape and the vocabulary: the types, the constructors, the constants, and **how they are written down** — spelling the vocabulary out is part of the vocabulary, the way a token knows how to spell itself. What is *not* wire is deciding to show it and choosing where it goes: that is a host's, and `internal/trace` is where it lives. A wire package may lean on a util to do its spelling, and on nothing else of the project.
+- **wire against util.** A util is behaviour you may reuse and nobody is obliged to. A wire package is *data crossing a boundary*, and two phases sharing exactly that type is the point — a phase declaring its own version of it is the mistake the kind exists to prevent. Wire holds the shape and the vocabulary: the types, the constructors, the constants, and **how they are written down** — spelling the vocabulary out is part of the vocabulary, the way a token knows how to spell itself. What is *not* wire is deciding to show it and choosing where it goes: that is a host's, and `shared/trace` is where it lives. A wire package may lean on a util to do its spelling, and on nothing else of the project.
 - **hosting against shared.** A hosting package serves one interaction and is a leaf: only `main` depends on it. A shared package serves the layer, may be imported by any host, may touch the world, and **must not know which interaction is using it**. That last half is what keeps it from becoming the drawer where cohesion goes to die.
 
 ### The four rules

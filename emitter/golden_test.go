@@ -7,6 +7,7 @@ import (
 
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // A program touching most of the language, and the instructions it compiles to, written
@@ -42,7 +43,7 @@ func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	if got := Format(insts); got != string(want) {
+	if got := ir.Format(insts); got != string(want) {
 		t.Errorf("the emitted program no longer matches testdata/wide.ir.\n\ngot:\n%s\nwant:\n%s", got, want)
 	}
 }

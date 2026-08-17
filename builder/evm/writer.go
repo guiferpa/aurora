@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // WritePush emits PUSH<size> with the operand as a tape. The push opcodes are contiguous
@@ -188,59 +188,59 @@ func WriteBodyCode(bs io.Writer, ds []Dispatcher, root *bytes.Buffer) (int, erro
 	return 0, nil
 }
 
-func WriteCode(bs io.Writer, im *IdentManager, insts []emitter.Instruction, tapeSize int) (int, error) {
+func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int) (int, error) {
 	for _, inst := range insts {
 		op := inst.GetOpCode()
 
-		if op == emitter.OpAdd {
+		if op == ir.OpAdd {
 			if _, err := WriteAdd(bs); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpMultiply {
+		if op == ir.OpMultiply {
 			if _, err := WriteMultiply(bs); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpSubtract {
+		if op == ir.OpSubtract {
 			if _, err := WriteSubtract(bs); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpDivide {
+		if op == ir.OpDivide {
 			if _, err := WriteDivide(bs); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpReturn {
+		if op == ir.OpReturn {
 			if _, err := WriteReturn(bs); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpSave {
+		if op == ir.OpSave {
 			if _, err := WriteSave(bs, inst.GetLeft(), tapeSize); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpIdent {
+		if op == ir.OpIdent {
 			if _, err := WriteIdent(bs, im, inst.GetLeft()); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpLoad {
+		if op == ir.OpLoad {
 			if _, err := WriteLoad(bs, im, inst.GetLeft()); err != nil {
 				return 0, err
 			}
 		}
 
-		if op == emitter.OpGetFeed {
+		if op == ir.OpGetFeed {
 			if _, err := WriteGetArg(bs, inst.GetLeft()); err != nil {
 				return 0, err
 			}

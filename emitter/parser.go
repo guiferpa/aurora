@@ -2,6 +2,8 @@ package emitter
 
 import (
 	"encoding/binary"
+
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 const (
@@ -12,7 +14,7 @@ const (
 	RIGHT_SIZE_COUNTER = 4
 )
 
-func parseLine(ln []byte) (Instruction, error) {
+func parseLine(ln []byte) (ir.Instruction, error) {
 	// Extract label
 	lblen := binary.BigEndian.Uint32((ln[0:LABEL_SIZE_COUNTER]))
 	label := ln[LABEL_SIZE_COUNTER : lblen+LABEL_SIZE_COUNTER]
@@ -31,11 +33,11 @@ func parseLine(ln []byte) (Instruction, error) {
 	rglen := binary.BigEndian.Uint32((ln[0:RIGHT_SIZE_COUNTER]))
 	right := ln[RIGHT_SIZE_COUNTER : rglen+RIGHT_SIZE_COUNTER]
 
-	return NewInstruction(label, op[0], left, right), nil
+	return ir.NewInstruction(label, op[0], left, right), nil
 }
 
-func Parse(bs []byte) ([]Instruction, error) {
-	insts := make([]Instruction, 0)
+func Parse(bs []byte) ([]ir.Instruction, error) {
+	insts := make([]ir.Instruction, 0)
 
 	for len(bs) > 0 {
 		lnlen := binary.BigEndian.Uint32((bs[0:LINE_SIZE_COUNTER]))

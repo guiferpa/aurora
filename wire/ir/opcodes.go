@@ -1,4 +1,4 @@
-package emitter
+package ir
 
 const (
 	OpMultiply     byte = iota + 0b1 // Multiply two numbers with max of 64 bits (uint64)

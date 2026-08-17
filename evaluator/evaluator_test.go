@@ -14,6 +14,7 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 func containsReturn(returns ReturnsPerLabel, index int, want []byte) (bool, []byte) {
@@ -382,9 +383,9 @@ func TestEvaluatePrintBuiltins(t *testing.T) {
 
 func TestCanReadInstructions(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructions([]emitter.Instruction{
-		emitter.NewInstruction([]byte("00"), emitter.OpSave, nil, nil),
-		emitter.NewInstruction([]byte("01"), emitter.OpAdd, nil, nil),
+	ev.SetInstructions([]ir.Instruction{
+		ir.NewInstruction([]byte("00"), ir.OpSave, nil, nil),
+		ir.NewInstruction([]byte("01"), ir.OpAdd, nil, nil),
 	})
 	ev.SetInstructionsOffset(0, 2)
 
@@ -403,42 +404,42 @@ func TestCanReadInstructions(t *testing.T) {
 
 func TestGetInstruction(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	inst0 := emitter.NewInstruction([]byte("00"), emitter.OpSave, []byte{1}, nil)
-	inst1 := emitter.NewInstruction([]byte("01"), emitter.OpAdd, []byte("00"), []byte("01"))
-	ev.SetInstructions([]emitter.Instruction{inst0, inst1})
+	inst0 := ir.NewInstruction([]byte("00"), ir.OpSave, []byte{1}, nil)
+	inst1 := ir.NewInstruction([]byte("01"), ir.OpAdd, []byte("00"), []byte("01"))
+	ev.SetInstructions([]ir.Instruction{inst0, inst1})
 	ev.SetInstructionsOffset(0, 2)
 
 	got := ev.GetInstruction()
-	if got.GetOpCode() != emitter.OpSave || !bytes.Equal(got.GetLabel(), []byte("00")) {
+	if got.GetOpCode() != ir.OpSave || !bytes.Equal(got.GetLabel(), []byte("00")) {
 		t.Errorf("expected first instruction (OpSave 00), got op=%d label=%s", got.GetOpCode(), got.GetLabel())
 	}
 	ev.IncrementCursor()
 	got = ev.GetInstruction()
-	if got.GetOpCode() != emitter.OpAdd || !bytes.Equal(got.GetLabel(), []byte("01")) {
+	if got.GetOpCode() != ir.OpAdd || !bytes.Equal(got.GetLabel(), []byte("01")) {
 		t.Errorf("expected second instruction (OpAdd 01), got op=%d label=%s", got.GetOpCode(), got.GetLabel())
 	}
 }
 
 func TestSetInstructions(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	insts := []emitter.Instruction{
-		emitter.NewInstruction([]byte("00"), emitter.OpSave, nil, nil),
+	insts := []ir.Instruction{
+		ir.NewInstruction([]byte("00"), ir.OpSave, nil, nil),
 	}
 	ev.SetInstructions(insts)
 	ev.SetInstructionsOffset(0, uint64(len(insts)))
 
 	got := ev.GetInstruction()
-	if got.GetOpCode() != emitter.OpSave {
+	if got.GetOpCode() != ir.OpSave {
 		t.Errorf("expected OpSave after SetInstructions, got op=%d", got.GetOpCode())
 	}
 }
 
 func TestSetInstructionsOffset(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructions([]emitter.Instruction{
-		emitter.NewInstruction([]byte("00"), emitter.OpSave, nil, nil),
-		emitter.NewInstruction([]byte("01"), emitter.OpSave, nil, nil),
-		emitter.NewInstruction([]byte("02"), emitter.OpAdd, nil, nil),
+	ev.SetInstructions([]ir.Instruction{
+		ir.NewInstruction([]byte("00"), ir.OpSave, nil, nil),
+		ir.NewInstruction([]byte("01"), ir.OpSave, nil, nil),
+		ir.NewInstruction([]byte("02"), ir.OpAdd, nil, nil),
 	})
 	ev.SetInstructionsOffset(1, 3)
 

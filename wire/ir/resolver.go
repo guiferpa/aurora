@@ -1,4 +1,4 @@
-package emitter
+package ir
 
 func ResolveOpCode(op byte) string {
 	switch op {

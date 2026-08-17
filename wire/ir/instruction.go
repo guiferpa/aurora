@@ -1,4 +1,4 @@
-package emitter
+package ir
 
 type Instruction interface {
 	GetLabel() []byte

@@ -6,6 +6,7 @@ import (
 
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 func compileWith(t *testing.T, source string, tapeSize int) Program {
@@ -79,7 +80,7 @@ func TestEmitMatchesEmitProgram(t *testing.T) {
 	}
 }
 
-// The label of a scope is where its OpReturn writes, which is what makes the value of a
+// The label of a scope is where its ir.OpReturn writes, which is what makes the value of a
 // block or an if readable at all.
 func TestEmitProgramLabelsScopes(t *testing.T) {
 	cases := []struct {
@@ -100,8 +101,8 @@ func TestEmitProgramLabelsScopes(t *testing.T) {
 			expr := program.Expressions[0]
 
 			last := program.Instructions[expr.To-1]
-			if last.GetOpCode() != OpReturn {
-				t.Fatalf("a scope should end in OpReturn, got %s", ResolveOpCode(last.GetOpCode()))
+			if last.GetOpCode() != ir.OpReturn {
+				t.Fatalf("a scope should end in OpReturn, got %s", ir.ResolveOpCode(last.GetOpCode()))
 			}
 			if !bytes.Equal(last.GetLeft(), expr.Label) {
 				t.Errorf("the value lands under %q but the expression reports %q", last.GetLeft(), expr.Label)

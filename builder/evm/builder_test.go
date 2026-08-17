@@ -9,6 +9,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 type PickedRuntimeCodeExpectation struct {
@@ -179,7 +180,7 @@ func TestPickRuntimeCode(t *testing.T) {
 func TestPickDeferAtCursor(t *testing.T) {
 	cases := []struct {
 		Name                 string
-		Insts                []emitter.Instruction
+		Insts                []ir.Instruction
 		Cursor               int
 		Offset               int
 		WantOK               bool
@@ -190,11 +191,11 @@ func TestPickDeferAtCursor(t *testing.T) {
 	}{
 		{
 			Name: "valid_defer",
-			Insts: []emitter.Instruction{
-				emitter.NewInstruction([]byte("0"), emitter.OpDefer, []byte("ret"), byteutil.FromUint64(2)),
-				emitter.NewInstruction([]byte("1"), emitter.OpBeginScope, nil, nil),
-				emitter.NewInstruction([]byte("2"), emitter.OpReturn, nil, nil),
-				emitter.NewInstruction([]byte("3"), emitter.OpIdent, []byte("f"), []byte("0")),
+			Insts: []ir.Instruction{
+				ir.NewInstruction([]byte("0"), ir.OpDefer, []byte("ret"), byteutil.FromUint64(2)),
+				ir.NewInstruction([]byte("1"), ir.OpBeginScope, nil, nil),
+				ir.NewInstruction([]byte("2"), ir.OpReturn, nil, nil),
+				ir.NewInstruction([]byte("3"), ir.OpIdent, []byte("f"), []byte("0")),
 			},
 			Cursor:               0,
 			Offset:               0,
@@ -206,8 +207,8 @@ func TestPickDeferAtCursor(t *testing.T) {
 		},
 		{
 			Name: "not_op_defer",
-			Insts: []emitter.Instruction{
-				emitter.NewInstruction(nil, emitter.OpBeginScope, nil, nil),
+			Insts: []ir.Instruction{
+				ir.NewInstruction(nil, ir.OpBeginScope, nil, nil),
 			},
 			Cursor:         0,
 			Offset:         0,
@@ -216,11 +217,11 @@ func TestPickDeferAtCursor(t *testing.T) {
 		},
 		{
 			Name: "defer_without_op_ident_after",
-			Insts: []emitter.Instruction{
-				emitter.NewInstruction(nil, emitter.OpDefer, nil, byteutil.FromUint64(2)),
-				emitter.NewInstruction(nil, emitter.OpBeginScope, nil, nil),
-				emitter.NewInstruction(nil, emitter.OpReturn, nil, nil),
-				emitter.NewInstruction(nil, emitter.OpAdd, nil, nil),
+			Insts: []ir.Instruction{
+				ir.NewInstruction(nil, ir.OpDefer, nil, byteutil.FromUint64(2)),
+				ir.NewInstruction(nil, ir.OpBeginScope, nil, nil),
+				ir.NewInstruction(nil, ir.OpReturn, nil, nil),
+				ir.NewInstruction(nil, ir.OpAdd, nil, nil),
 			},
 			Cursor:         0,
 			Offset:         0,

@@ -9,9 +9,9 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator/builtin"
 	"github.com/guiferpa/aurora/evaluator/environ"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // deferMark opens every defer blob. The value handed to a program is an ordinary tape
@@ -63,7 +63,7 @@ type Evaluator struct {
 	player        *Player
 	cursor        uint64
 	end           uint64
-	insts         []emitter.Instruction
+	insts         []ir.Instruction
 	assertResults []AssertResult // what each assertion did, in the order they ran
 	asserts       bool           // whether assertions are evaluated at all
 	output        io.Writer
@@ -504,11 +504,11 @@ func (e *Evaluator) CanReadInstructions() bool {
 	return e.cursor < e.end
 }
 
-func (e *Evaluator) GetInstruction() emitter.Instruction {
+func (e *Evaluator) GetInstruction() ir.Instruction {
 	return e.insts[e.cursor]
 }
 
-func (e *Evaluator) SetInstructions(insts []emitter.Instruction) {
+func (e *Evaluator) SetInstructions(insts []ir.Instruction) {
 	e.insts = insts
 }
 
@@ -548,63 +548,63 @@ var operations map[byte]operation
 func init() {
 	operations = map[byte]operation{
 		// Arithmetic
-		emitter.OpAdd:         (*Evaluator).EvaluateAdd,
-		emitter.OpSubtract:    (*Evaluator).EvaluateSubtract,
-		emitter.OpMultiply:    (*Evaluator).EvaluateMultiply,
-		emitter.OpDivide:      (*Evaluator).EvaluateDivide,
-		emitter.OpExponential: (*Evaluator).EvaluateExponential,
+		ir.OpAdd:         (*Evaluator).EvaluateAdd,
+		ir.OpSubtract:    (*Evaluator).EvaluateSubtract,
+		ir.OpMultiply:    (*Evaluator).EvaluateMultiply,
+		ir.OpDivide:      (*Evaluator).EvaluateDivide,
+		ir.OpExponential: (*Evaluator).EvaluateExponential,
 
 		// Comparison
-		emitter.OpDiff:    (*Evaluator).EvaluateDiff,
-		emitter.OpEquals:  (*Evaluator).EvaluateEquals,
-		emitter.OpBigger:  (*Evaluator).EvaluateBigger,
-		emitter.OpSmaller: (*Evaluator).EvaluateSmaller,
+		ir.OpDiff:    (*Evaluator).EvaluateDiff,
+		ir.OpEquals:  (*Evaluator).EvaluateEquals,
+		ir.OpBigger:  (*Evaluator).EvaluateBigger,
+		ir.OpSmaller: (*Evaluator).EvaluateSmaller,
 
 		// Logic
-		emitter.OpAnd: (*Evaluator).EvaluateAnd,
-		emitter.OpOr:  (*Evaluator).EvaluateOr,
+		ir.OpAnd: (*Evaluator).EvaluateAnd,
+		ir.OpOr:  (*Evaluator).EvaluateOr,
 
 		// Builtins. A print reads one operand, and the opcode is the whole difference between
 		// the three readings of it.
-		emitter.OpPrintBytes: func(e *Evaluator, label, left, _ []byte) error {
+		ir.OpPrintBytes: func(e *Evaluator, label, left, _ []byte) error {
 			return e.EvaluatePrintBytes(label, left)
 		},
-		emitter.OpPrintChars: func(e *Evaluator, label, left, _ []byte) error {
+		ir.OpPrintChars: func(e *Evaluator, label, left, _ []byte) error {
 			return e.EvaluatePrintChars(label, left)
 		},
-		emitter.OpPrintDecimal: func(e *Evaluator, label, left, _ []byte) error {
+		ir.OpPrintDecimal: func(e *Evaluator, label, left, _ []byte) error {
 			return e.EvaluatePrintDecimal(label, left)
 		},
 
 		// Memory
-		emitter.OpSave:  (*Evaluator).EvaluateSave,
-		emitter.OpLoad:  (*Evaluator).EvaluateLoad,
-		emitter.OpIdent: (*Evaluator).EvaluateIdent,
+		ir.OpSave:  (*Evaluator).EvaluateSave,
+		ir.OpLoad:  (*Evaluator).EvaluateLoad,
+		ir.OpIdent: (*Evaluator).EvaluateIdent,
 
 		// Control flow
-		emitter.OpIf:         (*Evaluator).EvaluateIf,
-		emitter.OpJump:       (*Evaluator).EvaluateJump,
-		emitter.OpBeginScope: (*Evaluator).EvaluateBeginScope,
-		emitter.OpReturn:     (*Evaluator).EvaluateReturn,
+		ir.OpIf:         (*Evaluator).EvaluateIf,
+		ir.OpJump:       (*Evaluator).EvaluateJump,
+		ir.OpBeginScope: (*Evaluator).EvaluateBeginScope,
+		ir.OpReturn:     (*Evaluator).EvaluateReturn,
 
 		// Arguments
-		emitter.OpPushFeed: (*Evaluator).EvaluatePushArg,
-		emitter.OpGetFeed:  (*Evaluator).EvaluateGetArg,
+		ir.OpPushFeed: (*Evaluator).EvaluatePushArg,
+		ir.OpGetFeed:  (*Evaluator).EvaluateGetArg,
 
 		// Defer and call
-		emitter.OpDefer: (*Evaluator).EvaluateDefer,
-		emitter.OpCall:  (*Evaluator).EvaluateCall,
+		ir.OpDefer: (*Evaluator).EvaluateDefer,
+		ir.OpCall:  (*Evaluator).EvaluateCall,
 
 		// Tape operations
-		emitter.OpPull:  (*Evaluator).EvaluatePull,
-		emitter.OpPush:  (*Evaluator).EvaluatePush,
-		emitter.OpJoin:  (*Evaluator).EvaluateJoin,
-		emitter.OpField: (*Evaluator).EvaluateField,
-		emitter.OpHead:  (*Evaluator).EvaluateHead,
-		emitter.OpTail:  (*Evaluator).EvaluateTail,
+		ir.OpPull:  (*Evaluator).EvaluatePull,
+		ir.OpPush:  (*Evaluator).EvaluatePush,
+		ir.OpJoin:  (*Evaluator).EvaluateJoin,
+		ir.OpField: (*Evaluator).EvaluateField,
+		ir.OpHead:  (*Evaluator).EvaluateHead,
+		ir.OpTail:  (*Evaluator).EvaluateTail,
 
 		// Assertions
-		emitter.OpAssert: (*Evaluator).EvaluateAssert,
+		ir.OpAssert: (*Evaluator).EvaluateAssert,
 	}
 }
 
@@ -614,7 +614,7 @@ func init() {
 // An opcode with no operation behind it is stepped over rather than refused. OpPreCall is
 // declared and never emitted, and an instruction the evaluator does not know is exactly what
 // a half-wired new opcode looks like — a running program does not stop for it.
-func (e *Evaluator) ExecuteInstruction(inst emitter.Instruction) error {
+func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 	op, ok := operations[inst.GetOpCode()]
 	if !ok {
 		e.IncrementCursor()
@@ -636,7 +636,7 @@ func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error
 	return e.environ.GetTemps(), nil
 }
 
-func (e *Evaluator) Evaluate(insts []emitter.Instruction) (ReturnsPerLabel, error) {
+func (e *Evaluator) Evaluate(insts []ir.Instruction) (ReturnsPerLabel, error) {
 	e.SetInstructions(insts)
 	returns, err := e.ExecuteInstructions(0, uint64(len(e.insts)))
 	return returns, err
@@ -645,7 +645,7 @@ func (e *Evaluator) Evaluate(insts []emitter.Instruction) (ReturnsPerLabel, erro
 // EvaluateRange sets the full instruction slice and runs only the range [from, to).
 // Used by the REPL: buffer accumulates all instructions; each line we append and run only the new slice,
 // so defer from/to indices stay valid in the same buffer.
-func (e *Evaluator) EvaluateRange(insts []emitter.Instruction, from, to uint64) (ReturnsPerLabel, error) {
+func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (ReturnsPerLabel, error) {
 	e.SetInstructions(insts)
 	e.environ.ClearTemps()
 	returns, err := e.ExecuteInstructions(from, to)
@@ -672,7 +672,7 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		player:        options.Player,
 		cursor:        0,
 		end:           0,
-		insts:         make([]emitter.Instruction, 0),
+		insts:         make([]ir.Instruction, 0),
 		assertResults: make([]AssertResult, 0),
 		asserts:       options.Asserts,
 		output:        output,

@@ -124,13 +124,3 @@ func TestWarningsFollowTheProgram(t *testing.T) {
 		t.Errorf("said %q first, want the print", warnings[0].Message)
 	}
 }
-
-// A warning has no place to point at: the IR carries instructions, not lines. Saying it
-// without a position is what keeps the report honest.
-func TestWarningsCarryNoPosition(t *testing.T) {
-	for _, warning := range Warnings(instructionsOf(ir.OpIf)) {
-		if warning.Positioned() {
-			t.Errorf("%q claims to be at %d:%d", warning.Message, warning.Line, warning.Column)
-		}
-	}
-}

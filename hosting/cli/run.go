@@ -31,7 +31,7 @@ func Run(ctx context.Context, in RunInput) error {
 	if err != nil {
 		return err
 	}
-	ReportWarnings(in.Warnings, in.Source, program.Warnings)
+	ReportWarnings(in.Warnings, in.Source, CompilerWarnings(program.Warnings))
 
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
 		Output:   in.Stdout,

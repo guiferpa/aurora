@@ -20,9 +20,9 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // Tokens writes what the lexer read, one token per line: the tag, then the bytes it
@@ -49,8 +49,8 @@ func AST(w io.Writer, ast parser.AST) error {
 }
 
 // Instructions writes the IR the emitter produced, one instruction per line.
-func Instructions(w io.Writer, insts []emitter.Instruction) error {
-	_, err := fmt.Fprintln(w, emitter.Format(insts))
+func Instructions(w io.Writer, insts []ir.Instruction) error {
+	_, err := fmt.Fprintln(w, ir.Format(insts))
 	return err
 }
 

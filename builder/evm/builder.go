@@ -11,7 +11,7 @@ import (
 	"io"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 const (
@@ -38,12 +38,12 @@ type RuntimeCode struct {
 type Builder struct {
 	tapeSize     int
 	cursor       int
-	insts        []emitter.Instruction
+	insts        []ir.Instruction
 	operands     [][]byte
 	identManager *IdentManager
 }
 
-func (b *Builder) GetInstruction() emitter.Instruction {
+func (b *Builder) GetInstruction() ir.Instruction {
 	return b.insts[b.cursor]
 }
 
@@ -57,7 +57,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 		return nil, cursor, false
 	}
 	inst := b.insts[cursor]
-	if inst.GetOpCode() != emitter.OpDefer {
+	if inst.GetOpCode() != ir.OpDefer {
 		return nil, cursor, false
 	}
 
@@ -81,7 +81,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 		return nil, cursor, false
 	}
 	selectorInst := b.insts[end]
-	if selectorInst.GetOpCode() != emitter.OpIdent {
+	if selectorInst.GetOpCode() != ir.OpIdent {
 		return nil, cursor, false
 	}
 	selector := selectorInst.GetLeft()
@@ -98,7 +98,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 
 func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	dispatchers := make([]Dispatcher, 0)
-	rootinsts := make([]emitter.Instruction, 0)
+	rootinsts := make([]ir.Instruction, 0)
 	offset := 0
 
 	for b.cursor < len(b.insts) {
@@ -163,7 +163,7 @@ type NewBuilderOptions struct {
 	TapeSize int
 }
 
-func NewBuilder(insts []emitter.Instruction, options NewBuilderOptions) *Builder {
+func NewBuilder(insts []ir.Instruction, options NewBuilderOptions) *Builder {
 	return &Builder{
 		tapeSize:     byteutil.TapeSize(options.TapeSize),
 		operands:     make([][]byte, 0),

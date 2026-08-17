@@ -1,4 +1,4 @@
-package emitter
+package ir
 
 import (
 	"bytes"
@@ -9,9 +9,12 @@ import (
 
 // Format renders instructions one per line, which is how the IR is read by a person.
 //
-// It returns the text rather than printing it: showing something is the host's decision,
-// and a phase that writes takes that decision away — it also gets in the way of a test,
-// which wants the string to compare.
+// It lives with the IR rather than with whoever shows it: writing the vocabulary down is part
+// of the vocabulary, the way a token knows how to spell itself. What belongs to a host is the
+// decision to show it and the writer it goes to.
+//
+// It returns the text rather than printing it: a package that writes takes that decision away
+// — and it also gets in the way of a test, which wants the string to compare.
 func Format(insts []Instruction) string {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	for _, inst := range insts {

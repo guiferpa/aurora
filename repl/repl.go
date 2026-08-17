@@ -18,6 +18,7 @@ import (
 	"github.com/guiferpa/aurora/internal/trace"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // render prints the value of the line that was typed — the temp left by its last
@@ -109,7 +110,7 @@ type session struct {
 	directives *parser.Directives
 	// Every line's instructions go into the same buffer, which is what keeps the range a
 	// defer recorded valid when it is called on a later line.
-	insts []emitter.Instruction
+	insts []ir.Instruction
 
 	hist       *History
 	histWarned bool

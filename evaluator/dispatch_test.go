@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator/environ"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // ExecuteInstruction is the only place that says which opcode runs which operation, and
@@ -42,23 +42,23 @@ func operands(x, y uint64) func(e *Evaluator) {
 
 var dispatchCases = []dispatchCase{
 	{
-		name: "add", opcode: emitter.OpAdd, setup: operands(6, 3),
+		name: "add", opcode: ir.OpAdd, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FromUint64(9), cursor: 1,
 	},
 	{
-		name: "subtract", opcode: emitter.OpSubtract, setup: operands(6, 3),
+		name: "subtract", opcode: ir.OpSubtract, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FromUint64(3), cursor: 1,
 	},
 	{
-		name: "multiply", opcode: emitter.OpMultiply, setup: operands(6, 3),
+		name: "multiply", opcode: ir.OpMultiply, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FromUint64(18), cursor: 1,
 	},
 	{
-		name: "divide", opcode: emitter.OpDivide, setup: operands(6, 3),
+		name: "divide", opcode: ir.OpDivide, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FromUint64(2), cursor: 1,
 	},
 	{
-		name: "exponential", opcode: emitter.OpExponential, setup: operands(6, 3),
+		name: "exponential", opcode: ir.OpExponential, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FromUint64(216), cursor: 1,
 	},
 
@@ -66,55 +66,55 @@ var dispatchCases = []dispatchCase{
 	// (false, false), (true, false) and (false, true) — four different pairs, so a swap
 	// between any two of them shows.
 	{
-		name: "diff, the bigger first", opcode: emitter.OpDiff, setup: operands(6, 3),
+		name: "diff, the bigger first", opcode: ir.OpDiff, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.TrueTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "diff, the smaller first", opcode: emitter.OpDiff, setup: operands(3, 6),
+		name: "diff, the smaller first", opcode: ir.OpDiff, setup: operands(3, 6),
 		left: []byte("00"), right: []byte("01"), want: byteutil.TrueTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "equals, the bigger first", opcode: emitter.OpEquals, setup: operands(6, 3),
+		name: "equals, the bigger first", opcode: ir.OpEquals, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FalseTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "equals, the smaller first", opcode: emitter.OpEquals, setup: operands(3, 6),
+		name: "equals, the smaller first", opcode: ir.OpEquals, setup: operands(3, 6),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FalseTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "bigger, the bigger first", opcode: emitter.OpBigger, setup: operands(6, 3),
+		name: "bigger, the bigger first", opcode: ir.OpBigger, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.TrueTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "bigger, the smaller first", opcode: emitter.OpBigger, setup: operands(3, 6),
+		name: "bigger, the smaller first", opcode: ir.OpBigger, setup: operands(3, 6),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FalseTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "smaller, the bigger first", opcode: emitter.OpSmaller, setup: operands(6, 3),
+		name: "smaller, the bigger first", opcode: ir.OpSmaller, setup: operands(6, 3),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FalseTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "smaller, the smaller first", opcode: emitter.OpSmaller, setup: operands(3, 6),
+		name: "smaller, the smaller first", opcode: ir.OpSmaller, setup: operands(3, 6),
 		left: []byte("00"), right: []byte("01"), want: byteutil.TrueTape(tapeSize), cursor: 1,
 	},
 
 	// and and or only differ where the operands do.
 	{
-		name: "and, one true one false", opcode: emitter.OpAnd, setup: operands(1, 0),
+		name: "and, one true one false", opcode: ir.OpAnd, setup: operands(1, 0),
 		left: []byte("00"), right: []byte("01"), want: byteutil.FalseTape(tapeSize), cursor: 1,
 	},
 	{
-		name: "or, one true one false", opcode: emitter.OpOr, setup: operands(1, 0),
+		name: "or, one true one false", opcode: ir.OpOr, setup: operands(1, 0),
 		left: []byte("00"), right: []byte("01"), want: byteutil.TrueTape(tapeSize), cursor: 1,
 	},
 
 	{
-		name: "save", opcode: emitter.OpSave,
+		name: "save", opcode: ir.OpSave,
 		left: byteutil.FromUint64(7), want: byteutil.FromUint64(7), cursor: 1,
 	},
 	{
 		name:   "load",
-		opcode: emitter.OpLoad,
+		opcode: ir.OpLoad,
 		setup: func(e *Evaluator) {
 			e.environ.SetIdent(byteutil.ToHex([]byte("id")), byteutil.FromUint64(11))
 		},
@@ -122,7 +122,7 @@ var dispatchCases = []dispatchCase{
 	},
 	{
 		name:   "ident",
-		opcode: emitter.OpIdent,
+		opcode: ir.OpIdent,
 		setup: func(e *Evaluator) {
 			e.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(5))
 		},
@@ -138,7 +138,7 @@ var dispatchCases = []dispatchCase{
 	// if and jump both move the cursor and write nothing, so the landing is the whole answer.
 	{
 		name:   "if, the test holds",
-		opcode: emitter.OpIf,
+		opcode: ir.OpIf,
 		setup: func(e *Evaluator) {
 			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(tapeSize))
 		},
@@ -146,20 +146,20 @@ var dispatchCases = []dispatchCase{
 	},
 	{
 		name:   "if, the test does not hold",
-		opcode: emitter.OpIf,
+		opcode: ir.OpIf,
 		setup: func(e *Evaluator) {
 			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(tapeSize))
 		},
 		left: []byte("00"), right: byteutil.FromUint64(4), cursor: 5,
 	},
 	{
-		name: "jump", opcode: emitter.OpJump,
+		name: "jump", opcode: ir.OpJump,
 		left: byteutil.FromUint64(3), cursor: 4,
 	},
 
 	{
 		name:   "get feed",
-		opcode: emitter.OpGetFeed,
+		opcode: ir.OpGetFeed,
 		setup: func(e *Evaluator) {
 			e.environ.SetArgument(0, byteutil.FromUint64(99))
 		},
@@ -167,7 +167,7 @@ var dispatchCases = []dispatchCase{
 	},
 	{
 		// A defer answers with its index as a tape and steps over the body it just stored.
-		name: "defer", opcode: emitter.OpDefer,
+		name: "defer", opcode: ir.OpDefer,
 		left: []byte("ret"), right: byteutil.FromUint64(2),
 		want: byteutil.FalseTape(tapeSize), cursor: 3,
 	},
@@ -175,35 +175,35 @@ var dispatchCases = []dispatchCase{
 	// The tape operations move the same two values in four different directions.
 	{
 		name:   "pull",
-		opcode: emitter.OpPull,
+		opcode: ir.OpPull,
 		setup:  operands(1, 2),
 		left:   []byte("00"), right: []byte("01"),
 		want: byteutil.FromUint64(0x0102), cursor: 1,
 	},
 	{
 		name:   "push",
-		opcode: emitter.OpPush,
+		opcode: ir.OpPush,
 		setup:  operands(1, 2),
 		left:   []byte("00"), right: []byte("01"),
 		want: []byte{2, 0, 0, 0, 0, 0, 0, 0}, cursor: 1,
 	},
 	{
 		name:   "head",
-		opcode: emitter.OpHead,
+		opcode: ir.OpHead,
 		setup:  operands(0x0102, 1),
 		left:   []byte("00"), right: byteutil.FromUint64(1),
 		want: byteutil.FromUint64(1), cursor: 1,
 	},
 	{
 		name:   "tail",
-		opcode: emitter.OpTail,
+		opcode: ir.OpTail,
 		setup:  operands(0x0102, 1),
 		left:   []byte("00"), right: byteutil.FromUint64(1),
 		want: byteutil.FromUint64(2), cursor: 1,
 	},
 	{
 		name:   "join",
-		opcode: emitter.OpJoin,
+		opcode: ir.OpJoin,
 		setup:  operands(1, 2),
 		left:   []byte("00"), right: []byte("01"),
 		want:   append(byteutil.FromUint64(1), byteutil.FromUint64(2)...),
@@ -211,7 +211,7 @@ var dispatchCases = []dispatchCase{
 	},
 	{
 		name:   "field",
-		opcode: emitter.OpField,
+		opcode: ir.OpField,
 		setup: func(e *Evaluator) {
 			run := append(byteutil.FromUint64(1), byteutil.FromUint64(2)...)
 			e.environ.SetTemp(byteutil.ToHex([]byte("00")), run)
@@ -222,7 +222,7 @@ var dispatchCases = []dispatchCase{
 
 	{
 		name:   "push feed",
-		opcode: emitter.OpPushFeed,
+		opcode: ir.OpPushFeed,
 		setup: func(e *Evaluator) {
 			e.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(42))
 		},
@@ -234,7 +234,7 @@ var dispatchCases = []dispatchCase{
 		},
 	},
 	{
-		name: "begin scope", opcode: emitter.OpBeginScope, cursor: 1,
+		name: "begin scope", opcode: ir.OpBeginScope, cursor: 1,
 		check: func(t *testing.T, e *Evaluator) {
 			if e.environ.GetPrevious() == nil {
 				t.Error("no scope was opened")
@@ -243,7 +243,7 @@ var dispatchCases = []dispatchCase{
 	},
 	{
 		name:   "return",
-		opcode: emitter.OpReturn,
+		opcode: ir.OpReturn,
 		setup: func(e *Evaluator) {
 			e.environ = e.environ.Ahead(environ.NewEnviron(environ.NewEnvironOptions{}))
 			e.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(13))
@@ -265,9 +265,9 @@ func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
 				tc.setup(e)
 			}
 
-			inst := emitter.NewInstruction([]byte("02"), tc.opcode, tc.left, tc.right)
+			inst := ir.NewInstruction([]byte("02"), tc.opcode, tc.left, tc.right)
 			if err := e.ExecuteInstruction(inst); err != nil {
-				t.Fatalf("executing %s: %v", emitter.ResolveOpCode(tc.opcode), err)
+				t.Fatalf("executing %s: %v", ir.ResolveOpCode(tc.opcode), err)
 			}
 
 			if tc.want != nil {
@@ -294,9 +294,9 @@ func TestExecuteInstructionDispatchesThePrints(t *testing.T) {
 		opcode byte
 		want   string
 	}{
-		{name: "bytes", opcode: emitter.OpPrintBytes, want: "[0 0 0 0 0 0 0 65]\n"},
-		{name: "chars", opcode: emitter.OpPrintChars, want: "A\n"},
-		{name: "decimal", opcode: emitter.OpPrintDecimal, want: "65\n"},
+		{name: "bytes", opcode: ir.OpPrintBytes, want: "[0 0 0 0 0 0 0 65]\n"},
+		{name: "chars", opcode: ir.OpPrintChars, want: "A\n"},
+		{name: "decimal", opcode: ir.OpPrintDecimal, want: "65\n"},
 	}
 
 	for _, tc := range cases {
@@ -305,7 +305,7 @@ func TestExecuteInstructionDispatchesThePrints(t *testing.T) {
 			e := New(NewEvaluatorOptions{Output: out})
 			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
 
-			inst := emitter.NewInstruction([]byte("02"), tc.opcode, []byte("00"), nil)
+			inst := ir.NewInstruction([]byte("02"), tc.opcode, []byte("00"), nil)
 			if err := e.ExecuteInstruction(inst); err != nil {
 				t.Fatalf("executing: %v", err)
 			}
@@ -323,7 +323,7 @@ func TestExecuteInstructionDispatchesAnAssert(t *testing.T) {
 	e := New(NewEvaluatorOptions{Asserts: true})
 	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(tapeSize))
 
-	inst := emitter.NewInstruction([]byte("02"), emitter.OpAssert, []byte("00"), []byte("one is one"))
+	inst := ir.NewInstruction([]byte("02"), ir.OpAssert, []byte("00"), []byte("one is one"))
 	if err := e.ExecuteInstruction(inst); err != nil {
 		t.Fatalf("executing: %v", err)
 	}
@@ -343,22 +343,22 @@ func TestExecuteInstructionDispatchesAnAssert(t *testing.T) {
 func TestExecuteInstructionCarriesAnErrorBack(t *testing.T) {
 	cases := []struct {
 		name string
-		inst emitter.Instruction
+		inst ir.Instruction
 		want string
 	}{
 		{
 			name: "load of an identifier that was never set",
-			inst: emitter.NewInstruction([]byte("02"), emitter.OpLoad, []byte("nope"), nil),
+			inst: ir.NewInstruction([]byte("02"), ir.OpLoad, []byte("nope"), nil),
 			want: "identifier nope not found",
 		},
 		{
 			name: "call of an identifier that was never set",
-			inst: emitter.NewInstruction([]byte("02"), emitter.OpCall, []byte("nope"), nil),
+			inst: ir.NewInstruction([]byte("02"), ir.OpCall, []byte("nope"), nil),
 			want: "call: nope identifier not found",
 		},
 		{
 			name: "divide by zero",
-			inst: emitter.NewInstruction([]byte("02"), emitter.OpDivide, []byte("00"), []byte("01")),
+			inst: ir.NewInstruction([]byte("02"), ir.OpDivide, []byte("00"), []byte("01")),
 			want: "integer divide by zero",
 		},
 	}
@@ -385,7 +385,7 @@ func TestExecuteInstructionCarriesAnErrorBack(t *testing.T) {
 func TestExecuteInstructionStepsOverAnOpcodeItDoesNotKnow(t *testing.T) {
 	e := New(NewEvaluatorOptions{})
 
-	inst := emitter.NewInstruction([]byte("02"), emitter.OpPreCall, []byte("00"), []byte("01"))
+	inst := ir.NewInstruction([]byte("02"), ir.OpPreCall, []byte("00"), []byte("01"))
 	if err := e.ExecuteInstruction(inst); err != nil {
 		t.Fatalf("executing: %v", err)
 	}
@@ -400,13 +400,13 @@ func TestExecuteInstructionStepsOverAnOpcodeItDoesNotKnow(t *testing.T) {
 
 // Opcodes proven by a test of their own rather than by the table.
 var coveredElsewhere = map[byte]bool{
-	emitter.OpPrintBytes:   true,
-	emitter.OpPrintChars:   true,
-	emitter.OpPrintDecimal: true,
-	emitter.OpAssert:       true,
-	emitter.OpCall:         true,
+	ir.OpPrintBytes:   true,
+	ir.OpPrintChars:   true,
+	ir.OpPrintDecimal: true,
+	ir.OpAssert:       true,
+	ir.OpCall:         true,
 	// Declared and never emitted; the step-over test is what covers it.
-	emitter.OpPreCall: true,
+	ir.OpPreCall: true,
 }
 
 // A new opcode is added to the emitter and wired into the evaluator in two separate places,
@@ -417,10 +417,10 @@ func TestEveryOpcodeIsDispatchedByACase(t *testing.T) {
 		tested[tc.opcode] = true
 	}
 
-	for op := emitter.OpMultiply; op <= emitter.OpField; op++ {
+	for op := ir.OpMultiply; op <= ir.OpField; op++ {
 		if tested[op] || coveredElsewhere[op] {
 			continue
 		}
-		t.Errorf("%s reaches no test through ExecuteInstruction", emitter.ResolveOpCode(op))
+		t.Errorf("%s reaches no test through ExecuteInstruction", ir.ResolveOpCode(op))
 	}
 }

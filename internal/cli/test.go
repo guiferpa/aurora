@@ -12,8 +12,8 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // TestExtension marks a test file. A test belongs to the source file of the same name:
@@ -206,7 +206,7 @@ func runTestFile(path string, tapeSize int, loggers []string) FileReport {
 	// instructions — a call would then run whatever happened to be there. The REPL keeps
 	// one buffer across lines for the same reason. Each range clears the temps first,
 	// since the two were emitted separately and both number their labels from zero.
-	instructions := make([]emitter.Instruction, 0, len(sourceProgram.Instructions)+len(testProgram.Instructions))
+	instructions := make([]ir.Instruction, 0, len(sourceProgram.Instructions)+len(testProgram.Instructions))
 	instructions = append(instructions, sourceProgram.Instructions...)
 	boundary := len(instructions)
 	instructions = append(instructions, testProgram.Instructions...)

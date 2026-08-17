@@ -20,7 +20,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/ir"
 	"github.com/guiferpa/aurora/wire/token"
 )
@@ -39,7 +39,7 @@ func Tokens(w io.Writer, tokens []token.Token) error {
 }
 
 // AST writes the tree the parser produced, as JSON.
-func AST(w io.Writer, ast parser.AST) error {
+func AST(w io.Writer, ast ast.AST) error {
 	bs, err := json.MarshalIndent(wrapNode(ast), "", "  ")
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ type node struct {
 	Data any    `json:"data"`
 }
 
-var nodeType = reflect.TypeOf((*parser.Node)(nil)).Elem()
+var nodeType = reflect.TypeOf((*ast.Node)(nil)).Elem()
 
 // wrapNode walks a node and labels every node inside it with its type.
 //
@@ -101,10 +101,10 @@ func wrapNode(n any) any {
 		value := v.Field(i).Interface()
 
 		switch value := value.(type) {
-		case parser.Node:
+		case ast.Node:
 			fields[field.Tag.Get("json")] = wrapNode(value)
 
-		case []parser.Node:
+		case []ast.Node:
 			wrapped := make([]any, 0, len(value))
 			for _, n := range value {
 				wrapped = append(wrapped, wrapNode(n))

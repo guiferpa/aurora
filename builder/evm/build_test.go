@@ -19,11 +19,11 @@ func build(t *testing.T, source string, tapeSize int) []byte {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(ast)
+	insts, err := emitter.New(emitter.NewEmitterOptions{TapeSize: tapeSize}).Emit(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}

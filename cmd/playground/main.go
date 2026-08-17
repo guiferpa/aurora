@@ -66,7 +66,7 @@ func init() {
 					return nil
 				}
 			}
-			ast, err := parser.New(parser.NewParserOptions{
+			tree, err := parser.New(parser.NewParserOptions{
 				Tokens:   tokens,
 				TapeSize: size,
 			}).Parse()
@@ -77,14 +77,14 @@ func init() {
 			// The phases return what they made; the page decides to show it. In wasm this
 			// lands in the browser console, which is where the debug checkbox points.
 			if debug {
-				if err := trace.AST(os.Stdout, ast); err != nil {
+				if err := trace.AST(os.Stdout, tree); err != nil {
 					errorWriter.Write([]byte(err.Error()))
 					return nil
 				}
 			}
 			program, err := emitter.New(emitter.NewEmitterOptions{
 				TapeSize: size,
-			}).EmitProgram(ast)
+			}).EmitProgram(tree)
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil

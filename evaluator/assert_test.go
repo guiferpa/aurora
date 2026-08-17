@@ -18,11 +18,11 @@ func evaluateAsserts(t *testing.T, source string, asserts bool) *Evaluator {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "checks.test.ar", Tokens: tokens}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{Filename: "checks.test.ar", Tokens: tokens}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(ast)
+	insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}

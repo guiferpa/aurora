@@ -34,11 +34,11 @@ func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	ast, err := parser.New(parser.NewParserOptions{Filename: "wide.ar", Tokens: tokens}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{Filename: "wide.ar", Tokens: tokens}).Parse()
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	insts, err := New(NewEmitterOptions{}).Emit(ast)
+	insts, err := New(NewEmitterOptions{}).Emit(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -14,26 +15,26 @@ import (
 // as long as the answer comes out right.
 
 // parse compiles source and returns the top-level nodes.
-func parse(t *testing.T, source string) []Node {
+func parse(t *testing.T, source string) []ast.Node {
 	t.Helper()
-	ast, err := parseSource(t, source, "main.ar")
+	tree, err := parseSource(t, source, "main.ar")
 	if err != nil {
 		t.Fatalf("parsing %q: %v", source, err)
 	}
-	return ast.Nodes
+	return tree.Nodes
 }
 
-func parseSource(t *testing.T, source, filename string) (AST, error) {
+func parseSource(t *testing.T, source, filename string) (ast.AST, error) {
 	t.Helper()
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 	if err != nil {
-		return AST{}, err
+		return ast.AST{}, err
 	}
 	return New(NewParserOptions{Filename: filename, Tokens: tokens}).Parse()
 }
 
 // first returns the single top-level node, asserting the type.
-func first[T Node](t *testing.T, source string) T {
+func first[T ast.Node](t *testing.T, source string) T {
 	t.Helper()
 	nodes := parse(t, source)
 	if len(nodes) != 1 {
@@ -48,12 +49,12 @@ func first[T Node](t *testing.T, source string) T {
 }
 
 func TestParseIdentShape(t *testing.T) {
-	ident := first[IdentLiteral](t, "ident total = 42;")
+	ident := first[ast.IdentLiteral](t, "ident total = 42;")
 
 	if ident.Id != "total" {
 		t.Errorf("id = %q, want total", ident.Id)
 	}
-	number, ok := ident.Value.(NumberLiteral)
+	number, ok := ident.Value.(ast.NumberLiteral)
 	if !ok {
 		t.Fatalf("value is %T, want NumberLiteral", ident.Value)
 	}
@@ -75,7 +76,7 @@ func TestParseNumberShape(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.source, func(t *testing.T) {
-			if got := first[NumberLiteral](t, tc.source); got.Value != tc.want {
+			if got := first[ast.NumberLiteral](t, tc.source); got.Value != tc.want {
 				t.Errorf("value = %d, want %d", got.Value, tc.want)
 			}
 		})
@@ -83,12 +84,12 @@ func TestParseNumberShape(t *testing.T) {
 }
 
 func TestParseBooleanShape(t *testing.T) {
-	truth := first[BooleanLiteral](t, "true;")
+	truth := first[ast.BooleanLiteral](t, "true;")
 	if want := byteutil.TrueTape(byteutil.DefaultTapeSize); string(truth.Value) != string(want) {
 		t.Errorf("true = %v, want %v", truth.Value, want)
 	}
 
-	lie := first[BooleanLiteral](t, "false;")
+	lie := first[ast.BooleanLiteral](t, "false;")
 	if want := byteutil.FalseTape(byteutil.DefaultTapeSize); string(lie.Value) != string(want) {
 		t.Errorf("false = %v, want %v", lie.Value, want)
 	}
@@ -96,7 +97,7 @@ func TestParseBooleanShape(t *testing.T) {
 
 // Text is one more way of writing a tape: its bytes, right aligned, like every other value.
 func TestParseTextShape(t *testing.T) {
-	text := first[TextLiteral](t, `"hi";`)
+	text := first[ast.TextLiteral](t, `"hi";`)
 
 	want := byteutil.PaddingTape([]byte("hi"), byteutil.DefaultTapeSize)
 	if string(text.Value) != string(want) {
@@ -104,13 +105,13 @@ func TestParseTextShape(t *testing.T) {
 	}
 
 	// Which makes a text of one character the same tape as its number.
-	one := first[TextLiteral](t, `"a";`)
+	one := first[ast.TextLiteral](t, `"a";`)
 	if string(one.Value) != string(byteutil.PaddingTape([]byte{97}, byteutil.DefaultTapeSize)) {
 		t.Errorf(`"a" = %v, want the tape holding 97`, one.Value)
 	}
 
 	// An empty text is no bytes, which is the neutral value.
-	empty := first[TextLiteral](t, `"";`)
+	empty := first[ast.TextLiteral](t, `"";`)
 	if string(empty.Value) != string(byteutil.FalseTape(byteutil.DefaultTapeSize)) {
 		t.Errorf(`"" = %v, want a tape of zeros`, empty.Value)
 	}
@@ -129,68 +130,68 @@ func TestTextLongerThanATapeIsRejected(t *testing.T) {
 }
 
 func TestParseTapeLiteralShape(t *testing.T) {
-	tape := first[TapeBracketExpression](t, "[1, 2, 3];")
+	tape := first[ast.TapeBracketExpression](t, "[1, 2, 3];")
 	if len(tape.Items) != 3 {
 		t.Fatalf("got %d items, want 3", len(tape.Items))
 	}
 
-	empty := first[TapeBracketExpression](t, "[];")
+	empty := first[ast.TapeBracketExpression](t, "[];")
 	if len(empty.Items) != 0 {
 		t.Errorf("got %d items, want none", len(empty.Items))
 	}
 }
 
 func TestParseTapeOperationShapes(t *testing.T) {
-	pull := first[PullExpression](t, "pull [1] 2;")
-	if _, ok := pull.Target.(TapeBracketExpression); !ok {
+	pull := first[ast.PullExpression](t, "pull [1] 2;")
+	if _, ok := pull.Target.(ast.TapeBracketExpression); !ok {
 		t.Errorf("pull target is %T, want a tape", pull.Target)
 	}
-	if _, ok := pull.Item.(NumberLiteral); !ok {
+	if _, ok := pull.Item.(ast.NumberLiteral); !ok {
 		t.Errorf("pull item is %T, want a number", pull.Item)
 	}
 
-	push := first[PushExpression](t, "push [1] 2;")
-	if _, ok := push.Target.(TapeBracketExpression); !ok {
+	push := first[ast.PushExpression](t, "push [1] 2;")
+	if _, ok := push.Target.(ast.TapeBracketExpression); !ok {
 		t.Errorf("push target is %T, want a tape", push.Target)
 	}
 
-	head := first[HeadExpression](t, "head [1, 2, 3] 2;")
+	head := first[ast.HeadExpression](t, "head [1, 2, 3] 2;")
 	if head.Length != 2 {
 		t.Errorf("head length = %d, want 2", head.Length)
 	}
 
-	tail := first[TailExpression](t, "tail [1, 2, 3] 2;")
+	tail := first[ast.TailExpression](t, "tail [1, 2, 3] 2;")
 	if tail.Length != 2 {
 		t.Errorf("tail length = %d, want 2", tail.Length)
 	}
 }
 
 func TestParseDeferShape(t *testing.T) {
-	deferred := first[DeferExpression](t, "defer { 1; 2; };")
+	deferred := first[ast.DeferExpression](t, "defer { 1; 2; };")
 	if len(deferred.Block.Body) != 2 {
 		t.Errorf("body holds %d expressions, want 2", len(deferred.Block.Body))
 	}
 
-	empty := first[DeferExpression](t, "defer {};")
+	empty := first[ast.DeferExpression](t, "defer {};")
 	if len(empty.Block.Body) != 0 {
 		t.Errorf("an empty defer holds %d expressions, want none", len(empty.Block.Body))
 	}
 }
 
 func TestParseBlockShape(t *testing.T) {
-	block := first[BlockExpression](t, "{ 1; 2; 3; };")
+	block := first[ast.BlockExpression](t, "{ 1; 2; 3; };")
 	if len(block.Body) != 3 {
 		t.Errorf("body holds %d expressions, want 3", len(block.Body))
 	}
 
-	empty := first[BlockExpression](t, "{};")
+	empty := first[ast.BlockExpression](t, "{};")
 	if len(empty.Body) != 0 {
 		t.Errorf("an empty block holds %d expressions, want none", len(empty.Body))
 	}
 }
 
 func TestParseCalleeShape(t *testing.T) {
-	call := first[CalleeLiteral](t, "sum(1, 2);")
+	call := first[ast.CalleeLiteral](t, "sum(1, 2);")
 
 	if call.Id.Value != "sum" {
 		t.Errorf("callee = %q, want sum", call.Id.Value)
@@ -199,57 +200,57 @@ func TestParseCalleeShape(t *testing.T) {
 		t.Fatalf("got %d parameters, want 2", len(call.Params))
 	}
 
-	none := first[CalleeLiteral](t, "go();")
+	none := first[ast.CalleeLiteral](t, "go();")
 	if len(none.Params) != 0 {
 		t.Errorf("got %d parameters, want none", len(none.Params))
 	}
 
 	// Without parentheses it is a plain identifier, not a call.
-	if _, ok := parse(t, "sum;")[0].(IdentifierLiteral); !ok {
+	if _, ok := parse(t, "sum;")[0].(ast.IdentifierLiteral); !ok {
 		t.Error("a bare name should parse as an identifier")
 	}
 }
 
 func TestParseFeedShape(t *testing.T) {
-	withParens := first[FeedExpression](t, "feed(2);")
+	withParens := first[ast.FeedExpression](t, "feed(2);")
 	if withParens.Nth.Value != 2 {
 		t.Errorf("index = %d, want 2", withParens.Nth.Value)
 	}
 
 	// The form without parentheses is also accepted.
-	bare := first[FeedExpression](t, "feed 3;")
+	bare := first[ast.FeedExpression](t, "feed 3;")
 	if bare.Nth.Value != 3 {
 		t.Errorf("index = %d, want 3", bare.Nth.Value)
 	}
 }
 
 func TestParseIfShape(t *testing.T) {
-	withoutElse := first[IfExpression](t, "if true { 1; };")
+	withoutElse := first[ast.IfExpression](t, "if true { 1; };")
 	if withoutElse.Else != nil {
 		t.Error("there is no else here")
 	}
 	if len(withoutElse.Body) != 1 {
 		t.Errorf("body holds %d expressions, want 1", len(withoutElse.Body))
 	}
-	if _, ok := withoutElse.Test.(BooleanLiteral); !ok {
+	if _, ok := withoutElse.Test.(ast.BooleanLiteral); !ok {
 		t.Errorf("test is %T, want a boolean", withoutElse.Test)
 	}
 
-	withElse := first[IfExpression](t, "if 1 bigger 2 { 1; } else { 2; };")
+	withElse := first[ast.IfExpression](t, "if 1 bigger 2 { 1; } else { 2; };")
 	if withElse.Else == nil {
 		t.Fatal("the else is missing")
 	}
 	if len(withElse.Else.Body) != 1 {
 		t.Errorf("else holds %d expressions, want 1", len(withElse.Else.Body))
 	}
-	if _, ok := withElse.Test.(RelativeExpression); !ok {
+	if _, ok := withElse.Test.(ast.RelativeExpression); !ok {
 		t.Errorf("test is %T, want a comparison", withElse.Test)
 	}
 }
 
 // branch is sugar: it desugars into nested ifs, with the fallback as the innermost else.
 func TestParseBranchDesugarsIntoNestedIfs(t *testing.T) {
-	outer := first[IfExpression](t, `branch {
+	outer := first[ast.IfExpression](t, `branch {
   1 equals 1: 10,
   2 equals 2: 20,
   30;
@@ -258,14 +259,14 @@ func TestParseBranchDesugarsIntoNestedIfs(t *testing.T) {
 	if outer.Else == nil {
 		t.Fatal("the first branch item needs an else holding the rest")
 	}
-	inner, ok := outer.Else.Body[0].(IfExpression)
+	inner, ok := outer.Else.Body[0].(ast.IfExpression)
 	if !ok {
 		t.Fatalf("the else holds %T, want the next branch item", outer.Else.Body[0])
 	}
 	if inner.Else == nil {
 		t.Fatal("the second item needs an else holding the fallback")
 	}
-	if _, ok := inner.Else.Body[0].(NumberLiteral); !ok {
+	if _, ok := inner.Else.Body[0].(ast.NumberLiteral); !ok {
 		t.Errorf("the fallback is %T, want the number", inner.Else.Body[0])
 	}
 }
@@ -275,16 +276,16 @@ func TestParseBranchDesugarsIntoNestedIfs(t *testing.T) {
 func TestParsePrintShapes(t *testing.T) {
 	cases := []struct {
 		source string
-		want   PrintFormat
+		want   ast.PrintFormat
 	}{
-		{source: "printb 1;", want: PrintBytes},
-		{source: `printc "hi";`, want: PrintChars},
-		{source: "printd 1;", want: PrintDecimal},
+		{source: "printb 1;", want: ast.PrintBytes},
+		{source: `printc "hi";`, want: ast.PrintChars},
+		{source: "printd 1;", want: ast.PrintDecimal},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.source, func(t *testing.T) {
-			printed := first[PrintStatement](t, tc.source)
+			printed := first[ast.PrintStatement](t, tc.source)
 			if printed.Format != tc.want {
 				t.Errorf("format = %q, want %q", printed.Format, tc.want)
 			}
@@ -296,15 +297,15 @@ func TestParsePrintShapes(t *testing.T) {
 }
 
 func TestParseAssertShape(t *testing.T) {
-	ast, err := parseSource(t, `assert(1 equals 1, "ok");`, "checks.test.ar")
+	tree, err := parseSource(t, `assert(1 equals 1, "ok");`, "checks.test.ar")
 	if err != nil {
 		t.Fatalf("assert in a test file: %v", err)
 	}
-	assertion, ok := ast.Nodes[0].(AssertStatement)
+	assertion, ok := tree.Nodes[0].(ast.AssertStatement)
 	if !ok {
-		t.Fatalf("got %T, want AssertStatement", ast.Nodes[0])
+		t.Fatalf("got %T, want AssertStatement", tree.Nodes[0])
 	}
-	if _, ok := assertion.Condition.(RelativeExpression); !ok {
+	if _, ok := assertion.Condition.(ast.RelativeExpression); !ok {
 		t.Errorf("condition is %T, want a comparison", assertion.Condition)
 	}
 	if assertion.Message == "" {
@@ -313,11 +314,11 @@ func TestParseAssertShape(t *testing.T) {
 }
 
 func TestParseUnaryShape(t *testing.T) {
-	unary := first[UnaryExpression](t, "-5;")
+	unary := first[ast.UnaryExpression](t, "-5;")
 	if unary.Operation.Value != "-" {
 		t.Errorf("operation = %q, want -", unary.Operation.Value)
 	}
-	if _, ok := unary.Expression.(NumberLiteral); !ok {
+	if _, ok := unary.Expression.(ast.NumberLiteral); !ok {
 		t.Errorf("operand is %T, want a number", unary.Expression)
 	}
 }
@@ -326,7 +327,7 @@ func TestParseOperatorShapes(t *testing.T) {
 	arithmetic := []string{"+", "-", "*", "/", "^"}
 	for _, op := range arithmetic {
 		t.Run(op, func(t *testing.T) {
-			expr := first[BinaryExpression](t, "1 "+op+" 2;")
+			expr := first[ast.BinaryExpression](t, "1 "+op+" 2;")
 			if expr.Operation.Value != op {
 				t.Errorf("operation = %q, want %q", expr.Operation.Value, op)
 			}
@@ -336,7 +337,7 @@ func TestParseOperatorShapes(t *testing.T) {
 	comparisons := []string{"equals", "different", "bigger", "smaller"}
 	for _, op := range comparisons {
 		t.Run(op, func(t *testing.T) {
-			expr := first[RelativeExpression](t, "1 "+op+" 2;")
+			expr := first[ast.RelativeExpression](t, "1 "+op+" 2;")
 			if expr.Operation.Value != op {
 				t.Errorf("operation = %q, want %q", expr.Operation.Value, op)
 			}
@@ -345,7 +346,7 @@ func TestParseOperatorShapes(t *testing.T) {
 
 	for _, op := range []string{"and", "or"} {
 		t.Run(op, func(t *testing.T) {
-			expr := first[BooleanExpression](t, "true "+op+" false;")
+			expr := first[ast.BooleanExpression](t, "true "+op+" false;")
 			if expr.Operation.Value != op {
 				t.Errorf("operation = %q, want %q", expr.Operation.Value, op)
 			}
@@ -357,27 +358,27 @@ func TestParseOperatorShapes(t *testing.T) {
 // they can be checked directly.
 func TestPrecedence(t *testing.T) {
 	// 2 + 3 * 4 groups as 2 + (3 * 4)
-	sum := first[BinaryExpression](t, "2 + 3 * 4;")
+	sum := first[ast.BinaryExpression](t, "2 + 3 * 4;")
 	if sum.Operation.Value != "+" {
 		t.Fatalf("the outer operation is %q, want +", sum.Operation.Value)
 	}
-	product, ok := sum.Right.(BinaryExpression)
+	product, ok := sum.Right.(ast.BinaryExpression)
 	if !ok || product.Operation.Value != "*" {
 		t.Errorf("the right side is %T, want the multiplication", sum.Right)
 	}
 
 	// Parentheses override it: (2 + 3) * 4
-	product = first[BinaryExpression](t, "(2 + 3) * 4;")
+	product = first[ast.BinaryExpression](t, "(2 + 3) * 4;")
 	if product.Operation.Value != "*" {
 		t.Fatalf("the outer operation is %q, want *", product.Operation.Value)
 	}
-	if inner, ok := product.Left.(BinaryExpression); !ok || inner.Operation.Value != "+" {
+	if inner, ok := product.Left.(ast.BinaryExpression); !ok || inner.Operation.Value != "+" {
 		t.Errorf("the left side is %T, want the sum", product.Left)
 	}
 
 	// Comparison binds looser than arithmetic: (1 + 1) equals 2
-	comparison := first[RelativeExpression](t, "1 + 1 equals 2;")
-	if _, ok := comparison.Left.(BinaryExpression); !ok {
+	comparison := first[ast.RelativeExpression](t, "1 + 1 equals 2;")
+	if _, ok := comparison.Left.(ast.BinaryExpression); !ok {
 		t.Errorf("the left side is %T, want the sum", comparison.Left)
 	}
 }
@@ -385,16 +386,16 @@ func TestPrecedence(t *testing.T) {
 // Additive expressions are left-associative, which is why the EVM lowering has to reorder
 // them: 10 - 3 - 2 is (10 - 3) - 2, not 10 - (3 - 2).
 func TestAdditiveIsLeftAssociative(t *testing.T) {
-	expr := first[BinaryExpression](t, "10 - 3 - 2;")
+	expr := first[ast.BinaryExpression](t, "10 - 3 - 2;")
 
-	left, ok := expr.Left.(BinaryExpression)
+	left, ok := expr.Left.(ast.BinaryExpression)
 	if !ok {
 		t.Fatalf("the left side is %T, want the inner subtraction", expr.Left)
 	}
-	if first, ok := left.Left.(NumberLiteral); !ok || first.Value != 10 {
+	if first, ok := left.Left.(ast.NumberLiteral); !ok || first.Value != 10 {
 		t.Errorf("the innermost operand is %v, want 10", left.Left)
 	}
-	if last, ok := expr.Right.(NumberLiteral); !ok || last.Value != 2 {
+	if last, ok := expr.Right.(ast.NumberLiteral); !ok || last.Value != 2 {
 		t.Errorf("the outer right operand is %v, want 2", expr.Right)
 	}
 }
@@ -403,12 +404,12 @@ func TestAdditiveIsLeftAssociative(t *testing.T) {
 // 20 / (5 / 2). They used to group to the right, which answered 10 for that.
 func TestMultiplicativeIsLeftAssociative(t *testing.T) {
 	for _, source := range []string{"20 / 5 / 2;", "4 / 2 * 6;", "2 * 3 / 6;"} {
-		expr := first[BinaryExpression](t, source)
+		expr := first[ast.BinaryExpression](t, source)
 
-		if _, ok := expr.Left.(BinaryExpression); !ok {
+		if _, ok := expr.Left.(ast.BinaryExpression); !ok {
 			t.Errorf("%s: the left side is %T, want the inner operation", source, expr.Left)
 		}
-		if _, ok := expr.Right.(NumberLiteral); !ok {
+		if _, ok := expr.Right.(ast.NumberLiteral); !ok {
 			t.Errorf("%s: the right side is %T, want the last operand alone", source, expr.Right)
 		}
 	}
@@ -417,37 +418,37 @@ func TestMultiplicativeIsLeftAssociative(t *testing.T) {
 // `and` binds tighter than `or`: a and b or c is (a and b) or c. They used to share one
 // precedence level and recurse to the right, which grouped it as a and (b or c).
 func TestAndBindsTighterThanOr(t *testing.T) {
-	expr := first[BooleanExpression](t, "a and b or c;")
+	expr := first[ast.BooleanExpression](t, "a and b or c;")
 	if expr.Operation.Value != "or" {
 		t.Fatalf("the outer operation is %q, want or", expr.Operation.Value)
 	}
-	inner, ok := expr.Left.(BooleanExpression)
+	inner, ok := expr.Left.(ast.BooleanExpression)
 	if !ok {
 		t.Fatalf("the left side is %T, want the inner conjunction", expr.Left)
 	}
 	if inner.Operation.Value != "and" {
 		t.Errorf("the inner operation is %q, want and", inner.Operation.Value)
 	}
-	if _, ok := expr.Right.(IdentifierLiteral); !ok {
+	if _, ok := expr.Right.(ast.IdentifierLiteral); !ok {
 		t.Errorf("the right side is %T, want the last operand alone", expr.Right)
 	}
 }
 
 // A comparison binds tighter than both, so a range reads as one test.
 func TestComparisonBindsTighterThanAnd(t *testing.T) {
-	expr := first[BooleanExpression](t, "n bigger 18 and n smaller 65;")
-	if _, ok := expr.Left.(RelativeExpression); !ok {
+	expr := first[ast.BooleanExpression](t, "n bigger 18 and n smaller 65;")
+	if _, ok := expr.Left.(ast.RelativeExpression); !ok {
 		t.Errorf("the left side is %T, want the comparison", expr.Left)
 	}
-	if _, ok := expr.Right.(RelativeExpression); !ok {
+	if _, ok := expr.Right.(ast.RelativeExpression); !ok {
 		t.Errorf("the right side is %T, want the comparison", expr.Right)
 	}
 }
 
 // Exponentiation recurses to the right: 2 ^ 3 ^ 2 is 2 ^ (3 ^ 2).
 func TestExponentiationIsRightAssociative(t *testing.T) {
-	expr := first[BinaryExpression](t, "2 ^ 3 ^ 2;")
-	if _, ok := expr.Right.(BinaryExpression); !ok {
+	expr := first[ast.BinaryExpression](t, "2 ^ 3 ^ 2;")
+	if _, ok := expr.Right.(ast.BinaryExpression); !ok {
 		t.Errorf("the right side is %T, want the inner exponentiation", expr.Right)
 	}
 }
@@ -457,13 +458,13 @@ func TestParseSeveralTopLevelExpressions(t *testing.T) {
 	if len(nodes) != 3 {
 		t.Fatalf("got %d nodes, want 3", len(nodes))
 	}
-	if _, ok := nodes[0].(IdentLiteral); !ok {
+	if _, ok := nodes[0].(ast.IdentLiteral); !ok {
 		t.Errorf("first node is %T", nodes[0])
 	}
-	if _, ok := nodes[1].(PrintStatement); !ok {
+	if _, ok := nodes[1].(ast.PrintStatement); !ok {
 		t.Errorf("second node is %T", nodes[1])
 	}
-	if _, ok := nodes[2].(BinaryExpression); !ok {
+	if _, ok := nodes[2].(ast.BinaryExpression); !ok {
 		t.Errorf("third node is %T", nodes[2])
 	}
 }
@@ -541,32 +542,32 @@ ident t = pull [1, 2] 3;
 		t.Fatalf("lexer: %v", err)
 	}
 
-	ast, err := New(NewParserOptions{
+	tree, err := New(NewParserOptions{
 		Filename: "main.ar",
 		Tokens:   tokens,
 	}).Parse()
 	if err != nil {
 		t.Fatalf("parsing with logging on: %v", err)
 	}
-	if len(ast.Nodes) != 4 {
-		t.Errorf("got %d nodes, want 4", len(ast.Nodes))
+	if len(tree.Nodes) != 4 {
+		t.Errorf("got %d nodes, want 4", len(tree.Nodes))
 	}
 }
 
 // ASTEqual is what other packages use to compare trees, so it has to notice a difference
 // wherever it sits.
-func TestASTEqual(t *testing.T) {
-	build := func(source string) AST {
+func TestEqualAcrossSources(t *testing.T) {
+	build := func(source string) ast.AST {
 		t.Helper()
-		ast, err := parseSource(t, source, "main.ar")
+		tree, err := parseSource(t, source, "main.ar")
 		if err != nil {
 			t.Fatalf("parsing %q: %v", source, err)
 		}
-		return ast
+		return tree
 	}
 
 	same := "ident a = defer { 1; };"
-	if !ASTEqual(build(same), build(same)) {
+	if !ast.Equal(build(same), build(same)) {
 		t.Error("the same source produced trees that do not compare equal")
 	}
 
@@ -583,7 +584,7 @@ func TestASTEqual(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if ASTEqual(build(tc.a), build(tc.b)) {
+			if ast.Equal(build(tc.a), build(tc.b)) {
 				t.Errorf("%q and %q should not compare equal", tc.a, tc.b)
 			}
 		})

@@ -42,7 +42,7 @@ func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (e
 		}
 	}
 
-	ast, err := parser.New(parser.NewParserOptions{
+	tree, err := parser.New(parser.NewParserOptions{
 		Filename: source,
 		Tokens:   tokens,
 		TapeSize: tapeSize,
@@ -53,14 +53,14 @@ func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (e
 	// A phase returns what it made and does not show it; showing is decided here, once the
 	// phase has finished, which is why the output is no longer on-time.
 	if slices.Contains(loggers, "parser") {
-		if err := trace.AST(traces, ast); err != nil {
+		if err := trace.AST(traces, tree); err != nil {
 			return emitter.Program{}, err
 		}
 	}
 
 	program, err := emitter.New(emitter.NewEmitterOptions{
 		TapeSize: tapeSize,
-	}).EmitProgram(ast)
+	}).EmitProgram(tree)
 	if err != nil {
 		return emitter.Program{}, err
 	}

@@ -20,4 +20,3 @@ func ExtractSignificantBytes(bs []byte) []byte {
 	// Return bytes from first non-zero to end
 	return bs[start:]
 }
-

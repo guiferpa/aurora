@@ -10,6 +10,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -30,7 +31,7 @@ type Analysis struct {
 	Source string
 	Mapper *lsp.Mapper
 	Tokens []token.Token
-	AST    *parser.AST
+	AST    *ast.AST
 	Err    error
 }
 
@@ -61,7 +62,7 @@ func Analyze(doc Document) *Analysis {
 		return analysis
 	}
 
-	ast, err := parser.New(parser.NewParserOptions{
+	tree, err := parser.New(parser.NewParserOptions{
 		Filename: doc.Filename,
 		Tokens:   tokens,
 		// How wide a value is decides what fits in one, so the document is read in the
@@ -72,7 +73,7 @@ func Analyze(doc Document) *Analysis {
 		analysis.Err = err
 		return analysis
 	}
-	analysis.AST = &ast
+	analysis.AST = &tree
 
 	return analysis
 }
@@ -231,13 +232,13 @@ func CompletionItemsFor(doc Document, pos lsp.Position, snippets bool) []Complet
 
 // FindIdent looks for the declaration of name, walking into the expression forms that
 // carry a body.
-func FindIdent(nodes []parser.Node, name string) *parser.IdentLiteral {
+func FindIdent(nodes []ast.Node, name string) *ast.IdentLiteral {
 	for _, node := range nodes {
-		if ident, ok := node.(parser.IdentLiteral); ok {
+		if ident, ok := node.(ast.IdentLiteral); ok {
 			if ident.Id == name {
 				return &ident
 			}
-			if found := FindIdent([]parser.Node{ident.Value}, name); found != nil {
+			if found := FindIdent([]ast.Node{ident.Value}, name); found != nil {
 				return found
 			}
 		}
@@ -249,12 +250,12 @@ func FindIdent(nodes []parser.Node, name string) *parser.IdentLiteral {
 }
 
 // CollectIdents lists every identifier declared in the document, outermost first.
-func CollectIdents(nodes []parser.Node) []parser.IdentLiteral {
-	idents := make([]parser.IdentLiteral, 0)
+func CollectIdents(nodes []ast.Node) []ast.IdentLiteral {
+	idents := make([]ast.IdentLiteral, 0)
 	for _, node := range nodes {
-		if ident, ok := node.(parser.IdentLiteral); ok {
+		if ident, ok := node.(ast.IdentLiteral); ok {
 			idents = append(idents, ident)
-			idents = append(idents, CollectIdents([]parser.Node{ident.Value})...)
+			idents = append(idents, CollectIdents([]ast.Node{ident.Value})...)
 			continue
 		}
 		idents = append(idents, CollectIdents(childrenOf(node))...)
@@ -262,14 +263,14 @@ func CollectIdents(nodes []parser.Node) []parser.IdentLiteral {
 	return idents
 }
 
-func childrenOf(node parser.Node) []parser.Node {
+func childrenOf(node ast.Node) []ast.Node {
 	switch n := node.(type) {
-	case parser.BlockExpression:
+	case ast.BlockExpression:
 		return n.Body
-	case parser.DeferExpression:
+	case ast.DeferExpression:
 		return n.Block.Body
-	case parser.IfExpression:
-		body := make([]parser.Node, 0, len(n.Body)+1)
+	case ast.IfExpression:
+		body := make([]ast.Node, 0, len(n.Body)+1)
 		body = append(body, n.Body...)
 		if n.Else != nil {
 			body = append(body, n.Else.Body...)
@@ -280,31 +281,31 @@ func childrenOf(node parser.Node) []parser.Node {
 	}
 }
 
-func describeNode(node parser.Node) string {
+func describeNode(node ast.Node) string {
 	switch node.(type) {
-	case parser.NumberLiteral:
+	case ast.NumberLiteral:
 		return "number"
-	case parser.BooleanLiteral:
+	case ast.BooleanLiteral:
 		return "boolean"
-	case parser.TextLiteral:
+	case ast.TextLiteral:
 		return "text"
-	case parser.IdentifierLiteral:
+	case ast.IdentifierLiteral:
 		return "identifier"
-	case parser.TapeBracketExpression:
+	case ast.TapeBracketExpression:
 		return "tape"
-	case parser.PullExpression, parser.PushExpression, parser.HeadExpression, parser.TailExpression:
+	case ast.PullExpression, ast.PushExpression, ast.HeadExpression, ast.TailExpression:
 		return "tape operation"
-	case parser.BinaryExpression:
+	case ast.BinaryExpression:
 		return "arithmetic expression"
-	case parser.RelativeExpression, parser.BooleanExpression:
+	case ast.RelativeExpression, ast.BooleanExpression:
 		return "boolean expression"
-	case parser.IfExpression:
+	case ast.IfExpression:
 		return "if expression"
-	case parser.BlockExpression:
+	case ast.BlockExpression:
 		return "scope"
-	case parser.DeferExpression:
+	case ast.DeferExpression:
 		return "deferred scope"
-	case parser.CalleeLiteral:
+	case ast.CalleeLiteral:
 		return "call"
 	default:
 		return "expression"

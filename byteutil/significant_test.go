@@ -77,4 +77,3 @@ func TestExtractSignificantBytes(t *testing.T) {
 		})
 	}
 }
-

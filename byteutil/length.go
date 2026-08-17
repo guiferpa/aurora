@@ -1,6 +1,6 @@
 package byteutil
 
-const MAX_BYTES_VARIANTS = 1<<8
+const MAX_BYTES_VARIANTS = 1 << 8
 const MAX_BYTES = MAX_BYTES_VARIANTS - 1
 
 func NonZeroFilledLength(v []byte) int {

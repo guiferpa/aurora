@@ -23,38 +23,31 @@ That is a decision, not a gap.
 ## Two layers, five kinds of package
 
 The code is **hosting** — the logic of one kind of interaction — and **vital** — the pipeline
-that turns source into something that runs. Everything else exists to serve one of the two.
+that turns source into something that runs.
 
 ```
 (lexer) → {tokens} → (parser) → {tree} → (emitter) → {IR} → (builder) │ (evaluator)
 ```
 
-Between parentheses are the phases; between braces, what crosses between them.
+Between parentheses are the phases; between braces, what crosses between them, which are
+packages of their own.
 
-| kind | who | imports | is imported by |
-|---|---|---|---|
-| **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
-| **wire** | what crosses: tokens, tree, IR, warnings | util, and nothing else of the project | everyone |
-| **util** | reusable behaviour that never touches the world: `byteutil`, `logger` | **nothing of the project** | everyone |
-| **hosting** | one interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
-| **shared** | serves the hosting layer, not one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
+| kind | who |
+|---|---|
+| **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` |
+| **wire** | `wire/token`, `wire/ast`, `wire/ir` |
+| **util** | `byteutil`, `logger` |
+| **hosting** | `hosting/cli`, `hosting/repl`, `hosting/lsp` |
+| **shared** | `shared/fileutil`, `shared/manifest`, `shared/trace` |
 
-**The four rules that follow:**
+**No package knows another** — except wire and util, which know nothing of the project and may
+be known by all. **A vital package is pure**: no I/O, nothing done that is not returned.
+**Errors are resolved in hosting**, which is also the only layer that touches the world, and
+**wiring happens only in `main`**. A sub-package has the kind of its parent.
 
-1. **No package knows another** — except wire and util, which know nothing of the project and
-   may be known by all. What would tie two together is injected instead.
-2. **A vital package is pure**: no I/O, and nothing done that is not returned. What a program
-   printed comes back as a value, so the host decides what to do with it.
-3. **Errors are resolved in hosting.** A package returns an error; it never writes one, and it
-   never ends the process.
-4. **I/O happens in hosting, and injection happens only in `main`.** Nothing is wired
-   together anywhere else.
-
-**A sub-package has the kind of its parent** — `evaluator/builtin` is vital, `lsp/textdoc` is
-hosting. One that needs I/O takes the port and calls it; it never decides to write.
-
-The tree does not obey this yet. What it costs, in which order, and what it finds today is in
-[rfcs/phase_coupling.md](rfcs/phase_coupling.md).
+Why each of those, what belongs where, and what the tree does not obey yet:
+**[docs/contributing/architecture.md](docs/contributing/architecture.md)**, which is the
+source of truth — this table is a pointer, not a copy.
 
 ## Working here
 

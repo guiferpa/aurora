@@ -34,7 +34,7 @@ Between parentheses are the phases; between braces, what crosses between them.
 | kind | who | imports | is imported by |
 |---|---|---|---|
 | **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
-| **wire** | what crosses: tokens, tree, IR, warnings | **nothing of the project** | everyone |
+| **wire** | what crosses: tokens, tree, IR, warnings | util, and nothing else of the project | everyone |
 | **util** | reusable behaviour that never touches the world: `byteutil`, `logger` | **nothing of the project** | everyone |
 | **hosting** | one interaction: `internal/cli`, `repl`, `lsp` | wire, util, shared | `main` |
 | **shared** | serves the hosting layer, not one interaction: `fileutil`, `manifest`, `internal/trace` | wire, util | hosting, `main` |

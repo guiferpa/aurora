@@ -1,66 +1,43 @@
-# Fases não se conhecem: o que isso exige do projeto
+# Fases não se conhecem: o caminho até lá
 
-**Estado:** proposta · **Data:** 2026-08-17
+**Estado:** aceita · **Data:** 2026-08-17
 
-Veio do review do PR #38 — o `builder/evm` importa o `emitter` — e cresceu quando as regras
-foram fixadas. Fica registrado aqui o que elas exigem e o que elas encontram no código de hoje.
+Veio do review do PR #38 — o `builder/evm` importa o `emitter` — e virou a arquitetura do
+projeto. A taxonomia está decidida e escrita no [CLAUDE.md](../CLAUDE.md) e no agente de
+padrões; o que fica aqui é **o caminho da árvore de hoje até ela**, com o custo de cada etapa.
 
 Tudo abaixo foi medido.
 
 ---
 
-## As regras, como ficaram
-
-1. **Pacote não tem interdependência com pacote.** O que ligaria um ao outro se resolve por
-   injeção de dependência. **Exceto pacotes auxiliares.**
-2. **Pacote vital é puro:** sem I/O, e sem processamento que não devolva nada.
-3. **Erro se trata na camada de hosting.** Nada de erro resolvido magicamente dentro de um
-   pacote.
-4. **I/O só na camada de hosting, e injeção só em arquivos do pacote `main`.** Nenhum
-   entrelaçamento entre vitais, nem entre hosting e vital, que não seja por injeção.
-
-E o encadeamento das fases:
+## O desenho é o argumento
 
 ```
-(Lexer) → {cadeia de tokens} → (Parser) → {árvore abstrata} → (Emitter) → {código intermediário} → (Builder)
+(lexer) → {tokens} → (parser) → {árvore} → (emitter) → {IR} → (builder) │ (evaluator)
 ```
 
----
+Entre parênteses estão as **fases**; entre chaves, os **artefatos**. E nenhum artefato tem
+pacote próprio: a cadeia de tokens mora no `lexer`, a árvore no `parser`, o IR no `emitter`.
 
-## O que o desenho já diz
+É daí que vem o acoplamento. Não é o builder querendo conhecer o emitter — é **o artefato
+guardado dentro de quem o produziu**. Enquanto o IR morar no emitter, quem lê IR importa o
+emitter.
 
-Vale reparar no que esse encadeamento nomeia. Entre parênteses estão as **fases**; entre
-chaves, os **artefatos**. São coisas de naturezas diferentes, e hoje as chaves não existem
-como pacote: a cadeia de tokens mora no `lexer`, a árvore mora no `parser`, o código
-intermediário mora no `emitter`.
-
-É daí que vem o acoplamento. Não é o `builder` querendo conhecer o `emitter` — é o artefato
-que ele lê estar guardado dentro de quem o produziu. Enquanto o IR morar no emitter, quem lê
-IR importa o emitter.
-
-**Injeção sozinha não resolve isso.** Se o Lexer produz uma cadeia de tokens e o Parser a
-consome, os dois precisam nomear esse tipo. Injetar o *comportamento* não elimina o tipo do
-*dado*. Restam dois caminhos:
-
-- **o artefato vira pacote auxiliar** — e a regra 1 já abre essa exceção, porque um auxiliar
-  não conhece nada do projeto;
-- **cada fase declara a interface do que consome**, e o `main` converte — o que, para fatias,
-  é uma cópia a cada fronteira, e para constantes (tags, opcodes) é uma tabela de tradução no
-  `main`, onde um mapa incompleto vira bytecode errado em silêncio em vez de erro de
-  compilação.
-
-O primeiro é o que o encadeamento acima descreve. As chaves viram pacotes.
+**Injeção sozinha não alcança isso.** Se o Lexer produz uma cadeia de tokens e o Parser a
+consome, os dois precisam nomear esse tipo; injetar o *comportamento* não elimina o tipo do
+*dado*. Por isso os artefatos viram uma categoria própria — **wire** — que não conhece nada do
+projeto e pode ser conhecida por todos. As chaves do desenho viram pacotes.
 
 ## O que as regras encontram hoje
 
 | Regra | Estado |
 |---|---|
-| Fase não conhece fase | ✗ `parser→lexer`, `emitter→parser`, `evaluator→emitter`, `builder/evm→emitter` |
+| Nenhum pacote conhece outro | ✗ `parser→lexer`, `emitter→parser`, `evaluator→emitter`, `builder/evm→emitter` |
 | Injeção só no `main` | ✗ quatro lugares montam fases, e **só um é `main`** |
-| I/O só no hosting | ✗ o evaluator recebe um `io.Writer` e **escreve durante a avaliação** |
-| Erro no hosting | ✓ as fases devolvem erro, não escrevem |
+| I/O só em hosting | ✗ o evaluator escreve durante a avaliação; `logger` escreve e chama `os.Exit(2)` |
+| Erro em hosting | ✗ o `logger` encerra o processo por conta própria |
 
-Os quatro lugares que montam fases:
+Quem monta fases hoje:
 
 | Onde | Pacote | Monta |
 |---|---|---|
@@ -72,68 +49,61 @@ Os quatro lugares que montam fases:
 E o `builder/evm` nomeia **33 constantes de opcode** do emitter. Não é a forma que o prende —
 é o vocabulário.
 
-## A regra 2 encontra o que ninguém tinha olhado
+## As etapas
 
-O evaluator guarda um `io.Writer` e os builtins de print escrevem nele **enquanto o programa
-roda**. Foi injetado pelo host, o que atende a regra 4, mas não a 2: é I/O dentro de um pacote
-vital.
+Artefatos primeiro, montagem por último. As três primeiras tiram a interdependência **sem
+tocar em assinatura de host**, o que faz a quarta — que atravessa o projeto — ficar bem menor.
 
-É o mesmo problema que tirou os loggers de dentro das fases, e o roadmap já registra a versão
-dele que sobrou — o traço do evaluator só volta se ele **devolver** o traço em vez de escrever.
-Com a regra 2 escrita assim, o print cai no mesmo lugar: um evaluator puro devolveria o que o
-programa disse, e quem escreve seria o host.
+**1. O IR vira `wire`.** `Instruction` e os opcodes saem do `emitter`. É o artefato com mais
+consumidores — `builder/evm`, `evaluator`, `internal/cli`, `internal/trace`, `repl` — e o mais
+barato de mover: 37 + 41 linhas de declaração, sem comportamento. Depois disso, `emitter`,
+`evaluator` e `builder/evm` dependem do mesmo pacote e de nenhum outro.
 
-Isso tem um custo que precisa ser dito: hoje o print sai **na hora**, no meio da execução. Um
-evaluator que devolve tudo no fim muda o que o usuário vê num programa longo, e num REPL muda
-quando a linha aparece.
+**2. A árvore vira `wire`.** Mesmo desenho, custo maior: o emitter faz `switch` sobre vinte e
+um tipos concretos de nó.
 
-## Proposta
+**3. A cadeia de tokens vira `wire`.** `Token` e as tags saem do `lexer`.
 
-**Primeiro os artefatos, depois a montagem.**
+**4. `logger` vira util de formatação.** Hoje ele escreve em `os.Stderr` e chama `os.Exit(2)`
+— um pacote decidindo o fim do processo. Passa a devolver a mensagem formatada; cada hosting
+escreve, e o `os.Exit` sobe para `cmd/*`. É a etapa que conserta a regra 3.
 
-**Etapa 1 — o código intermediário vira pacote.** `Instruction` e os opcodes saem do `emitter`
-para um auxiliar (`ir`, ou o nome que se escolher). É o artefato com mais consumidores —
-`builder/evm`, `evaluator`, `internal/cli`, `internal/trace`, `repl` — e o mais barato de
-mover: `opcodes.go` tem 37 linhas e `instruction.go` 41, só declaração, sem comportamento.
-Depois disso, `emitter → ir`, `evaluator → ir`, `builder/evm → ir`, e nenhuma fase importa
-outra fase por causa do IR.
+**5. `fileutil`, `manifest` e `internal/trace` viram `shared`.** Eles servem a camada de
+hosting, não uma interação. Util não toca no mundo; esses três tocam.
 
-**Etapa 2 — a árvore vira pacote.** Mesmo desenho, custo bem maior: o emitter faz `switch`
-sobre vinte e um tipos concretos de nó. Vale fazer depois da etapa 1, com o desenho já visto
-de pé.
+**6. A montagem sobe para o `main`.** Cada host declara a interface do que precisa e o `main`
+injeta as fases prontas. É a etapa que muda mais assinatura: `internal/cli` deixa de importar
+`lexer`, `parser` e `emitter`.
 
-**Etapa 3 — a cadeia de tokens vira pacote.** `Token` e as tags saem do `lexer`.
+**7. O evaluator devolve o que o programa disse.** Os builtins de print param de escrever. Duas
+coisas a decidir junto, e nenhuma é detalhe:
 
-**Etapa 4 — a montagem sobe para o `main`.** Cada host declara a interface do que precisa e o
-`main` injeta as fases prontas. É a etapa que muda mais assinatura: `internal/cli` deixa de
-importar `lexer`, `parser` e `emitter`, e passa a receber o que compila.
+- a saída tem que voltar **mesmo quando a avaliação falha** — um programa que imprime três
+  linhas e depois estoura não pode perder as três;
+- o usuário deixa de ver a saída **na hora**. Num programa longo, e principalmente no REPL,
+  muda quando a linha aparece.
 
-**Etapa 5 — o evaluator devolve o que o programa disse**, em vez de escrever. Depois de
-decidir o que fazer com a saída na hora certa.
+## Consequência para o que já foi feito
 
-A ordem importa: as etapas 1 a 3 tiram a interdependência sem mexer em assinatura de host. A
-4 é a que atravessa o projeto inteiro, e fica muito mais fácil quando os artefatos já têm casa.
-
-## O que já foi resolvido
-
-No próprio #38: o `Warnings()` do builder devolvia `emitter.Warning`, ou seja, o backend
-falava de si mesmo no vocabulário da fase anterior. O builder passou a ter o seu, e o host
-junta os dois para imprimir.
+No #38 o `Warnings()` do builder deixou de devolver `emitter.Warning` e ganhou um tipo próprio,
+com o host convertendo os dois. **Com `wire`, isso encolhe**: aviso é dado que atravessa da
+fase para o host, ou seja, é wire. Um `wire.Warning` só, e nenhuma conversão. O conserto do #38
+continua certo sob a regra que existia na época; a etapa 1 o simplifica.
 
 ## O que não é problema
 
-O `main` importar tudo é o desenho. E um pacote auxiliar ser importado por qualquer um é a
-exceção da regra 1 — é o que torna os artefatos possíveis.
+O `main` importar tudo é o desenho. E wire e util serem importados por qualquer um é a exceção
+que torna os artefatos possíveis — sem ela, nada disso fecha.
 
 ## Perguntas em aberto
 
-1. **Nome dos pacotes de artefato.** `ir`, `ast`, `token`? Ou um `contract/` com os três
-   dentro?
+1. **Nome dos pacotes.** `wire/ir`, `wire/ast`, `wire/token` — um pacote por artefato, para
+   que o builder não importe a árvore junto com o IR.
 2. **O que viaja junto com o IR?** `Program`, `Expression` e `Label` moram no emitter e
-   atravessam para o host. `ResolveOpCode` e `Format` são apresentação — talvez pertençam ao
-   `internal/trace`.
-3. **`internal/cli` continua existindo?** Ele é host mas não é `main`. Ou ele passa a receber
-   tudo injetado, ou o que ele faz sobe para `cmd/aurora`.
-4. **O print sai na hora ou no fim?** A regra 2 pede que o evaluator devolva; o usuário hoje vê
+   atravessam para o host: são wire. `Format` desenha uma instrução para humano — é
+   apresentação, e vai para `internal/trace`. `ResolveOpCode` dá nome a um opcode: dá para
+   argumentar que o nome é parte do vocabulário e fica no wire.
+3. **`internal/cli` continua existindo?** Ele é hosting mas não é `main`. Ou recebe tudo
+   injetado, ou o que ele faz sobe para `cmd/aurora`.
+4. **O print sai na hora ou no fim?** A regra pede que o evaluator devolva; o usuário hoje vê
    sair no meio da execução.
-5. **O LSP e o playground também?** Os dois montam fases; o playground já é `main`, o LSP não.

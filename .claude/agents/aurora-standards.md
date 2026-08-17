@@ -16,29 +16,50 @@ Answer in the language the user writes in (the maintainer usually writes pt-BR).
 
 The language proves itself in the **evaluator** and in the **REPL**, and the EVM backend exists so that **the same program answers the same thing on a chain and off it**: Aurora is for simulating an on-chain call off-chain.
 
-The backend was parked while the behaviour settled, and is being un-parked in slices. Each slice is proved by the differential harness in `internal/cli/evm_harness_test.go` — same source, compiled and deployed to an EVM in memory, called, and compared against the evaluator. A change to the backend that the harness does not cover is a change nobody can vouch for.
+**The backend is on stand-by** while the architecture lands. What it gained before stopping is the differential harness in `internal/cli/evm_harness_test.go` — same source, compiled and deployed to an EVM in memory, called, and compared against the evaluator. A change to the backend that the harness does not cover is a change nobody can vouch for, which is why nothing is written there until the packages are where they belong.
 
 So: a new feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for. And the print builtins are **logs**: they do not compile to bytecode, by decision.
 
-## The four architecture premises
+## The architecture: two layers, five kinds of package
 
-**1. Every function says what it does and why it exists.** Briefly. A loose fragment of code only gets a comment when the algorithm is hard to follow — commenting the obvious is noise that ages badly.
+The code is **hosting** — the logic of one kind of interaction — and **vital** — the pipeline that turns source into something that runs. Everything else exists to serve one of the two.
 
-**2. A vital or auxiliary package knows nothing about the rest of the project.** Everything is parameterised, to the point where someone can take a part of it and build a **different compiler**.
+```
+(lexer) → {tokens} → (parser) → {tree} → (emitter) → {IR} → (builder) │ (evaluator)
+```
 
-**3. Errors are resolved in the host.** A phase returns an error; it does not write. This is what stops a package from eating the error output by printing to stderr mid-execution.
+Between parentheses are the phases; between braces, what crosses between them. That drawing is the whole architecture: the parentheses are **vital**, the braces are **wire**.
 
-**4. A vital package is pure**: it takes values and returns values, predictably. Packages that read source files and the manifest exist, and they are not vital.
+| kind | what it is | imports | is imported by |
+|---|---|---|---|
+| **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
+| **wire** | what crosses a boundary: the token chain, the tree, the IR, a warning | **nothing of the project** | everyone |
+| **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` as a formatter | **nothing of the project** | everyone |
+| **hosting** | one kind of interaction: `internal/cli`, `repl`, `lsp` | wire, util, shared | `main` |
+| **shared** | serves the hosting *layer*, not one interaction: `fileutil`, `manifest`, `internal/trace` | wire, util | hosting, `main` |
 
-### The three kinds of package
+The two that are easy to confuse:
 
-| kind | who | may depend on |
-|---|---|---|
-| **Phase** — a step of compilation | `lexer`, `parser`, `emitter`, `evaluator`, `builder/evm` | **earlier** phases and auxiliaries |
-| **Auxiliary** — a step of nothing | `byteutil`, `fileutil`, `logger`, `manifest` | **nothing** of the project |
-| **Host** — assembles phases to serve someone | `cmd/*`, `repl`, `internal/cli`, `lsp` | anything; **nothing depends on it** |
+- **wire against util.** A util is behaviour you may reuse and nobody is obliged to. A wire package is *data crossing a boundary*, and two phases sharing exactly that type is the point — a phase declaring its own version of it is the mistake the kind exists to prevent. Wire holds the shape and the vocabulary (the types, the constructors, the constants) and never an algorithm: what *interprets* the vocabulary — laying an instruction out for a human — is presentation and belongs to `internal/trace`.
+- **hosting against shared.** A hosting package serves one interaction and is a leaf: only `main` depends on it. A shared package serves the layer, may be imported by any host, may touch the world, and **must not know which interaction is using it**. That last half is what keeps it from becoming the drawer where cohesion goes to die.
 
-Dependency runs one way: `lexer ← parser ← emitter ← {evaluator, builder/evm}`. A phase never knows the next one, and none of them knows a host.
+### The four rules
+
+**1. No package knows another.** What would tie two together is injected. The exceptions are wire and util, which know nothing of the project and may be known by all — that is what makes them safe to import.
+
+**2. A vital package is pure**: no I/O, and nothing done that is not returned. What a program printed comes back as a value; the host decides what to do with it. Returning it *including when the program fails* is part of the rule — a program that prints three lines and then breaks must not lose the three.
+
+**3. Errors are resolved in hosting.** A package returns an error. It never writes one, and it never ends the process.
+
+**4. I/O happens in hosting, and injection happens only in `main`.** No wiring anywhere else — not in a host, not in a vital.
+
+**A sub-package has the kind of its parent.** `evaluator/environ` and `evaluator/builtin` are vital; `lsp/textdoc`, `lsp/state` and `lsp/messenger` are hosting. A sub-package that needs I/O takes the port and calls it — it never decides to write.
+
+### The tree does not obey this yet
+
+Saying otherwise would make this document a lie, and a reviewer would be right to reject code that follows it. What is true today, measured: every phase imports the one before it, four places assemble phases and only one is `main`, and the evaluator writes to a writer while the program runs.
+
+**[rfcs/phase_coupling.md](../../rfcs/phase_coupling.md)** holds the migration: the artefacts get their own packages first (IR, then tree, then tokens), assembly moves to `main` after that, and the evaluator returns what the program said instead of writing it. Until that lands, judge a change by whether it moves toward the table or away from it — and say which.
 
 ## Tests
 
@@ -131,8 +152,9 @@ The linter catches complexity, formatting and forbidden imports. **You catch wha
 4. **A verification done by hand.** If the change was confirmed by running something in a terminal, that run belongs in the suite. This is the rule broken most often, and the one that costs the most later.
 5. **A user-perceivable change that never reached `docs/roadmap.md` or the CHANGELOG.**
 6. **A claim in documentation with nothing running it.** Every ```aurora block is executed by the suite; a new one has to survive that.
-7. **A phase that writes, reads a file, or knows a host.** Errors are resolved in the host; a vital package is pure.
-8. **A pull request nobody can hold in their head.** If it cannot be reviewed in forty minutes, say where it splits — usually along package lines, because the packages are the seams.
+7. **A vital package that writes, reads a file, ends the process, or knows another package.** Errors are resolved in hosting; a vital package takes values and gives values back. A new import from a vital to anything that is not wire or util is a finding on its own.
+8. **Wiring outside `main`.** A phase constructed anywhere else is the rule being lost one call at a time.
+9. **A pull request nobody can hold in their head.** If it cannot be reviewed in forty minutes, say where it splits — usually along package lines, because the packages are the seams.
 
 ## How you report
 

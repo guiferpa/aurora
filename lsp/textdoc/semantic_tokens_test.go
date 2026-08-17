@@ -5,15 +5,15 @@ import (
 	"testing"
 )
 
-// token is one decoded 5-tuple, easier to read in a failure than a flat slice.
-type token struct {
+// decoded is one 5-tuple, easier to read in a failure than a flat slice.
+type decoded struct {
 	deltaLine, deltaChar, length, tokenType, modifiers uint
 }
 
-func decode(data []uint) []token {
-	tokens := make([]token, 0, len(data)/5)
+func decode(data []uint) []decoded {
+	tokens := make([]decoded, 0, len(data)/5)
 	for i := 0; i+4 < len(data); i += 5 {
-		tokens = append(tokens, token{data[i], data[i+1], data[i+2], data[i+3], data[i+4]})
+		tokens = append(tokens, decoded{data[i], data[i+1], data[i+2], data[i+3], data[i+4]})
 	}
 	return tokens
 }
@@ -22,12 +22,12 @@ func TestSemanticTokens(t *testing.T) {
 	cases := []struct {
 		name   string
 		source string
-		want   []token
+		want   []decoded
 	}{
 		{
 			name:   "declaration, operator and number",
 			source: "ident a = 1;",
-			want: []token{
+			want: []decoded{
 				{0, 0, 5, SemanticKeyword, 0},                            // ident
 				{0, 6, 1, SemanticVariable, SemanticModifierDeclaration}, // a
 				{0, 2, 1, SemanticOperator, 0},                           // =
@@ -37,7 +37,7 @@ func TestSemanticTokens(t *testing.T) {
 		{
 			name:   "call is a function, plain use is a variable",
 			source: "printb sum(a);",
-			want: []token{
+			want: []decoded{
 				{0, 0, 6, SemanticKeyword, 0},  // printb
 				{0, 7, 3, SemanticFunction, 0}, // sum(
 				{0, 4, 1, SemanticVariable, 0}, // a
@@ -46,7 +46,7 @@ func TestSemanticTokens(t *testing.T) {
 		{
 			name:   "comment covers the rest of the line",
 			source: "#- a comment\nident a = 1;",
-			want: []token{
+			want: []decoded{
 				{0, 0, 12, SemanticComment, 0},
 				{1, 0, 5, SemanticKeyword, 0},
 				{0, 6, 1, SemanticVariable, SemanticModifierDeclaration},
@@ -57,7 +57,7 @@ func TestSemanticTokens(t *testing.T) {
 		{
 			name:   "reel literal",
 			source: `printc "hi";`,
-			want: []token{
+			want: []decoded{
 				{0, 0, 6, SemanticKeyword, 0},
 				{0, 7, 4, SemanticString, 0},
 			},
@@ -65,7 +65,7 @@ func TestSemanticTokens(t *testing.T) {
 		{
 			name:   "multi-byte runes are measured in utf-16 units",
 			source: `printc "áé";`,
-			want: []token{
+			want: []decoded{
 				{0, 0, 6, SemanticKeyword, 0},
 				{0, 7, 4, SemanticString, 0}, // "áé" = 6 bytes, 4 UTF-16 units
 			},
@@ -73,7 +73,7 @@ func TestSemanticTokens(t *testing.T) {
 		{
 			name:   "defer and feed",
 			source: "ident f = defer { feed(0); };",
-			want: []token{
+			want: []decoded{
 				{0, 0, 5, SemanticKeyword, 0},
 				{0, 6, 1, SemanticVariable, SemanticModifierDeclaration},
 				{0, 2, 1, SemanticOperator, 0},
@@ -102,7 +102,7 @@ func TestSemanticTokensOnBrokenSource(t *testing.T) {
 	if len(tokens) < 5 {
 		t.Fatalf("expected the valid prefix to still be colored, got %d tokens", len(tokens))
 	}
-	if tokens[0] != (token{0, 0, 5, SemanticKeyword, 0}) {
+	if tokens[0] != (decoded{0, 0, 5, SemanticKeyword, 0}) {
 		t.Errorf("first token = %v, want the ident keyword", tokens[0])
 	}
 }

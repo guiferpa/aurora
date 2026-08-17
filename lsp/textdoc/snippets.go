@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // What a keyword expands to when the client expands snippets.
@@ -16,28 +16,28 @@ import (
 //
 // A keyword with no entry is offered as itself.
 var keywordSnippets = map[string]string{
-	lexer.IDENT:  "ident ${1:name} = ${0:value};",
-	lexer.DEFER:  "defer {\n\t$0\n}",
-	lexer.IF:     "if ${1:condition} {\n\t$0\n}",
-	lexer.BRANCH: "branch {\n\t${1:test}: ${2:value},\n\t${0:fallback};\n}",
-	lexer.STRUCT: "struct ${1:Name} { ${0:field} };",
-	lexer.AS:     "as ${0:Struct}",
-	lexer.ASSERT: "assert(${1:condition}, \"${0:message}\");",
-	lexer.FEED:   "feed(${0:0})",
-	lexer.PRINTB: "printb ${0:value};",
-	lexer.PRINTC: "printc ${0:value};",
-	lexer.PRINTD: "printd ${0:value};",
+	token.IDENT:  "ident ${1:name} = ${0:value};",
+	token.DEFER:  "defer {\n\t$0\n}",
+	token.IF:     "if ${1:condition} {\n\t$0\n}",
+	token.BRANCH: "branch {\n\t${1:test}: ${2:value},\n\t${0:fallback};\n}",
+	token.STRUCT: "struct ${1:Name} { ${0:field} };",
+	token.AS:     "as ${0:Struct}",
+	token.ASSERT: "assert(${1:condition}, \"${0:message}\");",
+	token.FEED:   "feed(${0:0})",
+	token.PRINTB: "printb ${0:value};",
+	token.PRINTC: "printc ${0:value};",
+	token.PRINTD: "printd ${0:value};",
 	// The tape operations take a target and then a value; for head and tail that value is
 	// an index, and it has to be written as a number.
-	lexer.PULL: "pull ${1:tape} ${0:value}",
-	lexer.PUSH: "push ${1:tape} ${0:value}",
-	lexer.HEAD: "head ${1:tape} ${0:1}",
-	lexer.TAIL: "tail ${1:tape} ${0:1}",
+	token.PULL: "pull ${1:tape} ${0:value}",
+	token.PUSH: "push ${1:tape} ${0:value}",
+	token.HEAD: "head ${1:tape} ${0:1}",
+	token.TAIL: "tail ${1:tape} ${0:1}",
 }
 
 // keywordCompletion offers a keyword, as a snippet when there is one and the client expands
 // them.
-func keywordCompletion(tag lexer.Tag, snippets bool) CompletionItem {
+func keywordCompletion(tag token.Tag, snippets bool) CompletionItem {
 	item := CompletionItem{
 		Label:  tag.Keyword,
 		Detail: tag.Description,

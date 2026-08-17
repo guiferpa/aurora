@@ -3,7 +3,7 @@ package parser
 import (
 	"testing"
 
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // nodeEqual is what every parser test believes: ASTEqual asks it whether the tree that came
@@ -20,10 +20,10 @@ func word(v string) IdentifierLiteral     { return IdentifierLiteral{Value: v} }
 func operation(v string) OperationLiteral { return OperationLiteral{Value: v} }
 
 var (
-	one = tok{[]byte("1"), lexer.TagNumber}
-	two = tok{[]byte("2"), lexer.TagNumber}
+	one = tok{[]byte("1"), token.TagNumber}
+	two = tok{[]byte("2"), token.TagNumber}
 	// Same text, different tag: TokenEqual reads both, and a token is not only its match.
-	oneAsIdent = tok{[]byte("1"), lexer.TagIdent}
+	oneAsIdent = tok{[]byte("1"), token.TagIdent}
 )
 
 var comparisonCases = []struct {
@@ -478,13 +478,13 @@ func TestASTEqualComparesTheFilename(t *testing.T) {
 func TestTokenEqual(t *testing.T) {
 	cases := []struct {
 		name string
-		a, b lexer.Token
+		a, b token.Token
 		want bool
 	}{
 		{name: "nothing against nothing", want: true},
 		{name: "nothing against a token", b: one, want: false},
 		{name: "a token against nothing", a: one, want: false},
-		{name: "alike", a: one, b: tok{[]byte("1"), lexer.TagNumber}, want: true},
+		{name: "alike", a: one, b: tok{[]byte("1"), token.TagNumber}, want: true},
 		{name: "another match", a: one, b: two, want: false},
 		{name: "another tag", a: one, b: oneAsIdent, want: false},
 	}

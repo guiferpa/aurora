@@ -1,52 +1,22 @@
 package lexer
 
-import "fmt"
+import (
+	"fmt"
 
-type Token interface {
-	GetMatch() []byte
-	GetTag() Tag
-	GetLine() int
-	GetColumn() int
-	GetCursor() int
-}
+	"github.com/guiferpa/aurora/wire/token"
+)
 
-type tok struct {
-	x, y, c int
-	tag     Tag
-	match   []byte
-}
-
-func (t tok) GetMatch() []byte {
-	return t.match
-}
-
-func (t tok) GetTag() Tag {
-	return t.tag
-}
-
-func (t tok) GetLine() int {
-	return t.x
-}
-
-func (t tok) GetColumn() int {
-	return t.y
-}
-
-func (t tok) GetCursor() int {
-	return t.c
-}
-
-func (l *Lexer) GetTokens(bs []byte) ([]Token, error) {
+func (l *Lexer) GetTokens(bs []byte) ([]token.Token, error) {
 	cursor := 0
 	col := cursor + 1
 	line := 1
 	length := len(bs)
-	tokens := make([]Token, 0)
+	tokens := make([]token.Token, 0)
 	isComment := false
 	for cursor < length {
 		matched, tag, match := MatchToken(bs[cursor:])
 		if !matched && !isComment {
-			return tokens, &Error{
+			return tokens, &token.Error{
 				Message: fmt.Sprintf("unexpected character at line %d, column %d", line, col),
 				Line:    line,
 				Column:  col,
@@ -55,18 +25,18 @@ func (l *Lexer) GetTokens(bs []byte) ([]Token, error) {
 			}
 		}
 		if !isComment {
-			tokens = append(tokens, tok{line, col, cursor, tag, match})
+			tokens = append(tokens, token.New(match, tag, line, col, cursor))
 		}
 		if len(match) == 0 {
 			cursor++
 		}
 		cursor = cursor + len(match)
 
-		if tag.Id == COMMENT_LINE {
+		if tag.Id == token.COMMENT_LINE {
 			isComment = true
 		}
 
-		if tag.Id == BREAK_LINE {
+		if tag.Id == token.BREAK_LINE {
 			isComment = false
 			line++
 			col = 1
@@ -74,17 +44,17 @@ func (l *Lexer) GetTokens(bs []byte) ([]Token, error) {
 			col = col + len(match)
 		}
 	}
-	return append(tokens, tok{line, col, cursor, TagEOF, []byte{}}), nil
+	return append(tokens, token.New([]byte{}, token.TagEOF, line, col, cursor)), nil
 }
 
-func (l *Lexer) GetFilledTokens(bs []byte) ([]Token, error) {
+func (l *Lexer) GetFilledTokens(bs []byte) ([]token.Token, error) {
 	toks, err := l.GetTokens(bs)
 	if err != nil {
 		return toks, err
 	}
-	ntoks := make([]Token, 0)
+	ntoks := make([]token.Token, 0)
 	for _, tok := range toks {
-		if tok.GetTag().Id == WHITESPACE || tok.GetTag().Id == BREAK_LINE || tok.GetTag().Id == COMMENT_LINE {
+		if tok.GetTag().Id == token.WHITESPACE || tok.GetTag().Id == token.BREAK_LINE || tok.GetTag().Id == token.COMMENT_LINE {
 			continue
 		}
 		ntoks = append(ntoks, tok)

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // Reading a field is resolved while parsing: the name becomes the index it was declared at,
@@ -97,9 +98,9 @@ func TestStructDirectiveReportsMistakes(t *testing.T) {
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %q, want it to say %q", err, tc.want)
 			}
-			positioned, ok := err.(*lexer.Error)
+			positioned, ok := err.(*token.Error)
 			if !ok {
-				t.Fatalf("error is %T, want a positioned *lexer.Error", err)
+				t.Fatalf("error is %T, want a positioned *token.Error", err)
 			}
 			if positioned.Line == 0 || positioned.Column == 0 {
 				t.Errorf("error has no position: line %d, column %d", positioned.Line, positioned.Column)

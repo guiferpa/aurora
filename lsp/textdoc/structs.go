@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // What the language server knows about the struct directives, read straight from the tokens
@@ -21,7 +21,7 @@ type structShapes struct {
 
 // scanStructs reads the directives out of a token stream: `struct Point { x, y }` for the
 // fields, and `ident p = Point{...}` or `... as Point` for what a name is read as.
-func scanStructs(tokens []lexer.Token) structShapes {
+func scanStructs(tokens []token.Token) structShapes {
 	found := structShapes{
 		fields: make(map[string][]string),
 		shapes: make(map[string]string),
@@ -29,12 +29,12 @@ func scanStructs(tokens []lexer.Token) structShapes {
 
 	for i := 0; i < len(tokens); i++ {
 		switch tokens[i].GetTag().Id {
-		case lexer.STRUCT:
+		case token.STRUCT:
 			if name, fields, next := readDeclaration(tokens, i); name != "" {
 				found.fields[name] = fields
 				i = next
 			}
-		case lexer.IDENT:
+		case token.IDENT:
 			// `ident p = Point{` and `ident p = <anything> as Point` both say what p is.
 			if name, shape := readBinding(tokens, i); shape != "" {
 				found.shapes[name] = shape
@@ -46,8 +46,8 @@ func scanStructs(tokens []lexer.Token) structShapes {
 }
 
 // readDeclaration reads `struct Name { a, b }` starting at the struct token.
-func readDeclaration(tokens []lexer.Token, i int) (string, []string, int) {
-	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != lexer.ID || tokens[i+2].GetTag().Id != lexer.O_CUR_BRK {
+func readDeclaration(tokens []token.Token, i int) (string, []string, int) {
+	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != token.ID || tokens[i+2].GetTag().Id != token.O_CUR_BRK {
 		return "", nil, i
 	}
 
@@ -55,10 +55,10 @@ func readDeclaration(tokens []lexer.Token, i int) (string, []string, int) {
 	fields := make([]string, 0)
 	for j := i + 3; j < len(tokens); j++ {
 		switch tokens[j].GetTag().Id {
-		case lexer.ID:
+		case token.ID:
 			fields = append(fields, string(tokens[j].GetMatch()))
-		case lexer.COMMA:
-		case lexer.C_CUR_BRK:
+		case token.COMMA:
+		case token.C_CUR_BRK:
 			return name, fields, j
 		default:
 			return name, fields, j
@@ -68,24 +68,24 @@ func readDeclaration(tokens []lexer.Token, i int) (string, []string, int) {
 }
 
 // readBinding reads what `ident name = ...` binds, up to the end of the statement.
-func readBinding(tokens []lexer.Token, i int) (string, string) {
-	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != lexer.ID || tokens[i+2].GetTag().Id != lexer.ASSIGN {
+func readBinding(tokens []token.Token, i int) (string, string) {
+	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != token.ID || tokens[i+2].GetTag().Id != token.ASSIGN {
 		return "", ""
 	}
 	name := string(tokens[i+1].GetMatch())
 
 	for j := i + 3; j < len(tokens); j++ {
 		switch tokens[j].GetTag().Id {
-		case lexer.SEMICOLON:
+		case token.SEMICOLON:
 			return name, ""
-		case lexer.AS:
+		case token.AS:
 			// The nearest `as` wins, which is the one the value ends up with.
-			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == lexer.ID {
+			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.ID {
 				return name, string(tokens[j+1].GetMatch())
 			}
-		case lexer.ID:
+		case token.ID:
 			// A construction: the name of a struct in front of a brace.
-			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == lexer.O_CUR_BRK {
+			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.O_CUR_BRK {
 				return name, string(tokens[j].GetMatch())
 			}
 		}
@@ -96,7 +96,7 @@ func readBinding(tokens []lexer.Token, i int) (string, string) {
 // fieldsBefore answers the fields offered at a position, when what sits in front of the
 // cursor is a dot on a value whose shape is known. Anything else gives nothing, and the
 // caller falls back to the ordinary list.
-func (s structShapes) fieldsBefore(tokens []lexer.Token, offset int) []string {
+func (s structShapes) fieldsBefore(tokens []token.Token, offset int) []string {
 	// The token being typed may already have started, so walk back over it first.
 	i := len(tokens) - 1
 	for ; i >= 0; i-- {
@@ -108,15 +108,15 @@ func (s structShapes) fieldsBefore(tokens []lexer.Token, offset int) []string {
 		return nil
 	}
 	// `p.|` sits on the dot; `p.x|` sits on a name that follows one.
-	if tokens[i].GetTag().Id == lexer.ID && i > 0 {
+	if tokens[i].GetTag().Id == token.ID && i > 0 {
 		i--
 	}
-	if i < 1 || tokens[i].GetTag().Id != lexer.DOT {
+	if i < 1 || tokens[i].GetTag().Id != token.DOT {
 		return nil
 	}
 
 	owner := tokens[i-1]
-	if owner.GetTag().Id != lexer.ID {
+	if owner.GetTag().Id != token.ID {
 		return nil
 	}
 	return s.fields[s.shapes[string(owner.GetMatch())]]
@@ -124,8 +124,8 @@ func (s structShapes) fieldsBefore(tokens []lexer.Token, offset int) []string {
 
 // structAt describes the struct a token belongs to, for hover: the declaration itself, or a
 // field being read out of a value.
-func (s structShapes) structAt(tokens []lexer.Token, token lexer.Token) (string, []string, int) {
-	name := string(token.GetMatch())
+func (s structShapes) structAt(tokens []token.Token, subject token.Token) (string, []string, int) {
+	name := string(subject.GetMatch())
 
 	if fields, declared := s.fields[name]; declared {
 		return name, fields, -1
@@ -134,11 +134,11 @@ func (s structShapes) structAt(tokens []lexer.Token, token lexer.Token) (string,
 	// Tokens are compared by where they start: the concrete type holds slices and cannot be
 	// compared with ==.
 	for i, t := range tokens {
-		if t.GetCursor() != token.GetCursor() || i < 2 || tokens[i-1].GetTag().Id != lexer.DOT {
+		if t.GetCursor() != subject.GetCursor() || i < 2 || tokens[i-1].GetTag().Id != token.DOT {
 			continue
 		}
 		owner := tokens[i-2]
-		if owner.GetTag().Id != lexer.ID {
+		if owner.GetTag().Id != token.ID {
 			continue
 		}
 		shape := s.shapes[string(owner.GetMatch())]

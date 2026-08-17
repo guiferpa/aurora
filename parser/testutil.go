@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
-// TokenEqual compares two lexer.Token by value (GetMatch, GetTag).
-func TokenEqual(a, b lexer.Token) bool {
+// TokenEqual compares two token.Token by value (GetMatch, GetTag).
+func TokenEqual(a, b token.Token) bool {
 	if a == nil && b == nil {
 		return true
 	}

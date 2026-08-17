@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"bytes"
+	"github.com/guiferpa/aurora/wire/token"
 	"strings"
 	"testing"
 )
@@ -13,92 +14,92 @@ func TestMatchToken(t *testing.T) {
 		Match   []byte
 		Matched bool
 	}{
-		// ID
-		{[]byte(`abc`), ID, []byte("abc"), true},
-		{[]byte(`is_true?`), ID, []byte("is_true?"), true},
-		{[]byte(`e_não?`), ID, []byte("e_n"), true},
-		{[]byte(`explore->implore?`), ID, []byte("explore->implore?"), true},
-		{[]byte(`0d?`), NUMBER, []byte("0"), true}, // Matches '0' as NUMBER
-		{[]byte(`Id?`), ID, []byte("Id?"), true},
-		// SEMICOLON
-		{[]byte(`;`), SEMICOLON, []byte(";"), true},
-		// COLON
-		{[]byte(`:`), COLON, []byte(":"), true},
-		// IF
-		{[]byte(`if () {}`), IF, []byte("if"), true},
-		// ELSE
-		{[]byte(`else {}`), ELSE, []byte("else"), true},
-		// COMMA
-		{[]byte(`,`), COMMA, []byte(","), true},
-		// C_BRK
-		{[]byte(`]`), C_BRK, []byte("]"), true},
-		// O_BRK
-		{[]byte(`[`), O_BRK, []byte("["), true},
-		// C_CUR_BRK
-		{[]byte(`}`), C_CUR_BRK, []byte("}"), true},
-		// O_CUR_BRK
-		{[]byte(`{`), O_CUR_BRK, []byte("{"), true},
-		// BRANCH
-		{[]byte(`branch [true: 1,]`), BRANCH, []byte("branch"), true},
-		// DEFER
-		{[]byte(`defer`), DEFER, []byte("defer"), true},
+		// token.ID
+		{[]byte(`abc`), token.ID, []byte("abc"), true},
+		{[]byte(`is_true?`), token.ID, []byte("is_true?"), true},
+		{[]byte(`e_não?`), token.ID, []byte("e_n"), true},
+		{[]byte(`explore->implore?`), token.ID, []byte("explore->implore?"), true},
+		{[]byte(`0d?`), token.NUMBER, []byte("0"), true}, // Matches '0' as token.NUMBER
+		{[]byte(`Id?`), token.ID, []byte("Id?"), true},
+		// token.SEMICOLON
+		{[]byte(`;`), token.SEMICOLON, []byte(";"), true},
+		// token.COLON
+		{[]byte(`:`), token.COLON, []byte(":"), true},
+		// token.IF
+		{[]byte(`if () {}`), token.IF, []byte("if"), true},
+		// token.ELSE
+		{[]byte(`else {}`), token.ELSE, []byte("else"), true},
+		// token.COMMA
+		{[]byte(`,`), token.COMMA, []byte(","), true},
+		// token.C_BRK
+		{[]byte(`]`), token.C_BRK, []byte("]"), true},
+		// token.O_BRK
+		{[]byte(`[`), token.O_BRK, []byte("["), true},
+		// token.C_CUR_BRK
+		{[]byte(`}`), token.C_CUR_BRK, []byte("}"), true},
+		// token.O_CUR_BRK
+		{[]byte(`{`), token.O_CUR_BRK, []byte("{"), true},
+		// token.BRANCH
+		{[]byte(`branch [true: 1,]`), token.BRANCH, []byte("branch"), true},
+		// token.DEFER
+		{[]byte(`defer`), token.DEFER, []byte("defer"), true},
 		// "nothing" was a keyword and is an ordinary identifier now
-		{[]byte(`nothing`), ID, []byte("nothing"), true},
+		{[]byte(`nothing`), token.ID, []byte("nothing"), true},
 		// "::" was the namespace operator: two ordinary colons now
-		{[]byte(`::`), COLON, []byte(":"), true},
+		{[]byte(`::`), token.COLON, []byte(":"), true},
 		// COMMENT
-		{[]byte(`#-`), COMMENT_LINE, []byte("#-"), true},
-		// SUB
-		{[]byte(`-`), SUB, []byte("-"), true},
-		// SUM
-		{[]byte(`+`), SUM, []byte("+"), true},
-		// SMALLER
-		{[]byte(`smaller`), SMALLER, []byte("smaller"), true},
-		// BIGGER
-		{[]byte(`bigger`), BIGGER, []byte("bigger"), true},
-		// DIFFERENT
-		{[]byte(`different`), DIFFERENT, []byte("different"), true},
-		// EQUALS
-		{[]byte(`equals`), EQUALS, []byte("equals"), true},
-		// C_PAREN
-		{[]byte(`)`), C_PAREN, []byte(")"), true},
-		// O_PAREN
-		{[]byte(`(`), O_PAREN, []byte("("), true},
+		{[]byte(`#-`), token.COMMENT_LINE, []byte("#-"), true},
+		// token.SUB
+		{[]byte(`-`), token.SUB, []byte("-"), true},
+		// token.SUM
+		{[]byte(`+`), token.SUM, []byte("+"), true},
+		// token.SMALLER
+		{[]byte(`smaller`), token.SMALLER, []byte("smaller"), true},
+		// token.BIGGER
+		{[]byte(`bigger`), token.BIGGER, []byte("bigger"), true},
+		// token.DIFFERENT
+		{[]byte(`different`), token.DIFFERENT, []byte("different"), true},
+		// token.EQUALS
+		{[]byte(`equals`), token.EQUALS, []byte("equals"), true},
+		// token.C_PAREN
+		{[]byte(`)`), token.C_PAREN, []byte(")"), true},
+		// token.O_PAREN
+		{[]byte(`(`), token.O_PAREN, []byte("("), true},
 		// "as" was an import keyword, then an ordinary identifier, and is a keyword again:
 		// it names the shape a value is read with.
-		{[]byte(`as`), AS, []byte("as"), true},
-		// STRUCT
-		{[]byte(`struct`), STRUCT, []byte("struct"), true},
-		// DOT
-		{[]byte(`.`), DOT, []byte("."), true},
-		// ASSIGN
-		{[]byte(`=`), ASSIGN, []byte("="), true},
-		// IDENT
-		{[]byte(`ident`), IDENT, []byte("ident"), true},
-		// NUMBER
-		{[]byte(`1000`), NUMBER, []byte("1000"), true},
-		{[]byte(`1_000`), NUMBER, []byte("1_000"), true},
-		{[]byte(`10`), NUMBER, []byte("10"), true},
-		{[]byte(`9`), NUMBER, []byte("9"), true},
-		// NUMBER - Hexadecimal
-		{[]byte(`0xFF`), NUMBER, []byte("0xFF"), true},
-		{[]byte(`0xff`), NUMBER, []byte("0xff"), true},
-		{[]byte(`0XFF`), NUMBER, []byte("0XFF"), true},
-		{[]byte(`0x10`), NUMBER, []byte("0x10"), true},
-		{[]byte(`0x1A`), NUMBER, []byte("0x1A"), true},
-		{[]byte(`0xABCD`), NUMBER, []byte("0xABCD"), true},
-		{[]byte(`0xabcd`), NUMBER, []byte("0xabcd"), true},
-		{[]byte(`0xAbCd`), NUMBER, []byte("0xAbCd"), true},
-		{[]byte(`0x0`), NUMBER, []byte("0x0"), true},
-		{[]byte(`0x00`), NUMBER, []byte("0x00"), true},
-		// WHITESPACE
-		{[]byte(`  `), WHITESPACE, []byte(`  `), true},
-		// BREAK_LINE
+		{[]byte(`as`), token.AS, []byte("as"), true},
+		// token.STRUCT
+		{[]byte(`struct`), token.STRUCT, []byte("struct"), true},
+		// token.DOT
+		{[]byte(`.`), token.DOT, []byte("."), true},
+		// token.ASSIGN
+		{[]byte(`=`), token.ASSIGN, []byte("="), true},
+		// token.IDENT
+		{[]byte(`ident`), token.IDENT, []byte("ident"), true},
+		// token.NUMBER
+		{[]byte(`1000`), token.NUMBER, []byte("1000"), true},
+		{[]byte(`1_000`), token.NUMBER, []byte("1_000"), true},
+		{[]byte(`10`), token.NUMBER, []byte("10"), true},
+		{[]byte(`9`), token.NUMBER, []byte("9"), true},
+		// token.NUMBER - Hexadecimal
+		{[]byte(`0xFF`), token.NUMBER, []byte("0xFF"), true},
+		{[]byte(`0xff`), token.NUMBER, []byte("0xff"), true},
+		{[]byte(`0XFF`), token.NUMBER, []byte("0XFF"), true},
+		{[]byte(`0x10`), token.NUMBER, []byte("0x10"), true},
+		{[]byte(`0x1A`), token.NUMBER, []byte("0x1A"), true},
+		{[]byte(`0xABCD`), token.NUMBER, []byte("0xABCD"), true},
+		{[]byte(`0xabcd`), token.NUMBER, []byte("0xabcd"), true},
+		{[]byte(`0xAbCd`), token.NUMBER, []byte("0xAbCd"), true},
+		{[]byte(`0x0`), token.NUMBER, []byte("0x0"), true},
+		{[]byte(`0x00`), token.NUMBER, []byte("0x00"), true},
+		// token.WHITESPACE
+		{[]byte(`  `), token.WHITESPACE, []byte(`  `), true},
+		// token.BREAK_LINE
 		{[]byte(`
-`), BREAK_LINE, []byte(`
+`), token.BREAK_LINE, []byte(`
 `), true},
 		// "use" was an import keyword: an ordinary identifier now
-		{[]byte(`use`), ID, []byte("use"), true},
+		{[]byte(`use`), token.ID, []byte("use"), true},
 	}
 	for _, c := range cases {
 		matched, tag, match := MatchToken(c.Buffer)

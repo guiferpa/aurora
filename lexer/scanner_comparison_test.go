@@ -1,12 +1,13 @@
 package lexer
 
 import (
+	"github.com/guiferpa/aurora/wire/token"
 	"testing"
 )
 
 // 1. Current Implementation (Baseline)
 
-func scanWordCurrent(bs []byte) (bool, Tag, []byte) {
+func scanWordCurrent(bs []byte) (bool, token.Tag, []byte) {
 	i := 0
 	for i < len(bs) {
 		c := bs[i]
@@ -21,7 +22,7 @@ func scanWordCurrent(bs []byte) (bool, Tag, []byte) {
 		if c == '=' && i > 0 {
 			prevChar := bs[i-1]
 			if prevChar == '>' || prevChar == '<' || prevChar == '!' {
-				return false, Tag{}, nil
+				return false, token.Tag{}, nil
 			}
 		}
 
@@ -29,7 +30,7 @@ func scanWordCurrent(bs []byte) (bool, Tag, []byte) {
 	}
 
 	if i == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	// Keyword lookup included for fair comparison if we want end-to-end word scanning speed
@@ -37,7 +38,7 @@ func scanWordCurrent(bs []byte) (bool, Tag, []byte) {
 		return true, tag, bs[:i]
 	}
 
-	return true, TagId, bs[:i]
+	return true, token.TagId, bs[:i]
 }
 
 // 2. Strict Implementation (Alphanumeric Only)
@@ -46,7 +47,7 @@ func isIdentCharStrict(c byte) bool {
 	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
 }
 
-func scanWordStrict(bs []byte) (bool, Tag, []byte) {
+func scanWordStrict(bs []byte) (bool, token.Tag, []byte) {
 	i := 0
 	for i < len(bs) {
 		c := bs[i]
@@ -58,19 +59,19 @@ func scanWordStrict(bs []byte) (bool, Tag, []byte) {
 	}
 
 	if i == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	if tag, isKeyword := Keywords[string(bs[:i])]; isKeyword {
 		return true, tag, bs[:i]
 	}
 
-	return true, TagId, bs[:i]
+	return true, token.TagId, bs[:i]
 }
 
 // 3. Max Flexibility Implementation
 
-func scanWordMaxFlex(bs []byte) (bool, Tag, []byte) {
+func scanWordMaxFlex(bs []byte) (bool, token.Tag, []byte) {
 	i := 0
 	for i < len(bs) {
 		c := bs[i]
@@ -81,7 +82,7 @@ func scanWordMaxFlex(bs []byte) (bool, Tag, []byte) {
 		}
 
 		// Allow '=' if it is part of a symbol sequence
-		// Logic: If we hit '=', and the previous char was a symbol OR '=', we consume it.
+		// Logic: If we hit '=', and the previous char was a symbol token.OR '=', we consume it.
 		// This allows 'my>==var' to be one token.
 		// Note: isIdentChar includes '>', '<', '!', '?', '-'
 		if c == '=' && i > 0 {
@@ -96,14 +97,14 @@ func scanWordMaxFlex(bs []byte) (bool, Tag, []byte) {
 	}
 
 	if i == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	if tag, isKeyword := Keywords[string(bs[:i])]; isKeyword {
 		return true, tag, bs[:i]
 	}
 
-	return true, TagId, bs[:i]
+	return true, token.TagId, bs[:i]
 }
 
 // Benchmarks
@@ -116,7 +117,7 @@ var (
 	inputComplex2 = []byte("my>=====var")
 )
 
-// -- Standard ID Benchmarks (The "Tax" Test) --
+// -- Standard token.ID Benchmarks (The "Tax" Test) --
 
 func Benchmark_ScanWord_Current_Standard(b *testing.B) {
 	for i := 0; i < b.N; i++ {
@@ -162,7 +163,7 @@ func TestScannerVariants(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       string
-		fn          func([]byte) (bool, Tag, []byte)
+		fn          func([]byte) (bool, token.Tag, []byte)
 		wantMatch   string
 		wantSuccess bool
 		desc        string

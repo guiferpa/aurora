@@ -7,19 +7,19 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 type Parser interface {
-	GetLookahead() lexer.Token
-	EatToken(tokenId string) (lexer.Token, error)
+	GetLookahead() token.Token
+	EatToken(tokenId string) (token.Token, error)
 	Parse() (AST, error)
 }
 
 type pr struct {
 	filename string
 	cursor   int
-	tokens   []lexer.Token
+	tokens   []token.Token
 	tapeSize int
 	// directives is what `struct` and `as` leave behind, and nothing more: it turns `p.x`
 	// into an index and never reaches the tree, the IR or the binary. It is held by
@@ -50,26 +50,26 @@ func isValidTapeItem(node Node) bool {
 
 func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 	params := make([]ParameterLiteral, 0)
-	if p.GetLookahead().GetTag().Id != lexer.O_PAREN {
+	if p.GetLookahead().GetTag().Id != token.O_PAREN {
 		return id, nil
 	}
-	if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+	if _, err := p.EatToken(token.O_PAREN); err != nil {
 		return nil, err
 	}
-	for p.GetLookahead().GetTag().Id != lexer.C_PAREN {
+	for p.GetLookahead().GetTag().Id != token.C_PAREN {
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
 		params = append(params, ParameterLiteral{expr})
-		if p.GetLookahead().GetTag().Id == lexer.C_PAREN {
+		if p.GetLookahead().GetTag().Id == token.C_PAREN {
 			break
 		}
-		if _, err := p.EatToken(lexer.COMMA); err != nil {
+		if _, err := p.EatToken(token.COMMA); err != nil {
 			return nil, err
 		}
 	}
-	if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+	if _, err := p.EatToken(token.C_PAREN); err != nil {
 		return nil, err
 	}
 	return CalleeLiteral{id, params}, nil
@@ -77,7 +77,7 @@ func (p *pr) ParseCallee(id IdentifierLiteral) (Node, error) {
 
 // ParseIdentifier reads a plain name.
 func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
-	tok, err := p.EatToken(lexer.ID)
+	tok, err := p.EatToken(token.ID)
 	if err != nil {
 		return IdentifierLiteral{}, err
 	}
@@ -85,7 +85,7 @@ func (p *pr) ParseIdentifier() (IdentifierLiteral, error) {
 }
 
 func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
-	tok, err := p.EatToken(lexer.TRUE)
+	tok, err := p.EatToken(token.TRUE)
 	if err != nil {
 		return BooleanLiteral{}, err
 	}
@@ -93,7 +93,7 @@ func (p *pr) ParseBooleanTrue() (BooleanLiteral, error) {
 }
 
 func (p *pr) ParseBooleanFalse() (BooleanLiteral, error) {
-	tok, err := p.EatToken(lexer.FALSE)
+	tok, err := p.EatToken(token.FALSE)
 	if err != nil {
 		return BooleanLiteral{}, err
 	}
@@ -101,7 +101,7 @@ func (p *pr) ParseBooleanFalse() (BooleanLiteral, error) {
 }
 
 func (p *pr) ParseNumber() (NumberLiteral, error) {
-	tok, err := p.EatToken(lexer.NUMBER)
+	tok, err := p.EatToken(token.NUMBER)
 	if err != nil {
 		return NumberLiteral{}, err
 	}
@@ -125,9 +125,9 @@ func (p *pr) ParseNumber() (NumberLiteral, error) {
 
 // fitInTape rejects a literal that the configured tape cannot hold, instead of letting it
 // be truncated silently at emission.
-func (p *pr) fitInTape(v uint64, tok lexer.Token) (NumberLiteral, error) {
+func (p *pr) fitInTape(v uint64, tok token.Token) (NumberLiteral, error) {
 	if !byteutil.FitsInTape(v, p.tapeSize) {
-		return NumberLiteral{}, lexer.NewError(tok, "value %d does not fit in a %d-byte tape (max %d)", v, p.tapeSize, byteutil.MaxTapeValue(p.tapeSize))
+		return NumberLiteral{}, token.NewError(tok, "value %d does not fit in a %d-byte tape (max %d)", v, p.tapeSize, byteutil.MaxTapeValue(p.tapeSize))
 	}
 	return NumberLiteral{v, tok}, nil
 }
@@ -138,20 +138,20 @@ func (p *pr) fitInTape(v uint64, tok lexer.Token) (NumberLiteral, error) {
 // "a" is the tape holding 97, which is the tape the number 97 is, and "café" is its five
 // UTF-8 bytes rather than four characters spread over four tapes.
 func (p *pr) ParseText() (TextLiteral, error) {
-	tok, err := p.EatToken(lexer.STRING)
+	tok, err := p.EatToken(token.STRING)
 	if err != nil {
 		return TextLiteral{}, err
 	}
 	match := tok.GetMatch()
 	if len(match) < 2 {
-		return TextLiteral{}, lexer.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
+		return TextLiteral{}, token.NewError(tok, "invalid string literal at line %d, column %d", tok.GetLine(), tok.GetColumn())
 	}
 	content := match[1 : len(match)-1]
 
 	// A value is a tape, and a tape is tape_size bytes: text that does not fit is rejected
 	// where it was written, the same way a number that does not fit is.
 	if len(content) > p.tapeSize {
-		return TextLiteral{}, lexer.NewError(tok, "text is %d bytes but a tape holds %d at line %d and column %d",
+		return TextLiteral{}, token.NewError(tok, "text is %d bytes but a tape holds %d at line %d and column %d",
 			len(content), p.tapeSize, tok.GetLine(), tok.GetColumn())
 	}
 
@@ -169,49 +169,49 @@ func (p *pr) ParsePriExpr() (Node, error) {
 
 func (p *pr) parsePrimaryExpr() (Node, error) {
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.FEED {
+	if lookahead.GetTag().Id == token.FEED {
 		return p.ParseFeed()
 	}
-	if lookahead.GetTag().Id == lexer.O_PAREN {
-		if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+	if lookahead.GetTag().Id == token.O_PAREN {
+		if _, err := p.EatToken(token.O_PAREN); err != nil {
 			return nil, err
 		}
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
-		if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+		if _, err := p.EatToken(token.C_PAREN); err != nil {
 			return nil, err
 		}
 		return expr, nil
 	}
-	if lookahead.GetTag().Id == lexer.O_BRK {
+	if lookahead.GetTag().Id == token.O_BRK {
 		return p.ParseTapeBrk()
 	}
-	if lookahead.GetTag().Id == lexer.NUMBER {
+	if lookahead.GetTag().Id == token.NUMBER {
 		num, err := p.ParseNumber()
 		if err != nil {
 			return nil, err
 		}
 		return num, nil
 	}
-	if lookahead.GetTag().Id == lexer.STRING {
+	if lookahead.GetTag().Id == token.STRING {
 		text, err := p.ParseText()
 		if err != nil {
 			return nil, err
 		}
 		return text, nil
 	}
-	if lookahead.GetTag().Id == lexer.TRUE {
+	if lookahead.GetTag().Id == token.TRUE {
 		return p.ParseBooleanTrue()
 	}
-	if lookahead.GetTag().Id == lexer.FALSE {
+	if lookahead.GetTag().Id == token.FALSE {
 		return p.ParseBooleanFalse()
 	}
-	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
+	if lookahead.GetTag().Id == token.O_CUR_BRK {
 		return p.ParseBlockExpr()
 	}
-	if lookahead.GetTag().Id == lexer.IDENT {
+	if lookahead.GetTag().Id == token.IDENT {
 		return p.ParseIdent()
 	}
 	id, err := p.ParseIdentifier()
@@ -219,25 +219,25 @@ func (p *pr) parsePrimaryExpr() (Node, error) {
 		return nil, err
 	}
 	if _, declared := p.directives.Structs[id.Value]; declared {
-		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_CUR_BRK {
+		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_CUR_BRK {
 			return p.ParseStructLiteral(id)
 		}
 		// A struct is a directive, not a value: there is nothing to load under its name.
-		return nil, lexer.NewError(id.Token, "%s is a struct at line %d and column %d: build a value with %s{...}",
+		return nil, token.NewError(id.Token, "%s is a struct at line %d and column %d: build a value with %s{...}",
 			id.Value, id.Token.GetLine(), id.Token.GetColumn(), id.Value)
 	}
-	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == lexer.O_PAREN {
+	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_PAREN {
 		return p.ParseCallee(id)
 	}
 	return id, nil
 }
 
 func (p *pr) ParseTapeBrk() (Node, error) {
-	if _, err := p.EatToken(lexer.O_BRK); err != nil {
+	if _, err := p.EatToken(token.O_BRK); err != nil {
 		return nil, err
 	}
 	items := make([]Node, 0)
-	for p.GetLookahead().GetTag().Id != lexer.C_BRK {
+	for p.GetLookahead().GetTag().Id != token.C_BRK {
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
@@ -252,25 +252,25 @@ func (p *pr) ParseTapeBrk() (Node, error) {
 		}
 
 		items = append(items, expr)
-		if p.GetLookahead().GetTag().Id == lexer.C_BRK {
+		if p.GetLookahead().GetTag().Id == token.C_BRK {
 			break
 		}
-		if _, err := p.EatToken(lexer.COMMA); err != nil {
+		if _, err := p.EatToken(token.COMMA); err != nil {
 			return nil, err
 		}
 	}
-	closing, err := p.EatToken(lexer.C_BRK)
+	closing, err := p.EatToken(token.C_BRK)
 	if err != nil {
 		return nil, err
 	}
 	if len(items) > p.tapeSize {
-		return nil, lexer.NewError(closing, "tape literal has %d values but a tape holds %d bytes", len(items), p.tapeSize)
+		return nil, token.NewError(closing, "tape literal has %d values but a tape holds %d bytes", len(items), p.tapeSize)
 	}
 	return TapeBracketExpression{Items: items}, nil
 }
 
 func (p *pr) ParsePull() (Node, error) {
-	if _, err := p.EatToken(lexer.PULL); err != nil {
+	if _, err := p.EatToken(token.PULL); err != nil {
 		return nil, err
 	}
 
@@ -293,7 +293,7 @@ func (p *pr) ParsePull() (Node, error) {
 }
 
 func (p *pr) ParseHead() (Node, error) {
-	if _, err := p.EatToken(lexer.HEAD); err != nil {
+	if _, err := p.EatToken(token.HEAD); err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
@@ -312,7 +312,7 @@ func (p *pr) ParseHead() (Node, error) {
 }
 
 func (p *pr) ParseTail() (Node, error) {
-	if _, err := p.EatToken(lexer.TAIL); err != nil {
+	if _, err := p.EatToken(token.TAIL); err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
@@ -331,7 +331,7 @@ func (p *pr) ParseTail() (Node, error) {
 }
 
 func (p *pr) ParsePush() (Node, error) {
-	if _, err := p.EatToken(lexer.PUSH); err != nil {
+	if _, err := p.EatToken(token.PUSH); err != nil {
 		return nil, err
 	}
 
@@ -355,8 +355,8 @@ func (p *pr) ParsePush() (Node, error) {
 
 func (p *pr) ParseUnaExpr() (Node, error) {
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.SUB {
-		op, err := p.EatToken(lexer.SUB)
+	if lookahead.GetTag().Id == token.SUB {
+		op, err := p.EatToken(token.SUB)
 		if err != nil {
 			return nil, err
 		}
@@ -376,8 +376,8 @@ func (p *pr) ParseExpoExpr() (Node, error) {
 	}
 
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.EXPO {
-		op, err := p.EatToken(lexer.EXPO)
+	if lookahead.GetTag().Id == token.EXPO {
+		op, err := p.EatToken(token.EXPO)
 		if err != nil {
 			return nil, err
 		}
@@ -405,8 +405,8 @@ func (p *pr) ParseMultExpr() (Node, error) {
 	}
 	for {
 		lookahead := p.GetLookahead()
-		if lookahead.GetTag().Id == lexer.MULT {
-			op, err := p.EatToken(lexer.MULT)
+		if lookahead.GetTag().Id == token.MULT {
+			op, err := p.EatToken(token.MULT)
 			if err != nil {
 				return nil, err
 			}
@@ -417,8 +417,8 @@ func (p *pr) ParseMultExpr() (Node, error) {
 			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
 			continue
 		}
-		if lookahead.GetTag().Id == lexer.DIV {
-			op, err := p.EatToken(lexer.DIV)
+		if lookahead.GetTag().Id == token.DIV {
+			op, err := p.EatToken(token.DIV)
 			if err != nil {
 				return nil, err
 			}
@@ -442,8 +442,8 @@ func (p *pr) ParseAddExpr() (Node, error) {
 	}
 	for {
 		lookahead := p.GetLookahead()
-		if lookahead.GetTag().Id == lexer.SUM {
-			op, err := p.EatToken(lexer.SUM)
+		if lookahead.GetTag().Id == token.SUM {
+			op, err := p.EatToken(token.SUM)
 			if err != nil {
 				return nil, err
 			}
@@ -454,8 +454,8 @@ func (p *pr) ParseAddExpr() (Node, error) {
 			left = BinaryExpression{left, right, OperationLiteral{string(op.GetMatch()), op}}
 			continue
 		}
-		if lookahead.GetTag().Id == lexer.SUB {
-			op, err := p.EatToken(lexer.SUB)
+		if lookahead.GetTag().Id == token.SUB {
+			op, err := p.EatToken(token.SUB)
 			if err != nil {
 				return nil, err
 			}
@@ -477,8 +477,8 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		return nil, err
 	}
 	lookahead := p.GetLookahead()
-	if lookahead.GetTag().Id == lexer.EQUALS {
-		op, err := p.EatToken(lexer.EQUALS)
+	if lookahead.GetTag().Id == token.EQUALS {
+		op, err := p.EatToken(token.EQUALS)
 		if err != nil {
 			return nil, err
 		}
@@ -488,8 +488,8 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		}
 		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
-	if lookahead.GetTag().Id == lexer.DIFFERENT {
-		op, err := p.EatToken(lexer.DIFFERENT)
+	if lookahead.GetTag().Id == token.DIFFERENT {
+		op, err := p.EatToken(token.DIFFERENT)
 		if err != nil {
 			return nil, err
 		}
@@ -499,8 +499,8 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		}
 		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
-	if lookahead.GetTag().Id == lexer.BIGGER {
-		op, err := p.EatToken(lexer.BIGGER)
+	if lookahead.GetTag().Id == token.BIGGER {
+		op, err := p.EatToken(token.BIGGER)
 		if err != nil {
 			return nil, err
 		}
@@ -510,8 +510,8 @@ func (p *pr) ParseRelExpr() (Node, error) {
 		}
 		return RelativeExpression{left, right, OperationLiteral{Value: string(op.GetMatch()), Token: op}}, nil
 	}
-	if lookahead.GetTag().Id == lexer.SMALLER {
-		op, err := p.EatToken(lexer.SMALLER)
+	if lookahead.GetTag().Id == token.SMALLER {
+		op, err := p.EatToken(token.SMALLER)
 		if err != nil {
 			return nil, err
 		}
@@ -535,8 +535,8 @@ func (p *pr) ParseBoolExpr() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	for p.GetLookahead().GetTag().Id == lexer.OR {
-		op, err := p.EatToken(lexer.OR)
+	for p.GetLookahead().GetTag().Id == token.OR {
+		op, err := p.EatToken(token.OR)
 		if err != nil {
 			return nil, err
 		}
@@ -555,8 +555,8 @@ func (p *pr) ParseAndExpr() (Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	for p.GetLookahead().GetTag().Id == lexer.AND {
-		op, err := p.EatToken(lexer.AND)
+	for p.GetLookahead().GetTag().Id == token.AND {
+		op, err := p.EatToken(token.AND)
 		if err != nil {
 			return nil, err
 		}
@@ -575,8 +575,8 @@ func (p *pr) ParseBranchItem() (Node, error) {
 		return nil, err
 	}
 
-	if p.GetLookahead().GetTag().Id == lexer.SEMICOLON {
-		if _, err := p.EatToken(lexer.SEMICOLON); err != nil {
+	if p.GetLookahead().GetTag().Id == token.SEMICOLON {
+		if _, err := p.EatToken(token.SEMICOLON); err != nil {
 			return nil, err
 		}
 		return expr, nil
@@ -590,7 +590,7 @@ func (p *pr) ParseBranchItem() (Node, error) {
 		return nil, errors.New("branch must have boolean expression as test")
 	}
 
-	if _, err := p.EatToken(lexer.COLON); err != nil {
+	if _, err := p.EatToken(token.COLON); err != nil {
 		return nil, err
 	}
 
@@ -599,7 +599,7 @@ func (p *pr) ParseBranchItem() (Node, error) {
 		return nil, err
 	}
 
-	if _, err := p.EatToken(lexer.COMMA); err != nil {
+	if _, err := p.EatToken(token.COMMA); err != nil {
 		return nil, err
 	}
 
@@ -616,11 +616,11 @@ func (p *pr) ParseBranchItem() (Node, error) {
 }
 
 func (p *pr) ParseBranch() (Node, error) {
-	if _, err := p.EatToken(lexer.BRANCH); err != nil {
+	if _, err := p.EatToken(token.BRANCH); err != nil {
 		return nil, err
 	}
 
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
 
@@ -629,7 +629,7 @@ func (p *pr) ParseBranch() (Node, error) {
 		return nil, err
 	}
 
-	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
 
@@ -637,31 +637,31 @@ func (p *pr) ParseBranch() (Node, error) {
 }
 
 func (p *pr) ParseBlockExpr() (Node, error) {
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	exprs, err := p.ParseExprs(lexer.TagCCurBrk)
+	exprs, err := p.ParseExprs(token.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
 	return BlockExpression{Body: exprs}, nil
 }
 
 func (p *pr) ParseDefer() (Node, error) {
-	if _, err := p.EatToken(lexer.DEFER); err != nil {
+	if _, err := p.EatToken(token.DEFER); err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	exprs, err := p.ParseExprs(lexer.TagCCurBrk)
+	exprs, err := p.ParseExprs(token.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
 	block := BlockExpression{Body: exprs}
@@ -669,24 +669,24 @@ func (p *pr) ParseDefer() (Node, error) {
 }
 
 func (p *pr) ParseIf() (Node, error) {
-	if _, err := p.EatToken(lexer.IF); err != nil {
+	if _, err := p.EatToken(token.IF); err != nil {
 		return nil, err
 	}
 	test, err := p.ParseBoolExpr()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	body, err := p.ParseExprs(lexer.TagCCurBrk)
+	body, err := p.ParseExprs(token.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	if p.GetLookahead().GetTag().Id == lexer.ELSE {
+	if p.GetLookahead().GetTag().Id == token.ELSE {
 		euze, err := p.ParseElse()
 		return IfExpression{test, body, euze}, err
 	}
@@ -694,34 +694,34 @@ func (p *pr) ParseIf() (Node, error) {
 }
 
 func (p *pr) ParseElse() (*ElseExpression, error) {
-	if _, err := p.EatToken(lexer.ELSE); err != nil {
+	if _, err := p.EatToken(token.ELSE); err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
-	body, err := p.ParseExprs(lexer.TagCCurBrk)
+	body, err := p.ParseExprs(token.TagCCurBrk)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
 	return &ElseExpression{body}, nil
 }
 
 func (p *pr) ParseIdent() (Node, error) {
-	if _, err := p.EatToken(lexer.IDENT); err != nil {
+	if _, err := p.EatToken(token.IDENT); err != nil {
 		return nil, err
 	}
-	id, err := p.EatToken(lexer.ID)
+	id, err := p.EatToken(token.ID)
 	if len(id.GetMatch()) == 0 {
-		return nil, lexer.NewError(id, "missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn())
+		return nil, token.NewError(id, "missing identifier name at line: %d, column %d", id.GetLine(), id.GetColumn())
 	}
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.ASSIGN); err != nil {
+	if _, err := p.EatToken(token.ASSIGN); err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
@@ -744,37 +744,37 @@ func (p *pr) ParseExpr() (Node, error) {
 	if format, ok := printFormats[lookahead.GetTag().Id]; ok {
 		return p.ParsePrint(lookahead.GetTag().Id, format)
 	}
-	if lookahead.GetTag().Id == lexer.ASSERT {
+	if lookahead.GetTag().Id == token.ASSERT {
 		return p.ParseAssert()
 	}
-	if lookahead.GetTag().Id == lexer.STRUCT {
+	if lookahead.GetTag().Id == token.STRUCT {
 		return p.ParseStruct()
 	}
-	if lookahead.GetTag().Id == lexer.O_CUR_BRK {
+	if lookahead.GetTag().Id == token.O_CUR_BRK {
 		return p.ParseBlockExpr()
 	}
-	if lookahead.GetTag().Id == lexer.IF {
+	if lookahead.GetTag().Id == token.IF {
 		return p.ParseIf()
 	}
-	if lookahead.GetTag().Id == lexer.BRANCH {
+	if lookahead.GetTag().Id == token.BRANCH {
 		return p.ParseBranch()
 	}
-	if lookahead.GetTag().Id == lexer.DEFER {
+	if lookahead.GetTag().Id == token.DEFER {
 		return p.ParseDefer()
 	}
-	if lookahead.GetTag().Id == lexer.IDENT {
+	if lookahead.GetTag().Id == token.IDENT {
 		return p.ParseIdent()
 	}
-	if lookahead.GetTag().Id == lexer.PULL {
+	if lookahead.GetTag().Id == token.PULL {
 		return p.ParsePull()
 	}
-	if lookahead.GetTag().Id == lexer.HEAD {
+	if lookahead.GetTag().Id == token.HEAD {
 		return p.ParseHead()
 	}
-	if lookahead.GetTag().Id == lexer.TAIL {
+	if lookahead.GetTag().Id == token.TAIL {
 		return p.ParseTail()
 	}
-	if lookahead.GetTag().Id == lexer.PUSH {
+	if lookahead.GetTag().Id == token.PUSH {
 		return p.ParsePush()
 	}
 	return p.ParseBoolExpr()
@@ -782,9 +782,9 @@ func (p *pr) ParseExpr() (Node, error) {
 
 // printFormats maps each print builtin to the reading it asks for.
 var printFormats = map[string]PrintFormat{
-	lexer.PRINTB: PrintBytes,
-	lexer.PRINTC: PrintChars,
-	lexer.PRINTD: PrintDecimal,
+	token.PRINTB: PrintBytes,
+	token.PRINTC: PrintChars,
+	token.PRINTD: PrintDecimal,
 }
 
 func (p *pr) ParsePrint(token string, format PrintFormat) (Node, error) {
@@ -802,36 +802,36 @@ func (p *pr) ParseAssert() (Node, error) {
 	// Validate that assert can only be used in .test.ar files
 	if !strings.HasSuffix(p.filename, ".test.ar") {
 		lookahead := p.GetLookahead()
-		return nil, lexer.NewError(lookahead, "assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
+		return nil, token.NewError(lookahead, "assert can only be used in .test.ar files (at line %d, column %d)", lookahead.GetLine(), lookahead.GetColumn())
 	}
 
-	t, err := p.EatToken(lexer.ASSERT)
+	t, err := p.EatToken(token.ASSERT)
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+	if _, err := p.EatToken(token.O_PAREN); err != nil {
 		return nil, err
 	}
 	condition, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(lexer.COMMA); err != nil {
+	if _, err := p.EatToken(token.COMMA); err != nil {
 		return nil, err
 	}
 	// The message is a literal rather than an expression: it is text for whoever reads the
 	// result, and nothing in the language builds text anyway.
 	message := p.GetLookahead()
-	if message == nil || message.GetTag().Id != lexer.STRING {
-		return nil, lexer.NewError(message, "assert needs a message written as text at line %d and column %d",
+	if message == nil || message.GetTag().Id != token.STRING {
+		return nil, token.NewError(message, "assert needs a message written as text at line %d and column %d",
 			t.GetLine(), t.GetColumn())
 	}
-	if _, err := p.EatToken(lexer.STRING); err != nil {
+	if _, err := p.EatToken(token.STRING); err != nil {
 		return nil, err
 	}
 	quoted := message.GetMatch()
 
-	if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+	if _, err := p.EatToken(token.C_PAREN); err != nil {
 		return nil, err
 	}
 
@@ -844,18 +844,18 @@ func (p *pr) ParseAssert() (Node, error) {
 
 // ParseFeed parses the builtin "feed": feed(index), or feed index without parentheses.
 func (p *pr) ParseFeed() (Node, error) {
-	if _, err := p.EatToken(lexer.FEED); err != nil {
+	if _, err := p.EatToken(token.FEED); err != nil {
 		return nil, err
 	}
-	if p.GetLookahead().GetTag().Id == lexer.O_PAREN {
-		if _, err := p.EatToken(lexer.O_PAREN); err != nil {
+	if p.GetLookahead().GetTag().Id == token.O_PAREN {
+		if _, err := p.EatToken(token.O_PAREN); err != nil {
 			return nil, err
 		}
 		nth, err := p.ParseNumber()
 		if err != nil {
 			return nil, err
 		}
-		if _, err := p.EatToken(lexer.C_PAREN); err != nil {
+		if _, err := p.EatToken(token.C_PAREN); err != nil {
 			return nil, err
 		}
 		return FeedExpression{nth}, nil
@@ -867,7 +867,7 @@ func (p *pr) ParseFeed() (Node, error) {
 	return FeedExpression{nth}, nil
 }
 
-func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
+func (p *pr) ParseExprs(t token.Tag) ([]Node, error) {
 	exprs := make([]Node, 0)
 	for {
 		lookahead := p.GetLookahead()
@@ -878,7 +878,7 @@ func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 		if err != nil {
 			return exprs, err
 		}
-		if _, err := p.EatToken(lexer.SEMICOLON); err != nil {
+		if _, err := p.EatToken(token.SEMICOLON); err != nil {
 			return exprs, err
 		}
 		exprs = append(exprs, expr)
@@ -886,14 +886,14 @@ func (p *pr) ParseExprs(t lexer.Tag) ([]Node, error) {
 	return exprs, nil
 }
 
-func (p *pr) GetLookahead() lexer.Token {
+func (p *pr) GetLookahead() token.Token {
 	if p.cursor >= len(p.tokens) {
 		return nil
 	}
 	return p.tokens[p.cursor]
 }
 
-func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
+func (p *pr) EatToken(tokenId string) (token.Token, error) {
 	currtok := p.GetLookahead()
 
 	if currtok == nil {
@@ -901,7 +901,7 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 	}
 
 	if tokenId != currtok.GetTag().Id {
-		return currtok, lexer.NewError(currtok, "unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn())
+		return currtok, token.NewError(currtok, "unexpected token %s at line %d and column %d", currtok.GetMatch(), currtok.GetLine(), currtok.GetColumn())
 	}
 
 	p.cursor++
@@ -910,7 +910,7 @@ func (p *pr) EatToken(tokenId string) (lexer.Token, error) {
 }
 
 func (p *pr) Parse() (AST, error) {
-	nodes, err := p.ParseExprs(lexer.TagEOF)
+	nodes, err := p.ParseExprs(token.TagEOF)
 	if err != nil {
 		return AST{}, err
 	}
@@ -922,7 +922,7 @@ type NewParserOptions struct {
 	// Filename is the source path. It decides file-scoped rules: assert is only
 	// accepted inside *.test.ar.
 	Filename string
-	Tokens   []lexer.Token
+	Tokens   []token.Token
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 	// Directives carries the struct directives across parses of the same file. Nil starts

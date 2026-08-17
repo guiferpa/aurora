@@ -20,17 +20,17 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ir"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
-// Tokens writes what the lexer read, one token per line: the tag, then the bytes it
+// Tokens writes what the lexer read, one tk per line: the tag, then the bytes it
 // matched.
-func Tokens(w io.Writer, tokens []lexer.Token) error {
-	for _, token := range tokens {
-		id := color.New(color.FgHiCyan).Sprint(token.GetTag().Id)
-		match := color.New(color.FgHiYellow).Sprint(byteutil.ToHexBloom(token.GetMatch()))
+func Tokens(w io.Writer, tokens []token.Token) error {
+	for _, tk := range tokens {
+		id := color.New(color.FgHiCyan).Sprint(tk.GetTag().Id)
+		match := color.New(color.FgHiYellow).Sprint(byteutil.ToHexBloom(tk.GetMatch()))
 		if _, err := fmt.Fprintf(w, "%s: %s\n", id, match); err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ func wrapNode(n any) any {
 			fields[field.Tag.Get("json")] = wrapped
 
 		default:
-			// A field tagged "-" is carried for the compiler and not for a reader: a token
+			// A field tagged "-" is carried for the compiler and not for a reader: a tk
 			// holds its whole source position, which drowns the tree it belongs to.
 			if tag := field.Tag.Get("json"); tag != "-" && tag != "" {
 				fields[tag] = value

@@ -77,12 +77,25 @@ pick something else.
 
 ## The EVM backend
 
-The gap here is wider than it looks, and it is silent, which is the dangerous part: a
-contract using any of the following **compiles successfully and does nothing on chain**.
+The point of the backend is that **the same program answers the same thing on a chain and off
+it**. Since the differential harness exists (`internal/cli/evm_harness_test.go`) that is no
+longer a hope: an EVM is built in memory, the contract is deployed and called, and the answer
+is compared against the evaluator. Arithmetic across a dispatcher is proved; everything below
+is not.
 
-- `if`, `jump`, `call`, `printb`/`printc`/`printd`, `assert`, the tape operations, and the
-  struct instructions (`OpJoin`, `OpField`) produce no bytecode at all. `WriteCode` covers
-  arithmetic, `OpSave`, `OpIdent`, `OpLoad`, `OpGetFeed` and `OpReturn`.
+The gap is wider than it looks, and it is silent, which is the dangerous part: a contract
+using any of the following **compiles successfully and does nothing on chain**.
+
+- `if`, `jump`, `call`, `assert`, the tape operations, and the struct instructions (`OpJoin`,
+  `OpField`) produce no bytecode at all. `WriteCode` covers arithmetic, `OpSave`, `OpIdent`,
+  `OpLoad`, `OpGetFeed` and `OpReturn`. They are not refusals — a tape is at most 32 bytes and
+  an EVM word is exactly 32, a struct is a run of words in memory, and a call is a jump with a
+  return address. They are simply not written yet.
+- **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
+  says on the way is for whoever is watching it run, not for the chain.
+- **Arithmetic is not masked to the tape width.** At `--tape-size 1`, `255 + 1` is `0` in the
+  evaluator and `256` on chain: the EVM wraps at 2²⁵⁶ and the tape wraps at 2⁸. The harness
+  reports it; the fix is a mask after every operation.
 - **Events are missing entirely.** `LOG0`–`LOG4` (`0xA0`–`0xA4`) are not in the opcode table.
   On chain they are the only way a contract says anything, and they are the honest target for
   whatever Aurora ends up calling logging.
@@ -91,6 +104,14 @@ contract using any of the following **compiles successfully and does nothing on 
 
 A first step that costs little: **warn at compile time** when a program uses something the
 backend drops, instead of writing a binary that lies.
+
+## Simulating a call off the chain
+
+`aurora call` speaks to a network and nothing else, so there is no way to ask for one scope by
+name with these arguments and have the evaluator answer — the call has to be written into the
+source. The differential harness works around it by appending the call to the program, which
+is exactly the shape of what is missing: a local call that takes a function and its arguments
+and answers from the evaluator, the same way the chain would.
 
 ---
 

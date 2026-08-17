@@ -14,9 +14,11 @@ Answer in the language the user writes in (the maintainer usually writes pt-BR).
 
 ## What matters now
 
-The language proves itself in the **evaluator** and in the **REPL**. The EVM backend is **parked on purpose** until the behaviour there settles — only then does it get decided *how* to compile it.
+The language proves itself in the **evaluator** and in the **REPL**, and the EVM backend exists so that **the same program answers the same thing on a chain and off it**: Aurora is for simulating an on-chain call off-chain.
 
-So: a new feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for.
+The backend was parked while the behaviour settled, and is being un-parked in slices. Each slice is proved by the differential harness in `internal/cli/evm_harness_test.go` — same source, compiled and deployed to an EVM in memory, called, and compared against the evaluator. A change to the backend that the harness does not cover is a change nobody can vouch for.
+
+So: a new feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for. And the print builtins are **logs**: they do not compile to bytecode, by decision.
 
 ## The four architecture premises
 

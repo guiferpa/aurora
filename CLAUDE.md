@@ -5,12 +5,19 @@ of bytes, `tape_size` wide. It runs on its own evaluator and assembles to EVM by
 
 ## What matters now
 
-The language proves itself in the **evaluator** and in the **REPL**. The EVM backend is
-**parked on purpose** until the behaviour there settles — only then does it get decided
-*how* to compile to the EVM.
+The language proves itself in the **evaluator** and in the **REPL**, and the point of the EVM
+backend is that **the same program answers the same thing on a chain and off it** — Aurora
+exists to let an on-chain call be simulated off-chain.
 
-A feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped
+The backend was parked while the behaviour settled. It is being un-parked in slices, each one
+proved by the differential harness (`internal/cli/evm_harness_test.go`): the same source
+compiled, deployed to an EVM in memory, called, and compared against the evaluator.
+
+A feature still does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped
 without it.
+
+**The print builtins are logs, not contract instructions**, and do not compile to bytecode.
+That is a decision, not a gap.
 
 ## The four premises
 

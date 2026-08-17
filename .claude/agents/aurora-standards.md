@@ -20,46 +20,26 @@ The language proves itself in the **evaluator** and in the **REPL**, and the EVM
 
 So: a new feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for. And the print builtins are **logs**: they do not compile to bytecode, by decision.
 
-## The architecture: two layers, five kinds of package
+## The architecture
 
-The code is **hosting** — the logic of one kind of interaction — and **vital** — the pipeline that turns source into something that runs. Everything else exists to serve one of the two.
+**[docs/contributing/architecture.md](../../docs/contributing/architecture.md) is the source of
+truth.** Read it before judging where something belongs, and cite it rather than repeating it —
+a rule written in two places drifts in one of them.
 
-```
-(lexer) → {tokens} → (parser) → {tree} → (emitter) → {IR} → (builder) │ (evaluator)
-```
+The shape, so you can recognise a violation without opening it: the code is **hosting** and
+**vital**, with five kinds of package — **vital** (the phases), **wire** (what crosses between
+them: `wire/token`, `wire/ast`, `wire/ir`), **util** (reusable behaviour that never touches the
+world), **hosting** (one interaction each) and **shared** (what serves the hosting layer). A
+sub-package has the kind of its parent.
 
-Between parentheses are the phases; between braces, what crosses between them. That drawing is the whole architecture: the parentheses are **vital**, the braces are **wire**.
+Four rules: no package knows another except wire and util; a vital package is pure — no I/O,
+nothing done that is not returned; errors are resolved in hosting; I/O happens in hosting and
+wiring only in `main`.
 
-| kind | what it is | imports | is imported by |
-|---|---|---|---|
-| **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
-| **wire** | what crosses a boundary: the token chain, the tree, the IR, a warning | util, and nothing else of the project | everyone |
-| **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` as a formatter | **nothing of the project** | everyone |
-| **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
-| **shared** | serves the hosting *layer*, not one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
-
-The two that are easy to confuse:
-
-- **wire against util.** A util is behaviour you may reuse and nobody is obliged to. A wire package is *data crossing a boundary*, and two phases sharing exactly that type is the point — a phase declaring its own version of it is the mistake the kind exists to prevent. Wire holds the shape and the vocabulary: the types, the constructors, the constants, and **how they are written down** — spelling the vocabulary out is part of the vocabulary, the way a token knows how to spell itself. What is *not* wire is deciding to show it and choosing where it goes: that is a host's, and `shared/trace` is where it lives. A wire package may lean on a util to do its spelling, and on nothing else of the project.
-- **hosting against shared.** A hosting package serves one interaction and is a leaf: only `main` depends on it. A shared package serves the layer, may be imported by any host, may touch the world, and **must not know which interaction is using it**. That last half is what keeps it from becoming the drawer where cohesion goes to die.
-
-### The four rules
-
-**1. No package knows another.** What would tie two together is injected. The exceptions are wire and util, which know nothing of the project and may be known by all — that is what makes them safe to import.
-
-**2. A vital package is pure**: no I/O, and nothing done that is not returned. What a program printed comes back as a value; the host decides what to do with it. Returning it *including when the program fails* is part of the rule — a program that prints three lines and then breaks must not lose the three.
-
-**3. Errors are resolved in hosting.** A package returns an error. It never writes one, and it never ends the process.
-
-**4. I/O happens in hosting, and injection happens only in `main`.** No wiring anywhere else — not in a host, not in a vital.
-
-**A sub-package has the kind of its parent.** `evaluator/environ` and `evaluator/builtin` are vital; `lsp/textdoc`, `lsp/state` and `lsp/messenger` are hosting. A sub-package that needs I/O takes the port and calls it — it never decides to write.
-
-### The tree does not obey this yet
-
-Saying otherwise would make this document a lie, and a reviewer would be right to reject code that follows it. What is true today, measured: every phase imports the one before it, four places assemble phases and only one is `main`, and the evaluator writes to a writer while the program runs.
-
-**[rfcs/phase_coupling.md](../../rfcs/phase_coupling.md)** holds the migration: the artefacts get their own packages first (IR, then tree, then tokens), assembly moves to `main` after that, and the evaluator returns what the program said instead of writing it. Until that lands, judge a change by whether it moves toward the table or away from it — and say which.
+**Two of these the tree does not obey yet** — hosts still build phases themselves, and the
+evaluator still writes what a program printed instead of returning it. Both are in
+[rfcs/phase_coupling.md](../../rfcs/phase_coupling.md), so a change that moves toward them is
+progress and one that moves away is a finding.
 
 ## Tests
 

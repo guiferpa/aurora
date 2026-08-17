@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 
 	"github.com/guiferpa/aurora/logger"
@@ -18,7 +21,14 @@ var rootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
+// The exit code is a contract with whoever runs the CLI — a shell, a CI job — so it is
+// decided here, where the process is, and nowhere else. Diagnostics go to stderr, so a
+// pipeline reading a program's output does not swallow them.
 func main() {
 	rootCmd.AddCommand(versionCmd, runCmd, testCmd, replCmd, buildCmd, deployCmd, callCmd, initCmd)
-	logger.CommandError(rootCmd.Execute())
+
+	if err := rootCmd.Execute(); err != nil {
+		_, _ = fmt.Fprint(os.Stderr, logger.CommandError(err))
+		os.Exit(2)
+	}
 }

@@ -1,29 +1,17 @@
 package logger
 
-import (
-	"fmt"
-	"os"
+import "github.com/fatih/color"
 
-	"github.com/fatih/color"
-)
+// How a failure is spelled, so every host spells it the same way.
+//
+// Nothing here decides where a message goes or what happens next. It used to: this wrote to
+// stderr and ended the process, which is a package deciding the fate of the program that
+// called it. Whoever calls now writes and exits, and this says only what the words are.
 
-// CommandError reports a failed command and exits. Diagnostics go to stderr, so a shell
-// pipeline reading a program's output does not swallow them.
-func CommandError(err error) {
+// CommandError spells a command that failed, and answers with nothing when none did.
+func CommandError(err error) string {
 	if err == nil {
-		return
+		return ""
 	}
-	_, _ = color.New(color.BgBlack, color.FgHiMagenta).Fprintln(os.Stderr, err)
-	os.Exit(2)
-}
-
-func AssertError(errs []error, filename string) {
-	if len(errs) == 0 {
-		return
-	}
-	_, _ = color.New(color.FgWhite).Fprintln(os.Stderr, fmt.Sprintf("Assertion errors in %s:", filename))
-	for _, err := range errs {
-		_, _ = color.New(color.BgBlack, color.FgRed).Fprintln(os.Stderr, err)
-	}
-	os.Exit(3)
+	return color.New(color.BgBlack, color.FgHiMagenta).Sprintln(err)
 }

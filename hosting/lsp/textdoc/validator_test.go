@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp"
 )
 
 func TestValidateCodeAcceptsValidSource(t *testing.T) {

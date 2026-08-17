@@ -77,7 +77,7 @@ func documentationFiles(t *testing.T) []string {
 	t.Helper()
 
 	var docs []string
-	for _, root := range []string{filepath.Join("..", ".."), filepath.Join("..", "..", "docs")} {
+	for _, root := range []string{repoRoot(t), filepath.Join(repoRoot(t), "docs")} {
 		entries, err := os.ReadDir(root)
 		if err != nil {
 			t.Fatalf("reading %s: %v", root, err)
@@ -223,7 +223,7 @@ func TestNoDocumentWithAuroraEscapesTheCheck(t *testing.T) {
 		checked[absolute] = true
 	}
 
-	err := filepath.WalkDir(filepath.Join("..", ".."), func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(repoRoot(t), func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".md") {
 			return err
 		}

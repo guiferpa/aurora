@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/guiferpa/aurora/lsp"
-	"github.com/guiferpa/aurora/lsp/state"
-	"github.com/guiferpa/aurora/lsp/textdoc"
+	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/state"
+	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
 )
 
 // document gathers what an analysis needs about the file behind a URI. Where the width comes

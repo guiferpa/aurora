@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/guiferpa/aurora/internal/cli"
+	"github.com/guiferpa/aurora/hosting/cli"
 	"github.com/guiferpa/aurora/shared/manifest"
 )
 

@@ -5,8 +5,8 @@ import (
 	"io"
 	"log"
 
-	"github.com/guiferpa/aurora/lsp/messenger"
-	"github.com/guiferpa/aurora/lsp/state"
+	"github.com/guiferpa/aurora/hosting/lsp/messenger"
+	"github.com/guiferpa/aurora/hosting/lsp/state"
 )
 
 // maxMessageBytes caps a single JSON-RPC message. bufio.Scanner defaults to 64KB, which a

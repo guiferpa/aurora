@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/lsp/state"
+	"github.com/guiferpa/aurora/hosting/lsp/state"
 )
 
 func frame(body string) string {

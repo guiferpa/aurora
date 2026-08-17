@@ -3,7 +3,7 @@ package textdoc
 import (
 	"encoding/json"
 
-	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp"
 )
 
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#didChangeTextDocumentParams

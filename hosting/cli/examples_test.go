@@ -14,8 +14,9 @@ import (
 //
 // A test file belongs to the source of the same name and needs it in scope, so it runs under
 // TestExamplesTestsPass rather than by itself.
-func exampleSources() ([]string, error) {
-	root := filepath.Join("..", "..", "examples")
+func exampleSources(t *testing.T) ([]string, error) {
+	t.Helper()
+	root := filepath.Join(repoRoot(t), "examples")
 
 	sources := make([]string, 0)
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -34,7 +35,7 @@ func exampleSources() ([]string, error) {
 // Every example must run. The header of each file documents the output it produces, and
 // that output was pasted from a real run — this keeps them from rotting.
 func TestExamplesRun(t *testing.T) {
-	sources, err := exampleSources()
+	sources, err := exampleSources(t)
 	if err != nil {
 		t.Fatalf("walking examples: %v", err)
 	}
@@ -58,7 +59,7 @@ func TestExamplesRun(t *testing.T) {
 // The examples that are tests must pass, which also covers the pairing rule end to end.
 func TestExamplesTestsPass(t *testing.T) {
 	report, err := Test(t.Context(), TestInput{
-		Target: filepath.Join("..", "..", "examples", "greeting.test.ar"),
+		Target: filepath.Join(repoRoot(t), "examples", "greeting.test.ar"),
 		Stdout: io.Discard,
 	})
 	if err != nil {
@@ -110,14 +111,14 @@ func TestExamplesMatchTheirDeclaredOutput(t *testing.T) {
 	// The whole tree, not only the top of it: the sources inside examples/project declare
 	// what they print like every other example, and nothing was comparing them — the header
 	// of one was checked by running it in a terminal, which is how the last three rotted.
-	sources, err := exampleSources()
+	sources, err := exampleSources(t)
 	if err != nil {
 		t.Fatalf("walking examples: %v", err)
 	}
 
 	checked := 0
 	for _, source := range sources {
-		name, err := filepath.Rel(filepath.Join("..", ".."), source)
+		name, err := filepath.Rel(repoRoot(t), source)
 		if err != nil {
 			name = source
 		}

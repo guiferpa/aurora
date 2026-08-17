@@ -5,8 +5,8 @@ package initialize
 import (
 	"encoding/json"
 
-	"github.com/guiferpa/aurora/lsp"
-	"github.com/guiferpa/aurora/lsp/textdoc"
+	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
 	"github.com/guiferpa/aurora/version"
 )
 

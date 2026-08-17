@@ -1,6 +1,6 @@
 package textdoc
 
-import "github.com/guiferpa/aurora/lsp"
+import "github.com/guiferpa/aurora/hosting/lsp"
 
 // diagnostic is a push notification form the language server. so there is no request/response cycle
 

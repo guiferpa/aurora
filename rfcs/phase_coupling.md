@@ -42,9 +42,9 @@ Quem monta fases hoje:
 | Onde | Pacote | Monta |
 |---|---|---|
 | `cmd/playground/main.go` | `main` ✓ | lexer, parser, emitter, evaluator |
-| `internal/cli/compile.go` | `cli` ✗ | lexer, parser, emitter |
-| `repl/repl.go` | `repl` ✗ | lexer, parser, emitter, evaluator |
-| `lsp/textdoc/validator.go` | `textdoc` ✗ | lexer, parser |
+| `hosting/cli/compile.go` | `cli` ✗ | lexer, parser, emitter |
+| `hosting/repl/repl.go` | `repl` ✗ | lexer, parser, emitter, evaluator |
+| `hosting/lsp/textdoc/validator.go` | `textdoc` ✗ | lexer, parser |
 
 E o `builder/evm` nomeia **33 constantes de opcode** do emitter. Não é a forma que o prende —
 é o vocabulário.
@@ -55,7 +55,7 @@ Artefatos primeiro, montagem por último. As três primeiras tiram a interdepend
 tocar em assinatura de host**, o que faz a quarta — que atravessa o projeto — ficar bem menor.
 
 **1. O IR vira `wire`.** `Instruction` e os opcodes saem do `emitter`. É o artefato com mais
-consumidores — `builder/evm`, `evaluator`, `internal/cli`, `internal/trace`, `repl` — e o mais
+consumidores — `builder/evm`, `evaluator`, `cli`, `internal/trace`, `repl` — e o mais
 barato de mover: 37 + 41 linhas de declaração, sem comportamento. Depois disso, `emitter`,
 `evaluator` e `builder/evm` dependem do mesmo pacote e de nenhum outro.
 
@@ -87,8 +87,13 @@ hosting, não uma interação. Util não toca no mundo; esses três tocam.
 > `shared/trace` — pelo mesmo motivo que `wire/` é uma pasta. `internal/` responde outra
 > pergunta (quem pode importar de fora do módulo), não a de que tipo o pacote é.
 
+> A árvore passou a dizer a taxonomia em voz alta: `wire/` os artefatos, `shared/` o que serve
+> a camada, `hosting/` cada interação, e as fases na raiz. O `internal/` sumiu — ele responde
+> quem pode importar de fora do módulo, que é outra pergunta, e responder errado contradizia a
+> premissa de que alguém pode pegar uma parte e construir outro compilador.
+
 **6. A montagem sobe para o `main`.** Cada host declara a interface do que precisa e o `main`
-injeta as fases prontas. É a etapa que muda mais assinatura: `internal/cli` deixa de importar
+injeta as fases prontas. É a etapa que muda mais assinatura: `cli` deixa de importar
 `lexer`, `parser` e `emitter`.
 
 **7. O evaluator devolve o que o programa disse.** Os builtins de print param de escrever. Duas
@@ -132,7 +137,7 @@ que torna os artefatos possíveis — sem ela, nada disso fecha.
    atravessam para o host: são wire. `Format` desenha uma instrução para humano — é
    apresentação, e vai para `internal/trace`. `ResolveOpCode` dá nome a um opcode: dá para
    argumentar que o nome é parte do vocabulário e fica no wire.
-3. **`internal/cli` continua existindo?** Ele é hosting mas não é `main`. Ou recebe tudo
+3. **`cli` continua existindo?** Ele é hosting mas não é `main`. Ou recebe tudo
    injetado, ou o que ele faz sobe para `cmd/aurora`.
 4. **O print sai na hora ou no fim?** A regra pede que o evaluator devolva; o usuário hoje vê
    sair no meio da execução.

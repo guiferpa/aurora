@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp"
 )
 
 // find returns the item offered for a label, or nil.

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/guiferpa/aurora/manifest"
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 // InitManifestTemplate is the template for aurora.toml. Use fmt.Sprintf with projectName for the name field.

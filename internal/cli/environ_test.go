@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/guiferpa/aurora/manifest"
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 func TestEnviron_AbsPath(t *testing.T) {

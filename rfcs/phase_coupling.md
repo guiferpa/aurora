@@ -83,6 +83,10 @@ escreve, e o `os.Exit` sobe para `cmd/*`. É a etapa que conserta a regra 3.
 **5. `fileutil`, `manifest` e `internal/trace` viram `shared`.** Eles servem a camada de
 hosting, não uma interação. Util não toca no mundo; esses três tocam.
 
+> Onde eles moram passa a dizer o que eles são: `shared/fileutil`, `shared/manifest`,
+> `shared/trace` — pelo mesmo motivo que `wire/` é uma pasta. `internal/` responde outra
+> pergunta (quem pode importar de fora do módulo), não a de que tipo o pacote é.
+
 **6. A montagem sobe para o `main`.** Cada host declara a interface do que precisa e o `main`
 injeta as fases prontas. É a etapa que muda mais assinatura: `internal/cli` deixa de importar
 `lexer`, `parser` e `emitter`.

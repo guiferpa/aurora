@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/guiferpa/aurora/manifest"
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 // Environ holds project root, loaded manifest, and the selected profile.

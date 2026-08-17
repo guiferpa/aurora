@@ -6,9 +6,9 @@ import (
 	"slices"
 
 	"github.com/guiferpa/aurora/emitter"
-	"github.com/guiferpa/aurora/internal/trace"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/trace"
 )
 
 // Compile turns a source file into a program: read, lex, parse, emit.

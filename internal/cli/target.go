@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/guiferpa/aurora/manifest"
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 // SourceExtension is what an Aurora source file is called.

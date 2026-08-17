@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/manifest"
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 func TestInit_createsManifest(t *testing.T) {

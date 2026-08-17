@@ -20,4 +20,4 @@ Toda RFC abre dizendo em que estado está:
 
 | Arquivo | Assunto | Estado |
 |---|---|---|
-| [phase_coupling.md](phase_coupling.md) | Uma fase importa a anterior; a premissa diz que não deveria | proposta |
+| [phase_coupling.md](phase_coupling.md) | Fases não se conhecem: artefatos como pacotes, montagem no `main` | proposta |

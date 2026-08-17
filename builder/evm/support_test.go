@@ -1,0 +1,136 @@
+package evm
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/wire/ir"
+)
+
+// instructionsOf builds the instruction stream by opcode, which is all Warnings reads.
+func instructionsOf(opcodes ...byte) []ir.Instruction {
+	insts := make([]ir.Instruction, 0, len(opcodes))
+	for i, op := range opcodes {
+		insts = append(insts, ir.NewInstruction(byteutil.FromUint64(uint64(i)), op, nil, nil))
+	}
+	return insts
+}
+
+func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
+	cases := []struct {
+		name     string
+		opcodes  []byte
+		want     []string
+		wantNone bool
+	}{
+		{
+			// What a contract is made of today: values, names, arguments, arithmetic and a
+			// return, inside a scope that becomes a dispatcher entry.
+			name:     "a program the builder writes whole",
+			opcodes:  []byte{ir.OpDefer, ir.OpBeginScope, ir.OpGetFeed, ir.OpSave, ir.OpAdd, ir.OpReturn, ir.OpIdent},
+			wantNone: true,
+		},
+		{
+			name:    "a branch",
+			opcodes: []byte{ir.OpIf, ir.OpJump},
+			// Two instructions, one feature, one thing to say about it.
+			want: []string{"if does not reach the bytecode yet"},
+		},
+		{
+			name:    "a comparison",
+			opcodes: []byte{ir.OpBigger},
+			want:    []string{"a comparison does not reach the bytecode yet"},
+		},
+		{
+			name:    "a tape operation",
+			opcodes: []byte{ir.OpPull, ir.OpHead},
+			want:    []string{"a tape operation does not reach the bytecode yet"},
+		},
+		{
+			name:    "a struct",
+			opcodes: []byte{ir.OpJoin, ir.OpField},
+			want:    []string{"struct does not reach the bytecode yet"},
+		},
+		{
+			name:    "calling a scope",
+			opcodes: []byte{ir.OpPushFeed, ir.OpCall},
+			want:    []string{"calling a scope does not reach the bytecode yet"},
+		},
+		{
+			// A log is not a gap: it is absent on purpose, and the wording says so.
+			name:    "a print",
+			opcodes: []byte{ir.OpPrintDecimal},
+			want:    []string{"printd writes a log", "by decision"},
+		},
+		{
+			name:    "an assertion",
+			opcodes: []byte{ir.OpAssert},
+			want:    []string{"assert belongs to 'aurora test'", "by decision"},
+		},
+		{
+			name:    "each print speaks for itself",
+			opcodes: []byte{ir.OpPrintBytes, ir.OpPrintChars, ir.OpPrintDecimal},
+			want:    []string{"printb", "printc", "printd"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			warnings := Warnings(instructionsOf(tc.opcodes...))
+
+			if tc.wantNone {
+				if len(warnings) != 0 {
+					t.Errorf("said %v about a program it writes whole", warnings)
+				}
+				return
+			}
+
+			said := make([]string, 0, len(warnings))
+			for _, warning := range warnings {
+				said = append(said, warning.Message)
+			}
+			whole := strings.Join(said, "\n")
+
+			for _, want := range tc.want {
+				if !strings.Contains(whole, want) {
+					t.Errorf("said %q, want it to mention %q", whole, want)
+				}
+			}
+		})
+	}
+}
+
+// The same feature used twice is one thing to say, not two.
+func TestWarningsSayEachThingOnce(t *testing.T) {
+	warnings := Warnings(instructionsOf(
+		ir.OpIf, ir.OpJump, ir.OpIf, ir.OpJump, ir.OpBigger, ir.OpSmaller,
+	))
+
+	if len(warnings) != 2 {
+		t.Errorf("said %d things about two features: %v", len(warnings), warnings)
+	}
+}
+
+// They arrive in the order the program uses them, so the first thing a reader is told about
+// is the first thing that goes missing.
+func TestWarningsFollowTheProgram(t *testing.T) {
+	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpIf))
+
+	if len(warnings) != 2 {
+		t.Fatalf("said %d things, want two", len(warnings))
+	}
+	if !strings.Contains(warnings[0].Message, "printd") {
+		t.Errorf("said %q first, want the print", warnings[0].Message)
+	}
+}
+
+// A warning has no place to point at: the IR carries instructions, not lines. Saying it
+// without a position is what keeps the report honest.
+func TestWarningsCarryNoPosition(t *testing.T) {
+	for _, warning := range Warnings(instructionsOf(ir.OpIf)) {
+		if warning.Positioned() {
+			t.Errorf("%q claims to be at %d:%d", warning.Message, warning.Line, warning.Column)
+		}
+	}
+}

@@ -161,3 +161,74 @@ func TestPlural(t *testing.T) {
 		}
 	}
 }
+
+// A binary that quietly does less than the source said is the worst thing a build can hand
+// someone. What the backend cannot carry yet is said out loud, at the moment it is built.
+func TestBuildSaysWhatTheBackendDoesNotCarry(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "a branch",
+			source: "ident pick = defer { if feed(0) bigger feed(1) { feed(0); } else { feed(1); }; };\n",
+			want:   "if does not reach the bytecode yet",
+		},
+		{
+			name:   "a comparison",
+			source: "ident same = defer { feed(0) equals feed(1); };\n",
+			want:   "a comparison does not reach the bytecode yet",
+		},
+		{
+			name:   "a log",
+			source: "ident show = defer { printd feed(0); };\n",
+			want:   "printd writes a log",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			source := filepath.Join(dir, "main.ar")
+			if err := os.WriteFile(source, []byte(tc.source), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			warnings := &strings.Builder{}
+			if _, err := Build(t.Context(), BuildInput{
+				Source:     source,
+				OutputPath: filepath.Join(dir, "out.bin"),
+				Warnings:   warnings,
+			}); err != nil {
+				t.Fatalf("Build: %v", err)
+			}
+
+			if got := warnings.String(); !strings.Contains(got, tc.want) {
+				t.Errorf("the build said %q, want it to say %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A program the backend writes whole is built without a word about it.
+func TestBuildSaysNothingAboutWhatItCarries(t *testing.T) {
+	dir := t.TempDir()
+	source := filepath.Join(dir, "main.ar")
+	if err := os.WriteFile(source, []byte("ident add = defer { feed(0) + feed(1); };\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	warnings := &strings.Builder{}
+	if _, err := Build(t.Context(), BuildInput{
+		Source:     source,
+		OutputPath: filepath.Join(dir, "out.bin"),
+		Warnings:   warnings,
+	}); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+
+	if got := warnings.String(); got != "" {
+		t.Errorf("the build said %q about a program it carries whole", got)
+	}
+}

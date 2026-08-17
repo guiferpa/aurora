@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp"
 )
 
 // A scripted session over the real handler map: what a client actually exchanges with the

@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"syscall/js"
 
-	"github.com/guiferpa/aurora/lsp"
-	"github.com/guiferpa/aurora/lsp/textdoc"
+	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
 )
 
 // The page is a third client of the analyses the language server answers with, next to the

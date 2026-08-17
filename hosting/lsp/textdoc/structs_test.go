@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp"
 )
 
 const structSource = `struct Point { x, y };

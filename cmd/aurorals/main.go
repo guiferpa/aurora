@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/version"
 )
 

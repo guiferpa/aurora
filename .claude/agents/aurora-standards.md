@@ -16,7 +16,7 @@ Answer in the language the user writes in (the maintainer usually writes pt-BR).
 
 The language proves itself in the **evaluator** and in the **REPL**, and the EVM backend exists so that **the same program answers the same thing on a chain and off it**: Aurora is for simulating an on-chain call off-chain.
 
-**The backend is on stand-by** while the architecture lands. What it gained before stopping is the differential harness in `internal/cli/evm_harness_test.go` — same source, compiled and deployed to an EVM in memory, called, and compared against the evaluator. A change to the backend that the harness does not cover is a change nobody can vouch for, which is why nothing is written there until the packages are where they belong.
+**The backend is on stand-by** while the architecture lands. What it gained before stopping is the differential harness in `cli/evm_harness_test.go` — same source, compiled and deployed to an EVM in memory, called, and compared against the evaluator. A change to the backend that the harness does not cover is a change nobody can vouch for, which is why nothing is written there until the packages are where they belong.
 
 So: a new feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for. And the print builtins are **logs**: they do not compile to bytecode, by decision.
 
@@ -35,7 +35,7 @@ Between parentheses are the phases; between braces, what crosses between them. T
 | **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
 | **wire** | what crosses a boundary: the token chain, the tree, the IR, a warning | util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` as a formatter | **nothing of the project** | everyone |
-| **hosting** | one kind of interaction: `internal/cli`, `repl`, `lsp` | wire, util, shared | `main` |
+| **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
 | **shared** | serves the hosting *layer*, not one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
 
 The two that are easy to confuse:

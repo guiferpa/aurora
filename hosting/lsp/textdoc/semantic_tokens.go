@@ -3,8 +3,8 @@ package textdoc
 import (
 	"encoding/json"
 
+	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/lexer"
-	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/wire/token"
 )
 

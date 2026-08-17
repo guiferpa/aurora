@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/lexer"
-	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"

@@ -1,6 +1,6 @@
 package textdoc
 
-import "github.com/guiferpa/aurora/lsp"
+import "github.com/guiferpa/aurora/hosting/lsp"
 
 type Item struct {
 	URI        lsp.URI `json:"uri"`

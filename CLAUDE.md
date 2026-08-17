@@ -10,7 +10,7 @@ backend is that **the same program answers the same thing on a chain and off it*
 exists to let an on-chain call be simulated off-chain.
 
 **The backend is on stand-by** while the architecture lands. What it gained before stopping is
-the differential harness (`internal/cli/evm_harness_test.go`) — the same source compiled,
+the differential harness (`cli/evm_harness_test.go`) — the same source compiled,
 deployed to an EVM in memory, called, and compared against the evaluator — so whatever is
 written next is provable rather than believed.
 
@@ -36,7 +36,7 @@ Between parentheses are the phases; between braces, what crosses between them.
 | **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
 | **wire** | what crosses: tokens, tree, IR, warnings | util, and nothing else of the project | everyone |
 | **util** | reusable behaviour that never touches the world: `byteutil`, `logger` | **nothing of the project** | everyone |
-| **hosting** | one interaction: `internal/cli`, `repl`, `lsp` | wire, util, shared | `main` |
+| **hosting** | one interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
 | **shared** | serves the hosting layer, not one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
 
 **The four rules that follow:**

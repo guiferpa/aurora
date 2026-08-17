@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/guiferpa/aurora/lsp/initialize"
-	"github.com/guiferpa/aurora/lsp/state"
+	"github.com/guiferpa/aurora/hosting/lsp/initialize"
+	"github.com/guiferpa/aurora/hosting/lsp/state"
 )
 
 func InitializeHandler(l *log.Logger, s *state.State, contents []byte) any {

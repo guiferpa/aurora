@@ -5,7 +5,6 @@ import (
 	"io"
 
 	"github.com/guiferpa/aurora/evaluator"
-	"github.com/guiferpa/aurora/logger"
 )
 
 // RunInput is the input for the Run handler.
@@ -45,6 +44,5 @@ func Run(ctx context.Context, in RunInput) error {
 	if _, err := ev.Evaluate(program.Instructions); err != nil {
 		return err
 	}
-	logger.AssertError(ev.GetAssertErrors(), in.Source)
 	return nil
 }

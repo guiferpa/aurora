@@ -75,6 +75,11 @@ sobre quem a construiu.
 — um pacote decidindo o fim do processo. Passa a devolver a mensagem formatada; cada hosting
 escreve, e o `os.Exit` sobe para `cmd/*`. É a etapa que conserta a regra 3.
 
+> Ao aplicar apareceu uma segunda coisa: **o código de saída 3 era inatingível.** Ele saía do
+> `AssertError`, chamado pelo `aurora run` — e `run` cria o evaluator sem `Asserts`, que só o
+> `aurora test` liga. Nenhuma asserção jamais falhou por ali. A função saiu junto com o
+> caminho morto, em vez de mudar de casa.
+
 **5. `fileutil`, `manifest` e `internal/trace` viram `shared`.** Eles servem a camada de
 hosting, não uma interação. Util não toca no mundo; esses três tocam.
 

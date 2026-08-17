@@ -14,6 +14,7 @@ SOURCES = $(shell find . -type f -name '*.go' -not -path './.git/*') go.mod go.s
 LINTER = $(GOBIN)/golangci-lint
 ACT_BIN = $(GOBIN)/act
 TPARSE_BIN = $(GOBIN)/tparse
+GODEPGRAPH_BIN = $(GOBIN)/godepgraph
 
 
 # Execute all meaningful jobs from Makefile to release the project's binary
@@ -89,8 +90,23 @@ $(ACT_BIN):
 cover-html: test
 	@go tool cover -html=coverage.out
 
+# Generate dependency graph image using godepgraph and Graphviz (dot).
+# Prerequisites:
+#   - macOS: brew install graphviz
+#   - Debian/Ubuntu: sudo apt-get install graphviz
+#   - Arch Linux: sudo pacman -S graphviz
+#   - Fedora/RHEL: sudo dnf install graphviz
+depgraph: $(GODEPGRAPH_BIN)
+	@echo "==> Generating dependency graph image..."
+	@$(GODEPGRAPH_BIN) -novendor -nostdlib -s ./cmd/aurora | dot -Tsvg -o graph.svg
+	@echo "==> graph.png successfully generated."
+
 $(TPARSE_BIN):
 	@echo "==> Installing tparse..."
 	@go install github.com/mfridman/tparse@latest
 
-.PHONY: all check build wasm build-force aurora aurorals test bench lint complexity act cover-html clean
+$(GODEPGRAPH_BIN):
+	@echo "==> Installing godepgraph..."
+	@go install github.com/kisielk/godepgraph@latest
+
+.PHONY: all check build wasm build-force aurora aurorals test bench lint complexity act cover-html clean depgraph

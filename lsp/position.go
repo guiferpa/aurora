@@ -11,7 +11,7 @@ import (
 // lexer reports 1-based lines and byte columns. Any source holding a non-ASCII rune (a
 // text like "áé") drifts if byte columns are handed to a client directly, so positions
 // are always derived here from the document text and a token's byte offset
-// (lexer.Token.GetCursor).
+// (token.Token.GetCursor).
 type Mapper struct {
 	text  string
 	lines []int // byte offset where each line starts

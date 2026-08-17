@@ -1,34 +1,36 @@
 package lexer
 
-var keywordTags = []Tag{
-	TagIdent,
-	TagIf,
-	TagElse,
-	TagBranch,
-	TagDefer,
-	TagPrintBytes,
-	TagPrintChars,
-	TagPrintDec,
-	TagTrue,
-	TagFalse,
-	TagEquals,
-	TagDifferent,
-	TagBigger,
-	TagSmaller,
-	TagOr,
-	TagAnd,
-	TagHead,
-	TagTail,
-	TagPush,
-	TagPull,
-	TagFeed,
-	TagAssert,
-	TagStruct,
-	TagAs,
+import "github.com/guiferpa/aurora/wire/token"
+
+var keywordTags = []token.Tag{
+	token.TagIdent,
+	token.TagIf,
+	token.TagElse,
+	token.TagBranch,
+	token.TagDefer,
+	token.TagPrintBytes,
+	token.TagPrintChars,
+	token.TagPrintDec,
+	token.TagTrue,
+	token.TagFalse,
+	token.TagEquals,
+	token.TagDifferent,
+	token.TagBigger,
+	token.TagSmaller,
+	token.TagOr,
+	token.TagAnd,
+	token.TagHead,
+	token.TagTail,
+	token.TagPush,
+	token.TagPull,
+	token.TagFeed,
+	token.TagAssert,
+	token.TagStruct,
+	token.TagAs,
 }
 
-var Keywords = func() map[string]Tag {
-	m := make(map[string]Tag, len(keywordTags))
+var Keywords = func() map[string]token.Tag {
+	m := make(map[string]token.Tag, len(keywordTags))
 	for _, t := range keywordTags {
 		m[t.Keyword] = t
 	}
@@ -70,58 +72,58 @@ func isIdentChar(c byte) bool {
 		c == '>' || c == '<'
 }
 
-func scanOneChar(c byte) (Tag, bool) {
+func scanOneChar(c byte) (token.Tag, bool) {
 	switch c {
 	case '(':
-		return TagOParen, true
+		return token.TagOParen, true
 	case ')':
-		return TagCParen, true
+		return token.TagCParen, true
 	case '{':
-		return TagOCurBrk, true
+		return token.TagOCurBrk, true
 	case '}':
-		return TagCCurBrk, true
+		return token.TagCCurBrk, true
 	case '[':
-		return TagOBrk, true
+		return token.TagOBrk, true
 	case ']':
-		return TagCBrk, true
+		return token.TagCBrk, true
 	case ';':
-		return TagSemicolon, true
+		return token.TagSemicolon, true
 	case ':':
-		return TagColon, true
+		return token.TagColon, true
 	case ',':
-		return TagComma, true
+		return token.TagComma, true
 	case '=':
-		return TagAssign, true
+		return token.TagAssign, true
 	case '+':
-		return TagSum, true
+		return token.TagSum, true
 	case '-':
-		return TagSub, true
+		return token.TagSub, true
 	case '*':
-		return TagMult, true
+		return token.TagMult, true
 	case '/':
-		return TagDiv, true
+		return token.TagDiv, true
 	case '^':
-		return TagExpo, true
+		return token.TagExpo, true
 	case '.':
-		return TagDot, true
+		return token.TagDot, true
 	default:
-		return Tag{}, false
+		return token.Tag{}, false
 	}
 }
 
-func scanTwoChars(bs []byte) (bool, Tag, []byte) {
+func scanTwoChars(bs []byte) (bool, token.Tag, []byte) {
 	if len(bs) < 2 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	if bs[0] == '#' && bs[1] == '-' {
-		return true, TagComment, bs[:2]
+		return true, token.TagComment, bs[:2]
 	}
 
-	return false, Tag{}, nil
+	return false, token.Tag{}, nil
 }
 
-func scanWord(bs []byte) (bool, Tag, []byte) {
+func scanWord(bs []byte) (bool, token.Tag, []byte) {
 	i := 0
 	for i < len(bs) {
 		c := bs[i]
@@ -134,7 +136,7 @@ func scanWord(bs []byte) (bool, Tag, []byte) {
 		if c == '=' && i > 0 {
 			prevChar := bs[i-1]
 			if prevChar == '>' || prevChar == '<' || prevChar == '!' {
-				return false, Tag{}, nil
+				return false, token.Tag{}, nil
 			}
 		}
 
@@ -142,17 +144,17 @@ func scanWord(bs []byte) (bool, Tag, []byte) {
 	}
 
 	if i == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	if tag, isKeyword := Keywords[string(bs[:i])]; isKeyword {
 		return true, tag, bs[:i]
 	}
 
-	return true, TagId, bs[:i]
+	return true, token.TagId, bs[:i]
 }
 
-func scanIdentifier(bs []byte) (bool, Tag, []byte) {
+func scanIdentifier(bs []byte) (bool, token.Tag, []byte) {
 	i := 0
 	for i < len(bs) {
 		c := bs[i]
@@ -165,7 +167,7 @@ func scanIdentifier(bs []byte) (bool, Tag, []byte) {
 		if c == '=' && i > 0 {
 			prevChar := bs[i-1]
 			if prevChar == '>' || prevChar == '<' || prevChar == '!' {
-				return false, Tag{}, nil
+				return false, token.Tag{}, nil
 			}
 		}
 
@@ -173,15 +175,15 @@ func scanIdentifier(bs []byte) (bool, Tag, []byte) {
 	}
 
 	if i == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
-	return true, TagId, bs[:i]
+	return true, token.TagId, bs[:i]
 }
 
-func scanNumber(bs []byte) (bool, Tag, []byte) {
+func scanNumber(bs []byte) (bool, token.Tag, []byte) {
 	if len(bs) == 0 || !isDigit(bs[0]) {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	i := 0
@@ -191,19 +193,19 @@ func scanNumber(bs []byte) (bool, Tag, []byte) {
 		for i < len(bs) && isHexDigit(bs[i]) {
 			i++
 		}
-		return true, TagNumber, bs[:i]
+		return true, token.TagNumber, bs[:i]
 	}
 
 	for i < len(bs) && (isDigit(bs[i]) || bs[i] == '_') {
 		i++
 	}
 
-	return true, TagNumber, bs[:i]
+	return true, token.TagNumber, bs[:i]
 }
 
-func scanString(bs []byte) (bool, Tag, []byte) {
+func scanString(bs []byte) (bool, token.Tag, []byte) {
 	if len(bs) == 0 || !isQuote(bs[0]) {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	i := 1
@@ -215,25 +217,25 @@ func scanString(bs []byte) (bool, Tag, []byte) {
 		i++
 	}
 
-	return true, TagString, bs[:i]
+	return true, token.TagString, bs[:i]
 }
 
-func scanWhitespace(bs []byte) (bool, Tag, []byte) {
+func scanWhitespace(bs []byte) (bool, token.Tag, []byte) {
 	i := 0
 	for i < len(bs) && isSpace(bs[i]) {
 		i++
 	}
 
 	if i == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
-	return true, TagWhitespace, bs[:i]
+	return true, token.TagWhitespace, bs[:i]
 }
 
-func ScanToken(bs []byte) (bool, Tag, []byte) {
+func ScanToken(bs []byte) (bool, token.Tag, []byte) {
 	if len(bs) == 0 {
-		return false, Tag{}, nil
+		return false, token.Tag{}, nil
 	}
 
 	c := bs[0]
@@ -267,8 +269,8 @@ func ScanToken(bs []byte) (bool, Tag, []byte) {
 	}
 
 	if isNewline(c) {
-		return true, TagBreakLine, bs[:1]
+		return true, token.TagBreakLine, bs[:1]
 	}
 
-	return false, Tag{}, nil
+	return false, token.Tag{}, nil
 }

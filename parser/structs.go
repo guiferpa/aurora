@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // The struct directives, and everything they are: a way of naming the fields of a run of
@@ -35,52 +35,52 @@ func NewDirectives() *Directives {
 
 // ParseStruct reads `struct Point { x, y };`.
 func (p *pr) ParseStruct() (Node, error) {
-	tok, err := p.EatToken(lexer.STRUCT)
+	tok, err := p.EatToken(token.STRUCT)
 	if err != nil {
 		return nil, err
 	}
 
-	name, err := p.EatToken(lexer.ID)
+	name, err := p.EatToken(token.ID)
 	if err != nil {
 		return nil, err
 	}
 	structName := string(name.GetMatch())
 	if _, declared := p.directives.Structs[structName]; declared {
-		return nil, lexer.NewError(name, "struct %s is already declared at line %d and column %d",
+		return nil, token.NewError(name, "struct %s is already declared at line %d and column %d",
 			structName, name.GetLine(), name.GetColumn())
 	}
 
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
 
 	fields := make([]string, 0)
-	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != lexer.C_CUR_BRK {
-		field, err := p.EatToken(lexer.ID)
+	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != token.C_CUR_BRK {
+		field, err := p.EatToken(token.ID)
 		if err != nil {
 			return nil, err
 		}
 		fieldName := string(field.GetMatch())
 		if slices.Contains(fields, fieldName) {
-			return nil, lexer.NewError(field, "struct %s already has a field named %s at line %d and column %d",
+			return nil, token.NewError(field, "struct %s already has a field named %s at line %d and column %d",
 				structName, fieldName, field.GetLine(), field.GetColumn())
 		}
 		fields = append(fields, fieldName)
 
-		if p.GetLookahead().GetTag().Id == lexer.C_CUR_BRK {
+		if p.GetLookahead().GetTag().Id == token.C_CUR_BRK {
 			break
 		}
-		if _, err := p.EatToken(lexer.COMMA); err != nil {
+		if _, err := p.EatToken(token.COMMA); err != nil {
 			return nil, err
 		}
 	}
 
-	if _, err := p.EatToken(lexer.C_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
 	// A struct of no fields would be a value of no tapes, which is not a value at all.
 	if len(fields) == 0 {
-		return nil, lexer.NewError(tok, "struct %s has no fields at line %d and column %d",
+		return nil, token.NewError(tok, "struct %s has no fields at line %d and column %d",
 			structName, tok.GetLine(), tok.GetColumn())
 	}
 
@@ -98,25 +98,25 @@ func (p *pr) ParseStruct() (Node, error) {
 func (p *pr) ParseStructLiteral(id IdentifierLiteral) (Node, error) {
 	fields := p.directives.Structs[id.Value]
 
-	if _, err := p.EatToken(lexer.O_CUR_BRK); err != nil {
+	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
 	}
 	values := make([]Node, 0, len(fields))
-	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != lexer.C_CUR_BRK {
+	for p.GetLookahead() != nil && p.GetLookahead().GetTag().Id != token.C_CUR_BRK {
 		expr, err := p.ParseExpr()
 		if err != nil {
 			return nil, err
 		}
 		values = append(values, expr)
 
-		if p.GetLookahead().GetTag().Id == lexer.C_CUR_BRK {
+		if p.GetLookahead().GetTag().Id == token.C_CUR_BRK {
 			break
 		}
-		if _, err := p.EatToken(lexer.COMMA); err != nil {
+		if _, err := p.EatToken(token.COMMA); err != nil {
 			return nil, err
 		}
 	}
-	closing, err := p.EatToken(lexer.C_CUR_BRK)
+	closing, err := p.EatToken(token.C_CUR_BRK)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (p *pr) ParseStructLiteral(id IdentifierLiteral) (Node, error) {
 	// Pointing at a miscount is the whole reason the directive exists, so it is an error
 	// rather than a run padded with the neutral value.
 	if len(values) != len(fields) {
-		return nil, lexer.NewError(closing, "struct %s has %d fields (%s) but got %d at line %d and column %d",
+		return nil, token.NewError(closing, "struct %s has %d fields (%s) but got %d at line %d and column %d",
 			id.Value, len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
 	}
 
@@ -143,9 +143,9 @@ func (p *pr) parsePostfix(expr Node) (Node, error) {
 
 		var err error
 		switch lookahead.GetTag().Id {
-		case lexer.DOT:
+		case token.DOT:
 			expr, err = p.parseField(expr)
-		case lexer.AS:
+		case token.AS:
 			expr, err = p.parseShape(expr)
 		default:
 			return expr, nil
@@ -159,10 +159,10 @@ func (p *pr) parsePostfix(expr Node) (Node, error) {
 // parseField resolves `.x` to the index x was declared at. The name does not survive into
 // the tree as anything the emitter reads.
 func (p *pr) parseField(expr Node) (Node, error) {
-	if _, err := p.EatToken(lexer.DOT); err != nil {
+	if _, err := p.EatToken(token.DOT); err != nil {
 		return nil, err
 	}
-	name, err := p.EatToken(lexer.ID)
+	name, err := p.EatToken(token.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,14 +170,14 @@ func (p *pr) parseField(expr Node) (Node, error) {
 
 	shape := p.shapeOf(expr)
 	if shape == "" {
-		return nil, lexer.NewError(name, "cannot read field %s at line %d and column %d: nothing says which struct this value is, name it with 'as'",
+		return nil, token.NewError(name, "cannot read field %s at line %d and column %d: nothing says which struct this value is, name it with 'as'",
 			field, name.GetLine(), name.GetColumn())
 	}
 
 	fields := p.directives.Structs[shape]
 	index := slices.Index(fields, field)
 	if index < 0 {
-		return nil, lexer.NewError(name, "struct %s has no field named %s at line %d and column %d (it has %s)",
+		return nil, token.NewError(name, "struct %s has no field named %s at line %d and column %d (it has %s)",
 			shape, field, name.GetLine(), name.GetColumn(), strings.Join(fields, ", "))
 	}
 
@@ -187,17 +187,17 @@ func (p *pr) parseField(expr Node) (Node, error) {
 // parseShape reads `as Point`. It claims a shape rather than checking one: a value is a run
 // of bytes and there is nothing in it to check against.
 func (p *pr) parseShape(expr Node) (Node, error) {
-	tok, err := p.EatToken(lexer.AS)
+	tok, err := p.EatToken(token.AS)
 	if err != nil {
 		return nil, err
 	}
-	name, err := p.EatToken(lexer.ID)
+	name, err := p.EatToken(token.ID)
 	if err != nil {
 		return nil, err
 	}
 	structName := string(name.GetMatch())
 	if _, declared := p.directives.Structs[structName]; !declared {
-		return nil, lexer.NewError(name, "%s is not a declared struct at line %d and column %d",
+		return nil, token.NewError(name, "%s is not a declared struct at line %d and column %d",
 			structName, name.GetLine(), name.GetColumn())
 	}
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 func parseWithTapeSize(t *testing.T, source string, tapeSize int) (AST, error) {
@@ -45,7 +46,7 @@ func TestLiteralMustFitInTape(t *testing.T) {
 				t.Errorf("error = %q, want it to mention %q", err, tc.wantErr)
 			}
 			// The language server underlines it, so the position has to travel with the error.
-			var perr *lexer.Error
+			var perr *token.Error
 			if !errors.As(err, &perr) {
 				t.Fatalf("error is not positioned: %T", err)
 			}

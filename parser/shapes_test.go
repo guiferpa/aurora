@@ -6,6 +6,7 @@ import (
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // These tests are about the shape of the tree, which nothing else checks. The evaluator
@@ -515,9 +516,9 @@ func TestParseErrorsArePositioned(t *testing.T) {
 		t.Fatal("expected an error")
 	}
 
-	perr, ok := err.(*lexer.Error)
+	perr, ok := err.(*token.Error)
 	if !ok {
-		t.Fatalf("error is %T, want *lexer.Error", err)
+		t.Fatalf("error is %T, want *token.Error", err)
 	}
 	if perr.Line != 2 {
 		t.Errorf("line = %d, want 2", perr.Line)

@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 type Node interface {
@@ -10,7 +10,7 @@ type Node interface {
 
 type OperationLiteral struct {
 	Value string      `json:"value"`
-	Token lexer.Token `json:"-"`
+	Token token.Token `json:"-"`
 }
 
 func (oln OperationLiteral) Next() Node {
@@ -36,7 +36,7 @@ func (cln CalleeLiteral) Next() Node {
 
 type IdentifierLiteral struct {
 	Value string      `json:"value"`
-	Token lexer.Token `json:"-"`
+	Token token.Token `json:"-"`
 }
 
 func (iln IdentifierLiteral) Next() Node {
@@ -45,7 +45,7 @@ func (iln IdentifierLiteral) Next() Node {
 
 type BooleanLiteral struct {
 	Value []byte      `json:"value"`
-	Token lexer.Token `json:"-"`
+	Token token.Token `json:"-"`
 }
 
 func (bln BooleanLiteral) Next() Node {
@@ -54,7 +54,7 @@ func (bln BooleanLiteral) Next() Node {
 
 type NumberLiteral struct {
 	Value uint64      `json:"value"`
-	Token lexer.Token `json:"-"`
+	Token token.Token `json:"-"`
 }
 
 func (nln NumberLiteral) Next() Node {
@@ -73,7 +73,7 @@ func (nln NumberLiteral) Next() Node {
 // number 97 is.
 type TextLiteral struct {
 	Value []byte      `json:"value"`
-	Token lexer.Token `json:"-"`
+	Token token.Token `json:"-"`
 }
 
 func (tln TextLiteral) Next() Node {
@@ -248,7 +248,7 @@ func (fen FeedExpression) Next() Node {
 
 type IdentLiteral struct {
 	Id    string      `json:"id"`
-	Token lexer.Token `json:"-"`
+	Token token.Token `json:"-"`
 	Value Node        `json:"value"`
 }
 
@@ -265,7 +265,7 @@ func (isn IdentLiteral) Next() Node {
 type AssertStatement struct {
 	Condition Node        `json:"condition"`
 	Message   string      `json:"message"`
-	Token     lexer.Token `json:"-"`
+	Token     token.Token `json:"-"`
 }
 
 func (asn AssertStatement) Next() Node {
@@ -292,7 +292,7 @@ func (a AST) Next() Node {
 type StructDeclaration struct {
 	Name   string      `json:"name"`
 	Fields []string    `json:"fields"`
-	Token  lexer.Token `json:"-"`
+	Token  token.Token `json:"-"`
 }
 
 func (sdn StructDeclaration) Next() Node {
@@ -303,7 +303,7 @@ func (sdn StructDeclaration) Next() Node {
 type StructLiteral struct {
 	Name   string      `json:"name"`
 	Values []Node      `json:"values"`
-	Token  lexer.Token `json:"-"`
+	Token  token.Token `json:"-"`
 }
 
 func (sln StructLiteral) Next() Node {
@@ -316,7 +316,7 @@ type FieldExpression struct {
 	Expression Node        `json:"expression"`
 	Index      uint64      `json:"index"`
 	Field      string      `json:"field"` // kept for the language server, never emitted
-	Token      lexer.Token `json:"-"`
+	Token      token.Token `json:"-"`
 }
 
 func (fen FieldExpression) Next() Node {
@@ -329,7 +329,7 @@ func (fen FieldExpression) Next() Node {
 type ShapedExpression struct {
 	Expression Node        `json:"expression"`
 	Struct     string      `json:"struct"`
-	Token      lexer.Token `json:"-"`
+	Token      token.Token `json:"-"`
 }
 
 func (sen ShapedExpression) Next() Node {

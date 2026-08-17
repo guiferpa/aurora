@@ -1,4 +1,4 @@
-package lexer
+package token
 
 import "fmt"
 

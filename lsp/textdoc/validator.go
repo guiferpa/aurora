@@ -10,6 +10,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/lsp"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // Severity levels for diagnostics.
@@ -20,7 +21,7 @@ const (
 	SeverityHint        = 4
 )
 
-// Analysis is one pass of the compiler front end over a single document: the token
+// Analysis is one pass of the compiler front end over a single document: the tk
 // stream, the parsed namespace (nil when parsing failed) and a position mapper.
 //
 // The server analyses the open document alone, which is also the compiler's unit: there is
@@ -28,7 +29,7 @@ const (
 type Analysis struct {
 	Source string
 	Mapper *lsp.Mapper
-	Tokens []lexer.Token
+	Tokens []token.Token
 	AST    *parser.AST
 	Err    error
 }
@@ -90,8 +91,8 @@ func (a *Analysis) Diagnostics() Diagnostics {
 	rng := lsp.Range{}
 
 	// Position comes from the structured error carried by the lexer and the parser,
-	// so the underline covers the offending token instead of guessing from the message.
-	var perr *lexer.Error
+	// so the underline covers the offending tk instead of guessing from the message.
+	var perr *token.Error
 	if errors.As(a.Err, &perr) {
 		rng = a.rangeFor(perr.Offset, perr.Length)
 	}
@@ -105,7 +106,7 @@ func (a *Analysis) Diagnostics() Diagnostics {
 }
 
 // rangeFor converts a byte span into a range, backing up to the last meaningful character
-// when the span would be empty. Errors reported against the EOF token — a missing
+// when the span would be empty. Errors reported against the EOF tk — a missing
 // semicolon, an unclosed block — otherwise produce a zero-width marker past the end of the
 // document, which clients draw as nothing at all.
 func (a *Analysis) rangeFor(offset, length int) lsp.Range {
@@ -130,15 +131,15 @@ func isSpace(c byte) bool {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
 }
 
-// TokenAt returns the token under an LSP position, or nil when the position sits on
+// TokenAt returns the tk under an LSP position, or nil when the position sits on
 // whitespace or past the end of the document.
-func (a *Analysis) TokenAt(pos lsp.Position) lexer.Token {
+func (a *Analysis) TokenAt(pos lsp.Position) token.Token {
 	offset := a.Mapper.Offset(pos)
-	for _, token := range a.Tokens {
-		start := token.GetCursor()
-		end := start + len(token.GetMatch())
+	for _, tk := range a.Tokens {
+		start := tk.GetCursor()
+		end := start + len(tk.GetMatch())
 		if offset >= start && offset < end {
-			return token
+			return tk
 		}
 	}
 	return nil
@@ -153,29 +154,29 @@ func ValidateCode(doc Document) Diagnostics {
 // carries for keywords, or the declaration of an identifier when it can be found.
 func HoverInfo(doc Document, pos lsp.Position) string {
 	analysis := Analyze(doc)
-	token := analysis.TokenAt(pos)
-	if token == nil {
+	tk := analysis.TokenAt(pos)
+	if tk == nil {
 		return ""
 	}
 
-	tag := token.GetTag()
-	match := string(token.GetMatch())
+	tag := tk.GetTag()
+	match := string(tk.GetMatch())
 
 	if tag.Description != "" {
 		return tag.Description
 	}
 
 	switch tag.Id {
-	case lexer.NUMBER:
+	case token.NUMBER:
 		return "number: " + match
-	case lexer.STRING:
+	case token.STRING:
 		return "text: " + match + "\nits bytes, in one tape"
-	case lexer.TRUE, lexer.FALSE:
+	case token.TRUE, token.FALSE:
 		return "boolean: " + match
-	case lexer.ID:
+	case token.ID:
 		// A struct name or a field read out of one: the directive is what says these are
 		// anything other than a name, so it is what hover has to answer with.
-		if shape, fields, index := scanStructs(analysis.Tokens).structAt(analysis.Tokens, token); shape != "" {
+		if shape, fields, index := scanStructs(analysis.Tokens).structAt(analysis.Tokens, tk); shape != "" {
 			if index < 0 {
 				return "struct " + shape + "\nfields: " + strings.Join(fields, ", ")
 			}
@@ -210,7 +211,7 @@ func CompletionItemsFor(doc Document, pos lsp.Position, snippets bool) []Complet
 	}
 
 	items := make([]CompletionItem, 0)
-	for _, tag := range lexer.GetProcessableTags() {
+	for _, tag := range token.GetProcessableTags() {
 		items = append(items, keywordCompletion(tag, snippets))
 	}
 	items = append(items, structCompletions(shapes, snippets)...)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/lsp"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // Semantic tokens are how the language server colors Aurora in any client: instead of a
@@ -85,9 +86,9 @@ type semanticToken struct {
 	modifiers int
 }
 
-// SemanticTokensFor lexes source and returns the delta-encoded token data the LSP expects.
+// SemanticTokensFor lexes source and returns the delta-encoded tk data the LSP expects.
 //
-// It uses the raw token stream (GetTokens) rather than GetFilledTokens because whitespace
+// It uses the raw tk stream (GetTokens) rather than GetFilledTokens because whitespace
 // and line breaks are needed to place comments, and a lexer error still yields the tokens
 // read so far — so a file being typed keeps its colors instead of going blank.
 func SemanticTokensFor(source string) []uint {
@@ -96,14 +97,14 @@ func SemanticTokensFor(source string) []uint {
 	return encodeSemanticTokens(mapper, collectSemanticTokens(mapper, tokens))
 }
 
-func collectSemanticTokens(mapper *lsp.Mapper, tokens []lexer.Token) []semanticToken {
+func collectSemanticTokens(mapper *lsp.Mapper, tokens []token.Token) []semanticToken {
 	out := make([]semanticToken, 0, len(tokens))
-	for i, token := range tokens {
-		tag := token.GetTag().Id
-		length := len(token.GetMatch())
-		offset := token.GetCursor()
+	for i, tk := range tokens {
+		tag := tk.GetTag().Id
+		length := len(tk.GetMatch())
+		offset := tk.GetCursor()
 
-		if tag == lexer.COMMENT_LINE {
+		if tag == token.COMMENT_LINE {
 			// The lexer drops everything after "#-", so the comment body comes from the text.
 			end := mapper.LineEndOffset(offset)
 			out = append(out, semanticToken{offset: offset, length: end - offset, tokenType: SemanticComment})
@@ -116,7 +117,7 @@ func collectSemanticTokens(mapper *lsp.Mapper, tokens []lexer.Token) []semanticT
 		}
 
 		modifiers := 0
-		if tag == lexer.ID {
+		if tag == token.ID {
 			tokenType, modifiers = classifyIdentifier(tokens, i)
 		}
 		if length == 0 {
@@ -127,23 +128,23 @@ func collectSemanticTokens(mapper *lsp.Mapper, tokens []lexer.Token) []semanticT
 	return out
 }
 
-// semanticTypeOf maps a lexer tag to a token type. Tags with no visual meaning
+// semanticTypeOf maps a lexer tag to a tk type. Tags with no visual meaning
 // (whitespace, line breaks, EOF, punctuation) report false and are skipped.
 func semanticTypeOf(tag string) (int, bool) {
 	switch tag {
-	case lexer.IDENT, lexer.IF, lexer.ELSE, lexer.BRANCH, lexer.DEFER,
-		lexer.PRINTB, lexer.PRINTC, lexer.PRINTD, lexer.ASSERT, lexer.FEED,
-		lexer.HEAD, lexer.TAIL, lexer.PUSH, lexer.PULL, lexer.TRUE, lexer.FALSE,
-		lexer.STRUCT, lexer.AS:
+	case token.IDENT, token.IF, token.ELSE, token.BRANCH, token.DEFER,
+		token.PRINTB, token.PRINTC, token.PRINTD, token.ASSERT, token.FEED,
+		token.HEAD, token.TAIL, token.PUSH, token.PULL, token.TRUE, token.FALSE,
+		token.STRUCT, token.AS:
 		return SemanticKeyword, true
-	case lexer.NUMBER:
+	case token.NUMBER:
 		return SemanticNumber, true
-	case lexer.STRING:
+	case token.STRING:
 		return SemanticString, true
-	case lexer.SUM, lexer.SUB, lexer.MULT, lexer.DIV, lexer.EXPO, lexer.ASSIGN,
-		lexer.EQUALS, lexer.DIFFERENT, lexer.BIGGER, lexer.SMALLER, lexer.AND, lexer.OR:
+	case token.SUM, token.SUB, token.MULT, token.DIV, token.EXPO, token.ASSIGN,
+		token.EQUALS, token.DIFFERENT, token.BIGGER, token.SMALLER, token.AND, token.OR:
 		return SemanticOperator, true
-	case lexer.ID:
+	case token.ID:
 		return SemanticVariable, true
 	default:
 		return 0, false
@@ -152,18 +153,18 @@ func semanticTypeOf(tag string) (int, bool) {
 
 // classifyIdentifier refines an ID by looking at its neighbours: "name(" is a call and
 // "ident name" is a declaration.
-func classifyIdentifier(tokens []lexer.Token, i int) (tokenType, modifiers int) {
+func classifyIdentifier(tokens []token.Token, i int) (tokenType, modifiers int) {
 	prev := prevMeaningful(tokens, i)
 
 	// A name after a dot is a field, and a name after struct or as is the struct itself —
 	// the only places a name means something other than a value.
 	if prev != nil {
 		switch prev.GetTag().Id {
-		case lexer.DOT:
+		case token.DOT:
 			return SemanticProperty, 0
-		case lexer.STRUCT:
+		case token.STRUCT:
 			return SemanticStruct, SemanticModifierDeclaration
-		case lexer.AS:
+		case token.AS:
 			return SemanticStruct, 0
 		}
 	}
@@ -171,16 +172,16 @@ func classifyIdentifier(tokens []lexer.Token, i int) (tokenType, modifiers int) 
 		return SemanticProperty, SemanticModifierDeclaration
 	}
 
-	if next := nextMeaningful(tokens, i); next != nil && next.GetTag().Id == lexer.O_PAREN {
+	if next := nextMeaningful(tokens, i); next != nil && next.GetTag().Id == token.O_PAREN {
 		return SemanticFunction, 0
 	}
-	if prev != nil && prev.GetTag().Id == lexer.IDENT {
+	if prev != nil && prev.GetTag().Id == token.IDENT {
 		return SemanticVariable, SemanticModifierDeclaration
 	}
 	return SemanticVariable, 0
 }
 
-func nextMeaningful(tokens []lexer.Token, i int) lexer.Token {
+func nextMeaningful(tokens []token.Token, i int) token.Token {
 	for j := i + 1; j < len(tokens); j++ {
 		if isLayout(tokens[j].GetTag().Id) {
 			continue
@@ -192,13 +193,13 @@ func nextMeaningful(tokens []lexer.Token, i int) lexer.Token {
 
 // insideStructDeclaration says whether a name sits between the braces of `struct X { … }`,
 // where every name is a field being declared rather than a value.
-func insideStructDeclaration(tokens []lexer.Token, i int) bool {
+func insideStructDeclaration(tokens []token.Token, i int) bool {
 	depth := 0
 	for j := i - 1; j >= 0; j-- {
 		switch tokens[j].GetTag().Id {
-		case lexer.C_CUR_BRK:
+		case token.C_CUR_BRK:
 			depth++
-		case lexer.O_CUR_BRK:
+		case token.O_CUR_BRK:
 			if depth > 0 {
 				depth--
 				continue
@@ -206,17 +207,17 @@ func insideStructDeclaration(tokens []lexer.Token, i int) bool {
 			// The brace that opens the block this name is in: a struct declared it when the
 			// two things in front of it are a name and the struct keyword.
 			name := prevMeaningfulIndex(tokens, j)
-			if name < 0 || tokens[name].GetTag().Id != lexer.ID {
+			if name < 0 || tokens[name].GetTag().Id != token.ID {
 				return false
 			}
 			keyword := prevMeaningfulIndex(tokens, name)
-			return keyword >= 0 && tokens[keyword].GetTag().Id == lexer.STRUCT
+			return keyword >= 0 && tokens[keyword].GetTag().Id == token.STRUCT
 		}
 	}
 	return false
 }
 
-func prevMeaningfulIndex(tokens []lexer.Token, i int) int {
+func prevMeaningfulIndex(tokens []token.Token, i int) int {
 	for j := i - 1; j >= 0; j-- {
 		if isLayout(tokens[j].GetTag().Id) {
 			continue
@@ -226,7 +227,7 @@ func prevMeaningfulIndex(tokens []lexer.Token, i int) int {
 	return -1
 }
 
-func prevMeaningful(tokens []lexer.Token, i int) lexer.Token {
+func prevMeaningful(tokens []token.Token, i int) token.Token {
 	for j := i - 1; j >= 0; j-- {
 		if isLayout(tokens[j].GetTag().Id) {
 			continue
@@ -237,19 +238,19 @@ func prevMeaningful(tokens []lexer.Token, i int) lexer.Token {
 }
 
 func isLayout(tag string) bool {
-	return tag == lexer.WHITESPACE || tag == lexer.BREAK_LINE
+	return tag == token.WHITESPACE || tag == token.BREAK_LINE
 }
 
 // encodeSemanticTokens turns absolute spans into the protocol's delta encoding:
-// five integers per token (deltaLine, deltaStartChar, length, type, modifiers), each
+// five integers per tk (deltaLine, deltaStartChar, length, type, modifiers), each
 // position relative to the previous token. Spans crossing a line break are split so no
 // entry ever spans lines, which the encoding cannot express.
 func encodeSemanticTokens(mapper *lsp.Mapper, tokens []semanticToken) []uint {
 	data := make([]uint, 0, len(tokens)*5)
 	lastLine, lastChar := 0, 0
 
-	for _, token := range tokens {
-		offset, remaining := token.offset, token.length
+	for _, tk := range tokens {
+		offset, remaining := tk.offset, tk.length
 		for remaining > 0 {
 			lineEnd := mapper.LineEndOffset(offset)
 			length := remaining
@@ -273,8 +274,8 @@ func encodeSemanticTokens(mapper *lsp.Mapper, tokens []semanticToken) []uint {
 				uint(deltaLine),
 				uint(deltaChar),
 				uint(end.Character-start.Character),
-				uint(token.tokenType),
-				uint(token.modifiers),
+				uint(tk.tokenType),
+				uint(tk.modifiers),
 			)
 
 			lastLine, lastChar = start.Line, start.Character

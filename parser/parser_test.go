@@ -3,19 +3,19 @@ package parser
 import (
 	"testing"
 
-	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 type tok struct {
 	match []byte
-	tag   lexer.Tag
+	tag   token.Tag
 }
 
 func (t tok) GetMatch() []byte {
 	return t.match
 }
 
-func (t tok) GetTag() lexer.Tag {
+func (t tok) GetTag() token.Tag {
 	return t.tag
 }
 
@@ -32,9 +32,9 @@ func (t tok) GetCursor() int {
 }
 
 func TestEatTokenWithEmptySlice(t *testing.T) {
-	tokens := []lexer.Token{}
+	tokens := []token.Token{}
 	p := &pr{cursor: 0, tokens: tokens}
-	got, err := p.EatToken(lexer.BREAK_LINE)
+	got, err := p.EatToken(token.BREAK_LINE)
 	if err != nil {
 		t.Error("unexpected error when eat some token:", err)
 	}
@@ -44,15 +44,15 @@ func TestEatTokenWithEmptySlice(t *testing.T) {
 }
 
 func TestEatTokenWithMismatch(t *testing.T) {
-	tokens := []lexer.Token{
-		tok{nil, lexer.TagAssign},
-		tok{nil, lexer.TagAssign},
-		tok{nil, lexer.TagSum},
+	tokens := []token.Token{
+		tok{nil, token.TagAssign},
+		tok{nil, token.TagAssign},
+		tok{nil, token.TagSum},
 	}
 	p := New(NewParserOptions{
 		Tokens: tokens,
 	})
-	expected := lexer.IDENT
+	expected := token.IDENT
 	got, err := p.EatToken(expected)
 	if err == nil {
 		t.Error("unexpected error equals nil when eat some token")
@@ -64,20 +64,20 @@ func TestEatTokenWithMismatch(t *testing.T) {
 
 func TestEatToken(t *testing.T) {
 	cases := []struct {
-		Tokens   []lexer.Token
+		Tokens   []token.Token
 		TokenIds []string
 	}{
 		// = = +
 		{
-			[]lexer.Token{
-				tok{nil, lexer.TagAssign},
-				tok{nil, lexer.TagAssign},
-				tok{nil, lexer.TagSum},
+			[]token.Token{
+				tok{nil, token.TagAssign},
+				tok{nil, token.TagAssign},
+				tok{nil, token.TagSum},
 			},
 			[]string{
-				lexer.ASSIGN,
-				lexer.ASSIGN,
-				lexer.SUM,
+				token.ASSIGN,
+				token.ASSIGN,
+				token.SUM,
 			},
 		},
 	}
@@ -100,25 +100,25 @@ func TestEatToken(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	// ident a = if 10 bigger 11 { 0; } else { 1; };
-	tokens := []lexer.Token{
-		tok{[]byte("tok1"), lexer.TagIdent},
-		tok{[]byte("a"), lexer.TagId},
-		tok{[]byte("tok3"), lexer.TagAssign},
-		tok{[]byte("tok4"), lexer.TagIf},
-		tok{[]byte("10"), lexer.TagNumber},
-		tok{[]byte("tok6"), lexer.TagBigger},
-		tok{[]byte("11"), lexer.TagNumber},
-		tok{[]byte("tok8"), lexer.TagOCurBrk},
-		tok{[]byte("0"), lexer.TagNumber},
-		tok{[]byte("tok10"), lexer.TagSemicolon},
-		tok{[]byte("tok11"), lexer.TagCCurBrk},
-		tok{[]byte("tok12"), lexer.TagElse},
-		tok{[]byte("tok13"), lexer.TagOCurBrk},
-		tok{[]byte("1"), lexer.TagNumber},
-		tok{[]byte("tok15"), lexer.TagSemicolon},
-		tok{[]byte("tok16"), lexer.TagCCurBrk},
-		tok{[]byte("tok17"), lexer.TagSemicolon},
-		tok{[]byte("tok18"), lexer.TagEOF},
+	tokens := []token.Token{
+		tok{[]byte("tok1"), token.TagIdent},
+		tok{[]byte("a"), token.TagId},
+		tok{[]byte("tok3"), token.TagAssign},
+		tok{[]byte("tok4"), token.TagIf},
+		tok{[]byte("10"), token.TagNumber},
+		tok{[]byte("tok6"), token.TagBigger},
+		tok{[]byte("11"), token.TagNumber},
+		tok{[]byte("tok8"), token.TagOCurBrk},
+		tok{[]byte("0"), token.TagNumber},
+		tok{[]byte("tok10"), token.TagSemicolon},
+		tok{[]byte("tok11"), token.TagCCurBrk},
+		tok{[]byte("tok12"), token.TagElse},
+		tok{[]byte("tok13"), token.TagOCurBrk},
+		tok{[]byte("1"), token.TagNumber},
+		tok{[]byte("tok15"), token.TagSemicolon},
+		tok{[]byte("tok16"), token.TagCCurBrk},
+		tok{[]byte("tok17"), token.TagSemicolon},
+		tok{[]byte("tok18"), token.TagEOF},
 	}
 	expected := AST{
 		Filename: "testing.ar",

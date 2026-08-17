@@ -3,6 +3,7 @@ package evm
 import (
 	"fmt"
 
+	"github.com/guiferpa/aurora/wire/diag"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -66,22 +67,6 @@ var pending = map[byte]string{
 	ir.OpField: "struct",
 }
 
-// A Warning is what the builder has to say about a program it cannot carry whole.
-//
-// It is the builder's own word rather than the emitter's. A backend reporting on itself in
-// the vocabulary of the phase before it is one step from depending on that phase for meaning,
-// and the whole point of the layering is that someone could take this package and write a
-// different compiler around it.
-//
-// It carries no position: the IR has instructions, not lines.
-type Warning struct {
-	Message string
-}
-
-func (w Warning) String() string {
-	return w.Message
-}
-
 // Warnings reports what a program uses that does not reach the bytecode.
 //
 // They are warnings and not errors because the backend is being written in slices: refusing
@@ -89,8 +74,8 @@ func (w Warning) String() string {
 // coming out quietly wrong, which is what happened until now.
 //
 // They arrive in the order the program uses them, once each.
-func Warnings(insts []ir.Instruction) []Warning {
-	warnings := make([]Warning, 0)
+func Warnings(insts []ir.Instruction) []diag.Warning {
+	warnings := make([]diag.Warning, 0)
 	said := make(map[string]bool)
 
 	for _, inst := range insts {
@@ -113,7 +98,7 @@ func Warnings(insts []ir.Instruction) []Warning {
 			continue
 		}
 		said[message] = true
-		warnings = append(warnings, Warning{Message: message})
+		warnings = append(warnings, diag.Warning{Message: message})
 	}
 
 	return warnings

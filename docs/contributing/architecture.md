@@ -27,7 +27,7 @@ from.
 | kind | what it is | may import | is imported by |
 |---|---|---|---|
 | **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
-| **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir` | util, and nothing else of the project | everyone |
+| **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag` | wire, util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` | nothing of the project | everyone |
 | **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
 | **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
@@ -73,6 +73,9 @@ have to name that type. Injecting the *behaviour* does not remove the type of th
 choice is between giving the artefact a home of its own, or having every phase declare its own
 interface and `main` convert — which, for the vocabulary (tags, opcodes), means a translation
 table in `main` where a missing entry is wrong output in silence instead of a compile error.
+
+A wire package may lean on another — the tree holds tokens, the IR holds warnings — and on a
+util. Neither can tie it to a phase, which is what the rule is protecting.
 
 **What wire holds:** the types, their constructors, the vocabulary (tags, opcodes), and how
 they are written down — spelling something out is part of the vocabulary, the way a token

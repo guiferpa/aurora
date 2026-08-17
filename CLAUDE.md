@@ -35,7 +35,7 @@ packages of their own.
 | kind | who |
 |---|---|
 | **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` |
-| **wire** | `wire/token`, `wire/ast`, `wire/ir` |
+| **wire** | `wire/token`, `wire/ast`, `wire/ir`, `wire/diag` |
 | **util** | `byteutil`, `logger` |
 | **hosting** | `hosting/cli`, `hosting/repl`, `hosting/lsp` |
 | **shared** | `shared/fileutil`, `shared/manifest`, `shared/trace` |

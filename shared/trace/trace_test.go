@@ -10,10 +10,11 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // compile runs the front end over source, which is what a host hands to trace.
-func compile(t *testing.T, source string) (ast.AST, emitter.Program) {
+func compile(t *testing.T, source string) (ast.AST, ir.Program) {
 	t.Helper()
 
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))

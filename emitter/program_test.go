@@ -9,7 +9,7 @@ import (
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
-func compileWith(t *testing.T, source string, tapeSize int) Program {
+func compileWith(t *testing.T, source string, tapeSize int) ir.Program {
 	t.Helper()
 	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 	if err != nil {
@@ -26,7 +26,7 @@ func compileWith(t *testing.T, source string, tapeSize int) Program {
 	return program
 }
 
-func compile(t *testing.T, source string) Program {
+func compile(t *testing.T, source string) ir.Program {
 	t.Helper()
 	return compileWith(t, source, 0)
 }

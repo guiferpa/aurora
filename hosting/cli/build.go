@@ -51,7 +51,10 @@ func Build(ctx context.Context, in BuildInput) (BuildReport, error) {
 	if err != nil {
 		return report, err
 	}
-	ReportWarnings(in.Warnings, in.Source, program.Warnings)
+	// What the compiler has to say about the program, and what the backend has to say about
+	// what it can carry: the second is the builder's to answer, since it is the one writing.
+	warnings := append(program.Warnings, evm.Warnings(program.Instructions)...)
+	ReportWarnings(in.Warnings, in.Source, warnings)
 	report.Instructions = len(program.Instructions)
 
 	// Assembling and writing are two things, and the builder only does the first: it

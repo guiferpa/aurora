@@ -102,8 +102,10 @@ using any of the following **compiles successfully and does nothing on chain**.
 - Jump targets and memory offsets are written with `PUSH1`, which caps a runtime at 256
   bytes and identifiers at about seven memory slots. `PUSH2` lifts it.
 
-A first step that costs little: **warn at compile time** when a program uses something the
-backend drops, instead of writing a binary that lies.
+`aurora build` now **says what it could not carry**, once per feature, in the order the
+program uses it — so a binary that does less than the source said is at least announced. What
+is missing is a place to point at: the IR carries instructions, not lines, so a warning names
+the feature and not where it was written.
 
 ## Simulating a call off the chain
 

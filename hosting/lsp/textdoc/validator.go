@@ -64,9 +64,10 @@ func Analyze(doc Document) *Analysis {
 
 	// How wide a value is decides what fits in one, so the document is read in the dialect it
 	// belongs to rather than in the default.
-	tree, err := parser.New(parser.NewParserOptions{TapeSize: doc.TapeSize}).Parse(parser.ParseInput{
+	tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{
 		Filename: doc.Filename,
 		Tokens:   tokens,
+		TapeSize: doc.TapeSize,
 	})
 	if err != nil {
 		analysis.Err = err

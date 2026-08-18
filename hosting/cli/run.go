@@ -29,7 +29,7 @@ func (s *Session) Run(ctx context.Context, source string) error {
 		return err
 	}
 
-	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens})
+	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens, TapeSize: s.tapeSize})
 	if err != nil {
 		return err
 	}

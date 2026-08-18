@@ -217,6 +217,7 @@ func (s *Session) runTestFile(path string) FileReport {
 			Filename:     file,
 			Tokens:       tokens,
 			Declarations: declarations,
+			TapeSize:     s.tapeSize,
 		})
 		if err != nil {
 			report.Err = failedAt(file, source, err)

@@ -13,10 +13,10 @@ import (
 
 // A Parser turns a chain of tokens into a tree.
 //
-// One parser serves every source there is: what belongs to the project — how wide a value is —
-// is settled when it is built, and what belongs to one source arrives at Parse. It used to
-// take the tokens at build time, so an instance parsed exactly one file and nobody could be
-// handed a parser; only a way of making one.
+// One parser serves every source there is: everything a parse needs arrives at Parse, and a
+// parser is built from nothing at all. It used to take the tokens at build time, so an
+// instance parsed exactly one file and nobody could be handed a parser; only a way of making
+// one.
 //
 // Parse keeps no state of its own between calls, so the same parser may be asked for one tree
 // after another.
@@ -24,13 +24,21 @@ type Parser interface {
 	Parse(in ParseInput) (ast.AST, error)
 }
 
-// ParseInput is one source to read: everything that belongs to the file rather than to the
-// project.
+// ParseInput is one source to read, and everything reading it takes.
 type ParseInput struct {
 	// Filename is the source path. It decides file-scoped rules: assert is only accepted
 	// inside *.test.ar.
 	Filename string
 	Tokens   []token.Token
+	// TapeSize is the width in bytes of every value, which the parser needs to refuse a
+	// number that does not fit one, text longer than one, and a tape literal with too many
+	// items. Zero means the language's default.
+	//
+	// It is a property of the project the source belongs to, and it arrives here rather than
+	// at the build because a parser can outlive it: the language server holds one for a whole
+	// session, and answers for files of different projects — and for the same project after
+	// its manifest is edited, which has to reach the next keystroke.
+	TapeSize int
 	// Declarations carries what `struct` and `as` declared across parses of the same file.
 	// Nil starts empty, which is what compiling a file in one go wants; the REPL passes the
 	// same value every line so a struct declared earlier is still known.
@@ -938,6 +946,7 @@ func (p *pr) EatToken(tokenId string) (token.Token, error) {
 func (p pr) Parse(in ParseInput) (ast.AST, error) {
 	p.filename = in.Filename
 	p.tokens = in.Tokens
+	p.tapeSize = byteutil.TapeSize(in.TapeSize)
 	p.cursor = 0
 	p.declarations = in.Declarations
 	if p.declarations == nil {
@@ -952,11 +961,10 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 	return ast.AST{Filename: p.filename, Nodes: nodes}, nil
 }
 
-type NewParserOptions struct {
-	// TapeSize is the width in bytes of every value. Zero means the default (8).
-	TapeSize int
-}
+// NewParserOptions is empty: a parser is the same whatever it is asked to read. It stays as a
+// struct so that giving one an option later does not change every call.
+type NewParserOptions struct{}
 
 func New(opts NewParserOptions) Parser {
-	return pr{tapeSize: byteutil.TapeSize(opts.TapeSize)}
+	return pr{}
 }

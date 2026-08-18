@@ -140,7 +140,8 @@ func (s *Session) compile(text string) (ir.Program, error) {
 	}
 
 	tree, err := s.parser.Parse(parser.ParseInput{
-		Tokens: tokens,
+		Tokens:   tokens,
+		TapeSize: s.tapeSize,
 		// A struct declared on one line has to still be known on the next, so what the
 		// session remembers goes in with every line.
 		Declarations: s.declarations,

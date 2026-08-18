@@ -58,8 +58,8 @@ func init() {
 				fmt.Println(err)
 				return nil
 			}
-			tree, err := parser.New(parser.NewParserOptions{TapeSize: size}).
-				Parse(parser.ParseInput{Tokens: tokens})
+			tree, err := parser.New(parser.NewParserOptions{}).
+				Parse(parser.ParseInput{Tokens: tokens, TapeSize: size})
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil

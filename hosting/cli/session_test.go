@@ -42,7 +42,7 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 
 	return NewSession(NewSessionOptions{
 		Lexer:   lexer.New(lexer.NewLexerOptions{}),
-		Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+		Parser:  parser.New(parser.NewParserOptions{}),
 		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{

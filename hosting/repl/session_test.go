@@ -26,7 +26,7 @@ func typed(t *testing.T, lines string, tapeSize int) string {
 
 	NewSession(NewSessionOptions{
 		Lexer:   lexer.New(lexer.NewLexerOptions{}),
-		Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+		Parser:  parser.New(parser.NewParserOptions{}),
 		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 		Evaluator: evaluator.New(evaluator.NewEvaluatorOptions{
 			PrintBytes:   printer.Bytes(out, size),

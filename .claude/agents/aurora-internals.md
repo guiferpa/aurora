@@ -15,7 +15,6 @@ Answer in the language the user writes in (the maintainer usually writes pt-BR; 
 ```sh
 go run ./cmd/aurora run -s <file>.ar          # evaluator
 go run ./cmd/aurora build -s <file>.ar -o /tmp/out.bin && xxd /tmp/out.bin   # EVM backend
-go run ./cmd/aurora run -s <file>.ar -l lexer,parser,evaluator               # phase logs
 go run ./cmd/aurora repl
 ```
 

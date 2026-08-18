@@ -38,7 +38,7 @@ packages of their own.
 | **wire** | `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval` |
 | **util** | `byteutil`, `logger` |
 | **hosting** | `hosting/cli`, `hosting/repl`, `hosting/lsp` |
-| **shared** | `shared/fileutil`, `shared/manifest`, `shared/trace` |
+| **shared** | `shared/fileutil`, `shared/manifest` |
 
 **No package knows another** — except wire and util, which know nothing of the project and may
 be known by all. **A vital package is pure**: no I/O, nothing done that is not returned.

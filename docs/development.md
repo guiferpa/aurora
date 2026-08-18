@@ -62,12 +62,16 @@ The unit of compilation is the file, and there is no module system yet, so a pro
 
 ### Inspecting each phase
 
-```sh
-go run ./cmd/aurora run main.ar -l lexer,parser,evaluator
-go run ./cmd/aurora build main.ar -o /tmp/out.bin -l builder && xxd /tmp/out.bin
-```
+There is no flag for this. `-l` used to show what the lexer, the parser and the emitter
+produced, and it was removed: a phase answers with what it made, and every one of them is
+covered by a test that reads it, which is where a shape is checked. To see one by hand, write
+a test — that way the check survives the afternoon.
 
-Valid loggers: `lexer`, `parser`, `emitter`, `evaluator` (run) and `builder` (build).
+The bytecode a build wrote is on disk, so `xxd` is the whole story:
+
+```sh
+go run ./cmd/aurora build main.ar -o /tmp/out.bin && xxd /tmp/out.bin
+```
 
 ### Playground (WASM)
 

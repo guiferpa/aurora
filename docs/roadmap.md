@@ -117,19 +117,20 @@ and answers from the evaluator, the same way the chain would.
 
 ---
 
-## The evaluator's instruction trace
+## Seeing what a phase produced
 
-`-l evaluator` used to print each instruction as it ran. It printed from inside the
-evaluator, which a phase may not do — a phase returns values and does not write — so it went
-when the loggers left the phases.
+`-l lexer,parser,emitter` used to print what each phase made, and it is gone. It went in two
+steps, and both are worth remembering before anyone brings it back.
 
-Getting it back means the evaluator **answering** with the trace rather than writing it: values
-in, values out, like everything else it does. Or handing each instruction to a port, the way
-the prints stopped writing — cheaper, since nothing has to be kept. What has to be decided
-first is what it costs, since a recursive program executes hundreds of thousands of
-instructions and neither keeping nor handing over all of them is free. The other four loggers
-survived the move because a phase's whole output is a value already; this one is the exception,
-and it is the only thing lost.
+First `-l evaluator` and `-l builder` went, because they printed from inside a phase, which a
+phase may not do. Then the other three went with the flag itself: what they showed was a
+developer reading a shape, and a shape is what a test checks — every phase has tests that read
+what it answers with, and those do not depend on someone running a command and looking.
+
+If it comes back, it comes back as a port, the way printing did: the phase hands each thing to
+whoever asked, and nothing decides to write. The one that costs something to design is the
+evaluator's, since a recursive program executes hundreds of thousands of instructions, and
+neither keeping them nor handing them over one at a time is free.
 
 ## Smaller, decided things
 

@@ -30,7 +30,7 @@ from.
 | **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval` | wire, util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` | nothing of the project | everyone |
 | **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
-| **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/printer`, `shared/trace` | wire, util | hosting, `main` |
+| **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/printer` | wire, util | hosting, `main` |
 
 Plus `cmd/*`, which is `main`: it may import anything, and it is the only place that wires
 things together.
@@ -115,7 +115,8 @@ tokens cross to the parser, so it is wire as well: `wire/eval`. Without it, `aur
 had to name the evaluator to report on assertions.
 
 **What wire does not hold:** deciding to show something, and choosing where it goes. That is a
-host's, and `shared/trace` is where it lives.
+host's — `shared/printer` is where it lives, and `shared/trace` was where the other half lived
+until the loggers went.
 
 ## Why shared is not hosting
 

@@ -98,6 +98,11 @@ func wrapNode(n any) any {
 	fields := make(map[string]any)
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
+		// An unexported field cannot be read through reflection at all — asking panics — and
+		// it has nothing to show anyway: what a reader wants is what the node holds.
+		if !field.IsExported() {
+			continue
+		}
 		value := v.Field(i).Interface()
 
 		switch value := value.(type) {

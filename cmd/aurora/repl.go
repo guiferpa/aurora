@@ -8,7 +8,6 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
-	"github.com/guiferpa/aurora/hosting/cli"
 	"github.com/guiferpa/aurora/hosting/repl"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
@@ -32,7 +31,7 @@ var replCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if err := cli.ValidateTapeSize(tapeSize); err != nil {
+		if err := byteutil.ValidateTapeSize(tapeSize); err != nil {
 			return err
 		}
 		size := byteutil.TapeSize(tapeSize)

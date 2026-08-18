@@ -65,6 +65,24 @@ never ends the process.
 **4. I/O happens in hosting, and wiring happens only in `main`.** Not in a host, not in a
 phase.
 
+A host is handed what it needs and calls it. `cmd/aurora` builds the lexer, the parser, the
+emitter and the evaluator — next to the flags that decide how wide a value is, since that is
+what they are built with — and hands them over:
+
+```go
+cli.NewSession(cli.NewSessionOptions{Lexer: …, Parser: …, Emitter: …, NewEvaluator: …}).
+	Run(ctx, source)
+```
+
+A command is a method on that session, and there is nothing else: no `Compile` step of its
+own, no function that takes a bag of options and makes phases on the way. What the pipeline
+is put together from is read in one place, and that place is `main`.
+
+The evaluator arrives as a *way of making one* rather than as one. It is per program, not per
+session: it holds the names a program bound, the scopes it deferred and the assertions that
+ran, and `aurora test` checks one file after another. The REPL is the other way round — one
+evaluator lasts the session, because a name bound on one line has to be there on the next.
+
 ## Why wire is not util
 
 This is the decision everything else rests on, so it is worth being explicit.
@@ -151,9 +169,9 @@ than about what it is reading, and it breaks on the next move.
 
 ## What is not done yet
 
-**Wiring still happens outside `main`.** `hosting/cli`, `hosting/repl` and `hosting/lsp` build
-phases themselves instead of being handed them. Rule 4 is the one rule the tree does not obey
-yet, and [rfcs/phase_coupling.md](../../rfcs/phase_coupling.md) carries the plan.
+**The language server still builds its own phases.** `hosting/lsp/textdoc` calls `lexer.New`
+and `parser.New` while validating a document. The command line and the REPL no longer do —
+see below — and the same treatment is what the server is waiting for.
 
 **The builder writes where it is told.** `builder/evm` is handed an `io.Writer` and puts the
 bytecode into it, rather than answering with the bytes. It is a port, so nothing is decided

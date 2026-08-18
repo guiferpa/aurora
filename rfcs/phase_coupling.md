@@ -96,6 +96,22 @@ hosting, não uma interação. Util não toca no mundo; esses três tocam.
 injeta as fases prontas. É a etapa que muda mais assinatura: `cli` deixa de importar
 `lexer`, `parser` e `emitter`.
 
+> **Feito para o `cli` e para o `repl`; falta o language server.** Duas coisas mudaram de
+> figura ao aplicar.
+>
+> A primeira: **o parser não podia ser injetado.** Ele recebia os tokens na construção, então
+> uma instância parseava exatamente um arquivo — não havia o que entregar a um host, só um
+> jeito de fabricar. Virou `Parse(ParseInput)`, e é o que destravou o resto.
+>
+> A segunda: **um host importar uma fase para nomear um tipo não fere princípio nenhum.** A
+> regra é sobre um vital conhecer outro; `hosting` e `main` existem justamente para juntar as
+> tribos. Então `ParseInput` e `Declarations` ficaram no `parser` em vez de virarem wire.
+>
+> A forma é uma `Session` por host, construída no handler, com um método por comando. O
+> `Compile` do `cli` deixou de existir: cada método escreve lexer → parser → emitter no próprio
+> corpo. Custa duas funções passando de 60 linhas no `funlen` — que é informação, não portão —
+> e em troca não há mais nível intermediário entre o comando e as fases.
+
 **7. O evaluator para de escrever.** Os builtins de print saem do pacote. Duas coisas a decidir
 junto, e nenhuma é detalhe:
 

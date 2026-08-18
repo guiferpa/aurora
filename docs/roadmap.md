@@ -138,6 +138,12 @@ and it is the only thing lost.
   fixed; `^` is then the only level meant to recurse right.
 - **No modulo.** A remainder is `n - (n / d) * d`, which is also the expression that made the
   associativity bug matter.
+- **A node the emitter does not know emits nothing**, silently: the dispatch in
+  `EmitInstruction` ends by answering with the neutral value, because some nodes are handled by
+  their parent and it cannot tell those from a node nobody implemented. So a node type added to
+  the tree and wired into the parser, but never given a case, compiles a program that answers
+  zero. Saying so instead means an error where there is no way to raise one today —
+  `EmitInstruction` and the twenty-five `emit*` functions answer with a label and nothing else.
 - **`aurora test` discards what a program prints** (`io.Discard`), so a test cannot see the
   output of the source it runs.
 - **Mutable state** has a proposal and no implementation

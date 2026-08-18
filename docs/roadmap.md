@@ -123,11 +123,13 @@ and answers from the evaluator, the same way the chain would.
 evaluator, which a phase may not do — a phase returns values and does not write — so it went
 when the loggers left the phases.
 
-Getting it back means the evaluator **returning** a trace rather than writing one: values in,
-values out, like everything else it does. What has to be decided first is what it costs, since
-a recursive program executes hundreds of thousands of instructions and a slice of all of them
-is not free. The other four loggers survived the move because a phase's whole output is a
-value already; this one is the exception, and it is the only thing lost.
+Getting it back means the evaluator **answering** with the trace rather than writing it: values
+in, values out, like everything else it does. Or handing each instruction to a port, the way
+the prints stopped writing — cheaper, since nothing has to be kept. What has to be decided
+first is what it costs, since a recursive program executes hundreds of thousands of
+instructions and neither keeping nor handing over all of them is free. The other four loggers
+survived the move because a phase's whole output is a value already; this one is the exception,
+and it is the only thing lost.
 
 ## Smaller, decided things
 

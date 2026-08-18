@@ -30,7 +30,7 @@ from.
 | **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag` | wire, util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` | nothing of the project | everyone |
 | **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
-| **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/trace` | wire, util | hosting, `main` |
+| **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/printer`, `shared/trace` | wire, util | hosting, `main` |
 
 Plus `cmd/*`, which is `main`: it may import anything, and it is the only place that wires
 things together.
@@ -45,10 +45,19 @@ never decides to write.
 exceptions are wire and util, which know nothing of the project and so cannot tie anything to
 anything — that is what makes them safe to import from anywhere.
 
-**2. A vital package is pure**: no I/O, and nothing done that is not returned. What a program
-printed comes back as a value, and the host decides what to do with it. Returning it *even
-when the program fails* is part of the rule: a run that prints three lines and then breaks
-must not lose the three.
+**2. A vital package is pure**: no I/O, and nothing done that is not returned. It takes ports
+and answers with values — it never opens, writes to or reads from anything itself.
+
+A print is where this shows. The evaluator does not write what a program says; it asks a
+`Printer` it was handed, and the answer is the value of the print expression. Three ports,
+one per reading, because `printb`, `printc` and `printd` are three readings of the same tape
+and only the host knows what a reading looks like.
+
+The alternative was collecting everything the program printed and returning it at the end.
+That would have been just as pure and worse to use: the output would stop appearing while the
+program runs, which is most of what a REPL is, and a run that broke halfway would have to be
+careful not to lose what it had already said. A port keeps the writing where it happens and
+still leaves the evaluator with nothing to write to.
 
 **3. Errors are resolved in hosting.** A package returns an error. It never writes one, and it
 never ends the process.
@@ -90,12 +99,15 @@ host's, and `shared/trace` is where it lives.
 A **hosting** package serves one interaction and is a leaf: only `main` depends on it.
 
 A **shared** package serves the layer. It may be imported by any host, it may touch the world —
-`shared/manifest` reads `aurora.toml`, `shared/fileutil` reads directories — and it **must not
-know which interaction is using it**. That second half is what keeps it from becoming the
-drawer where cohesion goes to die.
+`shared/manifest` reads `aurora.toml`, `shared/fileutil` reads directories, `shared/printer`
+writes what a program says — and it **must not know which interaction is using it**. That
+second half is what keeps it from becoming the drawer where cohesion goes to die.
 
-A util cannot do those things, which is why these three are not utils: a util never touches the
-world.
+`shared/printer` is why the kind earns its keep: a printed value has to look the same from the
+command line, from the REPL and from the page, and none of those three should decide it on its
+own. It fills the evaluator's port, and it does not know which host handed it over.
+
+A util cannot do any of that, which is why these are not utils: a util never touches the world.
 
 ## Why the folders are named after the kinds
 
@@ -138,10 +150,9 @@ than about what it is reading, and it breaks on the next move.
 phases themselves instead of being handed them. Rule 4 is the one rule the tree does not obey
 yet, and [rfcs/phase_coupling.md](../../rfcs/phase_coupling.md) carries the plan.
 
-**The evaluator still writes.** The print builtins take a writer and use it while the program
-runs, which is I/O inside a vital package — injected, so rule 4 is satisfied, but not returned,
-so rule 2 is not. The same RFC carries it, along with the cost: output would stop appearing as
-it happens, which changes what the REPL feels like.
+**The builder writes where it is told.** `builder/evm` is handed an `io.Writer` and puts the
+bytecode into it, rather than answering with the bytes. It is a port, so nothing is decided
+inside — but the backend is parked, and this gets settled when it is not.
 
 Both are written down here rather than left to be discovered, because a document describing a
 repository that does not exist teaches people to ignore documents.

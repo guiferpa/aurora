@@ -74,7 +74,8 @@ increment!();  // Modifies state :increment
 ### 2. State Update
 
 - The **last expression** in the function body returns a value that updates the state
-- If the last expression doesn't return a value (e.g., `printb`), state receives an empty byte array
+- Every expression in Aurora is worth something, `printb` included: it is worth the value it
+  showed, so a body ending in a print sets the state to what was printed
 
 ```aurora
 ident counter! = { state + 1; };  // Last expression updates state
@@ -196,16 +197,16 @@ y!();
 ident total = sum();  // 21 (1 + 20)
 ```
 
-### Example 7: State with No Return Value
+### Example 7: State Set by a Print
 
 ```aurora
 ident printState! = {
   printb state;
-  // printb doesn't return a value, so state receives empty byte array
+  // printb is worth what it showed, so the state stays as it was
 };
 
 printState!();
-ident result = state :printState;  // Empty byte array
+ident result = state :printState;  // Unchanged
 ```
 
 ### Example 8: Nested Blocks

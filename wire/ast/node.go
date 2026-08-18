@@ -227,7 +227,7 @@ type AST struct {
 
 // StructDeclaration names the fields of a run of tapes: `struct Point { x, y };`.
 //
-// It is a directive for whoever writes the source, not a value. The compiler reads it to
+// It declares a shape for whoever writes the source; it is not a value. The compiler reads it to
 // turn a field name into an index, to report a mistake where it was written, and to feed
 // the language server — and then it is gone. Nothing about it reaches the IR: the flow is
 // static, the fields are positional and every one of them is exactly a tape wide.

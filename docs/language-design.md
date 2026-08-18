@@ -310,17 +310,18 @@ printd p;   #- 10 20 — the whole run
 no header, no length, no tag. A struct is not a new kind of value, and a field is exactly one
 tape wide, so the field at index *i* sits at `i × tape_size`.
 
-### The directives die at compile time
+### What they declare dies at compile time
 
-`struct` and `as` are **directives for whoever writes the source**, and they exist for three
-things, all of them before the program runs:
+`struct` and `as` **declare, and do nothing**. They are keywords like any other — a token, a
+rule, errors of their own — and what sets them apart is that they leave a declaration instead
+of work. It exists for three things, all of them before the program runs:
 
 1. reporting a mistake — a field that does not exist, a construction that miscounts;
 2. saying how to reach the data — which index a name is;
 3. telling the language server what is there, so it can complete a field and describe one.
 
 None of it needs to exist in the compiled program: the flow is static, the fields are
-positional and every one is the same width. The compiler reads the directive, resolves an
+positional and every one is the same width. The compiler reads the declaration, resolves an
 index and drops the rest. Nothing about a struct — not its name, not its fields — reaches
 the IR or the binary.
 
@@ -348,16 +349,16 @@ stopping the program — the same rule `head` and `feed` follow.
 
 ### What is an error
 
-Because the directive exists to catch mistakes, these stop the compilation, with the line
+Because the declaration exists to catch mistakes, these stop the compilation, with the line
 and column where they were written:
 
 - reading a field the struct does not have;
 - reading a field of a value whose shape nothing declared;
 - building with the wrong number of values;
-- using a struct name as a value: it is a directive, not something to load.
+- using a struct name as a value: it declares a shape, it is not something to load.
 
 Padding a short construction with the neutral value would match how `feed` and `head` never
-fail, and would give up the only thing the directive does.
+fail, and would give up the only thing the declaration does.
 
 See [examples/structs.ar](../examples/structs.ar).
 

@@ -52,7 +52,7 @@ func keywordCompletion(tag token.Tag, snippets bool) CompletionItem {
 }
 
 // structCompletions offers each declared struct as a way of building one, with the field
-// names as the places to fill in — the directive already said what they are.
+// names as the places to fill in — the declaration already said what they are.
 //
 //	struct Point { x, y };   ->   Point{${1:x}, ${2:y}}
 func structCompletions(shapes structShapes, snippets bool) []CompletionItem {

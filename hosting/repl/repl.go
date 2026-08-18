@@ -98,7 +98,7 @@ func newLineReader(in io.Reader, out io.Writer) (lineReader, *History) {
 // what it leaves behind for the line after it.
 //
 // It is a type rather than a handful of variables inside a loop because everything here
-// outlives the line that filled it — a name, a struct directive and a defer all have to
+// outlives the line that filled it — a name, a struct declaration and a defer all have to
 // still be there on the next one.
 type session struct {
 	ev       *evaluator.Evaluator
@@ -106,9 +106,9 @@ type session struct {
 	tapeSize int
 	loggers  []string
 
-	// A parser is built per line, so the struct directives are held here: a struct declared
+	// A parser is built per line, so the struct declarations are held here: a struct declared
 	// on one line has to still be known on the next.
-	directives *parser.Directives
+	declarations *parser.Declarations
 	// Every line's instructions go into the same buffer, which is what keeps the range a
 	// defer recorded valid when it is called on a later line.
 	insts []ir.Instruction
@@ -140,9 +140,9 @@ func (s *session) compile(text string) (ir.Program, error) {
 	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
 
 	tree, err := parser.New(parser.NewParserOptions{
-		Tokens:     tokens,
-		TapeSize:   s.tapeSize,
-		Directives: s.directives,
+		Tokens:       tokens,
+		TapeSize:     s.tapeSize,
+		Declarations: s.declarations,
 	}).Parse()
 	if err != nil {
 		return ir.Program{}, err
@@ -213,11 +213,11 @@ func Start(in io.Reader, out io.Writer, loggers []string, tapeSize int) {
 			PrintDecimal: printer.Decimal(out, tapeSize),
 			TapeSize:     tapeSize,
 		}),
-		out:        out,
-		tapeSize:   tapeSize,
-		loggers:    loggers,
-		directives: parser.NewDirectives(),
-		hist:       hist,
+		out:          out,
+		tapeSize:     tapeSize,
+		loggers:      loggers,
+		declarations: parser.NewDeclarations(),
+		hist:         hist,
 	}
 
 	editing, interactive := reader.(*editor)

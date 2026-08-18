@@ -19,8 +19,8 @@ Document sync is **full** (`textDocumentSync: 1`): the client resends the whole 
 
 Three things come back, depending on where the cursor is.
 
-**Right after a dot**, the fields of that struct and nothing else. The shape comes from the
-directives — `ident p = Point{...}` or `... as Point` — read straight from the tokens rather
+**Right after a dot**, the fields of that struct and nothing else. The shape comes from what
+was declared — `ident p = Point{...}` or `... as Point` — read straight from the tokens rather
 than from the tree, because a document being edited hardly ever parses: the moment someone
 types `p.` there is no field name yet, and that is exactly when completion is wanted. The
 dot is declared as a trigger character, so the client asks on its own.

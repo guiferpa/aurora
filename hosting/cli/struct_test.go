@@ -32,10 +32,10 @@ func TestStructReadsItsFields(t *testing.T) {
 	}
 }
 
-// The invariant the whole design rests on: the directive dies at compile time. A struct
+// The invariant the whole design rests on: the declaration dies at compile time. A struct
 // value is a run of tapes and carries nothing that says a struct built it, so two structs
 // of the same width are one value — checked below — and the tape at index 0 is just a tape.
-func TestStructCarriesNothingOfTheDirective(t *testing.T) {
+func TestStructCarriesNothingOfTheDeclaration(t *testing.T) {
 	// A field read out of a struct is the same value written on its own.
 	fromStruct := output(t, "struct Pair { a, b };\nprintb Pair{97, 98}.a;", 0)[0]
 	onItsOwn := output(t, "printb 97;", 0)[0]

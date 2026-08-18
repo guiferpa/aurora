@@ -174,8 +174,8 @@ A struct names the tapes of a run. `Point{10, 20}` is two tapes laid end to end,
 nothing in it saying a struct built it: no header, no length and no tag. A field is exactly
 one tape wide, so the field at index *i* sits at `i × tape_size`.
 
-`struct` and `as` are **directives**: they exist for the compiler to turn a name into an
-index, to report a mistake where it was written, and to tell the language server what is
+`struct` and `as` are **keywords that declare rather than do**: they exist for the compiler to
+turn a name into an index, to report a mistake where it was written, and to tell the language server what is
 there. Nothing about them reaches the IR or the binary — the flow is static and the fields
 are positional, so an index is all that is needed. `Point{97, 98}` and `"ab"` are the same
 value, and compare equal.
@@ -206,7 +206,7 @@ a brace after a name.
 A struct name is not a value: writing it on its own is an error, because there is nothing to
 load under it.
 
-Because the directive exists to catch mistakes, these are compile errors: a field the struct
+Because the declaration exists to catch mistakes, these are compile errors: a field the struct
 does not have, a value whose shape nothing declared, a construction that miscounts the
 and a struct name used as a value. Reading a field past the end of a value is not one — it gives the neutral value, the
 way `head` saturates and `feed` wraps.

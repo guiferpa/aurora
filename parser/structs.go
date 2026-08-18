@@ -8,27 +8,32 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// The struct directives, and everything they are: a way of naming the fields of a run of
-// tapes so the compiler can turn a name into an index, point at a mistake where it was
+// What `struct` and `as` declare, and everything it is: a way of naming the fields of a run
+// of tapes so the compiler can turn a name into an index, point at a mistake where it was
 // written, and tell the language server what is there.
 //
 // None of it outlives the compilation. A struct value is a run of tapes and nothing else —
 // the same run a reel of the same length is — so the tables here are read while parsing and
 // dropped, and the tree carries indexes rather than names.
 
-// Directives are what the struct directives leave behind while a file is compiled: the
-// fields each struct declared, and the struct a name is read as.
+// Declarations are what those two keywords leave behind while a file is compiled: the fields
+// each struct declared, and the struct a name is read as.
+//
+// They were called directives, which is what a language usually calls something outside its
+// own grammar — a pragma, an annotation. These are inside it: `struct` and `as` are keywords,
+// with a token, a parse rule and errors of their own. What sets them apart is not where they
+// live but what they leave: a declaration, and no work to do.
 //
 // They belong to a source file rather than to a parse, which is what the REPL needs — there
 // a file is typed one line at a time, with a fresh parser for each, and a struct declared on
 // one line has to still be there on the next.
-type Directives struct {
+type Declarations struct {
 	Structs map[string][]string // struct name -> its fields, in order
 	Shapes  map[string]string   // identifier name -> the struct it is read as
 }
 
-func NewDirectives() *Directives {
-	return &Directives{
+func NewDeclarations() *Declarations {
+	return &Declarations{
 		Structs: make(map[string][]string),
 		Shapes:  make(map[string]string),
 	}
@@ -46,7 +51,7 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 		return nil, err
 	}
 	structName := string(name.GetMatch())
-	if _, declared := p.directives.Structs[structName]; declared {
+	if _, declared := p.declarations.Structs[structName]; declared {
 		return nil, token.NewError(name, "struct %s is already declared at line %d and column %d",
 			structName, name.GetLine(), name.GetColumn())
 	}
@@ -85,7 +90,7 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 			structName, tok.GetLine(), tok.GetColumn())
 	}
 
-	p.directives.Structs[structName] = fields
+	p.declarations.Structs[structName] = fields
 	return ast.StructDeclaration{Name: structName, Fields: fields, Token: tok}, nil
 }
 
@@ -97,7 +102,7 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 // after a name; declaring a struct called `flag` and testing on it is the one ambiguity left,
 // and it is the same one Go has.
 func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
-	fields := p.directives.Structs[id.Value]
+	fields := p.declarations.Structs[id.Value]
 
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
@@ -122,7 +127,7 @@ func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
 		return nil, err
 	}
 
-	// Pointing at a miscount is the whole reason the directive exists, so it is an error
+	// Pointing at a miscount is the whole reason the declaration exists, so it is an error
 	// rather than a run padded with the neutral value.
 	if len(values) != len(fields) {
 		return nil, token.NewError(closing, "struct %s has %d fields (%s) but got %d at line %d and column %d",
@@ -175,7 +180,7 @@ func (p *pr) parseField(expr ast.Node) (ast.Node, error) {
 			field, name.GetLine(), name.GetColumn())
 	}
 
-	fields := p.directives.Structs[shape]
+	fields := p.declarations.Structs[shape]
 	index := slices.Index(fields, field)
 	if index < 0 {
 		return nil, token.NewError(name, "struct %s has no field named %s at line %d and column %d (it has %s)",
@@ -197,7 +202,7 @@ func (p *pr) parseShape(expr ast.Node) (ast.Node, error) {
 		return nil, err
 	}
 	structName := string(name.GetMatch())
-	if _, declared := p.directives.Structs[structName]; !declared {
+	if _, declared := p.declarations.Structs[structName]; !declared {
 		return nil, token.NewError(name, "%s is not a declared struct at line %d and column %d",
 			structName, name.GetLine(), name.GetColumn())
 	}
@@ -214,7 +219,7 @@ func (p *pr) shapeOf(node ast.Node) string {
 	case ast.ShapedExpression:
 		return n.Struct
 	case ast.IdentifierLiteral:
-		return p.directives.Shapes[n.Value]
+		return p.declarations.Shapes[n.Value]
 	}
 	return ""
 }

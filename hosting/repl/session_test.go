@@ -36,7 +36,7 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 			want:  []string{"= [0 0 0 0 0 0 0 14]"},
 		},
 		{
-			// The directives are held across lines: a struct declared on one line has to still
+			// The declarations are held across lines: a struct declared on one line has to still
 			// be known on the next, and a parser is built per line.
 			name:  "a struct declared on one line is built on the next",
 			lines: "struct Point { x, y };\nident p = Point{10, 20};\np.y;\n",

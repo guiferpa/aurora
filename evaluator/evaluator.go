@@ -269,7 +269,7 @@ func (e *Evaluator) EvaluateJoin(label, left, right []byte) error {
 }
 
 // EvaluateField takes one tape out of a run, by index. The index is a literal operand
-// written inline by the emitter, resolved from a struct directive that no longer exists.
+// written inline by the emitter, resolved from a struct declaration that no longer exists.
 //
 // Reading past the end gives the neutral value rather than failing, the way head saturates
 // and feed wraps: an operation on tapes does not stop a running program.

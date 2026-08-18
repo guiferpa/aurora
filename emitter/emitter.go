@@ -208,9 +208,9 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 
 }
 
-// emitStructDeclaration answers the neutral value: a directive does no work.
+// emitStructDeclaration answers the neutral value: a declaration does no work.
 func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclaration, tapeSize int) ir.Label {
-	// A directive emits no work. It still answers with a value, because everything in
+	// A declaration emits no work. It still answers with a value, because everything in
 	// Aurora is an expression, and the neutral one is what a declaration is worth.
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, byteutil.FalseTape(tapeSize), nil))

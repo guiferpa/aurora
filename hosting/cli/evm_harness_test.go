@@ -1,13 +1,13 @@
 package cli
 
 import (
-	"io"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/core/vm/runtime"
-	"github.com/guiferpa/aurora/builder/evm"
 )
 
 // Aurora exists to let a call be simulated off the chain, which only means something if the
@@ -25,15 +25,18 @@ import (
 func onChain(t *testing.T, source, function string, args []string, tapeSize int) []byte {
 	t.Helper()
 
-	path := writeAt(t, t.TempDir(), "contract.ar", source)
-	program, err := Compile(path, tapeSize, nil, io.Discard, nil)
-	if err != nil {
-		t.Fatalf("compiling: %v", err)
-	}
+	// Through the command, and then read back from where it landed: what is installed below
+	// is the binary a user gets, not one assembled for the test.
+	dir := t.TempDir()
+	path := writeAt(t, dir, "contract.ar", source)
+	binary := filepath.Join(dir, "contract.bin")
 
-	bytecode, err := evm.NewBuilder(program.Instructions, evm.NewBuilderOptions{TapeSize: tapeSize}).Build()
-	if err != nil {
+	if _, err := newSession(t, sessionOpts{tapeSize: tapeSize}).Build(t.Context(), path, binary); err != nil {
 		t.Fatalf("building: %v", err)
+	}
+	bytecode, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatalf("reading the binary: %v", err)
 	}
 
 	cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
@@ -63,7 +66,7 @@ func offChain(t *testing.T, source, call string, tapeSize int) string {
 
 	path := writeAt(t, t.TempDir(), "program.ar", source+"\nprintd "+call+";\n")
 	out := &strings.Builder{}
-	if err := Run(t.Context(), RunInput{Source: path, TapeSize: tapeSize, Stdout: out}); err != nil {
+	if err := newSession(t, sessionOpts{tapeSize: tapeSize, stdout: out}).Run(t.Context(), path); err != nil {
 		t.Fatalf("running: %v", err)
 	}
 	return strings.TrimSpace(out.String())

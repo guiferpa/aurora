@@ -60,7 +60,7 @@ func TestResolveTapeSizePrecedence(t *testing.T) {
 }
 
 func TestBuildRejectsInvalidTapeSize(t *testing.T) {
-	_, err := Build(t.Context(), BuildInput{Source: "main.ar", OutputPath: "out.bin", TapeSize: 64})
+	_, err := newSession(t, sessionOpts{tapeSize: 64}).Build(t.Context(), "main.ar", "out.bin")
 	if err == nil || !strings.Contains(err.Error(), "tape size") {
 		t.Errorf("expected the tape size to be rejected before compiling, got %v", err)
 	}

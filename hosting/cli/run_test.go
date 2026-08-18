@@ -17,11 +17,7 @@ func TestRunExecutesAndWritesToStdout(t *testing.T) {
 	}
 	var stdout bytes.Buffer
 	ctx := context.Background()
-	err := Run(ctx, RunInput{
-		Source:  entry,
-		Loggers: nil,
-		Stdout:  &stdout,
-	})
+	err := newSession(t, sessionOpts{loggers: nil, stdout: &stdout}).Run(ctx, entry)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}
@@ -33,10 +29,7 @@ func TestRunExecutesAndWritesToStdout(t *testing.T) {
 func TestRunFailsWhenSourceMissing(t *testing.T) {
 	dir := t.TempDir()
 	ctx := context.Background()
-	err := Run(ctx, RunInput{
-		Source: filepath.Join(dir, "nonexistent.ar"),
-		Stdout: os.Stdout,
-	})
+	err := newSession(t, sessionOpts{stdout: os.Stdout}).Run(ctx, filepath.Join(dir, "nonexistent.ar"))
 	if err == nil {
 		t.Error("Run() with missing source should return error")
 	}
@@ -50,10 +43,7 @@ func TestRunFailsWhenSourceInvalid(t *testing.T) {
 	}
 	var stdout bytes.Buffer
 	ctx := context.Background()
-	err := Run(ctx, RunInput{
-		Source: entry,
-		Stdout: &stdout,
-	})
+	err := newSession(t, sessionOpts{stdout: &stdout}).Run(ctx, entry)
 	if err == nil {
 		t.Error("Run() with invalid source should return error")
 	}

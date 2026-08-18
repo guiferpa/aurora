@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-// compileWithLoggers compiles a source and returns what the traces wrote.
+// compileWithLoggers runs a source under the loggers given and returns what they wrote. A
+// trace goes wherever the command writes, so this is stdout.
 func compileWithLoggers(t *testing.T, source string, loggers []string) string {
 	t.Helper()
 
@@ -17,8 +18,8 @@ func compileWithLoggers(t *testing.T, source string, loggers []string) string {
 	}
 
 	traces := &strings.Builder{}
-	if _, err := Compile(entry, 0, loggers, traces, nil); err != nil {
-		t.Fatalf("compiling: %v", err)
+	if err := newSession(t, sessionOpts{loggers: loggers, stdout: traces}).Run(t.Context(), entry); err != nil {
+		t.Fatalf("running: %v", err)
 	}
 	return traces.String()
 }
@@ -77,13 +78,16 @@ func TestNoLoggerWritesNothing(t *testing.T) {
 }
 
 // A caller with nowhere to write is not an error — it is how `aurora test` compiles.
-func TestCompileWithoutATraceWriter(t *testing.T) {
+// A session with nowhere to write is asked for every trace there is. Nothing is shown and
+// nothing falls over, which is what a caller that asked for none wants.
+func TestLoggersWithNowhereToWrite(t *testing.T) {
 	entry := filepath.Join(t.TempDir(), "main.ar")
 	if err := os.WriteFile(entry, []byte("ident a = 1;\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := Compile(entry, 0, []string{"lexer", "parser", "emitter"}, nil, nil); err != nil {
-		t.Errorf("compiling with every logger and no writer: %v", err)
+	loggers := []string{"lexer", "parser", "emitter"}
+	if err := newSession(t, sessionOpts{loggers: loggers}).Run(t.Context(), entry); err != nil {
+		t.Errorf("running with every logger and no writer: %v", err)
 	}
 }

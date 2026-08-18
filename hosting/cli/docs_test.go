@@ -120,7 +120,7 @@ func runSnippet(t *testing.T, doc string, s snippet) {
 		t.Fatal(err)
 	}
 
-	err := Run(t.Context(), RunInput{Source: entry, Stdout: io.Discard})
+	err := newSession(t, sessionOpts{stdout: io.Discard}).Run(t.Context(), entry)
 
 	if s.wantErr == "" {
 		if err != nil {
@@ -157,7 +157,7 @@ func runNamedExample(t *testing.T, doc string, named []snippet) {
 	}
 
 	for _, path := range tests {
-		report, err := Test(t.Context(), TestInput{Target: path, Stdout: io.Discard})
+		report, err := tested(t, path, sessionOpts{stdout: io.Discard})
 		if err != nil {
 			t.Errorf("%s: the example named %s does not run: %v", doc, filepath.Base(path), err)
 			continue

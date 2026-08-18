@@ -10,6 +10,7 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/evaluator/builtin"
 	"github.com/guiferpa/aurora/evaluator/environ"
+	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -65,14 +66,12 @@ type Printer interface {
 	Print(value []byte) ([]byte, error)
 }
 
-type ReturnsPerLabel map[string][]byte
-
 type Evaluator struct {
 	cursor        uint64
 	end           uint64
 	insts         []ir.Instruction
-	assertResults []AssertResult // what each assertion did, in the order they ran
-	asserts       bool           // whether assertions are evaluated at all
+	assertResults []eval.AssertResult // what each assertion did, in the order they ran
+	asserts       bool                // whether assertions are evaluated at all
 	printBytes    Printer
 	printChars    Printer
 	printDecimal  Printer
@@ -85,13 +84,6 @@ func (e *Evaluator) TapeSize() int {
 	return e.tapeSize
 }
 
-// AssertResult is one assertion and what became of it. A run collects every one, not only
-// the failures, so a report can say how many held.
-type AssertResult struct {
-	Passed  bool
-	Message string
-}
-
 // ClearTemps drops the temps left behind by a program. A caller running two programs in
 // one evaluator needs it: each is emitted on its own and numbers its labels from zero, so
 // what one left behind would sit under the labels the next is about to use.
@@ -100,7 +92,7 @@ func (e *Evaluator) ClearTemps() {
 }
 
 // GetAssertResults returns every assertion that ran, in order.
-func (e *Evaluator) GetAssertResults() []AssertResult {
+func (e *Evaluator) GetAssertResults() []eval.AssertResult {
 	return e.assertResults
 }
 
@@ -506,7 +498,7 @@ func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
 	}
 
 	passed, failure := builtin.AssertFunction(cond, msg)
-	result := AssertResult{Passed: passed}
+	result := eval.AssertResult{Passed: passed}
 	if passed {
 		result.Message = msg
 	} else {
@@ -642,7 +634,7 @@ func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 	return op(e, inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 }
 
-func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error) {
+func (e *Evaluator) ExecuteInstructions(from, to uint64) (eval.Returns, error) {
 	e.SetInstructionsOffset(from, to)
 
 	for e.CanReadInstructions() {
@@ -655,7 +647,7 @@ func (e *Evaluator) ExecuteInstructions(from, to uint64) (ReturnsPerLabel, error
 	return e.environ.GetTemps(), nil
 }
 
-func (e *Evaluator) Evaluate(insts []ir.Instruction) (ReturnsPerLabel, error) {
+func (e *Evaluator) Evaluate(insts []ir.Instruction) (eval.Returns, error) {
 	e.SetInstructions(insts)
 	returns, err := e.ExecuteInstructions(0, uint64(len(e.insts)))
 	return returns, err
@@ -664,7 +656,7 @@ func (e *Evaluator) Evaluate(insts []ir.Instruction) (ReturnsPerLabel, error) {
 // EvaluateRange sets the full instruction slice and runs only the range [from, to).
 // Used by the REPL: buffer accumulates all instructions; each line we append and run only the new slice,
 // so defer from/to indices stay valid in the same buffer.
-func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (ReturnsPerLabel, error) {
+func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (eval.Returns, error) {
 	e.SetInstructions(insts)
 	e.environ.ClearTemps()
 	returns, err := e.ExecuteInstructions(from, to)
@@ -689,7 +681,7 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		cursor:        0,
 		end:           0,
 		insts:         make([]ir.Instruction, 0),
-		assertResults: make([]AssertResult, 0),
+		assertResults: make([]eval.AssertResult, 0),
 		asserts:       options.Asserts,
 		printBytes:    options.PrintBytes,
 		printChars:    options.PrintChars,

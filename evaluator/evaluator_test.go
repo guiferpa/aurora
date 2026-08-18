@@ -13,10 +13,11 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
-func containsReturn(returns ReturnsPerLabel, index int, want []byte) (bool, []byte) {
+func containsReturn(returns eval.Returns, index int, want []byte) (bool, []byte) {
 	keys := slices.Collect(maps.Keys(returns))
 	slices.SortFunc(keys, func(a, b string) int {
 		ia, _ := strconv.ParseInt(a, 10, 64)
@@ -515,7 +516,7 @@ func TestAddCursor(t *testing.T) {
 type EvaluateCase struct {
 	Name       string
 	SourceCode string
-	TestFn     func(t *testing.T, returns ReturnsPerLabel, err error)
+	TestFn     func(t *testing.T, returns eval.Returns, err error)
 }
 
 type RunEvaluateCaseOptions struct {
@@ -566,7 +567,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_1",
 			`1 different 2;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -586,7 +587,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_2",
 			`1 equals 2;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -606,7 +607,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_3",
 			`1 smaller 2;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -626,7 +627,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_4",
 			`1 bigger 2;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -646,7 +647,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_5",
 			`1 equals 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -666,7 +667,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_6",
 			`1 different 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -686,7 +687,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_7",
 			`1 smaller 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -710,7 +711,7 @@ func TestRelative(t *testing.T) {
 		{
 			"relative_8",
 			`1 bigger 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -736,7 +737,7 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_1",
 			`1 + 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -753,7 +754,7 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_2",
 			`1 - 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -770,7 +771,7 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_3",
 			`1 * 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -787,7 +788,7 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_4",
 			`1 / 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -804,7 +805,7 @@ func TestArithmetic(t *testing.T) {
 		{
 			"arithmetic_5",
 			`1 ^ 1;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -828,7 +829,7 @@ func TestBoolean(t *testing.T) {
 		{
 			"boolean_1",
 			`true or false;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -849,7 +850,7 @@ func TestBoolean(t *testing.T) {
 			"boolean_2",
 			`false or false;
       true and true;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -888,7 +889,7 @@ func TestIfAndElse(t *testing.T) {
 			"if_1",
 			`if 10 bigger 9 { 10; };
 if 11 bigger 10 { 20; };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -909,7 +910,7 @@ if 11 bigger 10 { 20; };`,
 		{
 			"if_2",
 			`if 10 smaller 9 { 10; };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -923,7 +924,7 @@ if 11 bigger 10 { 20; };`,
 		{
 			"if_with_else_1",
 			`if 10 bigger 9 { 10; } else { 20; };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -937,7 +938,7 @@ if 11 bigger 10 { 20; };`,
 		{
 			"if_with_else_2",
 			`if 10 bigger 11 { 10; } else { 20; };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -968,7 +969,7 @@ branch {
   op equals 2: 64, 
   128;
 };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -992,7 +993,7 @@ ident r = branch {
   128;
 };
 r;`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1022,7 +1023,7 @@ func TestCallableScope(t *testing.T) {
 		{
 			"callable_scope_1",
 			`{ 1 + 2; };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1036,7 +1037,7 @@ func TestCallableScope(t *testing.T) {
 		{
 			"callable_scope_2",
 			`{ 1 + { 2 + 3; }; };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1056,7 +1057,7 @@ func TestCallableScope(t *testing.T) {
     a * 2;
   };
 };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1075,7 +1076,7 @@ func TestCallableScope(t *testing.T) {
     a * 2;
   };
 };`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1101,7 +1102,7 @@ func TestDefer(t *testing.T) {
 
 r(1, 2);
 r(3, 4);`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1137,7 +1138,7 @@ func TestDeferRecursivity(t *testing.T) {
 };
 
 fib(11);`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1165,7 +1166,7 @@ fib(11);`,
 };
 
 fib(11);`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return
@@ -1190,7 +1191,7 @@ fib(11);`,
 };
 
 factorial(4);`,
-			func(t *testing.T, returns ReturnsPerLabel, err error) {
+			func(t *testing.T, returns eval.Returns, err error) {
 				if err != nil {
 					t.Errorf("expected no error, got: %v", err)
 					return

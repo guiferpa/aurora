@@ -14,6 +14,7 @@ import (
 
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/shared/printer"
+	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -35,7 +36,7 @@ type TestInput struct {
 // FileReport is what happened in one test file.
 type FileReport struct {
 	Path    string
-	Results []evaluator.AssertResult
+	Results []eval.AssertResult
 	Err     error // the file could not be compiled or run at all
 }
 

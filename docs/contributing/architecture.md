@@ -27,7 +27,7 @@ from.
 | kind | what it is | may import | is imported by |
 |---|---|---|---|
 | **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
-| **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag` | wire, util, and nothing else of the project | everyone |
+| **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval` | wire, util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` | nothing of the project | everyone |
 | **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
 | **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/printer`, `shared/trace` | wire, util | hosting, `main` |
@@ -90,6 +90,11 @@ util. Neither can tie it to a phase, which is what the rule is protecting.
 they are written down — spelling something out is part of the vocabulary, the way a token
 knows how to spell itself. It also holds the comparison of two of them, which is a question
 about the shape rather than about whoever built it.
+
+**The end of the pipeline is a boundary too.** What the evaluator answers with — the value of
+every expression, and what became of every assertion — crosses to a host exactly the way
+tokens cross to the parser, so it is wire as well: `wire/eval`. Without it, `aurora test`
+had to name the evaluator to report on assertions.
 
 **What wire does not hold:** deciding to show something, and choosing where it goes. That is a
 host's, and `shared/trace` is where it lives.

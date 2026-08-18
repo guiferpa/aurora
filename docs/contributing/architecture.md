@@ -168,15 +168,14 @@ A test that reads the repository — `docs/`, `examples/` — finds the root by 
 `go.mod`, never by counting directories: the second is a fact about where the test sits rather
 than about what it is reading, and it breaks on the next move.
 
-## What is not done yet
+## What a host may still name
 
-**The language server still builds its own phases.** `hosting/lsp/textdoc` calls `lexer.New`
-and `parser.New` while validating a document. The command line and the REPL no longer do —
-see below — and the same treatment is what the server is waiting for.
+Every host is handed its phases, and none of them calls `lexer.New`, `parser.New`,
+`emitter.New` or `evaluator.New` any more. They do still **import** those packages, to name a
+type: `hosting/cli` says `parser.ParseInput` and `parser.Declarations` because that is what it
+passes.
 
-**The builder writes where it is told.** `builder/evm` is handed an `io.Writer` and puts the
-bytecode into it, rather than answering with the bytes. It is a port, so nothing is decided
-inside — but the backend is parked, and this gets settled when it is not.
-
-Both are written down here rather than left to be discovered, because a document describing a
-repository that does not exist teaches people to ignore documents.
+That is not a breach of rule 1 and it is written down so nobody sets out to "fix" it. What the
+rule forbids is a **vital package knowing another** — the coupling that made the builder read
+the emitter's opcodes. Hosting and `main` exist to put the tribes together; naming the type
+you are handing over is what putting them together looks like.

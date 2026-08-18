@@ -9,10 +9,22 @@ The language proves itself in the **evaluator** and in the **REPL**, and the poi
 backend is that **the same program answers the same thing on a chain and off it** — Aurora
 exists to let an on-chain call be simulated off-chain.
 
-**The backend is on stand-by** while the architecture lands. What it gained before stopping is
-the differential harness (`cli/evm_harness_test.go`) — the same source compiled,
-deployed to an EVM in memory, called, and compared against the evaluator — so whatever is
-written next is provable rather than believed.
+**The backend is on stand-by, and stays there.** The architecture it was waiting for has
+landed; what surfaced underneath is bigger than a slice. Binding a name inside a scope —
+`ident x = feed(0);` in a `defer` body — reverts on chain: the lowering hands a value to
+arithmetic and to a return and to nothing else, so the one an `ident` meant to store is
+dropped and its `MSTORE` finds an empty stack. The builder still counts that instruction as
+covered, so the binary comes out silent. Under it sits a second ceiling: memory offsets, jump
+targets and the runtime size are all written with `PUSH1`, and each truncates past 255 without
+a word. Neither is a bug with a patch behind it — both are designs — and opening them now
+would stop the language moving. **Do not start there.** When the turn comes, it is deliberate
+and it is discussed first.
+
+What the backend gained before stopping is the differential harness
+(`hosting/cli/evm_harness_test.go`) — the same source compiled, deployed to an EVM in memory,
+called, and compared against the evaluator — so whatever is written next is provable rather
+than believed. What it proves today is arithmetic over arguments, across a dispatcher, at any
+tape width.
 
 A feature still does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped
 without it.

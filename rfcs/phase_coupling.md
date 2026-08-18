@@ -96,8 +96,8 @@ hosting, não uma interação. Util não toca no mundo; esses três tocam.
 injeta as fases prontas. É a etapa que muda mais assinatura: `cli` deixa de importar
 `lexer`, `parser` e `emitter`.
 
-> **Feito para o `cli` e para o `repl`; falta o language server.** Duas coisas mudaram de
-> figura ao aplicar.
+> **Feito.** `cli`, `repl` e o language server — o playground já montava no `main` desde
+> sempre, por ser `main`. Três coisas mudaram de figura ao aplicar.
 >
 > A primeira: **o parser não podia ser injetado.** Ele recebia os tokens na construção, então
 > uma instância parseava exatamente um arquivo — não havia o que entregar a um host, só um
@@ -107,10 +107,15 @@ injeta as fases prontas. É a etapa que muda mais assinatura: `cli` deixa de imp
 > regra é sobre um vital conhecer outro; `hosting` e `main` existem justamente para juntar as
 > tribos. Então `ParseInput` e `Declarations` ficaram no `parser` em vez de virarem wire.
 >
+> A terceira apareceu no servidor: **a largura da fita não podia ficar na construção do
+> parser.** Um servidor atende arquivos de vários projetos e relê o manifesto que é editado com
+> o editor aberto, então ela foi para o `ParseInput`, junto com o nome do arquivo e os tokens —
+> e o construtor do parser (e o do lexer) ficou sem opção alguma.
+>
 > A forma é uma `Session` por host, construída no handler, com um método por comando. O
 > `Compile` do `cli` deixou de existir: cada método escreve lexer → parser → emitter no próprio
-> corpo. Custa duas funções passando de 60 linhas no `funlen` — que é informação, não portão —
-> e em troca não há mais nível intermediário entre o comando e as fases.
+> corpo. Custa uma função passando de 60 linhas no `funlen` — que é informação, não portão — e
+> em troca não há mais nível intermediário entre o comando e as fases.
 
 **7. O evaluator para de escrever.** Os builtins de print saem do pacote. Duas coisas a decidir
 junto, e nenhuma é detalhe:

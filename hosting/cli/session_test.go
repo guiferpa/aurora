@@ -15,11 +15,10 @@ import (
 // that asks what a command answers has to put it together the same way — which is also what
 // keeps the assembly honest: if it stops making sense here, it stopped making sense there.
 
-// sessionOpts is what a test cares about: where the output goes, how wide a value is, which
-// phases were asked to show their work, and what the program was applied to.
+// sessionOpts is what a test cares about: where the output goes, how wide a value is, and what
+// the program was applied to.
 type sessionOpts struct {
 	tapeSize int
-	loggers  []string
 	stdout   io.Writer
 	warnings io.Writer
 	args     []string
@@ -56,7 +55,6 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 			})
 		},
 		TapeSize: size,
-		Loggers:  o.loggers,
 		Stdout:   stdout,
 		Warnings: o.warnings,
 	})

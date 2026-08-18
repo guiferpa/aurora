@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"slices"
 	"strings"
 
 	"github.com/fatih/color"
@@ -17,7 +16,6 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/shared/trace"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -108,7 +106,6 @@ type Session struct {
 	reader   lineReader
 	out      io.Writer
 	tapeSize int
-	loggers  []string
 
 	// A parser is built per line, so the struct declarations are held here: a struct declared
 	// on one line has to still be known on the next.
@@ -141,7 +138,6 @@ func (s *Session) compile(text string) (ir.Program, error) {
 	if err != nil {
 		return ir.Program{}, err
 	}
-	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
 
 	tree, err := s.parser.Parse(parser.ParseInput{
 		Tokens: tokens,
@@ -152,26 +148,13 @@ func (s *Session) compile(text string) (ir.Program, error) {
 	if err != nil {
 		return ir.Program{}, err
 	}
-	s.trace("parser", func(w io.Writer) error { return trace.AST(w, tree) })
 
 	program, err := s.emitter.EmitProgram(tree)
 	if err != nil {
 		return ir.Program{}, err
 	}
-	s.trace("emitter", func(w io.Writer) error { return trace.Instructions(w, program.Instructions) })
 
 	return program, nil
-}
-
-// trace writes what a phase produced, when -l named that phase. The phases return what they
-// made; showing it is decided here, in the host.
-func (s *Session) trace(phase string, write func(w io.Writer) error) {
-	if !slices.Contains(s.loggers, phase) {
-		return
-	}
-	if err := write(s.out); err != nil {
-		_, _ = fmt.Fprintln(s.out, err)
-	}
 }
 
 // evaluate runs the line's expressions one at a time, so a line holding several of them
@@ -212,8 +195,6 @@ type NewSessionOptions struct {
 	Out io.Writer
 	// TapeSize is the width in bytes of every value, the same one the phases were built with.
 	TapeSize int
-	// Loggers names the phases whose output is shown: lexer, parser, emitter.
-	Loggers []string
 }
 
 // NewSession builds a session from what it was handed.
@@ -232,7 +213,6 @@ func NewSession(opts NewSessionOptions) *Session {
 		reader:       reader,
 		out:          opts.Out,
 		tapeSize:     tapeSize,
-		loggers:      opts.Loggers,
 		declarations: parser.NewDeclarations(),
 		hist:         hist,
 	}

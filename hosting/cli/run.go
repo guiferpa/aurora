@@ -3,11 +3,9 @@ package cli
 import (
 	"context"
 	"os"
-	"slices"
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/shared/trace"
 )
 
 // Run compiles the source and evaluates it.
@@ -30,32 +28,15 @@ func (s *Session) Run(ctx context.Context, source string) error {
 	if err != nil {
 		return err
 	}
-	if slices.Contains(s.loggers, "lexer") {
-		if err := trace.Tokens(s.stdout, tokens); err != nil {
-			return err
-		}
-	}
 
 	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens})
 	if err != nil {
 		return err
 	}
-	// A phase returns what it made and does not show it; showing is decided here, once the
-	// phase has finished, which is why the output is no longer on-time.
-	if slices.Contains(s.loggers, "parser") {
-		if err := trace.AST(s.stdout, tree); err != nil {
-			return err
-		}
-	}
 
 	program, err := s.emitter.EmitProgram(tree)
 	if err != nil {
 		return err
-	}
-	if slices.Contains(s.loggers, "emitter") {
-		if err := trace.Instructions(s.stdout, program.Instructions); err != nil {
-			return err
-		}
 	}
 
 	// A warning is something worth knowing before running, not a reason to refuse the source.

@@ -16,17 +16,12 @@ import (
 
 func init() {
 	replCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8)")
-	replCmd.Flags().StringSliceP("loggers", "l", []string{}, "show what each phase produced (valid: lexer, parser, emitter)")
 }
 
 var replCmd = &cobra.Command{
 	Use:   "repl",
 	Short: "Enter in Read-Eval-Print Loop mode",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		loggers, err := cmd.Flags().GetStringSlice("loggers")
-		if err != nil {
-			return err
-		}
 		tapeSize, err := cmd.Flags().GetInt("tape-size")
 		if err != nil {
 			return err
@@ -51,7 +46,6 @@ var replCmd = &cobra.Command{
 			In:       os.Stdin,
 			Out:      out,
 			TapeSize: size,
-			Loggers:  loggers,
 		}).Start()
 		return nil
 	},

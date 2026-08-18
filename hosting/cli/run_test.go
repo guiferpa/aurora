@@ -17,7 +17,7 @@ func TestRunExecutesAndWritesToStdout(t *testing.T) {
 	}
 	var stdout bytes.Buffer
 	ctx := context.Background()
-	err := newSession(t, sessionOpts{loggers: nil, stdout: &stdout}).Run(ctx, entry)
+	err := newSession(t, sessionOpts{stdout: &stdout}).Run(ctx, entry)
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)
 	}

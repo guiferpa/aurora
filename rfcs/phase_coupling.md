@@ -126,15 +126,29 @@ junto, e nenhuma é detalhe:
 ## Achado ao mover a árvore
 
 **`Next()` não é chamado em lugar nenhum.** É o único método da interface `Node`, implementado
-vinte e cinco vezes, e nada no projeto o usa: a interface existe para marcar um tipo como nó, e
+trinta e uma vezes, e nada no projeto o usa: a interface existe para marcar um tipo como nó, e
 faz isso através de um método que ninguém chama.
 
-Trocar por um método não exportado (`node()`) resolveria duas coisas de uma vez: some com umas
-setenta e cinco linhas mortas, e **fecha o conjunto** — ninguém de fora do `wire/ast` passa a
-poder inventar um nó, o que é exatamente o que a linguagem quer, já que o emitter faz `switch`
-sobre a lista inteira.
+Trocar por um método não exportado (`node()`) resolve duas coisas de uma vez: some com as
+linhas mortas, e **fecha o conjunto** — ninguém de fora do `wire/ast` passa a poder inventar um
+nó, o que é exatamente o que a linguagem quer, já que o emitter faz `switch` sobre a lista
+inteira.
 
-Fica registrado em vez de feito: é mudança de desenho, não de lugar, e o passo era mover.
+> **Feito.** Uma `mark` não exportada, embutida como primeiro campo de todo nó, no lugar do
+> `Next() Node`: um método no arquivo inteiro em vez de trinta e um, e `node.go` de 337 para
+> 261 linhas.
+>
+> Ao aplicar ficou claro por que `Next()` nunca serviu de caminhada: um nó tem quantos filhos
+> quiser e ele devolve um só, então vinte e cinco das trinta e uma implementações devolviam
+> `nil`. Medida a árvore por tipo: 7 sem filho, 11 com um, 3 com dois, 3 com três — o
+> `BinaryExpression` inclusive, porque o operador também é nó — e 7 com lista. **A árvore é
+> n-ária**, o que descarta de uma vez `Next()` e qualquer par `Left()`/`Right()`.
+>
+> A caminhada que existe de verdade é o `childScopesOf`, um `switch` de tipo no
+> `emitter/warning.go`. Um `Children() []Node` a substituiria, e fica registrado como feature
+> própria: sendo exportado ele **não** veda nada, então conviveria com a marca em vez de
+> substituí-la — é o desenho do `go/ast` da biblioteca padrão, `Pos()` exportado e
+> `exprNode()` não.
 
 ## Consequência para o que já foi feito
 

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
-	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
@@ -52,10 +51,10 @@ type Document struct {
 }
 
 // Analyze lexes and parses a document.
-func Analyze(doc Document) *Analysis {
+func (s *Session) Analyze(doc Document) *Analysis {
 	analysis := &Analysis{Source: doc.Source, Mapper: lsp.NewMapper(doc.Source)}
 
-	tokens, err := lexer.New().GetFilledTokens([]byte(doc.Source))
+	tokens, err := s.lexer.GetFilledTokens([]byte(doc.Source))
 	analysis.Tokens = tokens
 	if err != nil {
 		analysis.Err = err
@@ -64,7 +63,7 @@ func Analyze(doc Document) *Analysis {
 
 	// How wide a value is decides what fits in one, so the document is read in the dialect it
 	// belongs to rather than in the default.
-	tree, err := parser.New().Parse(parser.ParseInput{
+	tree, err := s.parser.Parse(parser.ParseInput{
 		Filename: doc.Filename,
 		Tokens:   tokens,
 		TapeSize: doc.TapeSize,
@@ -147,14 +146,14 @@ func (a *Analysis) TokenAt(pos lsp.Position) token.Token {
 }
 
 // ValidateCode is the entry point used by the didOpen and didChange handlers.
-func ValidateCode(doc Document) Diagnostics {
-	return Analyze(doc).Diagnostics()
+func (s *Session) ValidateCode(doc Document) Diagnostics {
+	return s.Analyze(doc).Diagnostics()
 }
 
 // HoverInfo describes what sits under the cursor: the description the lexer already
 // carries for keywords, or the declaration of an identifier when it can be found.
-func HoverInfo(doc Document, pos lsp.Position) string {
-	analysis := Analyze(doc)
+func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
+	analysis := s.Analyze(doc)
 	tk := analysis.TokenAt(pos)
 	if tk == nil {
 		return ""
@@ -201,8 +200,8 @@ func HoverInfo(doc Document, pos lsp.Position) string {
 //
 // It takes a position for that last case: what to offer depends on what sits in front of
 // the cursor, and a document being edited usually does not parse.
-func CompletionItemsFor(doc Document, pos lsp.Position, snippets bool) []CompletionItem {
-	analysis := Analyze(doc)
+func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bool) []CompletionItem {
+	analysis := s.Analyze(doc)
 	shapes := scanStructs(analysis.Tokens)
 
 	// Right after a dot the fields are the answer, and the only one: nothing else can

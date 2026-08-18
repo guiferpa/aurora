@@ -29,7 +29,7 @@ func TestTheWidthOfADocumentReachesTheParser(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			diagnostics := ValidateCode(Document{
+			diagnostics := session().ValidateCode(Document{
 				Filename: "main.ar",
 				Source:   nineBytes,
 				TapeSize: tc.width,
@@ -48,7 +48,7 @@ func TestTheWidthOfADocumentReachesTheParser(t *testing.T) {
 // A number too large for the tape is the other half of the same rule, and the message names
 // the width it was read at.
 func TestANumberIsCheckedAgainstTheDocumentsWidth(t *testing.T) {
-	diagnostics := ValidateCode(Document{Filename: "main.ar", Source: "printd 300;", TapeSize: 1})
+	diagnostics := session().ValidateCode(Document{Filename: "main.ar", Source: "printd 300;", TapeSize: 1})
 
 	if len(diagnostics) == 0 {
 		t.Fatal("300 was accepted on a one-byte tape")

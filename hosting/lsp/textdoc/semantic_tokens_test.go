@@ -86,7 +86,7 @@ func TestSemanticTokens(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := decode(SemanticTokensFor(tc.source))
+			got := decode(session().SemanticTokensFor(tc.source))
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got:\n%v\nwant:\n%v", got, tc.want)
 			}
@@ -97,7 +97,7 @@ func TestSemanticTokens(t *testing.T) {
 // A file mid-edit must keep its colors: the lexer returns the tokens it managed to read
 // along with the error, and coloring uses them.
 func TestSemanticTokensOnBrokenSource(t *testing.T) {
-	data := SemanticTokensFor("ident a = 1;\nident b = @@@;")
+	data := session().SemanticTokensFor("ident a = 1;\nident b = @@@;")
 	tokens := decode(data)
 	if len(tokens) < 5 {
 		t.Fatalf("expected the valid prefix to still be colored, got %d tokens", len(tokens))
@@ -108,14 +108,14 @@ func TestSemanticTokensOnBrokenSource(t *testing.T) {
 }
 
 func TestSemanticTokensEmptyDocument(t *testing.T) {
-	if data := SemanticTokensFor(""); len(data) != 0 {
+	if data := session().SemanticTokensFor(""); len(data) != 0 {
 		t.Errorf("expected no tokens, got %v", data)
 	}
 }
 
 // Every entry must be a full 5-tuple, or clients misread the whole stream.
 func TestSemanticTokensDataIsWellFormed(t *testing.T) {
-	data := SemanticTokensFor("ident a = 1;\n#- note\nprintb a;\n")
+	data := session().SemanticTokensFor("ident a = 1;\n#- note\nprintb a;\n")
 	if len(data)%5 != 0 {
 		t.Fatalf("data length %d is not a multiple of 5", len(data))
 	}

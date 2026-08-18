@@ -10,6 +10,9 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 )
 
 // A scripted session over the real handler map: what a client actually exchanges with the
@@ -25,7 +28,11 @@ func runSession(t *testing.T, messages ...string) []map[string]any {
 
 	in := strings.NewReader(strings.Join(messages, ""))
 	out := bytes.NewBuffer(nil)
-	lsp.Listen(log.New(io.Discard, "", 0), in, out, handlers())
+	sv := server{textdoc: textdoc.NewSession(textdoc.NewSessionOptions{
+		Lexer:  lexer.New(),
+		Parser: parser.New(),
+	})}
+	lsp.Listen(log.New(io.Discard, "", 0), in, out, sv.handlers())
 
 	replies := make([]map[string]any, 0)
 	rest := out.Bytes()

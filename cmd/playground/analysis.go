@@ -8,6 +8,8 @@ import (
 
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 )
 
 // The page is a third client of the analyses the language server answers with, next to the
@@ -69,22 +71,29 @@ func marshal(v any) any {
 // small, and the alternative — telling the page how to describe a change — is a protocol,
 // which is what the editor plugin has and the page does not need.
 func analyses() []js.Func {
+	// One session for the page, the way the language server holds one for an editor: the
+	// phases are built here and the width comes with each document.
+	session := textdoc.NewSession(textdoc.NewSessionOptions{
+		Lexer:  lexer.New(),
+		Parser: parser.New(),
+	})
+
 	diagnostics := js.FuncOf(func(this js.Value, args []js.Value) any {
-		return marshal(textdoc.ValidateCode(documentFrom(args)))
+		return marshal(session.ValidateCode(documentFrom(args)))
 	})
 
 	semanticTokens := js.FuncOf(func(this js.Value, args []js.Value) any {
-		return marshal(textdoc.SemanticTokensFor(documentFrom(args).Source))
+		return marshal(session.SemanticTokensFor(documentFrom(args).Source))
 	})
 
 	hover := js.FuncOf(func(this js.Value, args []js.Value) any {
-		return marshal(textdoc.HoverInfo(documentFrom(args), positionFrom(args)))
+		return marshal(session.HoverInfo(documentFrom(args), positionFrom(args)))
 	})
 
 	// Snippets are always on: the page is one editor and it is known to expand them, where a
 	// language server has to ask because it does not know who is listening.
 	completions := js.FuncOf(func(this js.Value, args []js.Value) any {
-		return marshal(textdoc.CompletionItemsFor(documentFrom(args), positionFrom(args), true))
+		return marshal(session.CompletionItemsFor(documentFrom(args), positionFrom(args), true))
 	})
 
 	// The legend names what the numbers in the token data mean, and the page has to be given

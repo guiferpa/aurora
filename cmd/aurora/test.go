@@ -2,11 +2,17 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/hosting/cli"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/printer"
 )
 
 var testCmd = &cobra.Command{
@@ -47,12 +53,32 @@ func runTest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	report, err := cli.Test(cmd.Context(), cli.TestInput{
-		Target:   target,
-		Stdout:   os.Stdout,
-		TapeSize: tapeSize,
+	// Which files run, and how wide a value is in them, is settled before the phases are
+	// built: a test file named directly belongs to a project, and the project decides the width.
+	files, size, err := cli.TestFiles(target, tapeSize)
+	if err != nil {
+		return err
+	}
+
+	report, err := cli.NewSession(cli.NewSessionOptions{
+		Lexer:   lexer.New(lexer.NewLexerOptions{}),
+		Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		NewEvaluator: func() *evaluator.Evaluator {
+			return evaluator.New(evaluator.NewEvaluatorOptions{
+				// A test says what held and what did not; what the program printed on the
+				// way is not part of the report.
+				PrintBytes:   printer.Bytes(io.Discard, size),
+				PrintChars:   printer.Chars(io.Discard, size),
+				PrintDecimal: printer.Decimal(io.Discard, size),
+				TapeSize:     size,
+				Asserts:      true,
+			})
+		},
+		TapeSize: size,
 		Loggers:  loggers,
-	})
+		Stdout:   os.Stdout,
+	}).Test(cmd.Context(), files)
 	if err != nil {
 		return err
 	}

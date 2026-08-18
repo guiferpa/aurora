@@ -2,43 +2,68 @@ package cli
 
 import (
 	"context"
-	"io"
+	"os"
+	"slices"
 
-	"github.com/guiferpa/aurora/evaluator"
-	"github.com/guiferpa/aurora/shared/printer"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/trace"
 )
 
-// RunInput is the input for the Run handler.
-type RunInput struct {
-	Source  string   // path to .ar source
-	Loggers []string // enabled loggers
-	// Stdout receives what the program prints. The three print builtins are three
-	// readings of the same tape and share one stream, so there is one writer here.
-	Stdout io.Writer
-	// Warnings receives compiler warnings. Nil discards them.
-	Warnings io.Writer
-	Args     []string
-	TapeSize int // width in bytes of every value; zero means the default
-}
-
-// Run compiles and evaluates the Aurora source at Source.
-func Run(ctx context.Context, in RunInput) error {
-	if err := ValidateTapeSize(in.TapeSize); err != nil {
+// Run compiles the source and evaluates it.
+//
+// The unit of compilation is the file. Aurora had a namespace layer that treated a directory
+// as the unit and compiled every .ar file next to the entry point, which made independent
+// programs in one folder collide; it was removed until the module system is designed (see
+// docs/module_system_design.md).
+func (s *Session) Run(ctx context.Context, source string) error {
+	if err := ValidateTapeSize(s.tapeSize); err != nil {
 		return err
 	}
-	program, err := Compile(in.Source, in.TapeSize, in.Loggers, in.Stdout, nil)
+
+	bs, err := os.ReadFile(source)
 	if err != nil {
 		return err
 	}
-	ReportWarnings(in.Warnings, in.Source, program.Warnings)
 
-	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		PrintBytes:   printer.Bytes(in.Stdout, in.TapeSize),
-		PrintChars:   printer.Chars(in.Stdout, in.TapeSize),
-		PrintDecimal: printer.Decimal(in.Stdout, in.TapeSize),
-		Args:         ParseArgs(in.Args),
-		TapeSize:     in.TapeSize,
-	})
+	tokens, err := s.lexer.GetFilledTokens(bs)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(s.loggers, "lexer") {
+		if err := trace.Tokens(s.stdout, tokens); err != nil {
+			return err
+		}
+	}
+
+	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens})
+	if err != nil {
+		return err
+	}
+	// A phase returns what it made and does not show it; showing is decided here, once the
+	// phase has finished, which is why the output is no longer on-time.
+	if slices.Contains(s.loggers, "parser") {
+		if err := trace.AST(s.stdout, tree); err != nil {
+			return err
+		}
+	}
+
+	program, err := s.emitter.EmitProgram(tree)
+	if err != nil {
+		return err
+	}
+	if slices.Contains(s.loggers, "emitter") {
+		if err := trace.Instructions(s.stdout, program.Instructions); err != nil {
+			return err
+		}
+	}
+
+	// A warning is something worth knowing before running, not a reason to refuse the source.
+	ReportWarnings(s.warnings, source, program.Warnings)
+
+	ev, err := s.evaluator()
+	if err != nil {
+		return err
+	}
 	if _, err := ev.Evaluate(program.Instructions); err != nil {
 		return err
 	}

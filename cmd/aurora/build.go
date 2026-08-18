@@ -5,7 +5,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/cli"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 )
 
 var buildCmd = &cobra.Command{
@@ -62,13 +65,17 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = cli.Build(cmd.Context(), cli.BuildInput{
-		Source:     target.Source,
-		OutputPath: output,
-		Loggers:    loggers,
-		Warnings:   os.Stderr,
-		Stdout:     cmd.OutOrStdout(),
-		TapeSize:   cli.ResolveTapeSize(tapeSize, target.TapeSize),
-	})
+	size := cli.ResolveTapeSize(tapeSize, target.TapeSize)
+
+	// A build compiles and writes bytecode; nothing evaluates, so no evaluator is made.
+	_, err = cli.NewSession(cli.NewSessionOptions{
+		Lexer:    lexer.New(lexer.NewLexerOptions{}),
+		Parser:   parser.New(parser.NewParserOptions{TapeSize: size}),
+		Emitter:  emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		TapeSize: size,
+		Loggers:  loggers,
+		Stdout:   cmd.OutOrStdout(),
+		Warnings: os.Stderr,
+	}).Build(cmd.Context(), target.Source, output)
 	return err
 }

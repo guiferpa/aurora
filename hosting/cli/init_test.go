@@ -107,11 +107,11 @@ func TestInitProjectRunsAndPasses(t *testing.T) {
 	}
 
 	out := &strings.Builder{}
-	if err := Run(t.Context(), RunInput{Source: target.Source, TapeSize: target.TapeSize, Stdout: out}); err != nil {
+	if err := newSession(t, sessionOpts{tapeSize: target.TapeSize, stdout: out}).Run(t.Context(), target.Source); err != nil {
 		t.Fatalf("the program init wrote does not run: %v", err)
 	}
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("the tests init wrote do not run: %v", err)
 	}
@@ -139,11 +139,7 @@ func TestInitGreets(t *testing.T) {
 	}
 
 	out := &strings.Builder{}
-	if err := Run(t.Context(), RunInput{
-		Source:   target.Source,
-		TapeSize: target.TapeSize,
-		Stdout:   out,
-	}); err != nil {
+	if err := newSession(t, sessionOpts{tapeSize: target.TapeSize, stdout: out}).Run(t.Context(), target.Source); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	if !strings.Contains(out.String(), "Abidu abide") {

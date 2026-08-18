@@ -18,11 +18,7 @@ func TestBuild_producesOutputFile(t *testing.T) {
 	}
 	out := filepath.Join(dir, "out", "main.bin")
 	ctx := context.Background()
-	_, err := Build(ctx, BuildInput{
-		Source:     entry,
-		OutputPath: out,
-		Loggers:    nil,
-	})
+	_, err := newSession(t, sessionOpts{loggers: nil}).Build(ctx, entry, out)
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
@@ -39,10 +35,7 @@ func TestBuild_failsWhenSourceMissing(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out.bin")
 	ctx := context.Background()
-	_, err := Build(ctx, BuildInput{
-		Source:     filepath.Join(dir, "nonexistent.ar"),
-		OutputPath: out,
-	})
+	_, err := newSession(t, sessionOpts{}).Build(ctx, filepath.Join(dir, "nonexistent.ar"), out)
 	if err == nil {
 		t.Error("Build() with missing source should return error")
 	}
@@ -56,7 +49,7 @@ func TestBuild_failsWhenSourceInvalid(t *testing.T) {
 	}
 	out := filepath.Join(dir, "out.bin")
 	ctx := context.Background()
-	_, err := Build(ctx, BuildInput{Source: entry, OutputPath: out})
+	_, err := newSession(t, sessionOpts{}).Build(ctx, entry, out)
 	if err == nil {
 		t.Error("Build() with invalid source should return error")
 	}
@@ -73,7 +66,7 @@ func TestBuildReportsWhatItProduced(t *testing.T) {
 	out := filepath.Join(dir, "bin", "main")
 
 	stdout := &strings.Builder{}
-	report, err := Build(t.Context(), BuildInput{Source: entry, OutputPath: out, Stdout: stdout})
+	report, err := newSession(t, sessionOpts{stdout: stdout}).Build(t.Context(), entry, out)
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -113,12 +106,7 @@ func TestBuildReportsTheTapeSizeItUsed(t *testing.T) {
 	}
 
 	stdout := &strings.Builder{}
-	report, err := Build(t.Context(), BuildInput{
-		Source:     entry,
-		OutputPath: filepath.Join(dir, "out.bin"),
-		TapeSize:   4,
-		Stdout:     stdout,
-	})
+	report, err := newSession(t, sessionOpts{tapeSize: 4, stdout: stdout}).Build(t.Context(), entry, filepath.Join(dir, "out.bin"))
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -138,7 +126,7 @@ func TestBuildWithoutAReportStillBuilds(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "out.bin")
-	if _, err := Build(t.Context(), BuildInput{Source: entry, OutputPath: out, Stdout: nil}); err != nil {
+	if _, err := newSession(t, sessionOpts{stdout: nil}).Build(t.Context(), entry, out); err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 	if _, err := os.Stat(out); err != nil {
@@ -196,11 +184,7 @@ func TestBuildSaysWhatTheBackendDoesNotCarry(t *testing.T) {
 			}
 
 			warnings := &strings.Builder{}
-			if _, err := Build(t.Context(), BuildInput{
-				Source:     source,
-				OutputPath: filepath.Join(dir, "out.bin"),
-				Warnings:   warnings,
-			}); err != nil {
+			if _, err := newSession(t, sessionOpts{warnings: warnings}).Build(t.Context(), source, filepath.Join(dir, "out.bin")); err != nil {
 				t.Fatalf("Build: %v", err)
 			}
 
@@ -220,11 +204,7 @@ func TestBuildSaysNothingAboutWhatItCarries(t *testing.T) {
 	}
 
 	warnings := &strings.Builder{}
-	if _, err := Build(t.Context(), BuildInput{
-		Source:     source,
-		OutputPath: filepath.Join(dir, "out.bin"),
-		Warnings:   warnings,
-	}); err != nil {
+	if _, err := newSession(t, sessionOpts{warnings: warnings}).Build(t.Context(), source, filepath.Join(dir, "out.bin")); err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 

@@ -6,22 +6,15 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/trace"
 )
-
-// BuildInput is the input for the Build handler.
-type BuildInput struct {
-	Source     string    // path to .ar source
-	OutputPath string    // path to write bytecode
-	Loggers    []string  // enabled loggers (lexer, parser, emitter)
-	TapeSize   int       // width in bytes of every value; zero means the default
-	Warnings   io.Writer // receives compiler warnings; nil discards them
-	Stdout     io.Writer // receives the report; nil says nothing
-}
 
 // BuildReport is what a build produced.
 type BuildReport struct {
@@ -32,48 +25,80 @@ type BuildReport struct {
 	TapeSize     int    // width in bytes of every value in it
 }
 
-// Build compiles the Aurora source at Source and writes bytecode to OutputPath.
+// Build compiles the source and writes its bytecode to outputPath.
 //
 // It reports what it produced: a build used to be silent on success, which left no way to
 // tell a build that wrote a binary from one that found nothing to do, and no sign of where
 // the binary went — the path may come from a profile rather than from the command line.
-func Build(ctx context.Context, in BuildInput) (BuildReport, error) {
+func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildReport, error) {
 	report := BuildReport{
-		Source:   in.Source,
-		Binary:   in.OutputPath,
-		TapeSize: byteutil.TapeSize(in.TapeSize),
+		Source:   source,
+		Binary:   outputPath,
+		TapeSize: byteutil.TapeSize(s.tapeSize),
 	}
 
-	if err := ValidateTapeSize(in.TapeSize); err != nil {
+	if err := ValidateTapeSize(s.tapeSize); err != nil {
 		return report, err
 	}
-	program, err := Compile(in.Source, in.TapeSize, in.Loggers, in.Stdout, nil)
+
+	bs, err := os.ReadFile(source)
 	if err != nil {
 		return report, err
 	}
+
+	tokens, err := s.lexer.GetFilledTokens(bs)
+	if err != nil {
+		return report, err
+	}
+	if slices.Contains(s.loggers, "lexer") {
+		if err := trace.Tokens(s.stdout, tokens); err != nil {
+			return report, err
+		}
+	}
+
+	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens})
+	if err != nil {
+		return report, err
+	}
+	if slices.Contains(s.loggers, "parser") {
+		if err := trace.AST(s.stdout, tree); err != nil {
+			return report, err
+		}
+	}
+
+	program, err := s.emitter.EmitProgram(tree)
+	if err != nil {
+		return report, err
+	}
+	if slices.Contains(s.loggers, "emitter") {
+		if err := trace.Instructions(s.stdout, program.Instructions); err != nil {
+			return report, err
+		}
+	}
+
 	// What the compiler has to say about the program, and what the backend has to say about
 	// what it can carry: the second is the builder's to answer, since it is the one writing.
-	ReportWarnings(in.Warnings, in.Source, append(program.Warnings, evm.Warnings(program.Instructions)...))
+	ReportWarnings(s.warnings, source, append(program.Warnings, evm.Warnings(program.Instructions)...))
 	report.Instructions = len(program.Instructions)
 
 	// Assembling and writing are two things, and the builder only does the first: it
 	// hands the bytecode back, and where it lands is decided here.
 	bytecode, err := evm.NewBuilder(program.Instructions, evm.NewBuilderOptions{
-		TapeSize: in.TapeSize,
+		TapeSize: s.tapeSize,
 	}).Build()
 	if err != nil {
 		return report, err
 	}
 	report.Bytes = len(bytecode)
 
-	if err := os.MkdirAll(filepath.Dir(in.OutputPath), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return report, err
 	}
-	if err := os.WriteFile(in.OutputPath, bytecode, 0o644); err != nil {
+	if err := os.WriteFile(outputPath, bytecode, 0o644); err != nil {
 		return report, err
 	}
 
-	writeBuildReport(in.Stdout, report)
+	writeBuildReport(s.stdout, report)
 	return report, nil
 }
 

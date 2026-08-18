@@ -71,7 +71,7 @@ func TestRunsAgainstTheSourceItBelongsTo(t *testing.T) {
 assert(base equals 10, "sees the binding too");
 `)
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestSearchesFromTheSourceDirectoryDown(t *testing.T) {
 	writeAt(t, dir, "outside.ar", "ident c = 3;\n")
 	writeAt(t, dir, "outside.test.ar", `assert(c equals 4, "must not run");`)
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -120,7 +120,7 @@ func TestRunsASingleFileByPath(t *testing.T) {
 	writeAt(t, dir, "src/other.ar", "ident b = 2;\n")
 	writeAt(t, dir, "src/other.test.ar", `assert(b equals 2, "two");`)
 
-	report, err := Test(t.Context(), TestInput{Target: filepath.Join("src", "other.test.ar"), Stdout: io.Discard})
+	report, err := tested(t, filepath.Join("src", "other.test.ar"), sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -140,7 +140,7 @@ assert(a equals 2, "does not hold");
 assert(a bigger 0, "still runs after a failure");
 `)
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestFailsWithoutItsSource(t *testing.T) {
 	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "fine");`)
 	writeAt(t, dir, "src/orphan.test.ar", `assert(1 equals 1, "no source");`)
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestNameDeclaredInBothFilesConflicts(t *testing.T) {
 	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
 	writeAt(t, dir, "src/main.test.ar", "ident a = 2;\nassert(a equals 2, \"never gets here\");\n")
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -226,7 +226,7 @@ func TestSeesAStructDeclaredInItsSource(t *testing.T) {
 	writeAt(t, dir, "src/main.test.ar",
 		"ident p = Point{10, 20};\nassert(p.y equals 20, \"a struct crosses the pair\");\n")
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestASourceDoesNotSeeWhatItsTestDeclares(t *testing.T) {
 	writeAt(t, dir, "src/main.ar", "ident p = Point{1, 2};\n")
 	writeAt(t, dir, "src/main.test.ar", "struct Point { x, y };\nassert(1 equals 1, \"unreached\");\n")
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -274,7 +274,7 @@ func TestUsesTheProjectTapeSize(t *testing.T) {
 	// 200 + 100 wraps to 44 on a one-byte tape.
 	writeAt(t, dir, "src/main.test.ar", `assert(a + 100 equals 44, "wraps at the tape width");`)
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -288,7 +288,7 @@ func TestFlagOverridesTheProfileTapeSize(t *testing.T) {
 	writeAt(t, dir, "src/main.ar", "ident a = 200;\n")
 	writeAt(t, dir, "src/main.test.ar", `assert(a + 100 equals 44, "wraps only on one byte");`)
 
-	report, err := Test(t.Context(), TestInput{Stdout: io.Discard, TapeSize: 1})
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard, tapeSize: 1})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestErrors(t *testing.T) {
 		dir := project(t)
 		writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
 
-		_, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+		_, err := tested(t, "", sessionOpts{stdout: io.Discard})
 		if err == nil || !strings.Contains(err.Error(), "no .test.ar files") {
 			t.Errorf("error = %v, want it to say there is nothing to run", err)
 		}
@@ -310,14 +310,14 @@ func TestErrors(t *testing.T) {
 
 	t.Run("unknown profile", func(t *testing.T) {
 		project(t)
-		if _, err := Test(t.Context(), TestInput{Target: "nope", Stdout: io.Discard}); err == nil {
+		if _, err := tested(t, "nope", sessionOpts{stdout: io.Discard}); err == nil {
 			t.Error("expected an error for a profile that is not in the manifest")
 		}
 	})
 
 	t.Run("invalid tape size", func(t *testing.T) {
 		project(t)
-		_, err := Test(t.Context(), TestInput{Stdout: io.Discard, TapeSize: 64})
+		_, err := tested(t, "", sessionOpts{stdout: io.Discard, tapeSize: 64})
 		if err == nil || !strings.Contains(err.Error(), "tape size") {
 			t.Errorf("error = %v, want the tape size to be rejected", err)
 		}
@@ -328,7 +328,7 @@ func TestErrors(t *testing.T) {
 		writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
 		writeAt(t, dir, "src/main.test.ar", "assert(@@@);\n")
 
-		report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+		report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 		if err != nil {
 			t.Fatalf("Test: %v", err)
 		}
@@ -342,7 +342,7 @@ func TestErrors(t *testing.T) {
 		writeAt(t, dir, "src/main.ar", "ident = ;\n")
 		writeAt(t, dir, "src/main.test.ar", `assert(1 equals 1, "never runs");`)
 
-		report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+		report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 		if err != nil {
 			t.Fatalf("Test: %v", err)
 		}
@@ -364,7 +364,7 @@ assert(a equals 2, "does not hold");
 `)
 
 	out := &strings.Builder{}
-	if _, err := Test(t.Context(), TestInput{Stdout: out}); err != nil {
+	if _, err := tested(t, "", sessionOpts{stdout: out}); err != nil {
 		t.Fatalf("Test: %v", err)
 	}
 
@@ -383,7 +383,7 @@ func TestReportMentionsFilesThatCouldNotRun(t *testing.T) {
 	writeAt(t, dir, "src/orphan.test.ar", `assert(1 equals 1, "orphan");`)
 
 	out := &strings.Builder{}
-	if _, err := Test(t.Context(), TestInput{Stdout: out}); err != nil {
+	if _, err := tested(t, "", sessionOpts{stdout: out}); err != nil {
 		t.Fatalf("Test: %v", err)
 	}
 
@@ -404,7 +404,7 @@ func TestReportsAFileWithNoAssertions(t *testing.T) {
 	writeAt(t, dir, "src/main.test.ar", "ident b = 2;\n")
 
 	out := &strings.Builder{}
-	report, err := Test(t.Context(), TestInput{Stdout: out})
+	report, err := tested(t, "", sessionOpts{stdout: out})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
@@ -421,7 +421,7 @@ func TestWriteReportWithoutAWriter(t *testing.T) {
 	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
 	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "holds");`)
 
-	if _, err := Test(t.Context(), TestInput{Stdout: nil}); err != nil {
+	if _, err := tested(t, "", sessionOpts{stdout: nil}); err != nil {
 		t.Errorf("a nil writer should discard the report, not fail: %v", err)
 	}
 }

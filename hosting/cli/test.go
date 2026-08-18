@@ -12,9 +12,7 @@ import (
 
 	"github.com/fatih/color"
 
-	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
 )
@@ -25,14 +23,6 @@ import (
 // checks; when there is one, the rule becomes "a test belongs to the module of the same
 // name", which is the same sentence.
 const TestExtension = ".test.ar"
-
-// TestInput is the input for the Test handler.
-type TestInput struct {
-	Target   string // profile name, a path to a .test.ar file, or empty for the main profile
-	Stdout   io.Writer
-	TapeSize int
-	Loggers  []string
-}
 
 // FileReport is what happened in one test file.
 type FileReport struct {
@@ -85,18 +75,12 @@ func (r TestReport) OK() bool {
 	return true
 }
 
-// Test runs the test files the target names and writes a report.
+// Test runs the test files it is given and writes a report.
 //
-// With no target it uses the main profile; with a name, that profile; with a path ending in
-// .test.ar, only that file. A profile is searched from the directory of its source, down to
-// the leaves — nothing above it.
-func Test(ctx context.Context, in TestInput) (TestReport, error) {
-	if err := ValidateTapeSize(in.TapeSize); err != nil {
-		return TestReport{}, err
-	}
-
-	files, tapeSize, err := testFiles(in.Target, in.TapeSize)
-	if err != nil {
+// Which files those are is settled before the session exists: a test file names its own
+// project, and the width it is compiled at comes from there — see TestFiles.
+func (s *Session) Test(ctx context.Context, files []string) (TestReport, error) {
+	if err := ValidateTapeSize(s.tapeSize); err != nil {
 		return TestReport{}, err
 	}
 	if len(files) == 0 {
@@ -105,7 +89,7 @@ func Test(ctx context.Context, in TestInput) (TestReport, error) {
 
 	report := TestReport{Files: make([]FileReport, 0, len(files))}
 	for _, path := range files {
-		file := runTestFile(path, tapeSize, in.Loggers)
+		file := s.runTestFile(path)
 		for _, result := range file.Results {
 			if result.Passed {
 				report.Passed++
@@ -116,12 +100,19 @@ func Test(ctx context.Context, in TestInput) (TestReport, error) {
 		report.Files = append(report.Files, file)
 	}
 
-	writeReport(in.Stdout, report)
+	writeReport(s.stdout, report)
 	return report, nil
 }
 
-// testFiles resolves the target into the files to run and the tape size to use.
-func testFiles(target string, tapeSize int) ([]string, int, error) {
+// TestFiles resolves a target into the files to run and the width to compile them at.
+//
+// With no target it uses the main profile; with a name, that profile; with a path ending in
+// .test.ar, only that file. A profile is searched from the directory of its source, down to
+// the leaves — nothing above it.
+//
+// It answers before a session exists because the width it finds is what the phases are built
+// with.
+func TestFiles(target string, tapeSize int) ([]string, int, error) {
 	if strings.HasSuffix(target, TestExtension) {
 		// A test file named directly is still a file of its project, and it has to run at
 		// the width the source it tests was written in.
@@ -163,6 +154,15 @@ func findTests(root string) ([]string, error) {
 	return files, nil
 }
 
+// failedAt names the file a failure came from, and only when it is the source: a failure in
+// the test file is reported against the test being run, which is what the reader is looking at.
+func failedAt(file, source string, err error) error {
+	if file != source {
+		return err
+	}
+	return fmt.Errorf("%s: %w", filepath.Base(source), err)
+}
+
 // SourceForTest returns the file a test belongs to: greeting.test.ar -> greeting.ar.
 func SourceForTest(path string) string {
 	return strings.TrimSuffix(path, TestExtension) + SourceExtension
@@ -173,7 +173,7 @@ func SourceForTest(path string) string {
 // Both run in one evaluator, so what the source declares is in scope for the test — its
 // bindings and its deferred scopes alike, since the defer counter belongs to the environ.
 // Whatever the source does at its top level happens too, prints included.
-func runTestFile(path string, tapeSize int, loggers []string) FileReport {
+func (s *Session) runTestFile(path string) FileReport {
 	report := FileReport{Path: path}
 
 	// A test belongs to the source file of the same name, and cannot run without it: it
@@ -190,36 +190,53 @@ func runTestFile(path string, tapeSize int, loggers []string) FileReport {
 	// which is what decides that assert belongs to the test file — and its own line numbers.
 	declarations := parser.NewDeclarations()
 
-	sourceProgram, err := Compile(source, tapeSize, loggers, io.Discard, declarations)
-	if err != nil {
-		report.Err = fmt.Errorf("%s: %w", filepath.Base(source), err)
-		return report
-	}
-
-	testProgram, err := Compile(path, tapeSize, loggers, io.Discard, declarations)
-	if err != nil {
-		report.Err = err
-		return report
-	}
-
-	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		PrintBytes:   printer.Bytes(io.Discard, tapeSize),
-		PrintChars:   printer.Chars(io.Discard, tapeSize),
-		PrintDecimal: printer.Decimal(io.Discard, tapeSize),
-		TapeSize:     tapeSize,
-		Asserts:      true,
-	})
-
 	// Both programs go into one instruction stream, and each is run as a range of it. A
 	// deferred scope records where its body sits as indexes into the stream, so handing
 	// the evaluator a different slice afterwards would point those indexes at unrelated
 	// instructions — a call would then run whatever happened to be there. The REPL keeps
 	// one buffer across lines for the same reason. Each range clears the temps first,
 	// since the two were emitted separately and both number their labels from zero.
-	instructions := make([]ir.Instruction, 0, len(sourceProgram.Instructions)+len(testProgram.Instructions))
-	instructions = append(instructions, sourceProgram.Instructions...)
-	boundary := len(instructions)
-	instructions = append(instructions, testProgram.Instructions...)
+	instructions := make([]ir.Instruction, 0)
+	boundary := 0
+
+	for _, file := range []string{source, path} {
+		bs, err := os.ReadFile(file)
+		if err != nil {
+			report.Err = err
+			return report
+		}
+
+		tokens, err := s.lexer.GetFilledTokens(bs)
+		if err != nil {
+			report.Err = failedAt(file, source, err)
+			return report
+		}
+
+		tree, err := s.parser.Parse(parser.ParseInput{
+			Filename:     file,
+			Tokens:       tokens,
+			Declarations: declarations,
+		})
+		if err != nil {
+			report.Err = failedAt(file, source, err)
+			return report
+		}
+
+		program, err := s.emitter.EmitProgram(tree)
+		if err != nil {
+			report.Err = failedAt(file, source, err)
+			return report
+		}
+
+		boundary = len(instructions)
+		instructions = append(instructions, program.Instructions...)
+	}
+
+	ev, err := s.evaluator()
+	if err != nil {
+		report.Err = err
+		return report
+	}
 
 	if _, err := ev.EvaluateRange(instructions, 0, uint64(boundary)); err != nil {
 		report.Err = fmt.Errorf("%s: %w", source, err)

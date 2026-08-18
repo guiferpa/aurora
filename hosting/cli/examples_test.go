@@ -45,10 +45,7 @@ func TestExamplesRun(t *testing.T) {
 
 	for _, source := range sources {
 		t.Run(filepath.Base(source), func(t *testing.T) {
-			err := Run(t.Context(), RunInput{
-				Source: source,
-				Stdout: io.Discard,
-			})
+			err := newSession(t, sessionOpts{stdout: io.Discard}).Run(t.Context(), source)
 			if err != nil {
 				t.Errorf("%s failed: %v", source, err)
 			}
@@ -58,10 +55,7 @@ func TestExamplesRun(t *testing.T) {
 
 // The examples that are tests must pass, which also covers the pairing rule end to end.
 func TestExamplesTestsPass(t *testing.T) {
-	report, err := Test(t.Context(), TestInput{
-		Target: filepath.Join(repoRoot(t), "examples", "greeting.test.ar"),
-		Stdout: io.Discard,
-	})
+	report, err := tested(t, filepath.Join(repoRoot(t), "examples", "greeting.test.ar"), sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("running the example tests: %v", err)
 	}
@@ -131,7 +125,7 @@ func TestExamplesMatchTheirDeclaredOutput(t *testing.T) {
 
 		t.Run(name, func(t *testing.T) {
 			stdout := &strings.Builder{}
-			if err := Run(t.Context(), RunInput{Source: source, Stdout: stdout}); err != nil {
+			if err := newSession(t, sessionOpts{stdout: stdout}).Run(t.Context(), source); err != nil {
 				t.Fatalf("%s failed: %v", source, err)
 			}
 

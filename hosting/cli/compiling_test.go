@@ -7,6 +7,10 @@ import (
 	"testing"
 )
 
+// Compiling is no longer a thing of its own: a command compiles as part of what it does, so
+// what a source does to the compiler is asked through a command. These used to call Compile,
+// which was a step nobody ran on its own.
+
 func writeFile(t *testing.T, dir, name, content string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
@@ -16,37 +20,41 @@ func writeFile(t *testing.T, dir, name, content string) string {
 	return path
 }
 
-func TestCompile(t *testing.T) {
+func TestASourceBecomesInstructions(t *testing.T) {
 	dir := t.TempDir()
-	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprintb a + 1;\n")
+	// Nothing a chain cannot carry, so nothing to warn about: a print would be warned about
+	// by the backend, which is a different thing from the compiler having something to say.
+	source := writeFile(t, dir, "main.ar", "ident a = 1;\nident b = a + 1;\n")
+	warnings := &strings.Builder{}
 
-	program, err := Compile(source, 0, nil, nil, nil)
+	report, err := newSession(t, sessionOpts{warnings: warnings}).
+		Build(t.Context(), source, filepath.Join(dir, "bin", "main"))
 	if err != nil {
-		t.Fatalf("Compile: %v", err)
+		t.Fatalf("Build: %v", err)
 	}
-	if len(program.Instructions) == 0 {
-		t.Error("expected instructions")
+	if report.Instructions == 0 {
+		t.Error("the source produced no instructions")
 	}
-	if len(program.Warnings) != 0 {
-		t.Errorf("expected no warnings, got %v", program.Warnings)
+	if got := warnings.String(); got != "" {
+		t.Errorf("the compiler said %q about a program it has nothing to say about", got)
 	}
 }
 
 // The unit of compilation is the file. A namespace layer used to compile every .ar file
 // in the directory, so two independent programs sharing a folder collided on their
 // identifiers — which is what made "aurora run" fail on the examples directory.
-func TestCompileIgnoresNeighbouringFiles(t *testing.T) {
+func TestANeighbouringFileIsNotCompiledIn(t *testing.T) {
 	dir := t.TempDir()
 	source := writeFile(t, dir, "main.ar", "ident a = 1;\nprintb a;\n")
 	writeFile(t, dir, "other.ar", "ident a = 2;\nprintb a;\n")
 	writeFile(t, dir, "third.ar", "ident a = 3;\n")
 
-	if _, err := Compile(source, 0, nil, nil, nil); err != nil {
+	if err := newSession(t, sessionOpts{}).Run(t.Context(), source); err != nil {
 		t.Fatalf("a neighbour must not be compiled in: %v", err)
 	}
 }
 
-func TestCompileReportsErrors(t *testing.T) {
+func TestASourceThatDoesNotCompile(t *testing.T) {
 	dir := t.TempDir()
 
 	cases := []struct {
@@ -66,7 +74,8 @@ func TestCompileReportsErrors(t *testing.T) {
 				tapeSize = 1
 			}
 			source := writeFile(t, dir, strings.ReplaceAll(tc.name, " ", "_")+".ar", tc.source)
-			_, err := Compile(source, tapeSize, nil, nil, nil)
+
+			err := newSession(t, sessionOpts{tapeSize: tapeSize}).Run(t.Context(), source)
 			if err == nil {
 				t.Fatal("expected an error")
 			}
@@ -77,21 +86,22 @@ func TestCompileReportsErrors(t *testing.T) {
 	}
 }
 
-func TestCompileFailsWhenSourceMissing(t *testing.T) {
-	if _, err := Compile(filepath.Join(t.TempDir(), "nope.ar"), 0, nil, nil, nil); err == nil {
+func TestASourceThatIsNotThere(t *testing.T) {
+	err := newSession(t, sessionOpts{}).Run(t.Context(), filepath.Join(t.TempDir(), "nope.ar"))
+	if err == nil {
 		t.Error("expected an error for a missing file")
 	}
 }
 
-// assert is only accepted in *.test.ar, and Compile passes the path through for that.
-func TestCompileHonoursTestFileRule(t *testing.T) {
+// assert is only accepted in *.test.ar, and the path is what says which one this is.
+func TestAssertBelongsToATestFile(t *testing.T) {
 	dir := t.TempDir()
 	const source = "assert(1 equals 1, \"ok\");\n"
 
-	if _, err := Compile(writeFile(t, dir, "checks.test.ar", source), 0, nil, nil, nil); err != nil {
+	if err := newSession(t, sessionOpts{}).Run(t.Context(), writeFile(t, dir, "checks.test.ar", source)); err != nil {
 		t.Errorf("assert should be accepted in a .test.ar file: %v", err)
 	}
-	if _, err := Compile(writeFile(t, dir, "checks.ar", source), 0, nil, nil, nil); err == nil {
+	if err := newSession(t, sessionOpts{}).Run(t.Context(), writeFile(t, dir, "checks.ar", source)); err == nil {
 		t.Error("assert should be rejected outside .test.ar")
 	}
 }

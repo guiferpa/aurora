@@ -5,7 +5,12 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/hosting/cli"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/printer"
 )
 
 var runCmd = &cobra.Command{
@@ -50,12 +55,25 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	return cli.Run(cmd.Context(), cli.RunInput{
-		Source:   target.Source,
+	size := cli.ResolveTapeSize(tapeSize, target.TapeSize)
+	out := os.Stdout
+
+	return cli.NewSession(cli.NewSessionOptions{
+		Lexer:   lexer.New(lexer.NewLexerOptions{}),
+		Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		NewEvaluator: func() *evaluator.Evaluator {
+			return evaluator.New(evaluator.NewEvaluatorOptions{
+				PrintBytes:   printer.Bytes(out, size),
+				PrintChars:   printer.Chars(out, size),
+				PrintDecimal: printer.Decimal(out, size),
+				Args:         cli.ParseArgs(programArgs),
+				TapeSize:     size,
+			})
+		},
+		TapeSize: size,
 		Loggers:  loggers,
-		Stdout:   os.Stdout,
+		Stdout:   out,
 		Warnings: os.Stderr,
-		Args:     programArgs,
-		TapeSize: cli.ResolveTapeSize(tapeSize, target.TapeSize),
-	})
+	}).Run(cmd.Context(), target.Source)
 }

@@ -20,7 +20,7 @@ func output(t *testing.T, source string, tapeSize int) []string {
 	}
 
 	var stdout bytes.Buffer
-	if err := Run(t.Context(), RunInput{Source: entry, Stdout: &stdout, TapeSize: tapeSize}); err != nil {
+	if err := newSession(t, sessionOpts{stdout: &stdout, tapeSize: tapeSize}).Run(t.Context(), entry); err != nil {
 		t.Fatalf("running %q: %v", source, err)
 	}
 	return strings.Split(strings.TrimSuffix(stdout.String(), "\n"), "\n")

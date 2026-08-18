@@ -36,10 +36,11 @@ Four rules: no package knows another except wire and util; a vital package is pu
 nothing done that is not returned; errors are resolved in hosting; I/O happens in hosting and
 wiring only in `main`.
 
-**Two of these the tree does not obey yet** — hosts still build phases themselves, and the
-evaluator still writes what a program printed instead of returning it. Both are in
-[rfcs/phase_coupling.md](../../rfcs/phase_coupling.md), so a change that moves toward them is
-progress and one that moves away is a finding.
+**The tree obeys all four.** No vital package imports another, none of them touches the world,
+`os.Exit` happens only in `cmd/*`, and every host is handed its phases instead of building
+them. A change that moves away from any of these is a finding, and the reasoning behind each —
+including what a host may still name — is in
+[docs/contributing/architecture.md](../../docs/contributing/architecture.md).
 
 ## Tests
 

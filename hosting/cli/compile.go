@@ -43,11 +43,10 @@ func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (i
 		}
 	}
 
-	tree, err := parser.New(parser.NewParserOptions{
+	tree, err := parser.New(parser.NewParserOptions{TapeSize: tapeSize}).Parse(parser.ParseInput{
 		Filename: source,
 		Tokens:   tokens,
-		TapeSize: tapeSize,
-	}).Parse()
+	})
 	if err != nil {
 		return ir.Program{}, err
 	}

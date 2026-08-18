@@ -30,7 +30,7 @@ func parseSource(t *testing.T, source, filename string) (ast.AST, error) {
 	if err != nil {
 		return ast.AST{}, err
 	}
-	return New(NewParserOptions{Filename: filename, Tokens: tokens}).Parse()
+	return New(NewParserOptions{}).Parse(ParseInput{Filename: filename, Tokens: tokens})
 }
 
 // first returns the single top-level node, asserting the type.
@@ -542,10 +542,7 @@ ident t = pull [1, 2] 3;
 		t.Fatalf("lexer: %v", err)
 	}
 
-	tree, err := New(NewParserOptions{
-		Filename: "main.ar",
-		Tokens:   tokens,
-	}).Parse()
+	tree, err := New(NewParserOptions{}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens})
 	if err != nil {
 		t.Fatalf("parsing with logging on: %v", err)
 	}

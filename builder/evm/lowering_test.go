@@ -241,9 +241,7 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
-			tree, err := parser.New(parser.NewParserOptions{
-				Tokens: tokens,
-			}).Parse()
+			tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Tokens: tokens})
 			if err != nil {
 				t.Errorf("%v: %v", tc.name, err)
 				return

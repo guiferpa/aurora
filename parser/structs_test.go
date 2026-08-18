@@ -195,7 +195,7 @@ func TestDeclarationsSurviveSeveralParses(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		_, err = New(NewParserOptions{Filename: "main.ar", Tokens: tokens, Declarations: declarations}).Parse()
+		_, err = New(NewParserOptions{}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens, Declarations: declarations})
 		return err
 	}
 

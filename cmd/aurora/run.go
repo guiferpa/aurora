@@ -31,7 +31,6 @@ Anything after the target is passed to the program and read with feed(n).`,
 }
 
 func init() {
-	runCmd.Flags().StringSliceP("loggers", "l", []string{}, "show what each phase produced (valid: lexer, parser, emitter)")
 	runCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
@@ -46,10 +45,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	loggers, err := cmd.Flags().GetStringSlice("loggers")
-	if err != nil {
-		return err
-	}
 	tapeSize, err := cmd.Flags().GetInt("tape-size")
 	if err != nil {
 		return err
@@ -72,7 +67,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 			})
 		},
 		TapeSize: size,
-		Loggers:  loggers,
 		Stdout:   out,
 		Warnings: os.Stderr,
 	}).Run(cmd.Context(), target.Source)

@@ -25,7 +25,6 @@ type Session struct {
 	// "aurora test" checks one file after another, each of which is its own program.
 	newEvaluator func() *evaluator.Evaluator
 	tapeSize     int
-	loggers      []string
 	stdout       io.Writer
 	warnings     io.Writer
 }
@@ -38,8 +37,6 @@ type NewSessionOptions struct {
 	// TapeSize is the width in bytes of every value. It is the width the phases were built
 	// with; the session carries it to answer for what it wrote.
 	TapeSize int
-	// Loggers names the phases whose output is shown: lexer, parser, emitter.
-	Loggers []string
 	// Stdout receives what a command has to say. Nil says nothing.
 	Stdout io.Writer
 	// Warnings receives compiler warnings. Nil discards them.
@@ -63,7 +60,6 @@ func NewSession(opts NewSessionOptions) *Session {
 		emitter:      opts.Emitter,
 		newEvaluator: opts.NewEvaluator,
 		tapeSize:     opts.TapeSize,
-		loggers:      opts.Loggers,
 		stdout:       opts.Stdout,
 		warnings:     opts.Warnings,
 	}

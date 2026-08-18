@@ -18,7 +18,7 @@ import (
 
 // typed types the lines given and answers with everything the session wrote back. It puts the
 // session together the way cmd/aurora does, since that is now where a session is made.
-func typed(t *testing.T, lines string, loggers []string, tapeSize int) string {
+func typed(t *testing.T, lines string, tapeSize int) string {
 	t.Helper()
 
 	size := byteutil.TapeSize(tapeSize)
@@ -37,7 +37,6 @@ func typed(t *testing.T, lines string, loggers []string, tapeSize int) string {
 		In:       strings.NewReader(lines),
 		Out:      out,
 		TapeSize: size,
-		Loggers:  loggers,
 	}).Start()
 
 	return out.String()
@@ -93,7 +92,7 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := typed(t, tc.lines, nil, 0)
+			got := typed(t, tc.lines, 0)
 			for _, want := range tc.want {
 				if !strings.Contains(got, want) {
 					t.Errorf("session wrote %q, want it to contain %q", got, want)
@@ -105,7 +104,7 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 
 // The width of a value is the session's, so a narrower tape wraps rather than growing.
 func TestSessionHonoursTheTapeSize(t *testing.T) {
-	got := typed(t, "255 + 1;\n", nil, 1)
+	got := typed(t, "255 + 1;\n", 1)
 
 	if !strings.Contains(got, "= [0]") {
 		t.Errorf("session wrote %q, want a one-byte tape holding zero", got)
@@ -127,7 +126,7 @@ func TestSessionSurvivesALineThatFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := typed(t, tc.lines, nil, 0)
+			got := typed(t, tc.lines, 0)
 
 			if !strings.Contains(got, tc.fails) {
 				t.Errorf("session wrote %q, want it to say %q", got, tc.fails)
@@ -141,45 +140,12 @@ func TestSessionSurvivesALineThatFails(t *testing.T) {
 
 // A blank line is not an expression: it prompts again and says nothing.
 func TestSessionSaysNothingForABlankLine(t *testing.T) {
-	got := typed(t, "\n   \n", nil, 0)
+	got := typed(t, "\n   \n", 0)
 
 	if strings.Contains(got, "=") {
 		t.Errorf("session wrote %q, want nothing but prompts", got)
 	}
 	if strings.Count(got, prompt) != 3 {
 		t.Errorf("session wrote %d prompts, want one per line and one for the end", strings.Count(got, prompt))
-	}
-}
-
-// -l shows what a phase produced, and only the phase that was named: the trace is the host's
-// doing, and a session that was not asked shows none of it.
-func TestSessionShowsOnlyThePhaseThatWasAsked(t *testing.T) {
-	const line = "1 + 2;\n"
-	marks := map[string]string{
-		"lexer":   "SEMICOLON: 3B",
-		"parser":  "BinaryExpression",
-		"emitter": "OpAdd",
-	}
-
-	for phase, mark := range marks {
-		t.Run(phase, func(t *testing.T) {
-			got := typed(t, line, []string{phase}, 0)
-
-			if !strings.Contains(got, mark) {
-				t.Errorf("asked for %s, session wrote %q", phase, got)
-			}
-			for other, otherMark := range marks {
-				if other == phase {
-					continue
-				}
-				if strings.Contains(got, otherMark) {
-					t.Errorf("asked for %s and %s showed up as well", phase, other)
-				}
-			}
-		})
-	}
-
-	if got := typed(t, line, nil, 0); strings.Contains(got, "OpAdd") {
-		t.Errorf("a session that asked for nothing wrote %q", got)
 	}
 }

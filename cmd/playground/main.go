@@ -5,7 +5,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"syscall/js"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -14,7 +13,6 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/shared/printer"
-	"github.com/guiferpa/aurora/shared/trace"
 	"github.com/guiferpa/aurora/version"
 )
 
@@ -53,7 +51,6 @@ func init() {
 			editor := js.Global().Get("editor")
 			value := editor.Call("getValue").String()
 			bs := bytes.NewBufferString(value)
-			debug := document.Call("getElementById", "debug-mode").Get("checked").Bool()
 			// Read for every run, so changing the width is a matter of running again.
 			size := tapeSize()
 			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs.Bytes())
@@ -61,25 +58,11 @@ func init() {
 				fmt.Println(err)
 				return nil
 			}
-			if debug {
-				if err := trace.Tokens(os.Stdout, tokens); err != nil {
-					errorWriter.Write([]byte(err.Error()))
-					return nil
-				}
-			}
 			tree, err := parser.New(parser.NewParserOptions{TapeSize: size}).
 				Parse(parser.ParseInput{Tokens: tokens})
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
-			}
-			// The phases return what they made; the page decides to show it. In wasm this
-			// lands in the browser console, which is where the debug checkbox points.
-			if debug {
-				if err := trace.AST(os.Stdout, tree); err != nil {
-					errorWriter.Write([]byte(err.Error()))
-					return nil
-				}
 			}
 			program, err := emitter.New(emitter.NewEmitterOptions{
 				TapeSize: size,
@@ -87,12 +70,6 @@ func init() {
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))
 				return nil
-			}
-			if debug {
-				if err := trace.Instructions(os.Stdout, program.Instructions); err != nil {
-					errorWriter.Write([]byte(err.Error()))
-					return nil
-				}
 			}
 
 			// Where a printed line goes is the page's business, and what it looks like

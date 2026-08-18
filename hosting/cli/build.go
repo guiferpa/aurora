@@ -6,14 +6,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/shared/trace"
 )
 
 // BuildReport is what a build produced.
@@ -50,30 +48,15 @@ func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildRe
 	if err != nil {
 		return report, err
 	}
-	if slices.Contains(s.loggers, "lexer") {
-		if err := trace.Tokens(s.stdout, tokens); err != nil {
-			return report, err
-		}
-	}
 
 	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens})
 	if err != nil {
 		return report, err
 	}
-	if slices.Contains(s.loggers, "parser") {
-		if err := trace.AST(s.stdout, tree); err != nil {
-			return report, err
-		}
-	}
 
 	program, err := s.emitter.EmitProgram(tree)
 	if err != nil {
 		return report, err
-	}
-	if slices.Contains(s.loggers, "emitter") {
-		if err := trace.Instructions(s.stdout, program.Instructions); err != nil {
-			return report, err
-		}
 	}
 
 	// What the compiler has to say about the program, and what the backend has to say about

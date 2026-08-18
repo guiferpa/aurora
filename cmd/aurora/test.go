@@ -35,7 +35,6 @@ file alone:
 }
 
 func init() {
-	testCmd.Flags().StringSliceP("loggers", "l", []string{}, "show what each phase produced (valid: lexer, parser, emitter)")
 	testCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
@@ -43,10 +42,6 @@ func runTest(cmd *cobra.Command, args []string) error {
 	var target string
 	if len(args) > 0 {
 		target = args[0]
-	}
-	loggers, err := cmd.Flags().GetStringSlice("loggers")
-	if err != nil {
-		return err
 	}
 	tapeSize, err := cmd.Flags().GetInt("tape-size")
 	if err != nil {
@@ -76,7 +71,6 @@ func runTest(cmd *cobra.Command, args []string) error {
 			})
 		},
 		TapeSize: size,
-		Loggers:  loggers,
 		Stdout:   os.Stdout,
 	}).Test(cmd.Context(), files)
 	if err != nil {

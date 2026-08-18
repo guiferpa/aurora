@@ -18,7 +18,7 @@ func TestBuild_producesOutputFile(t *testing.T) {
 	}
 	out := filepath.Join(dir, "out", "main.bin")
 	ctx := context.Background()
-	_, err := newSession(t, sessionOpts{loggers: nil}).Build(ctx, entry, out)
+	_, err := newSession(t, sessionOpts{}).Build(ctx, entry, out)
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}

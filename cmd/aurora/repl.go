@@ -5,8 +5,14 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/hosting/cli"
 	"github.com/guiferpa/aurora/hosting/repl"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/printer"
 )
 
 func init() {
@@ -29,7 +35,25 @@ var replCmd = &cobra.Command{
 		if err := cli.ValidateTapeSize(tapeSize); err != nil {
 			return err
 		}
-		repl.Start(os.Stdin, os.Stdout, loggers, tapeSize)
+		size := byteutil.TapeSize(tapeSize)
+		out := os.Stdout
+
+		repl.NewSession(repl.NewSessionOptions{
+			Lexer:   lexer.New(lexer.NewLexerOptions{}),
+			Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+			Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+			// One evaluator lasts the session: a name bound on one line is there on the next.
+			Evaluator: evaluator.New(evaluator.NewEvaluatorOptions{
+				PrintBytes:   printer.Bytes(out, size),
+				PrintChars:   printer.Chars(out, size),
+				PrintDecimal: printer.Decimal(out, size),
+				TapeSize:     size,
+			}),
+			In:       os.Stdin,
+			Out:      out,
+			TapeSize: size,
+			Loggers:  loggers,
+		}).Start()
 		return nil
 	},
 }

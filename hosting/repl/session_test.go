@@ -3,17 +3,43 @@ package repl
 import (
 	"strings"
 	"testing"
+
+	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/printer"
 )
 
 // A session is one file typed a line at a time, and nothing could read one back until Start
 // took its writer. These go in the way a shell pipe does — lines in, everything the session
 // said out — so what is pinned here is the REPL as someone uses it, not its parts.
 
-// typed types the lines given and answers with everything the session wrote back.
+// typed types the lines given and answers with everything the session wrote back. It puts the
+// session together the way cmd/aurora does, since that is now where a session is made.
 func typed(t *testing.T, lines string, loggers []string, tapeSize int) string {
 	t.Helper()
+
+	size := byteutil.TapeSize(tapeSize)
 	out := &strings.Builder{}
-	Start(strings.NewReader(lines), out, loggers, tapeSize)
+
+	NewSession(NewSessionOptions{
+		Lexer:   lexer.New(lexer.NewLexerOptions{}),
+		Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		Evaluator: evaluator.New(evaluator.NewEvaluatorOptions{
+			PrintBytes:   printer.Bytes(out, size),
+			PrintChars:   printer.Chars(out, size),
+			PrintDecimal: printer.Decimal(out, size),
+			TapeSize:     size,
+		}),
+		In:       strings.NewReader(lines),
+		Out:      out,
+		TapeSize: size,
+		Loggers:  loggers,
+	}).Start()
+
 	return out.String()
 }
 

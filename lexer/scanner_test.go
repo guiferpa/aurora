@@ -269,10 +269,10 @@ func TestUnderscoreIdentifier(t *testing.T) {
 	}
 }
 
-// struct and as are directives for whoever writes the source: they name the fields of a run
+// struct and as are keywords that declare rather than do: they name the fields of a run
 // of tapes and say which shape a value is read with. `as` was a keyword before namespaces
 // were rolled back, and comes back here for that.
-func TestScanStructDirectives(t *testing.T) {
+func TestScanStructDeclarations(t *testing.T) {
 	cases := []struct {
 		source string
 		want   []string

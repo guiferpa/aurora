@@ -7,7 +7,7 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// What the language server knows about the struct directives, read straight from the tokens
+// What the language server knows about the struct declarations, read straight from the tokens
 // rather than from the tree.
 //
 // It has to be the tokens. A document being edited is broken most of the time — the moment
@@ -19,7 +19,7 @@ type structShapes struct {
 	shapes map[string]string   // identifier name -> the struct it is read as
 }
 
-// scanStructs reads the directives out of a token stream: `struct Point { x, y }` for the
+// scanStructs reads the declarations out of a token stream: `struct Point { x, y }` for the
 // fields, and `ident p = Point{...}` or `... as Point` for what a name is read as.
 func scanStructs(tokens []token.Token) structShapes {
 	found := structShapes{

@@ -14,7 +14,7 @@ ident p = Point{10, 20};
 ident n = feed(0) as Named;
 `
 
-// Completing after a dot is the reason the directive is worth having at all for whoever is
+// Completing after a dot is the reason the declaration is worth having at all for whoever is
 // typing: the fields are what to offer, and nothing else.
 func TestCompletionAfterADotOffersTheFields(t *testing.T) {
 	cases := []struct {

@@ -70,7 +70,7 @@ func TestNoSnippetsForAClientThatCannotExpandThem(t *testing.T) {
 	}
 }
 
-// A declared struct is offered as a way of building one, and the directive already said
+// A declared struct is offered as a way of building one, and the declaration already said
 // what the fields are — so they become the places to fill in.
 func TestStructCompletion(t *testing.T) {
 	const source = "struct Point { x, y };\nstruct Named { label, value, tag };\n"

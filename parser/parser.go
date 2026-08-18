@@ -22,11 +22,11 @@ type pr struct {
 	cursor   int
 	tokens   []token.Token
 	tapeSize int
-	// directives is what `struct` and `as` leave behind, and nothing more: it turns `p.x`
+	// declarations is what `struct` and `as` leave behind, and nothing more: it turns `p.x`
 	// into an index and never reaches the tree, the IR or the binary. It is held by
 	// reference so a caller compiling one file across several parses — the REPL — keeps
 	// what was declared earlier.
-	directives *Directives
+	declarations *Declarations
 }
 
 // Helper functions to validate node types for tape operations
@@ -219,11 +219,11 @@ func (p *pr) parsePrimaryExpr() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, declared := p.directives.Structs[id.Value]; declared {
+	if _, declared := p.declarations.Structs[id.Value]; declared {
 		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_CUR_BRK {
 			return p.ParseStructLiteral(id)
 		}
-		// A struct is a directive, not a value: there is nothing to load under its name.
+		// A struct is a declaration, not a value: there is nothing to load under its name.
 		return nil, token.NewError(id.Token, "%s is a struct at line %d and column %d: build a value with %s{...}",
 			id.Value, id.Token.GetLine(), id.Token.GetColumn(), id.Value)
 	}
@@ -732,7 +732,7 @@ func (p *pr) ParseIdent() (ast.Node, error) {
 	// Binding a value with a shape carries the shape to the name, so `p.x` reads after
 	// `ident p = feed(0) as Point;`.
 	if shape := p.shapeOf(expr); shape != "" {
-		p.directives.Shapes[string(id.GetMatch())] = shape
+		p.declarations.Shapes[string(id.GetMatch())] = shape
 	}
 	return ast.IdentLiteral{Id: string(id.GetMatch()), Token: id, Value: expr}, nil
 }
@@ -926,22 +926,22 @@ type NewParserOptions struct {
 	Tokens   []token.Token
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
-	// Directives carries the struct directives across parses of the same file. Nil starts
+	// Declarations carries the struct declarations across parses of the same file. Nil starts
 	// empty, which is what compiling a file in one go wants; the REPL passes the same value
 	// every line so a struct declared earlier is still known.
-	Directives *Directives
+	Declarations *Declarations
 }
 
 func New(opts NewParserOptions) Parser {
-	directives := opts.Directives
-	if directives == nil {
-		directives = NewDirectives()
+	declarations := opts.Declarations
+	if declarations == nil {
+		declarations = NewDeclarations()
 	}
 	return &pr{
-		filename:   opts.Filename,
-		cursor:     0,
-		tokens:     opts.Tokens,
-		tapeSize:   byteutil.TapeSize(opts.TapeSize),
-		directives: directives,
+		filename:     opts.Filename,
+		cursor:       0,
+		tokens:       opts.Tokens,
+		tapeSize:     byteutil.TapeSize(opts.TapeSize),
+		declarations: declarations,
 	}
 }

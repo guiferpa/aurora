@@ -175,7 +175,7 @@ func HoverInfo(doc Document, pos lsp.Position) string {
 	case token.TRUE, token.FALSE:
 		return "boolean: " + match
 	case token.ID:
-		// A struct name or a field read out of one: the directive is what says these are
+		// A struct name or a field read out of one: the declaration is what says these are
 		// anything other than a name, so it is what hover has to answer with.
 		if shape, fields, index := scanStructs(analysis.Tokens).structAt(analysis.Tokens, tk); shape != "" {
 			if index < 0 {

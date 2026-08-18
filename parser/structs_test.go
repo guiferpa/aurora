@@ -39,10 +39,10 @@ func TestFieldResolvesToItsIndex(t *testing.T) {
 	}
 }
 
-// Pointing at a mistake where it was written is what the directive is for, so these are the
+// Pointing at a mistake where it was written is what the declaration is for, so these are the
 // cases that justify having one at all. Every error carries a position, which is what puts
 // the squiggle under the right word in an editor.
-func TestStructDirectiveReportsMistakes(t *testing.T) {
+func TestStructDeclarationReportsMistakes(t *testing.T) {
 	cases := []struct {
 		name   string
 		source string
@@ -122,9 +122,9 @@ func TestFieldOfAFieldHasNoShape(t *testing.T) {
 	}
 }
 
-// The directive says nothing about how a value is built, so a name bound to a struct can be
+// The declaration says nothing about how a value is built, so a name bound to a struct can be
 // used as an ordinary value everywhere else.
-func TestStructNameIsOnlyADirective(t *testing.T) {
+func TestStructNameIsOnlyADeclaration(t *testing.T) {
 	for _, source := range []string{
 		"struct Point { x, y };\nident p = Point{1, 2};\nprintd p + 1;",
 		"struct Point { x, y };\nprintd Point{1, 2} equals Point{1, 2};",
@@ -137,7 +137,7 @@ func TestStructNameIsOnlyADirective(t *testing.T) {
 }
 
 // Braces build the value, as in Go. Parentheses could not: `Point(1, 2)` and `greet(1, 2)`
-// are the same shape, so telling them apart needed the directive; `Point{1, 2}` does not.
+// are the same shape, so telling them apart needed the declaration; `Point{1, 2}` does not.
 func TestConstructionUsesBraces(t *testing.T) {
 	nodes := parse(t, "struct Point { x, y };\nPoint{1, 2};")
 	if _, ok := nodes[1].(ast.StructLiteral); !ok {
@@ -157,7 +157,7 @@ func TestConstructionUsesBraces(t *testing.T) {
 	}
 }
 
-// A struct name is a directive, not a value: there is nothing to load under it. The error
+// A struct name is a declaration, not a value: there is nothing to load under it. The error
 // says how to build one instead, which is what someone reaching for it wanted.
 func TestStructNameIsNotAValue(t *testing.T) {
 	_, err := parseSource(t, "struct Point { x, y };\nPoint;", "main.ar")
@@ -185,17 +185,17 @@ func TestTextInAField(t *testing.T) {
 	}
 }
 
-// The directives belong to the file, not to one parse. The REPL compiles a line at a time
+// The declarations belong to the file, not to one parse. The REPL compiles a line at a time
 // with a fresh parser, so a struct declared on one line has to still be known on the next.
-func TestDirectivesSurviveSeveralParses(t *testing.T) {
-	directives := NewDirectives()
+func TestDeclarationsSurviveSeveralParses(t *testing.T) {
+	declarations := NewDeclarations()
 
 	parseWith := func(source string) error {
 		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
 		if err != nil {
 			return err
 		}
-		_, err = New(NewParserOptions{Filename: "main.ar", Tokens: tokens, Directives: directives}).Parse()
+		_, err = New(NewParserOptions{Filename: "main.ar", Tokens: tokens, Declarations: declarations}).Parse()
 		return err
 	}
 

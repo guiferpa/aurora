@@ -11,13 +11,11 @@ import (
 type RunInput struct {
 	Source  string   // path to .ar source
 	Loggers []string // enabled loggers
-	Stdin   io.Reader
 	// Stdout receives what the program prints. The three print builtins are three
 	// readings of the same tape and share one stream, so there is one writer here.
 	Stdout io.Writer
 	// Warnings receives compiler warnings. Nil discards them.
 	Warnings io.Writer
-	Player   *evaluator.Player
 	Args     []string
 	TapeSize int // width in bytes of every value; zero means the default
 }
@@ -38,9 +36,6 @@ func Run(ctx context.Context, in RunInput) error {
 		Args:     ParseArgs(in.Args),
 		TapeSize: in.TapeSize,
 	})
-	if in.Player != nil {
-		ev.SetPlayer(in.Player)
-	}
 	if _, err := ev.Evaluate(program.Instructions); err != nil {
 		return err
 	}

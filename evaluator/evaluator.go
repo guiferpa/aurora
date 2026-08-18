@@ -60,7 +60,6 @@ func deferKey(index uint64) string {
 type ReturnsPerLabel map[string][]byte
 
 type Evaluator struct {
-	player        *Player
 	cursor        uint64
 	end           uint64
 	insts         []ir.Instruction
@@ -104,10 +103,6 @@ func (e *Evaluator) GetAssertErrors() []error {
 		}
 	}
 	return errs
-}
-
-func (e *Evaluator) SetPlayer(player *Player) {
-	e.player = player
 }
 
 // operands reads the two temps an operation consumes, as tapes of the configured size.
@@ -653,7 +648,6 @@ func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (Retu
 }
 
 type NewEvaluatorOptions struct {
-	Player *Player
 	// Output receives what the print builtins write, already formatted.
 	Output io.Writer
 	Args   []byte
@@ -669,7 +663,6 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		output = io.Discard
 	}
 	return &Evaluator{
-		player:        options.Player,
 		cursor:        0,
 		end:           0,
 		insts:         make([]ir.Instruction, 0),

@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/hosting/cli"
 )
 
@@ -28,7 +27,6 @@ Anything after the target is passed to the program and read with feed(n).`,
 
 func init() {
 	runCmd.Flags().StringSliceP("loggers", "l", []string{}, "show what each phase produced (valid: lexer, parser, emitter)")
-	runCmd.Flags().BoolP("player", "r", false, "enable player mode (stdin)")
 	runCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
@@ -43,10 +41,6 @@ func runRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var pl *evaluator.Player
-	if player, _ := cmd.Flags().GetBool("player"); player {
-		pl = evaluator.NewPlayer(os.Stdin)
-	}
 	loggers, err := cmd.Flags().GetStringSlice("loggers")
 	if err != nil {
 		return err
@@ -59,10 +53,8 @@ func runRun(cmd *cobra.Command, args []string) error {
 	return cli.Run(cmd.Context(), cli.RunInput{
 		Source:   target.Source,
 		Loggers:  loggers,
-		Stdin:    os.Stdin,
 		Stdout:   os.Stdout,
 		Warnings: os.Stderr,
-		Player:   pl,
 		Args:     programArgs,
 		TapeSize: cli.ResolveTapeSize(tapeSize, target.TapeSize),
 	})

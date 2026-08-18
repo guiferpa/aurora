@@ -30,12 +30,12 @@ projeto e pode ser conhecida por todos. As chaves do desenho viram pacotes.
 
 ## O que as regras encontram hoje
 
-| Regra | Estado |
-|---|---|
-| Nenhum pacote conhece outro | ✗ `parser→lexer`, `emitter→parser`, `evaluator→emitter`, `builder/evm→emitter` |
-| Injeção só no `main` | ✗ quatro lugares montam fases, e **só um é `main`** |
-| I/O só em hosting | ✗ o evaluator escreve durante a avaliação; `logger` escreve e chama `os.Exit(2)` |
-| Erro em hosting | ✗ o `logger` encerra o processo por conta própria |
+| Regra | Estado quando isso foi escrito | Hoje |
+|---|---|---|
+| Nenhum pacote conhece outro | ✗ `parser→lexer`, `emitter→parser`, `evaluator→emitter`, `builder/evm→emitter` | ✓ etapas 1–3 |
+| Injeção só no `main` | ✗ quatro lugares montam fases, e **só um é `main`** | ✗ etapa 6 |
+| I/O só em hosting | ✗ o evaluator escreve durante a avaliação; `logger` escreve e chama `os.Exit(2)` | ✓ etapas 4 e 7 |
+| Erro em hosting | ✗ o `logger` encerra o processo por conta própria | ✓ etapa 4 |
 
 Quem monta fases hoje:
 
@@ -96,13 +96,32 @@ hosting, não uma interação. Util não toca no mundo; esses três tocam.
 injeta as fases prontas. É a etapa que muda mais assinatura: `cli` deixa de importar
 `lexer`, `parser` e `emitter`.
 
-**7. O evaluator devolve o que o programa disse.** Os builtins de print param de escrever. Duas
-coisas a decidir junto, e nenhuma é detalhe:
+**7. O evaluator para de escrever.** Os builtins de print saem do pacote. Duas coisas a decidir
+junto, e nenhuma é detalhe:
 
 - a saída tem que voltar **mesmo quando a avaliação falha** — um programa que imprime três
   linhas e depois estoura não pode perder as três;
 - o usuário deixa de ver a saída **na hora**. Num programa longo, e principalmente no REPL,
   muda quando a linha aparece.
+
+> Ao aplicar, as duas objeções mataram o "devolver no fim" e a etapa virou **porta**: o
+> evaluator recebe três `Printer` — um por leitura — e pergunta. Quem escreve é o host, na
+> hora, e o evaluator continua sem ter onde escrever. As duas objeções somem em vez de serem
+> pagas.
+>
+> Três portas e não uma porque `printb`, `printc` e `printd` são três leituras da mesma fita, e
+> como é a leitura que muda, é o host que sabe. As leituras em si viraram `byteutil`, que é onde
+> mora o que se sabe sobre uma fita, e a implementação única virou `shared/printer` — a mesma
+> linha vista da linha de comando, do REPL e da página.
+>
+> E apareceu uma decisão de linguagem no meio: **o print passou a valer alguma coisa.** A porta
+> devolve bytes, e esses bytes são o valor da expressão — o valor que ela mostrou, porque ler
+> uma fita não a muda. Tudo em Aurora vale alguma coisa; o print era a exceção, e um `{ printb
+> 20; }` valia zero.
+>
+> Junto foi embora o `Player`, que existia para alimentar `stdin` de dentro do evaluator, e o
+> erro de escrita, que era engolido por um `_, _ =`: um programa cuja saída não ia a lugar
+> nenhum seguia como se tivesse sido ouvido.
 
 ## Achado ao mover a árvore
 
@@ -139,5 +158,5 @@ que torna os artefatos possíveis — sem ela, nada disso fecha.
    argumentar que o nome é parte do vocabulário e fica no wire.
 3. **`cli` continua existindo?** Ele é hosting mas não é `main`. Ou recebe tudo
    injetado, ou o que ele faz sobe para `cmd/aurora`.
-4. **O print sai na hora ou no fim?** A regra pede que o evaluator devolva; o usuário hoje vê
-   sair no meio da execução.
+4. ~~**O print sai na hora ou no fim?**~~ Na hora: a etapa 7 virou porta em vez de acúmulo,
+   então o evaluator não devolve a saída — ele pergunta a quem escreve.

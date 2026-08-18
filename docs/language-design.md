@@ -246,6 +246,11 @@ reading the same bytes, and there is one builtin per reading:
 Nothing is converted between them, and none of them changes the value: they are three ways of
 looking at it.
 
+Which is also what a print is worth. Aurora is expression-only, so a print produces a value
+like anything else, and the value it produces is the one it showed — reading a tape does not
+change it. A block whose last expression is a print is worth what the print showed, rather
+than nothing at all.
+
 A run of tapes — a struct, say — is read the same way: every byte for `printb`, one number
 per tape for `printd`, and for `printc` the bytes of the whole run, with the zeros that pad
 each tape dropped.

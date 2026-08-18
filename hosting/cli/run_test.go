@@ -20,9 +20,7 @@ func TestRunExecutesAndWritesToStdout(t *testing.T) {
 	err := Run(ctx, RunInput{
 		Source:  entry,
 		Loggers: nil,
-		Stdin:   nil,
 		Stdout:  &stdout,
-		Player:  nil,
 	})
 	if err != nil {
 		t.Fatalf("Run() error = %v", err)

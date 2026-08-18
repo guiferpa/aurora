@@ -1,6 +1,7 @@
 package byteutil
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -24,7 +25,10 @@ const (
 
 // TapeSize normalizes a configured size. Zero means "unset", which is the common case for
 // zero-valued option structs, and becomes the default; anything out of range is clamped.
-// Rejecting a bad size is the CLI's job, at the boundary where a good message can be given.
+//
+// Clamping and refusing are two answers to the same question — what a tape can be — so they
+// live side by side. A caller deciding whether to go on at all asks ValidateTapeSize; one that
+// only needs a width to work with normalizes and carries on.
 func TapeSize(size int) int {
 	if size < MinTapeSize {
 		return DefaultTapeSize
@@ -33,6 +37,22 @@ func TapeSize(size int) int {
 		return MaxTapeSize
 	}
 	return size
+}
+
+// ValidateTapeSize refuses a size no tape can be, in the words whoever typed it has to read.
+//
+// Zero passes: it means the width was never set, and the default applies. What is refused is
+// a width someone asked for and cannot have — silently clamping 64 to 32 would compile a
+// program in a dialect nobody chose.
+func ValidateTapeSize(size int) error {
+	if size == 0 {
+		return nil
+	}
+	if size < MinTapeSize || size > MaxTapeSize {
+		return fmt.Errorf("tape size must be between %d and %d bytes, got %d",
+			MinTapeSize, MaxTapeSize, size)
+	}
+	return nil
 }
 
 // ParseTapeSize reads a tape size written as text, answering with fallback when the text is

@@ -12,6 +12,7 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
@@ -80,7 +81,7 @@ func (r TestReport) OK() bool {
 // Which files those are is settled before the session exists: a test file names its own
 // project, and the width it is compiled at comes from there — see TestFiles.
 func (s *Session) Test(ctx context.Context, files []string) (TestReport, error) {
-	if err := ValidateTapeSize(s.tapeSize); err != nil {
+	if err := byteutil.ValidateTapeSize(s.tapeSize); err != nil {
 		return TestReport{}, err
 	}
 	if len(files) == 0 {

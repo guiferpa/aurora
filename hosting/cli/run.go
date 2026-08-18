@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/shared/trace"
 )
@@ -16,7 +17,7 @@ import (
 // programs in one folder collide; it was removed until the module system is designed (see
 // docs/module_system_design.md).
 func (s *Session) Run(ctx context.Context, source string) error {
-	if err := ValidateTapeSize(s.tapeSize); err != nil {
+	if err := byteutil.ValidateTapeSize(s.tapeSize); err != nil {
 		return err
 	}
 

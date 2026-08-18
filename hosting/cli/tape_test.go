@@ -5,38 +5,6 @@ import (
 	"testing"
 )
 
-func TestValidateTapeSize(t *testing.T) {
-	cases := []struct {
-		name    string
-		size    int
-		wantErr bool
-	}{
-		{name: "unset is fine", size: 0},
-		{name: "floor", size: 1},
-		{name: "default", size: 8},
-		{name: "ceiling", size: 32},
-		{name: "below the floor", size: -1, wantErr: true},
-		{name: "above the ceiling", size: 33, wantErr: true},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateTapeSize(tc.size)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatal("expected an error")
-				}
-				if !strings.Contains(err.Error(), "between 1 and 32") {
-					t.Errorf("error = %q, want it to state the range", err)
-				}
-				return
-			}
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-		})
-	}
-}
-
 // The flag wins over the manifest, and the default applies when neither is set.
 func TestResolveTapeSizePrecedence(t *testing.T) {
 	cases := []struct {

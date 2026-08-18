@@ -37,7 +37,7 @@ func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildRe
 		TapeSize: byteutil.TapeSize(s.tapeSize),
 	}
 
-	if err := ValidateTapeSize(s.tapeSize); err != nil {
+	if err := byteutil.ValidateTapeSize(s.tapeSize); err != nil {
 		return report, err
 	}
 

@@ -284,7 +284,7 @@ func TestScanStructDeclarations(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.source, func(t *testing.T) {
-			tokens, err := New(NewLexerOptions{}).GetFilledTokens([]byte(tc.source))
+			tokens, err := New().GetFilledTokens([]byte(tc.source))
 			if err != nil {
 				t.Fatalf("lexer: %v", err)
 			}
@@ -309,7 +309,7 @@ func TestScanStructDeclarations(t *testing.T) {
 
 // A dot is its own token and never part of a name, so p.x is three tokens and not one.
 func TestDotIsNotPartOfAName(t *testing.T) {
-	tokens, err := New(NewLexerOptions{}).GetFilledTokens([]byte("point.x"))
+	tokens, err := New().GetFilledTokens([]byte("point.x"))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}

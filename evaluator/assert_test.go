@@ -14,11 +14,11 @@ import (
 func evaluateAsserts(t *testing.T, source string, asserts bool) *Evaluator {
 	t.Helper()
 
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Filename: "checks.test.ar", Tokens: tokens})
+	tree, err := parser.New().Parse(parser.ParseInput{Filename: "checks.test.ar", Tokens: tokens})
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}

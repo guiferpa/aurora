@@ -191,11 +191,11 @@ func TestDeclarationsSurviveSeveralParses(t *testing.T) {
 	declarations := NewDeclarations()
 
 	parseWith := func(source string) error {
-		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+		tokens, err := lexer.New().GetFilledTokens([]byte(source))
 		if err != nil {
 			return err
 		}
-		_, err = New(NewParserOptions{}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens, Declarations: declarations})
+		_, err = New().Parse(ParseInput{Filename: "main.ar", Tokens: tokens, Declarations: declarations})
 		return err
 	}
 

@@ -92,7 +92,7 @@ type semanticToken struct {
 // and line breaks are needed to place comments, and a lexer error still yields the tokens
 // read so far — so a file being typed keeps its colors instead of going blank.
 func SemanticTokensFor(source string) []uint {
-	tokens, _ := lexer.New(lexer.NewLexerOptions{}).GetTokens([]byte(source))
+	tokens, _ := lexer.New().GetTokens([]byte(source))
 	mapper := lsp.NewMapper(source)
 	return encodeSemanticTokens(mapper, collectSemanticTokens(mapper, tokens))
 }

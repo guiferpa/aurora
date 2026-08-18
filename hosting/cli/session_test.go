@@ -41,8 +41,8 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 	size := o.tapeSize
 
 	return NewSession(NewSessionOptions{
-		Lexer:   lexer.New(lexer.NewLexerOptions{}),
-		Parser:  parser.New(parser.NewParserOptions{}),
+		Lexer:   lexer.New(),
+		Parser:  parser.New(),
 		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{

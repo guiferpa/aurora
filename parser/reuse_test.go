@@ -15,7 +15,7 @@ import (
 // tokensOf lexes a source, which is what a parse is given.
 func tokensOf(t *testing.T, source string) []token.Token {
 	t.Helper()
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
@@ -23,7 +23,7 @@ func tokensOf(t *testing.T, source string) []token.Token {
 }
 
 func TestOneParserReadsOneSourceAfterAnother(t *testing.T) {
-	p := New(NewParserOptions{})
+	p := New()
 
 	first, err := p.Parse(ParseInput{Filename: "first.ar", Tokens: tokensOf(t, "1 + 2;")})
 	if err != nil {
@@ -53,7 +53,7 @@ func TestOneParserReadsOneSourceAfterAnother(t *testing.T) {
 // the dialect of the first. The same goes for one project whose manifest is edited while the
 // editor is open: the new width has to reach the next keystroke.
 func TestOneParserReadsSourcesOfDifferentWidths(t *testing.T) {
-	p := New(NewParserOptions{})
+	p := New()
 
 	// 300 does not fit a single byte, and does fit eight.
 	if _, err := p.Parse(ParseInput{
@@ -85,7 +85,7 @@ func TestOneParserReadsSourcesOfDifferentWidths(t *testing.T) {
 // A source that does not parse leaves the parser where it was, so the next one still reads.
 // This is the REPL: a line that fails is answered and forgotten.
 func TestAParserSurvivesASourceThatFails(t *testing.T) {
-	p := New(NewParserOptions{})
+	p := New()
 
 	if _, err := p.Parse(ParseInput{Filename: "broken.ar", Tokens: tokensOf(t, "1 +;")}); err == nil {
 		t.Fatal("a source that does not parse was accepted")
@@ -103,7 +103,7 @@ func TestAParserSurvivesASourceThatFails(t *testing.T) {
 // What `struct` and `as` declare belongs to whoever is compiling, not to the parser: the REPL
 // hands the same declarations back every line so a struct declared earlier is still known.
 func TestDeclarationsComeFromTheCaller(t *testing.T) {
-	p := New(NewParserOptions{})
+	p := New()
 	declarations := NewDeclarations()
 
 	if _, err := p.Parse(ParseInput{
@@ -126,7 +126,7 @@ func TestDeclarationsComeFromTheCaller(t *testing.T) {
 // leak into each other, which is what lets "aurora test" read a source and its test file
 // without the test inheriting a name it never declared.
 func TestASourceDoesNotSeeWhatAnotherDeclared(t *testing.T) {
-	p := New(NewParserOptions{})
+	p := New()
 
 	if _, err := p.Parse(ParseInput{
 		Tokens:       tokensOf(t, "struct Point { x, y };"),

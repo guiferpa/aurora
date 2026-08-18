@@ -56,8 +56,8 @@ func runTest(cmd *cobra.Command, args []string) error {
 	}
 
 	report, err := cli.NewSession(cli.NewSessionOptions{
-		Lexer:   lexer.New(lexer.NewLexerOptions{}),
-		Parser:  parser.New(parser.NewParserOptions{}),
+		Lexer:   lexer.New(),
+		Parser:  parser.New(),
 		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{

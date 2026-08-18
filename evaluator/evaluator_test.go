@@ -529,13 +529,13 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 		t.Run(c.Name, func(t *testing.T) {
 			bs := bytes.NewBufferString(c.SourceCode).Bytes()
 
-			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
+			tokens, err := lexer.New().GetFilledTokens(bs)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
 
-			tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Filename: options.Filename, Tokens: tokens})
+			tree, err := parser.New().Parse(parser.ParseInput{Filename: options.Filename, Tokens: tokens})
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
@@ -1220,12 +1220,12 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			bs := bytes.NewBufferString(c.SourceCode).Bytes()
-			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
+			tokens, err := lexer.New().GetFilledTokens(bs)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{ // assert is only accepted in a test file
+			tree, err := parser.New().Parse(parser.ParseInput{ // assert is only accepted in a test file
 				Filename: "assert.test.ar", Tokens: tokens})
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)

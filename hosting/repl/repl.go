@@ -17,7 +17,6 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/shared/trace"
 	"github.com/guiferpa/aurora/wire/ir"
 )
@@ -100,8 +99,13 @@ func newLineReader(in io.Reader, out io.Writer) (lineReader, *History) {
 // It is a type rather than a handful of variables inside a loop because everything here
 // outlives the line that filled it — a name, a struct declaration and a defer all have to
 // still be there on the next one.
-type session struct {
+type Session struct {
+	lexer   *lexer.Lexer
+	parser  parser.Parser
+	emitter emitter.Emitter
+
 	ev       *evaluator.Evaluator
+	reader   lineReader
 	out      io.Writer
 	tapeSize int
 	loggers  []string
@@ -119,7 +123,7 @@ type session struct {
 
 // run compiles a line and runs it. An error is written and swallowed: a session survives a
 // line that does not compile, which is most of what a REPL is for.
-func (s *session) run(text string) {
+func (s *Session) run(text string) {
 	program, err := s.compile(text)
 	if err != nil {
 		_, _ = fmt.Fprintln(s.out, err)
@@ -130,16 +134,16 @@ func (s *session) run(text string) {
 
 // compile takes the line through the three phases, showing what each one produced when -l
 // asked for it.
-func (s *session) compile(text string) (ir.Program, error) {
+func (s *Session) compile(text string) (ir.Program, error) {
 	line := bytes.NewBufferString(text)
 
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(line.Bytes())
+	tokens, err := s.lexer.GetFilledTokens(line.Bytes())
 	if err != nil {
 		return ir.Program{}, err
 	}
 	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
 
-	tree, err := parser.New(parser.NewParserOptions{TapeSize: s.tapeSize}).Parse(parser.ParseInput{
+	tree, err := s.parser.Parse(parser.ParseInput{
 		Tokens: tokens,
 		// A struct declared on one line has to still be known on the next, so what the
 		// session remembers goes in with every line.
@@ -150,9 +154,7 @@ func (s *session) compile(text string) (ir.Program, error) {
 	}
 	s.trace("parser", func(w io.Writer) error { return trace.AST(w, tree) })
 
-	program, err := emitter.New(emitter.NewEmitterOptions{
-		TapeSize: s.tapeSize,
-	}).EmitProgram(tree)
+	program, err := s.emitter.EmitProgram(tree)
 	if err != nil {
 		return ir.Program{}, err
 	}
@@ -163,7 +165,7 @@ func (s *session) compile(text string) (ir.Program, error) {
 
 // trace writes what a phase produced, when -l named that phase. The phases return what they
 // made; showing it is decided here, in the host.
-func (s *session) trace(phase string, write func(w io.Writer) error) {
+func (s *Session) trace(phase string, write func(w io.Writer) error) {
 	if !slices.Contains(s.loggers, phase) {
 		return
 	}
@@ -174,7 +176,7 @@ func (s *session) trace(phase string, write func(w io.Writer) error) {
 
 // evaluate runs the line's expressions one at a time, so a line holding several of them
 // answers where each one happens rather than all of them at the end.
-func (s *session) evaluate(program ir.Program) {
+func (s *Session) evaluate(program ir.Program) {
 	offset := len(s.insts)
 	s.insts = append(s.insts, program.Instructions...)
 
@@ -190,36 +192,59 @@ func (s *session) evaluate(program ir.Program) {
 // remember records the line before it is evaluated, so a line that fails to compile is still
 // recallable. A history that cannot be written is said once, on stderr — it is about the
 // environment and not about the session, which carries on either way.
-func (s *session) remember(text string) {
+func (s *Session) remember(text string) {
 	if err := s.hist.Append(text); err != nil && !s.histWarned {
 		s.histWarned = true
 		_, _ = fmt.Fprintf(os.Stderr, "warning: could not write history: %v\n", err)
 	}
 }
 
-// Start runs a session, reading from in and writing everything it has to say to out — the
-// prompt, the value of each line, and the errors that did not stop the session.
-//
-// Where it writes is the host's to decide, and it used to be os.Stdout from the inside,
-// which is also why nothing could read a session back: the REPL is one of the two places the
-// language proves itself and no test could see a single line of it.
-func Start(in io.Reader, out io.Writer, loggers []string, tapeSize int) {
-	tapeSize = byteutil.TapeSize(tapeSize)
-	reader, hist := newLineReader(in, out)
+// NewSessionOptions is what a session is made of. The phases and the evaluator arrive built,
+// from cmd/aurora, which is where the flags that decide how to build them are read.
+type NewSessionOptions struct {
+	Lexer     *lexer.Lexer
+	Parser    parser.Parser
+	Emitter   emitter.Emitter
+	Evaluator *evaluator.Evaluator
+	// In is where lines are typed; Out receives everything the session has to say — the
+	// prompt, the value of each line, and the errors that did not stop it.
+	In  io.Reader
+	Out io.Writer
+	// TapeSize is the width in bytes of every value, the same one the phases were built with.
+	TapeSize int
+	// Loggers names the phases whose output is shown: lexer, parser, emitter.
+	Loggers []string
+}
 
-	s := &session{
-		ev: evaluator.New(evaluator.NewEvaluatorOptions{
-			PrintBytes:   printer.Bytes(out, tapeSize),
-			PrintChars:   printer.Chars(out, tapeSize),
-			PrintDecimal: printer.Decimal(out, tapeSize),
-			TapeSize:     tapeSize,
-		}),
-		out:          out,
+// NewSession builds a session from what it was handed.
+//
+// One evaluator lasts the whole session, unlike a command that runs one program: what a line
+// binds has to still be there on the next one, and so does the scope a line deferred.
+func NewSession(opts NewSessionOptions) *Session {
+	tapeSize := byteutil.TapeSize(opts.TapeSize)
+	reader, hist := newLineReader(opts.In, opts.Out)
+
+	return &Session{
+		lexer:        opts.Lexer,
+		parser:       opts.Parser,
+		emitter:      opts.Emitter,
+		ev:           opts.Evaluator,
+		reader:       reader,
+		out:          opts.Out,
 		tapeSize:     tapeSize,
-		loggers:      loggers,
+		loggers:      opts.Loggers,
 		declarations: parser.NewDeclarations(),
 		hist:         hist,
 	}
+}
+
+// Start reads line after line until there are no more, and is where a session spends its life.
+//
+// Where it writes is the host's to decide, and it used to be os.Stdout from the inside, which
+// is also why nothing could read a session back: the REPL is one of the two places the
+// language proves itself and no test could see a single line of it.
+func (s *Session) Start() {
+	out, reader := s.out, s.reader
 
 	editing, interactive := reader.(*editor)
 	leaveOnInterrupt(out, func() {

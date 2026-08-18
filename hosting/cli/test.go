@@ -13,6 +13,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
@@ -184,13 +185,18 @@ func runTestFile(path string, tapeSize int, loggers []string) FileReport {
 		return report
 	}
 
-	sourceProgram, err := Compile(source, tapeSize, loggers, io.Discard)
+	// The two files are one scope, so they are one set of declarations: a struct declared in
+	// the source is known in the test. They are parsed apart because each keeps its own name —
+	// which is what decides that assert belongs to the test file — and its own line numbers.
+	declarations := parser.NewDeclarations()
+
+	sourceProgram, err := Compile(source, tapeSize, loggers, io.Discard, declarations)
 	if err != nil {
 		report.Err = fmt.Errorf("%s: %w", filepath.Base(source), err)
 		return report
 	}
 
-	testProgram, err := Compile(path, tapeSize, loggers, io.Discard)
+	testProgram, err := Compile(path, tapeSize, loggers, io.Discard, declarations)
 	if err != nil {
 		report.Err = err
 		return report

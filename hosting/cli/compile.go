@@ -23,7 +23,11 @@ import (
 // designed (see docs/module_system_design.md).
 // traces receives what each phase produced, for the loggers that were asked for. Nil
 // discards it, which is what a caller that asked for none wants.
-func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (ir.Program, error) {
+//
+// declarations is what `struct` and `as` declared, carried in from outside when more than one
+// file makes up one scope: "aurora test" compiles a source and its test file, and the test
+// sees what the source declared. Nil starts empty, which is what compiling one file wants.
+func Compile(source string, tapeSize int, loggers []string, traces io.Writer, declarations *parser.Declarations) (ir.Program, error) {
 	if traces == nil {
 		traces = io.Discard
 	}
@@ -44,8 +48,9 @@ func Compile(source string, tapeSize int, loggers []string, traces io.Writer) (i
 	}
 
 	tree, err := parser.New(parser.NewParserOptions{TapeSize: tapeSize}).Parse(parser.ParseInput{
-		Filename: source,
-		Tokens:   tokens,
+		Filename:     source,
+		Tokens:       tokens,
+		Declarations: declarations,
 	})
 	if err != nil {
 		return ir.Program{}, err

@@ -216,6 +216,45 @@ func TestNameDeclaredInBothFilesConflicts(t *testing.T) {
 	}
 }
 
+// A test sees what its source declared, and a struct is declared while parsing rather than
+// while running. The two files used to be parsed with a set of declarations each, so a test
+// could call a defer from its source but could not build a struct it declared: `Point{1, 2}`
+// stopped at the brace, because the name meant nothing to that parse.
+func TestSeesAStructDeclaredInItsSource(t *testing.T) {
+	dir := project(t)
+	writeAt(t, dir, "src/main.ar", "struct Point { x, y };\n")
+	writeAt(t, dir, "src/main.test.ar",
+		"ident p = Point{10, 20};\nassert(p.y equals 20, \"a struct crosses the pair\");\n")
+
+	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	if err != nil {
+		t.Fatalf("Test: %v", err)
+	}
+	if file := report.Files[0]; file.Err != nil {
+		t.Fatalf("the pair did not compile: %v", file.Err)
+	}
+	if !report.OK() {
+		t.Errorf("the assertion did not hold: %+v", report.Files[0].Results)
+	}
+}
+
+// The other way round is not true: what the test declares is its own. The source is compiled
+// before the test exists as far as the parser is concerned, and a source that leaned on its
+// test would not compile under "aurora run".
+func TestASourceDoesNotSeeWhatItsTestDeclares(t *testing.T) {
+	dir := project(t)
+	writeAt(t, dir, "src/main.ar", "ident p = Point{1, 2};\n")
+	writeAt(t, dir, "src/main.test.ar", "struct Point { x, y };\nassert(1 equals 1, \"unreached\");\n")
+
+	report, err := Test(t.Context(), TestInput{Stdout: io.Discard})
+	if err != nil {
+		t.Fatalf("Test: %v", err)
+	}
+	if file := report.Files[0]; file.Err == nil {
+		t.Fatal("the source built a struct that only its test declares")
+	}
+}
+
 func TestUsesTheProjectTapeSize(t *testing.T) {
 	dir := t.TempDir()
 	manifest := `[project]

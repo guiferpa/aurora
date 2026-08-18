@@ -17,7 +17,7 @@ func compileWithLoggers(t *testing.T, source string, loggers []string) string {
 	}
 
 	traces := &strings.Builder{}
-	if _, err := Compile(entry, 0, loggers, traces); err != nil {
+	if _, err := Compile(entry, 0, loggers, traces, nil); err != nil {
 		t.Fatalf("compiling: %v", err)
 	}
 	return traces.String()
@@ -83,7 +83,7 @@ func TestCompileWithoutATraceWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Compile(entry, 0, []string{"lexer", "parser", "emitter"}, nil); err != nil {
+	if _, err := Compile(entry, 0, []string{"lexer", "parser", "emitter"}, nil, nil); err != nil {
 		t.Errorf("compiling with every logger and no writer: %v", err)
 	}
 }

@@ -45,7 +45,7 @@ func TestCompletionAfterADotOffersTheFields(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			items := CompletionItemsFor(Document{Filename: "main.ar", Source: tc.source}, tc.pos, false)
+			items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: tc.source}, tc.pos, false)
 
 			got := make([]string, 0, len(items))
 			for _, item := range items {
@@ -65,11 +65,11 @@ func TestCompletionAfterADotOffersTheFields(t *testing.T) {
 // exactly when completion is asked for. The fields come from the tokens for that reason.
 func TestCompletionAfterADotWorksWhileBroken(t *testing.T) {
 	source := structSource + "printd p."
-	if diagnostics := ValidateCode(Document{Filename: "main.ar", Source: source}); len(diagnostics) == 0 {
+	if diagnostics := session().ValidateCode(Document{Filename: "main.ar", Source: source}); len(diagnostics) == 0 {
 		t.Fatal("this source is supposed not to parse; the test is about that")
 	}
 
-	items := CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 5, Character: 9}, false)
+	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 5, Character: 9}, false)
 	if len(items) != 2 || items[0].Label != "x" {
 		t.Errorf("offered %v, want the fields of Point", items)
 	}
@@ -77,7 +77,7 @@ func TestCompletionAfterADotWorksWhileBroken(t *testing.T) {
 
 // Anywhere else the ordinary list is what comes back.
 func TestCompletionAwayFromADotIsUnchanged(t *testing.T) {
-	items := CompletionItemsFor(Document{Filename: "main.ar", Source: structSource}, lsp.Position{Line: 5, Character: 0}, false)
+	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: structSource}, lsp.Position{Line: 5, Character: 0}, false)
 
 	var hasKeyword bool
 	for _, item := range items {
@@ -106,7 +106,7 @@ func TestHoverDescribesStructsAndFields(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := HoverInfo(Document{Filename: "main.ar", Source: structSource}, tc.pos); !strings.Contains(got, tc.want) {
+			if got := session().HoverInfo(Document{Filename: "main.ar", Source: structSource}, tc.pos); !strings.Contains(got, tc.want) {
 				t.Errorf("hover = %q, want it to contain %q", got, tc.want)
 			}
 		})
@@ -115,7 +115,7 @@ func TestHoverDescribesStructsAndFields(t *testing.T) {
 
 func TestHoverOnAFieldSaysWhichTapeItReads(t *testing.T) {
 	source := structSource + "printd p.y;"
-	got := HoverInfo(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 5, Character: 9})
+	got := session().HoverInfo(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 5, Character: 9})
 
 	for _, want := range []string{"field y", "struct Point", "tape 1"} {
 		if !strings.Contains(got, want) {
@@ -127,7 +127,7 @@ func TestHoverOnAFieldSaysWhichTapeItReads(t *testing.T) {
 // struct and as colour as keywords, a field as a property, and the struct's own name as a
 // struct — the three places a name is not just a value.
 func TestSemanticTokensForStructs(t *testing.T) {
-	tokens := decode(SemanticTokensFor("struct Point { x, y };\nident p = Point{1, 2};\nprintd p.x;\n"))
+	tokens := decode(session().SemanticTokensFor("struct Point { x, y };\nident p = Point{1, 2};\nprintd p.x;\n"))
 
 	// struct, then the name it declares, then the two fields it names.
 	want := []uint{SemanticKeyword, SemanticStruct, SemanticProperty, SemanticProperty}

@@ -8,6 +8,9 @@ import (
 	"os"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/version"
 )
 
@@ -38,21 +41,36 @@ func main() {
 	logger := log.New(out, "[aurorals] ", log.Ldate|log.Ltime|log.Lshortfile)
 	logger.Printf("Server started (version %s)", version.VERSION)
 
-	lsp.Listen(logger, os.Stdin, os.Stdout, handlers())
+	// The phases are built here, once, and the session that holds them answers every request.
+	// A document carries the width of the project it belongs to, which is why one session
+	// serves whatever the editor opens.
+	sv := server{textdoc: textdoc.NewSession(textdoc.NewSessionOptions{
+		Lexer:  lexer.New(),
+		Parser: parser.New(),
+	})}
+
+	lsp.Listen(logger, os.Stdin, os.Stdout, sv.handlers())
 
 	logger.Println("Server stopped")
 }
 
+// A server is what answers the editor: the session that reads a document, and the handlers
+// that are methods on it. It exists so the phases are built once, in main, rather than by
+// whoever happens to be answering a request.
+type server struct {
+	textdoc *textdoc.Session
+}
+
 // handlers maps the methods the server implements. shutdown and exit are answered by the
 // listener itself.
-func handlers() map[lsp.Method]lsp.MethodHandler {
+func (sv server) handlers() map[lsp.Method]lsp.MethodHandler {
 	return map[lsp.Method]lsp.MethodHandler{
 		"initialize":                       InitializeHandler,
-		"textDocument/didOpen":             TextdocDidOpenHandler,
-		"textDocument/didChange":           TextdocDidChangeHandler,
-		"textDocument/didClose":            TextdocDidCloseHandler,
-		"textDocument/completion":          TextdocCompletionHandler,
-		"textDocument/hover":               TextdocHoverHandler,
-		"textDocument/semanticTokens/full": TextdocSemanticTokensHandler,
+		"textDocument/didOpen":             sv.didOpen,
+		"textDocument/didChange":           sv.didChange,
+		"textDocument/didClose":            sv.didClose,
+		"textDocument/completion":          sv.completion,
+		"textDocument/hover":               sv.hover,
+		"textDocument/semanticTokens/full": sv.semanticTokens,
 	}
 }

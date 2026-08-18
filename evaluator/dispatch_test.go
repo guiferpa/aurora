@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -286,23 +287,50 @@ func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
 	}
 }
 
-// The three prints read the same tape three ways, so the opcode is the only thing that
-// decides which reading comes out.
+// recorder is a printer that keeps what it was asked to print and answers with what it was
+// told to answer. The evaluator no longer knows how a tape is shown — a host says that — so
+// what a test here can check is which port an opcode reaches for, and what comes back.
+type recorder struct {
+	seen  []byte
+	says  []byte
+	fails error
+}
+
+func (r *recorder) Print(value []byte) ([]byte, error) {
+	r.seen = value
+	if r.fails != nil {
+		return nil, r.fails
+	}
+	if r.says != nil {
+		return r.says, nil
+	}
+	return value, nil
+}
+
+// The three prints are three readings of the same tape, so the opcode is the only thing that
+// decides which one is asked.
 func TestExecuteInstructionDispatchesThePrints(t *testing.T) {
 	cases := []struct {
 		name   string
 		opcode byte
-		want   string
 	}{
-		{name: "bytes", opcode: ir.OpPrintBytes, want: "[0 0 0 0 0 0 0 65]\n"},
-		{name: "chars", opcode: ir.OpPrintChars, want: "A\n"},
-		{name: "decimal", opcode: ir.OpPrintDecimal, want: "65\n"},
+		{name: "bytes", opcode: ir.OpPrintBytes},
+		{name: "chars", opcode: ir.OpPrintChars},
+		{name: "decimal", opcode: ir.OpPrintDecimal},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			out := bytes.NewBuffer(nil)
-			e := New(NewEvaluatorOptions{Output: out})
+			printers := map[byte]*recorder{
+				ir.OpPrintBytes:   {},
+				ir.OpPrintChars:   {},
+				ir.OpPrintDecimal: {},
+			}
+			e := New(NewEvaluatorOptions{
+				PrintBytes:   printers[ir.OpPrintBytes],
+				PrintChars:   printers[ir.OpPrintChars],
+				PrintDecimal: printers[ir.OpPrintDecimal],
+			})
 			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
 
 			inst := ir.NewInstruction([]byte("02"), tc.opcode, []byte("00"), nil)
@@ -310,10 +338,58 @@ func TestExecuteInstructionDispatchesThePrints(t *testing.T) {
 				t.Fatalf("executing: %v", err)
 			}
 
-			if got := out.String(); got != tc.want {
-				t.Errorf("wrote %q, want %q", got, tc.want)
+			for opcode, printer := range printers {
+				asked := printer.seen != nil
+				if want := opcode == tc.opcode; asked != want {
+					t.Errorf("%s was asked: %v, want %v", ir.ResolveOpCode(opcode), asked, want)
+				}
+			}
+			if got := printers[tc.opcode].seen; byteutil.ToUint64(got) != 65 {
+				t.Errorf("was given %v, want the value under the operand", got)
 			}
 		})
+	}
+}
+
+// A print is an expression, so it answers with a value like everything else in Aurora — the
+// one the printer gives back. Answering with nothing would make "printd x + 1" mean nothing.
+func TestAPrintAnswersWithWhatThePrinterGaveBack(t *testing.T) {
+	printer := &recorder{says: byteutil.FromUint64(7)}
+	e := New(NewEvaluatorOptions{PrintDecimal: printer})
+	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
+
+	inst := ir.NewInstruction([]byte("02"), ir.OpPrintDecimal, []byte("00"), nil)
+	if err := e.ExecuteInstruction(inst); err != nil {
+		t.Fatalf("executing: %v", err)
+	}
+
+	got := e.environ.GetTemp(byteutil.ToHex([]byte("02")))
+	if byteutil.ToUint64(got) != 7 {
+		t.Errorf("the expression is worth %v, want what the printer answered", got)
+	}
+}
+
+// A print that fails stops the program. It used to be written with "_, _ =": a program whose
+// output went nowhere carried on as if it had been heard.
+func TestAPrintThatFailsStopsTheProgram(t *testing.T) {
+	e := New(NewEvaluatorOptions{PrintChars: &recorder{fails: errors.New("broken pipe")}})
+	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
+
+	inst := ir.NewInstruction([]byte("02"), ir.OpPrintChars, []byte("00"), nil)
+	if err := e.ExecuteInstruction(inst); err == nil {
+		t.Error("a broken pipe was taken for a successful print")
+	}
+}
+
+// A host that wires no printer asked for a reading nobody can give. Printing nowhere by
+// default would hide the wiring mistake in the one place it shows.
+func TestAPrintWithNoPrinterIsAnError(t *testing.T) {
+	e := New(NewEvaluatorOptions{})
+	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
+
+	inst := ir.NewInstruction([]byte("02"), ir.OpPrintBytes, []byte("00"), nil)
+	if err := e.ExecuteInstruction(inst); err == nil {
+		t.Error("printing with no printer was taken for a print")
 	}
 }
 

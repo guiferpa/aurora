@@ -17,6 +17,7 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/shared/trace"
 	"github.com/guiferpa/aurora/wire/ir"
 )
@@ -207,8 +208,10 @@ func Start(in io.Reader, out io.Writer, loggers []string, tapeSize int) {
 
 	s := &session{
 		ev: evaluator.New(evaluator.NewEvaluatorOptions{
-			Output:   out,
-			TapeSize: tapeSize,
+			PrintBytes:   printer.Bytes(out, tapeSize),
+			PrintChars:   printer.Chars(out, tapeSize),
+			PrintDecimal: printer.Decimal(out, tapeSize),
+			TapeSize:     tapeSize,
 		}),
 		out:        out,
 		tapeSize:   tapeSize,

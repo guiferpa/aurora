@@ -57,10 +57,11 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 		},
 		{
 			// What a program prints is its own writing, and it lands before the value of the
-			// line that printed it.
+			// line that printed it. A print is worth what it showed — everything in Aurora is
+			// worth something — so the session answers for it like for any other line.
 			name:  "what the line printed comes before its value",
 			lines: "printd 65;\n",
-			want:  []string{"65"},
+			want:  []string{"65", "= [0 0 0 0 0 0 0 65]"},
 		},
 	}
 

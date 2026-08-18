@@ -6,7 +6,6 @@ import (
 	"maps"
 	"slices"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -352,30 +351,49 @@ func TestEvaluateJump(t *testing.T) {
 	}
 }
 
-// The three print builtins write three readings of the same tape into the one output the
-// evaluator was given.
-func TestEvaluatePrintBuiltins(t *testing.T) {
+// Each print asks the printer it belongs to and hands it the value under the operand, whole:
+// a reel is several tapes, and narrowing it here would show the last one and call it the
+// value. How that value is then read belongs to whoever reads it, not to this package —
+// TestExecuteInstructionDispatchesThePrints follows the opcode to the port.
+func TestEvaluatePrintHandsOverTheWholeValue(t *testing.T) {
 	cases := []struct {
 		name  string
 		print func(ev *Evaluator, label, left []byte) error
-		want  string
+		port  func(p *recorder) NewEvaluatorOptions
 	}{
-		{name: "printb", print: (*Evaluator).EvaluatePrintBytes, want: "[0 0 0 0 0 0 0 44]"},
-		{name: "printd", print: (*Evaluator).EvaluatePrintDecimal, want: "44"},
-		{name: "printc", print: (*Evaluator).EvaluatePrintChars, want: ","},
+		{
+			name:  "printb",
+			print: (*Evaluator).EvaluatePrintBytes,
+			port:  func(p *recorder) NewEvaluatorOptions { return NewEvaluatorOptions{PrintBytes: p} },
+		},
+		{
+			name:  "printd",
+			print: (*Evaluator).EvaluatePrintDecimal,
+			port:  func(p *recorder) NewEvaluatorOptions { return NewEvaluatorOptions{PrintDecimal: p} },
+		},
+		{
+			name:  "printc",
+			print: (*Evaluator).EvaluatePrintChars,
+			port:  func(p *recorder) NewEvaluatorOptions { return NewEvaluatorOptions{PrintChars: p} },
+		},
 	}
+
+	reel := append(byteutil.FromUint64(44), byteutil.FromUint64(45)...)
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			ev := New(NewEvaluatorOptions{Output: &buf})
-			ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(44))
+			printer := &recorder{}
+			ev := New(tc.port(printer))
+			ev.environ.SetTemp(byteutil.ToHex([]byte("00")), reel)
 
 			if err := tc.print(ev, []byte("01"), []byte("00")); err != nil {
 				t.Fatalf("%s: %v", tc.name, err)
 			}
-			if got := strings.TrimSpace(buf.String()); got != tc.want {
-				t.Errorf("%s wrote %q, want %q", tc.name, got, tc.want)
+			if !bytes.Equal(printer.seen, reel) {
+				t.Errorf("%s was given %v, want the whole reel", tc.name, printer.seen)
+			}
+			if got := ev.environ.GetTemp(byteutil.ToHex([]byte("01"))); !bytes.Equal(got, reel) {
+				t.Errorf("%s is worth %v, want what the printer answered", tc.name, got)
 			}
 		})
 	}

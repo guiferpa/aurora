@@ -13,6 +13,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -195,9 +196,11 @@ func runTestFile(path string, tapeSize int, loggers []string) FileReport {
 	}
 
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		Output:   io.Discard,
-		TapeSize: tapeSize,
-		Asserts:  true,
+		PrintBytes:   printer.Bytes(io.Discard, tapeSize),
+		PrintChars:   printer.Chars(io.Discard, tapeSize),
+		PrintDecimal: printer.Decimal(io.Discard, tapeSize),
+		TapeSize:     tapeSize,
+		Asserts:      true,
 	})
 
 	// Both programs go into one instruction stream, and each is run as a range of it. A

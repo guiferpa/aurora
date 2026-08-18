@@ -33,8 +33,8 @@ var replCmd = &cobra.Command{
 		out := os.Stdout
 
 		repl.NewSession(repl.NewSessionOptions{
-			Lexer:   lexer.New(lexer.NewLexerOptions{}),
-			Parser:  parser.New(parser.NewParserOptions{}),
+			Lexer:   lexer.New(),
+			Parser:  parser.New(),
 			Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 			// One evaluator lasts the session: a name bound on one line is there on the next.
 			Evaluator: evaluator.New(evaluator.NewEvaluatorOptions{

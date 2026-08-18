@@ -961,10 +961,8 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 	return ast.AST{Filename: p.filename, Nodes: nodes}, nil
 }
 
-// NewParserOptions is empty: a parser is the same whatever it is asked to read. It stays as a
-// struct so that giving one an option later does not change every call.
-type NewParserOptions struct{}
-
-func New(opts NewParserOptions) Parser {
+// New builds a parser. It takes nothing: a parser is the same whatever it is asked to read,
+// and everything a parse needs arrives at Parse.
+func New() Parser {
 	return pr{}
 }

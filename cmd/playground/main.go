@@ -53,12 +53,12 @@ func init() {
 			bs := bytes.NewBufferString(value)
 			// Read for every run, so changing the width is a matter of running again.
 			size := tapeSize()
-			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs.Bytes())
+			tokens, err := lexer.New().GetFilledTokens(bs.Bytes())
 			if err != nil {
 				fmt.Println(err)
 				return nil
 			}
-			tree, err := parser.New(parser.NewParserOptions{}).
+			tree, err := parser.New().
 				Parse(parser.ParseInput{Tokens: tokens, TapeSize: size})
 			if err != nil {
 				errorWriter.Write([]byte(err.Error()))

@@ -55,7 +55,7 @@ type Document struct {
 func Analyze(doc Document) *Analysis {
 	analysis := &Analysis{Source: doc.Source, Mapper: lsp.NewMapper(doc.Source)}
 
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(doc.Source))
+	tokens, err := lexer.New().GetFilledTokens([]byte(doc.Source))
 	analysis.Tokens = tokens
 	if err != nil {
 		analysis.Err = err
@@ -64,7 +64,7 @@ func Analyze(doc Document) *Analysis {
 
 	// How wide a value is decides what fits in one, so the document is read in the dialect it
 	// belongs to rather than in the default.
-	tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{
+	tree, err := parser.New().Parse(parser.ParseInput{
 		Filename: doc.Filename,
 		Tokens:   tokens,
 		TapeSize: doc.TapeSize,

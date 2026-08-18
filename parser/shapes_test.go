@@ -26,11 +26,11 @@ func parse(t *testing.T, source string) []ast.Node {
 
 func parseSource(t *testing.T, source, filename string) (ast.AST, error) {
 	t.Helper()
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
 		return ast.AST{}, err
 	}
-	return New(NewParserOptions{}).Parse(ParseInput{Filename: filename, Tokens: tokens})
+	return New().Parse(ParseInput{Filename: filename, Tokens: tokens})
 }
 
 // first returns the single top-level node, asserting the type.
@@ -537,12 +537,12 @@ ident f = defer { feed(0) + 1; };
 if a bigger 0 { printb f(a); } else { printc "no"; };
 ident t = pull [1, 2] 3;
 `
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
 
-	tree, err := New(NewParserOptions{}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens})
+	tree, err := New().Parse(ParseInput{Filename: "main.ar", Tokens: tokens})
 	if err != nil {
 		t.Fatalf("parsing with logging on: %v", err)
 	}

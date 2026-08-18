@@ -30,11 +30,11 @@ func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 		t.Fatalf("reading the golden: %v", err)
 	}
 
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(source)
+	tokens, err := lexer.New().GetFilledTokens(source)
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Filename: "wide.ar", Tokens: tokens})
+	tree, err := parser.New().Parse(parser.ParseInput{Filename: "wide.ar", Tokens: tokens})
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}

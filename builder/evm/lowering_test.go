@@ -236,12 +236,12 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			bs := bytes.NewBufferString(tc.source).Bytes()
-			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
+			tokens, err := lexer.New().GetFilledTokens(bs)
 			if err != nil {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
-			tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Tokens: tokens})
+			tree, err := parser.New().Parse(parser.ParseInput{Tokens: tokens})
 			if err != nil {
 				t.Errorf("%v: %v", tc.name, err)
 				return

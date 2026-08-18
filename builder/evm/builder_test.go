@@ -43,12 +43,12 @@ false;
 
 	for _, c := range cases {
 		bs := bytes.NewBufferString(c.SourceCode).Bytes()
-		tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
+		tokens, err := lexer.New().GetFilledTokens(bs)
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
 		}
-		tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Tokens: tokens})
+		tree, err := parser.New().Parse(parser.ParseInput{Tokens: tokens})
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
 			return
@@ -144,12 +144,12 @@ func TestPickRuntimeCode(t *testing.T) {
 		t.Run(c.Name, func(t *testing.T) {
 			bs := bytes.NewBufferString(c.SourceCode).Bytes()
 
-			tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens(bs)
+			tokens, err := lexer.New().GetFilledTokens(bs)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Tokens: tokens})
+			tree, err := parser.New().Parse(parser.ParseInput{Tokens: tokens})
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return

@@ -13,11 +13,11 @@ import (
 
 func parseWithTapeSize(t *testing.T, source string, tapeSize int) (ast.AST, error) {
 	t.Helper()
-	tokens, err := lexer.New(lexer.NewLexerOptions{}).GetFilledTokens([]byte(source))
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	return New(NewParserOptions{}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize})
+	return New().Parse(ParseInput{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize})
 }
 
 // A literal that the tape cannot hold is a compile-time error, not a silent truncation.

@@ -143,7 +143,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 	}
-	tree, err := New(NewParserOptions{}).Parse(ParseInput{Filename: "testing.ar", Tokens: tokens})
+	tree, err := New().Parse(ParseInput{Filename: "testing.ar", Tokens: tokens})
 	if err != nil {
 		t.Errorf("param: %v, %v", tokens, err)
 	}

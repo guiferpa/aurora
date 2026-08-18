@@ -18,6 +18,10 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-| Arquivo | Assunto | Estado |
-|---|---|---|
-| [phase_coupling.md](phase_coupling.md) | Fases não se conhecem: artefatos como pacotes, montagem no `main` | aceita |
+**Nenhuma aberta no momento.**
+
+A última foi `phase_coupling.md` — fases não se conhecem: artefatos viram pacotes de `wire`, a
+montagem sobe para o `main`. Foi implementada inteira e o que ficou decidido está em
+[docs/contributing/architecture.md](../docs/contributing/architecture.md), que é a fonte da
+verdade sobre a estrutura do código. O arquivo saiu daqui como a regra acima manda; o git
+guarda o caminho, incluindo o que foi descoberto ao aplicar cada etapa.

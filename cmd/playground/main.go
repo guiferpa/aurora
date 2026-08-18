@@ -13,6 +13,7 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/shared/trace"
 	"github.com/guiferpa/aurora/version"
 )
@@ -96,11 +97,15 @@ func init() {
 				}
 			}
 
+			// Where a printed line goes is the page's business, and what it looks like
+			// is the printer's: the evaluator only asks. Wiring the three of them is what
+			// this main is for.
+			out := ToPlaygroundWriter("output")
 			ev := evaluator.New(evaluator.NewEvaluatorOptions{
-				// The print builtins each format their own reading of a tape, so what
-				// arrives here is the finished line and the page only has to show it.
-				Output:   ToPlaygroundWriter("output"),
-				TapeSize: size,
+				PrintBytes:   printer.Bytes(out, size),
+				PrintChars:   printer.Chars(out, size),
+				PrintDecimal: printer.Decimal(out, size),
+				TapeSize:     size,
 			})
 
 			// One top-level expression at a time, reporting its value before moving on.

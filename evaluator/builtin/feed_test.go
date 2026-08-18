@@ -7,6 +7,11 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 )
 
+// tape builds a tape of the given width holding a number.
+func tape(size int, value uint64) []byte {
+	return byteutil.PaddingTape(byteutil.FromUint64(value), size)
+}
+
 // feed(n) reads the vector of values applied to a scope. The scope never learns how many
 // it received, so the index wraps around the length: the read always answers with a tape
 // and never fails. It used to return nil for anything out of range, which is not a value

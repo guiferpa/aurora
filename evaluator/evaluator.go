@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/holiman/uint256"
 
@@ -57,6 +56,15 @@ func deferKey(index uint64) string {
 	return byteutil.ToHex(byteutil.FromUint64(index))
 }
 
+// A Printer is how a value leaves a program.
+//
+// The evaluator does not know what printing is — whether it reaches a terminal, a page or
+// nothing at all — and it does not choose. It hands over the tape and keeps what comes back,
+// which is the value the expression answers with.
+type Printer interface {
+	Print(value []byte) ([]byte, error)
+}
+
 type ReturnsPerLabel map[string][]byte
 
 type Evaluator struct {
@@ -65,7 +73,9 @@ type Evaluator struct {
 	insts         []ir.Instruction
 	assertResults []AssertResult // what each assertion did, in the order they ran
 	asserts       bool           // whether assertions are evaluated at all
-	output        io.Writer
+	printBytes    Printer
+	printChars    Printer
+	printDecimal  Printer
 	environ       *environ.Environ
 	tapeSize      int
 }
@@ -314,26 +324,40 @@ func (e *Evaluator) tapeSlice(left, right []byte) ([]byte, int) {
 	return significant, n
 }
 
-// The three print builtins read the same tape three ways; how it is written belongs to the
-// builtin, not to the writer it is handed. They used to share one writer whose formatting
-// decided the difference, which is how echo ended up printing byte arrays.
+// The three print builtins read the same tape three ways, and the evaluator knows none of the
+// three: it hands the value to whoever was given for that reading and keeps what came back.
+//
+// What comes back is the value of the expression. Everything in Aurora answers with
+// something, and a print used to be the exception — it left nothing under its label, which is
+// why a line of "printd 42" in the REPL showed no value at all.
 func (e *Evaluator) EvaluatePrintBytes(label, left []byte) error {
-	val := e.environ.GetTemp(byteutil.ToHex(left))
-	builtin.PrintBytesFunction(e.output, val)
-	e.IncrementCursor()
-	return nil
+	return e.print(e.printBytes, label, left)
 }
 
 func (e *Evaluator) EvaluatePrintChars(label, left []byte) error {
-	val := e.environ.GetTemp(byteutil.ToHex(left))
-	builtin.PrintCharsFunction(e.output, val, e.tapeSize)
-	e.IncrementCursor()
-	return nil
+	return e.print(e.printChars, label, left)
 }
 
 func (e *Evaluator) EvaluatePrintDecimal(label, left []byte) error {
+	return e.print(e.printDecimal, label, left)
+}
+
+// print reads the value, hands it to the port, and stores what the port answered.
+//
+// The error is returned rather than dropped: writing used to be "_, _ =", so a program whose
+// output went nowhere — a closed pipe — carried on as if it had been heard.
+func (e *Evaluator) print(printer Printer, label, left []byte) error {
 	val := e.environ.GetTemp(byteutil.ToHex(left))
-	builtin.PrintDecimalFunction(e.output, val, e.tapeSize)
+	if printer == nil {
+		return fmt.Errorf("no printer was given for this reading")
+	}
+
+	printed, err := printer.Print(val)
+	if err != nil {
+		return err
+	}
+
+	e.environ.SetTemp(byteutil.ToHex(label), printed)
 	e.IncrementCursor()
 	return nil
 }
@@ -648,9 +672,12 @@ func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (Retu
 }
 
 type NewEvaluatorOptions struct {
-	// Output receives what the print builtins write, already formatted.
-	Output io.Writer
-	Args   []byte
+	// A Printer per reading of a tape. What each one does with the value, and what it
+	// answers with, is the host's business: the evaluator only asks and keeps the answer.
+	PrintBytes   Printer
+	PrintChars   Printer
+	PrintDecimal Printer
+	Args         []byte
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 	// Asserts turns assertions on. Only "aurora test" does.
@@ -658,17 +685,15 @@ type NewEvaluatorOptions struct {
 }
 
 func New(options NewEvaluatorOptions) *Evaluator {
-	output := options.Output
-	if output == nil {
-		output = io.Discard
-	}
 	return &Evaluator{
 		cursor:        0,
 		end:           0,
 		insts:         make([]ir.Instruction, 0),
 		assertResults: make([]AssertResult, 0),
 		asserts:       options.Asserts,
-		output:        output,
+		printBytes:    options.PrintBytes,
+		printChars:    options.PrintChars,
+		printDecimal:  options.PrintDecimal,
 		tapeSize:      byteutil.TapeSize(options.TapeSize),
 		environ: environ.NewEnviron(environ.NewEnvironOptions{
 			Args:     options.Args,

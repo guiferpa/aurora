@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/shared/printer"
 )
 
 // RunInput is the input for the Run handler.
@@ -32,9 +33,11 @@ func Run(ctx context.Context, in RunInput) error {
 	ReportWarnings(in.Warnings, in.Source, program.Warnings)
 
 	ev := evaluator.New(evaluator.NewEvaluatorOptions{
-		Output:   in.Stdout,
-		Args:     ParseArgs(in.Args),
-		TapeSize: in.TapeSize,
+		PrintBytes:   printer.Bytes(in.Stdout, in.TapeSize),
+		PrintChars:   printer.Chars(in.Stdout, in.TapeSize),
+		PrintDecimal: printer.Decimal(in.Stdout, in.TapeSize),
+		Args:         ParseArgs(in.Args),
+		TapeSize:     in.TapeSize,
 	})
 	if _, err := ev.Evaluate(program.Instructions); err != nil {
 		return err

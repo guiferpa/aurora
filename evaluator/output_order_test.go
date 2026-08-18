@@ -11,16 +11,16 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-// recorder collects what a builtin wrote, tagged, so the order of a whole session can be
-// compared against what the source says should happen.
-type recorder struct {
+// tagged is a printer that collects what it was asked to print, tagged, so the order of a
+// whole session can be compared against what the source says should happen.
+type tagged struct {
 	tag   string
 	lines *[]string
 }
 
-func (r recorder) Write(bs []byte) (int, error) {
-	*r.lines = append(*r.lines, r.tag+" "+strings.TrimSpace(string(bs)))
-	return len(bs), nil
+func (t tagged) Print(value []byte) ([]byte, error) {
+	*t.lines = append(*t.lines, fmt.Sprintf("%s %v", t.tag, value))
+	return value, nil
 }
 
 // runInOrder compiles source and runs one top-level expression at a time, recording what
@@ -43,7 +43,7 @@ func runInOrder(t *testing.T, source string) []string {
 
 	lines := make([]string, 0)
 	ev := New(NewEvaluatorOptions{
-		Output: recorder{tag: "printb", lines: &lines},
+		PrintBytes: tagged{tag: "printb", lines: &lines},
 	})
 
 	for _, expr := range program.Expressions {
@@ -74,7 +74,7 @@ if 11 bigger 10 {
 	want := []string{
 		"value [0 0 0 0 0 0 0 10]",  // the first if produced 10
 		"printb [0 0 0 0 0 0 0 20]", // then the second one printed 20
-		"value [0 0 0 0 0 0 0 0]",   // and produced nothing of its own
+		"value [0 0 0 0 0 0 0 20]",  // and is worth what it printed
 	}
 
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -83,15 +83,18 @@ if 11 bigger 10 {
 	}
 }
 
-// printb is an effect, not a value: it leaves no temp behind, so it adds one line to the
-// output rather than two.
+// A print is an expression like any other, so it is worth something: the value it showed.
+// It used to be worth nothing — an effect with no temp behind it — and an expression worth
+// nothing has nothing to say to the one that reads it.
 func TestOutputInterleavesPrintsAndValues(t *testing.T) {
 	got := runInOrder(t, "printb 1;\n2;\nprintb 3;\n4;\n")
 
 	want := []string{
 		"printb [0 0 0 0 0 0 0 1]",
+		"value [0 0 0 0 0 0 0 1]",
 		"value [0 0 0 0 0 0 0 2]",
 		"printb [0 0 0 0 0 0 0 3]",
+		"value [0 0 0 0 0 0 0 3]",
 		"value [0 0 0 0 0 0 0 4]",
 	}
 

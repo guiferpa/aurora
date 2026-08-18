@@ -18,7 +18,7 @@ func evaluateAsserts(t *testing.T, source string, asserts bool) *Evaluator {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	tree, err := parser.New(parser.NewParserOptions{Filename: "checks.test.ar", Tokens: tokens}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Filename: "checks.test.ar", Tokens: tokens})
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}

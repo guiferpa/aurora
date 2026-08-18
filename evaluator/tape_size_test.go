@@ -22,10 +22,7 @@ func runWithTapeSize(t *testing.T, source string, tapeSize int) []byte {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	tree, err := parser.New(parser.NewParserOptions{
-		Filename: "main.ar", Tokens: tokens,
-		TapeSize: tapeSize,
-	}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{TapeSize: tapeSize}).Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
@@ -59,11 +56,7 @@ func runAndError(t *testing.T, source string, tapeSize int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	tree, err := parser.New(parser.NewParserOptions{
-		Filename: "main.ar",
-		Tokens:   tokens,
-		TapeSize: tapeSize,
-	}).Parse()
+	tree, err := parser.New(parser.NewParserOptions{TapeSize: tapeSize}).Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
 	if err != nil {
 		return nil, err
 	}

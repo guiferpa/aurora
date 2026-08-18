@@ -50,9 +50,9 @@ func TestEatTokenWithMismatch(t *testing.T) {
 		tok{nil, token.TagAssign},
 		tok{nil, token.TagSum},
 	}
-	p := New(NewParserOptions{
-		Tokens: tokens,
-	})
+	// EatToken is the mechanism a parse runs on, so it is asked of the parse state itself
+	// rather than through the Parser a host is handed.
+	p := &pr{tokens: tokens}
 	expected := token.IDENT
 	got, err := p.EatToken(expected)
 	if err == nil {
@@ -84,9 +84,7 @@ func TestEatToken(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		p := New(NewParserOptions{
-			Tokens: c.Tokens,
-		})
+		p := &pr{tokens: c.Tokens}
 		for _, tid := range c.TokenIds {
 			got, err := p.EatToken(tid)
 			if err != nil {
@@ -145,8 +143,7 @@ func TestParse(t *testing.T) {
 			},
 		},
 	}
-	p := &pr{filename: "testing.ar", cursor: 0, tokens: tokens}
-	tree, err := p.Parse()
+	tree, err := New(NewParserOptions{}).Parse(ParseInput{Filename: "testing.ar", Tokens: tokens})
 	if err != nil {
 		t.Errorf("param: %v, %v", tokens, err)
 	}

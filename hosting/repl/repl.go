@@ -139,11 +139,12 @@ func (s *session) compile(text string) (ir.Program, error) {
 	}
 	s.trace("lexer", func(w io.Writer) error { return trace.Tokens(w, tokens) })
 
-	tree, err := parser.New(parser.NewParserOptions{
-		Tokens:       tokens,
-		TapeSize:     s.tapeSize,
+	tree, err := parser.New(parser.NewParserOptions{TapeSize: s.tapeSize}).Parse(parser.ParseInput{
+		Tokens: tokens,
+		// A struct declared on one line has to still be known on the next, so what the
+		// session remembers goes in with every line.
 		Declarations: s.declarations,
-	}).Parse()
+	})
 	if err != nil {
 		return ir.Program{}, err
 	}

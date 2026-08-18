@@ -11,10 +11,30 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
+// A Parser turns a chain of tokens into a tree.
+//
+// One parser serves every source there is: what belongs to the project — how wide a value is —
+// is settled when it is built, and what belongs to one source arrives at Parse. It used to
+// take the tokens at build time, so an instance parsed exactly one file and nobody could be
+// handed a parser; only a way of making one.
+//
+// Parse keeps no state of its own between calls, so the same parser may be asked for one tree
+// after another.
 type Parser interface {
-	GetLookahead() token.Token
-	EatToken(tokenId string) (token.Token, error)
-	Parse() (ast.AST, error)
+	Parse(in ParseInput) (ast.AST, error)
+}
+
+// ParseInput is one source to read: everything that belongs to the file rather than to the
+// project.
+type ParseInput struct {
+	// Filename is the source path. It decides file-scoped rules: assert is only accepted
+	// inside *.test.ar.
+	Filename string
+	Tokens   []token.Token
+	// Declarations carries what `struct` and `as` declared across parses of the same file.
+	// Nil starts empty, which is what compiling a file in one go wants; the REPL passes the
+	// same value every line so a struct declared earlier is still known.
+	Declarations *Declarations
 }
 
 type pr struct {
@@ -910,8 +930,21 @@ func (p *pr) EatToken(tokenId string) (token.Token, error) {
 	return currtok, nil
 }
 
-func (p *pr) Parse() (ast.AST, error) {
-	nodes, err := p.ParseExprs(token.TagEOF)
+// Parse reads one source and answers with its tree.
+//
+// The receiver is a value, so what a parse needs — where it is in the chain, which tokens,
+// which file — is written on a copy and the parser itself is never touched. Two calls cannot
+// tread on each other, which is what lets a host hold one.
+func (p pr) Parse(in ParseInput) (ast.AST, error) {
+	p.filename = in.Filename
+	p.tokens = in.Tokens
+	p.cursor = 0
+	p.declarations = in.Declarations
+	if p.declarations == nil {
+		p.declarations = NewDeclarations()
+	}
+
+	nodes, err := (&p).ParseExprs(token.TagEOF)
 	if err != nil {
 		return ast.AST{}, err
 	}
@@ -920,28 +953,10 @@ func (p *pr) Parse() (ast.AST, error) {
 }
 
 type NewParserOptions struct {
-	// Filename is the source path. It decides file-scoped rules: assert is only
-	// accepted inside *.test.ar.
-	Filename string
-	Tokens   []token.Token
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
-	// Declarations carries the struct declarations across parses of the same file. Nil starts
-	// empty, which is what compiling a file in one go wants; the REPL passes the same value
-	// every line so a struct declared earlier is still known.
-	Declarations *Declarations
 }
 
 func New(opts NewParserOptions) Parser {
-	declarations := opts.Declarations
-	if declarations == nil {
-		declarations = NewDeclarations()
-	}
-	return &pr{
-		filename:     opts.Filename,
-		cursor:       0,
-		tokens:       opts.Tokens,
-		tapeSize:     byteutil.TapeSize(opts.TapeSize),
-		declarations: declarations,
-	}
+	return pr{tapeSize: byteutil.TapeSize(opts.TapeSize)}
 }

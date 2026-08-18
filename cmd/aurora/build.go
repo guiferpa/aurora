@@ -65,7 +65,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	// A build compiles and writes bytecode; nothing evaluates, so no evaluator is made.
 	_, err = cli.NewSession(cli.NewSessionOptions{
 		Lexer:    lexer.New(lexer.NewLexerOptions{}),
-		Parser:   parser.New(parser.NewParserOptions{TapeSize: size}),
+		Parser:   parser.New(parser.NewParserOptions{}),
 		Emitter:  emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 		TapeSize: size,
 		Stdout:   cmd.OutOrStdout(),

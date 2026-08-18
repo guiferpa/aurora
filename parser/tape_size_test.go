@@ -17,7 +17,7 @@ func parseWithTapeSize(t *testing.T, source string, tapeSize int) (ast.AST, erro
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	return New(NewParserOptions{TapeSize: tapeSize}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens})
+	return New(NewParserOptions{}).Parse(ParseInput{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize})
 }
 
 // A literal that the tape cannot hold is a compile-time error, not a silent truncation.

@@ -47,6 +47,41 @@ func TestOneParserReadsOneSourceAfterAnother(t *testing.T) {
 	}
 }
 
+// Two sources, two widths, one parser. The width used to be settled when the parser was built,
+// so a caller serving more than one project — the language server holds a parser for a whole
+// session and answers for files of any project the editor opens — would read the second one in
+// the dialect of the first. The same goes for one project whose manifest is edited while the
+// editor is open: the new width has to reach the next keystroke.
+func TestOneParserReadsSourcesOfDifferentWidths(t *testing.T) {
+	p := New(NewParserOptions{})
+
+	// 300 does not fit a single byte, and does fit eight.
+	if _, err := p.Parse(ParseInput{
+		Filename: "narrow.ar",
+		Tokens:   tokensOf(t, "ident a = 300;"),
+		TapeSize: 1,
+	}); err == nil {
+		t.Fatal("300 was accepted into a one-byte tape")
+	}
+
+	if _, err := p.Parse(ParseInput{
+		Filename: "wide.ar",
+		Tokens:   tokensOf(t, "ident a = 300;"),
+		TapeSize: 8,
+	}); err != nil {
+		t.Fatalf("the next source was read in the width of the one before it: %v", err)
+	}
+
+	// And back, so it is the input that decides rather than the last call.
+	if _, err := p.Parse(ParseInput{
+		Filename: "narrow.ar",
+		Tokens:   tokensOf(t, "ident a = 300;"),
+		TapeSize: 1,
+	}); err == nil {
+		t.Fatal("the parser kept the wider width from the parse before it")
+	}
+}
+
 // A source that does not parse leaves the parser where it was, so the next one still reads.
 // This is the REPL: a line that fails is answered and forgotten.
 func TestAParserSurvivesASourceThatFails(t *testing.T) {

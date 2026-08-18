@@ -15,7 +15,7 @@ func compileWith(t *testing.T, source string, tapeSize int) ir.Program {
 	if err != nil {
 		t.Fatalf("lexer: %v", err)
 	}
-	tree, err := parser.New(parser.NewParserOptions{TapeSize: tapeSize}).Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
+	tree, err := parser.New(parser.NewParserOptions{}).Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens, TapeSize: tapeSize})
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}

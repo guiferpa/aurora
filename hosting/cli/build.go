@@ -49,7 +49,7 @@ func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildRe
 		return report, err
 	}
 
-	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens})
+	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens, TapeSize: s.tapeSize})
 	if err != nil {
 		return report, err
 	}

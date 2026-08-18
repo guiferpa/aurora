@@ -55,7 +55,7 @@ func runRun(cmd *cobra.Command, args []string) error {
 
 	return cli.NewSession(cli.NewSessionOptions{
 		Lexer:   lexer.New(lexer.NewLexerOptions{}),
-		Parser:  parser.New(parser.NewParserOptions{TapeSize: size}),
+		Parser:  parser.New(parser.NewParserOptions{}),
 		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{

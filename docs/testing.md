@@ -49,6 +49,25 @@ Three consequences follow, and none of them is worked around:
   conflict between identifiers named a
   ```
 
+A `struct` crosses as well, and it crosses earlier: a name is resolved while the program runs, a shape while it is read. So a test builds and reads a struct its source declared, without declaring it again:
+
+```aurora
+#- point.ar
+struct Point { x, y };
+
+ident origin = Point{0, 0};
+```
+
+```aurora
+#- point.test.ar
+ident p = Point{10, 20};
+
+assert(p.y equals 20, "a struct crosses the pair");
+assert(origin.x equals 0, "and so does what the source built with it");
+```
+
+The other way round does not hold: the source is read on its own, so it cannot use a shape only its test declares — under `aurora run` there is no test at all.
+
 ---
 
 ## Where the command looks

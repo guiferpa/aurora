@@ -26,7 +26,7 @@ func Run(ctx context.Context, in RunInput) error {
 	if err := ValidateTapeSize(in.TapeSize); err != nil {
 		return err
 	}
-	program, err := Compile(in.Source, in.TapeSize, in.Loggers, in.Stdout)
+	program, err := Compile(in.Source, in.TapeSize, in.Loggers, in.Stdout, nil)
 	if err != nil {
 		return err
 	}

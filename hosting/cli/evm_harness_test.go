@@ -26,7 +26,7 @@ func onChain(t *testing.T, source, function string, args []string, tapeSize int)
 	t.Helper()
 
 	path := writeAt(t, t.TempDir(), "contract.ar", source)
-	program, err := Compile(path, tapeSize, nil, io.Discard)
+	program, err := Compile(path, tapeSize, nil, io.Discard, nil)
 	if err != nil {
 		t.Fatalf("compiling: %v", err)
 	}

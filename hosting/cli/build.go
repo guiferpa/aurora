@@ -11,7 +11,6 @@ import (
 
 	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/parser"
 )
 
 // BuildReport is what a build produced.
@@ -39,29 +38,16 @@ func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildRe
 		return report, err
 	}
 
-	bs, err := os.ReadFile(source)
+	program, err := s.compile(source)
 	if err != nil {
 		return report, err
 	}
 
-	tokens, err := s.lexer.GetFilledTokens(bs)
-	if err != nil {
-		return report, err
-	}
-
-	tree, err := s.parser.Parse(parser.ParseInput{Filename: source, Tokens: tokens, TapeSize: s.tapeSize})
-	if err != nil {
-		return report, err
-	}
-
-	program, err := s.emitter.EmitProgram(tree)
-	if err != nil {
-		return report, err
-	}
-
-	// What the compiler has to say about the program, and what the backend has to say about
-	// what it can carry: the second is the builder's to answer, since it is the one writing.
-	ReportWarnings(s.warnings, source, append(program.Warnings, evm.Warnings(program.Instructions)...))
+	// What the compiler has to say about each module, and what the backend has to say about
+	// what it can carry: the second is the builder's to answer, since it is the one writing,
+	// and it is about the binary rather than about any one file.
+	s.report(program)
+	ReportWarnings(s.warnings, source, evm.Warnings(program.Instructions))
 	report.Instructions = len(program.Instructions)
 
 	// Assembling and writing are two things, and the builder only does the first: it

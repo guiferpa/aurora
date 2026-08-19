@@ -38,7 +38,10 @@ The code is **hosting** — the logic of one kind of interaction — and **vital
 that turns source into something that runs.
 
 ```
-(lexer) → {tokens} → (parser) → {tree} → (emitter) → {IR} → (builder) │ (evaluator)
+(resolver) → {modules} → (loader) → {stream} → (evaluator) │ (builder)
+     ↑                        ↑
+  (lexer) → {tokens}      (emitter) → {IR}
+     → (parser) → {tree}
 ```
 
 Between parentheses are the phases; between braces, what crosses between them, which are
@@ -46,8 +49,8 @@ packages of their own.
 
 | kind | who |
 |---|---|
-| **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` |
-| **wire** | `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval` |
+| **vital** | `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator`, `resolver`, `loader` |
+| **wire** | `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval`, `wire/module` |
 | **util** | `byteutil`, `logger` |
 | **hosting** | `hosting/cli`, `hosting/repl`, `hosting/lsp` |
 | **shared** | `shared/fileutil`, `shared/manifest` |

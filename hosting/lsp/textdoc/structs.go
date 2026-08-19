@@ -97,6 +97,17 @@ func readBinding(tokens []token.Token, i int) (string, string) {
 // cursor is a dot on a value whose shape is known. Anything else gives nothing, and the
 // caller falls back to the ordinary list.
 func (s structShapes) fieldsBefore(tokens []token.Token, offset int) []string {
+	owner := ownerBefore(tokens, offset)
+	if owner == nil {
+		return nil
+	}
+	return s.fields[s.shapes[string(owner.GetMatch())]]
+}
+
+// ownerBefore answers the name a dot at this offset hangs off, and nil when there is no dot
+// there. Both readers of a dot ask it — a struct to offer its fields, a module to say that
+// what follows is not a field at all.
+func ownerBefore(tokens []token.Token, offset int) token.Token {
 	// The token being typed may already have started, so walk back over it first.
 	i := len(tokens) - 1
 	for ; i >= 0; i-- {
@@ -119,7 +130,7 @@ func (s structShapes) fieldsBefore(tokens []token.Token, offset int) []string {
 	if owner.GetTag().Id != token.ID {
 		return nil
 	}
-	return s.fields[s.shapes[string(owner.GetMatch())]]
+	return owner
 }
 
 // structAt describes the struct a token belongs to, for hover: the declaration itself, or a

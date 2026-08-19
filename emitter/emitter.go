@@ -90,7 +90,7 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 
 // emitIdentLiteral binds a name to a value.
 func emitIdentLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentLiteral, tapeSize int) ir.Label {
-	ll := n.Token.GetMatch()
+	ll := []byte(n.Id)
 	lr := EmitInstruction(tc, insts, n.Value, tapeSize)
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpIdent, ll, lr))
@@ -342,7 +342,7 @@ func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, ta
 		*insts = append(*insts, ir.NewInstruction(l, ir.OpPushFeed, byteutil.FromUint64(uint64(i)), ll))
 	}
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpCall, n.Id.Token.GetMatch(), nil))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpCall, []byte(n.Id.Value), nil))
 	return l
 
 }
@@ -428,7 +428,7 @@ func emitBooleanLiteral(tc *int, insts *[]ir.Instruction, n ast.BooleanLiteral, 
 // emitIdentifierLiteral loads what a name is bound to.
 func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpLoad, n.Token.GetMatch(), nil))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpLoad, []byte(n.Value), nil))
 	return l
 
 }

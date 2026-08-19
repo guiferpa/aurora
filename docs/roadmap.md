@@ -66,12 +66,15 @@ this.
 ## Modules
 
 One file is one program. `use` was rolled back in v0.2.0-alpha because it never resolved a
-symbol; the shape a resolver and loader should have is written down in
-[module_system_design.md](module_system_design.md), including that every import carries a
-mandatory alias.
+symbol.
 
-Note that `.` is taken now: it reads a struct field, so a module accessor has to share it or
-pick something else.
+The design is decided and the plan to build it is accepted:
+[rfcs/module_system.md](../rfcs/module_system.md). `use a/b/c as x;` resolves from a source
+root, every import carries a mandatory alias, each module gets an environ of its own indexed
+by its prefix, and a name carries the module it belongs to — so which `add` a call means is
+answered while compiling rather than while running. `.` is shared with the struct field it
+already reads: the head of the access decides which of the two it is. Five pull requests, and
+the first three change nothing a user can see.
 
 ---
 

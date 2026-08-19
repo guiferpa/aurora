@@ -1,6 +1,6 @@
 # Módulos: resolver, loader e a ligação que faltou
 
-**Estado:** proposta · **Data:** 2026-08-19
+**Estado:** aceita · **Data:** 2026-08-19 · **Aceita em:** 2026-08-19
 
 O desenho já existe em inglês — [docs/module_system_design.md](../docs/module_system_design.md)
 — e decidiu a **forma**: um arquivo é um módulo, todo import tem alias, e os três trabalhos
@@ -661,26 +661,85 @@ colateral dele.
 
 ---
 
-## As etapas
+## O plano de implementação
 
-Uma por commit, cada uma compila e passa sozinha. As duas primeiras não mudam comportamento
-nenhum.
+Cinco pull requests. **Os três primeiros não dão nada ao usuário**, e isso é deliberado: é o
+mesmo formato em que a RFC de acoplamento de fases foi aplicada, em quinze pull requests, e a
+alternativa seria um só que ninguém revisa em quarenta minutos. A entrada no `CHANGELOG.md`
+sai com o quarto, que é onde a coisa passa a existir.
 
-1. **O emitter lê o nó, não o token.** Hoje o símbolo sai de `n.Token.GetMatch()`, então
-   qualquer renomeação teria que fabricar token sintético. Passa a ler o campo do próprio nó,
-   e o token fica só para posição.
-2. **`use` vira palavra-chave**, com o nó `UseDeclaration`, a leitura do caminho por segmentos
-   e as regras do alias (obrigatório, único, só no topo do arquivo).
-3. **`wire/module` e `resolver`:** grafo, ciclo com a cadeia, ordem topológica, cache pelo
-   specifier, porta de leitura. Sem ligação ainda — devolve módulos em ordem e tem teste
-   próprio.
-4. **A ligação:** prefixo no parse, referências anotadas, conferência no `loader` contra as
-   tabelas de export.
-5. **O environ por módulo:** o índice na raiz, o segundo salto da busca, e a faixa que sabe em
-   qual módulo roda.
-6. **O `loader` monta o stream** e o CLI passa a pedir a ele: `run` e `test` primeiro.
-7. **`aurora build`, o exemplo e a documentação:** um projeto com dois módulos em `examples/`,
-   `docs/` e o diagrama de `architecture.md`.
+Cada commit compila e passa sozinho, e cada pull request fecha com `make check` limpo.
+
+### PR 1 — o compilador se prepara
+
+1. O emitter lê o nome **no nó**, não no token (`emitter/emitter.go:92`, `:338`, `:429`).
+2. `use` vira palavra-chave (`wire/token/tag.go`, `lexer/scanner.go:5`, e `processableTags`
+   para o completar do language server).
+
+**Testes:** os goldens não mudam — é isso que prova o primeiro commit; e um caso dizendo que
+`ident use = 1;` agora é erro. **Dá ao usuário:** nada, além da quebra declarada.
+
+### PR 2 — um arquivo diz de quem depende
+
+1. O nó `UseDeclaration`, o caso em `wire/ast/equal.go`, e `ParseUse` lendo
+   `use a/b/c as x;` — segmentos colados, alias obrigatório e único, só antes de qualquer
+   outro nó.
+2. `wire/module`: id, tabela de exports, grafo, módulo em ordem.
+3. `resolver`: porta de leitura, cache pelo specifier, grafo, ciclo com a cadeia, ordem
+   topológica.
+
+**Testes:** parse com um caso de sucesso e um de erro por regra; e o resolver com uma porta
+falsa em memória — dois módulos, um diamante (dois importando o mesmo), ciclo de dois e de
+três, e módulo inexistente. **Gate:** os testes do resolver não tocam em disco; se tocarem, a
+porta está no lugar errado.
+
+**Dá ao usuário:** nada. Um `use` solto parseia e não faz nada, e como `x.add` ainda não
+parseia, não há como escrever um programa que minta.
+
+### PR 3 — um nome sabe de que módulo ele é
+
+1. `ParseInput.Module` e o prefixo uniforme.
+2. O `.` com cabeça de alias, e as referências qualificadas anotadas na árvore.
+3. `loader`: a tabela de exports — só `IdentLiteral` de topo — e a conferência das
+   referências, com posição no erro.
+
+**Testes:** prefixo escrito no módulo e ausente na entrada; `x.add` de um símbolo que não
+existe, com linha e coluna; alias colidindo com um `ident` do arquivo; `struct` continuando
+local. **Dá ao usuário:** nada ainda — mas o compilador já **recusa** o que está errado, que é
+a metade que faltou na tentativa antiga.
+
+### PR 4 — módulos rodam
+
+1. O índice de environs e o segundo salto da busca (`evaluator/environ`).
+2. `EvaluateRange` sabendo em qual módulo a faixa roda.
+3. O `loader` montando o stream e as faixas.
+4. `source_root` no manifesto, e a recusa dele dentro de um profile.
+5. `aurora run` e `aurora test` pelo loader; `cmd/aurora` montando as portas.
+
+**Testes:** o exemplo desta RFC ponta a ponta — dois módulos, os dois com `base`, resposta
+`14`; um `defer` importado lendo um nome do próprio módulo; dois módulos com um `defer 0`
+cada, provando que os índices não se cruzam; e um `.test.ar` num projeto com módulos.
+
+**Gate:** é o pull request que pede a leitura mais dura. Se passar de quarenta minutos, o
+primeiro commit vira um pull request próprio. **Dá ao usuário: o sistema de módulos.**
+
+### PR 5 — o acabamento
+
+1. `aurora build` pelo loader.
+2. Um projeto com dois módulos em `examples/`.
+3. `docs/`: a referência de módulos, o manifesto com `source_root`, e o README do projeto de
+   exemplo com a ressalva de rodar da raiz.
+4. `docs/roadmap.md` e `docs/contributing/architecture.md`, onde o pipeline deixa de ser uma
+   linha reta.
+5. A RFC sai de `rfcs/`, como a regra de lá manda.
+
+### O que decide essa ordem
+
+Nada pode ser testado antes do que ele depende. O resolver precisa do `use` parseado para
+montar o grafo; a conferência precisa das referências anotadas; e a execução precisa das duas.
+O prefixo (PR 3) não serve para nada até o environ existir (PR 4), mas tem que vir antes,
+porque é ele que a conferência lê. E os dois commits de preparação vêm primeiro porque todo o
+resto assume um nome que não vem do token.
 
 ---
 
@@ -689,20 +748,16 @@ nenhum.
 Estimativa, não medida — as etapas 1 e 2 são as únicas que dá para cravar. O que está entre
 parênteses é código de teste, contado à parte porque aqui ele é metade do trabalho.
 
-| Etapa | Código novo | Código mexido | Risco |
+| Pull request | Código novo | Código mexido | Risco |
 |---|---|---|---|
-| 1. emitter lê o nó | — | 3 linhas (+30) | nenhum: os campos já chegam preenchidos |
-| 2. `use` no lexer e no parser | ~120 (+200) | ~20 | baixo, e isolado no parse |
-| 3. `wire/module` + `resolver` | ~250 (+250) | — | médio: é pacote novo, e a porta de leitura é desenho novo |
-| 4. a ligação | ~150 (+250) | ~40 no parser | médio: é onde um erro vira nome que não resolve |
-| 5. environ por módulo | ~80 (+200) | ~60 no evaluator | **o mais alto**: mexe na busca de nome, que é o lugar mais quente |
-| 6. `loader` + CLI | ~150 (+200) | ~120 nos hosts | médio: três comandos deixam de ler arquivo |
-| 7. build, exemplo, docs | ~50 (+100) | ~200 de markdown | baixo |
+| 1. preparação | — | 3 linhas + a tabela de keywords (+50) | nenhum: os campos já chegam preenchidos |
+| 2. o resolver | ~370 (+450) | ~20 | médio: pacote novo, e a porta de leitura é desenho novo |
+| 3. a ligação | ~190 (+250) | ~40 no parser | médio: é onde um erro vira nome que não resolve |
+| 4. a execução | ~230 (+400) | ~180 nos hosts e no evaluator | **o mais alto**: mexe na busca de nome, que é o lugar mais quente |
+| 5. o acabamento | ~50 (+100) | ~250 de markdown | baixo |
 
-Ordem de grandeza: **~800 linhas de código e ~1200 de teste**, em três ou quatro pull
-requests. As etapas 1–3 cabem num (nada que o usuário veja muda); 4–6 é o segundo e é o que
-faz a coisa existir — se passar de quarenta minutos de leitura, a etapa 5 sai sozinha para um
-terceiro; 7 fecha.
+Ordem de grandeza: **~840 linhas de código e ~1250 de teste**, nos cinco pull requests
+acima.
 
 **As refatorações de verdade**, que é o que custa mais do que parece:
 

@@ -98,8 +98,8 @@ func TestMatchToken(t *testing.T) {
 		{[]byte(`
 `), token.BREAK_LINE, []byte(`
 `), true},
-		// "use" was an import keyword: an ordinary identifier now
-		{[]byte(`use`), token.ID, []byte("use"), true},
+		// "use" is an import keyword again: it brings a module in under an alias
+		{[]byte(`use`), token.USE, []byte("use"), true},
 	}
 	for _, c := range cases {
 		matched, tag, match := MatchToken(c.Buffer)

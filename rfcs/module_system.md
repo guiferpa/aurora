@@ -174,8 +174,7 @@ printb x.add(1, 2);
 |---|---|
 | Padrão | `src/` |
 | Mudança | `[project] source_root = "lib"` |
-| Com manifesto | a raiz é relativa à raiz do projeto (o diretório do `aurora.toml`) |
-| Sem manifesto | continua sendo `src/`, relativa ao diretório do arquivo de entrada |
+| Relativa a | **o diretório de onde o comando foi executado**, com manifesto ou sem |
 
 Vai em `[project]` pelo mesmo motivo que `tape_size` foi para lá: **não é um caminho de uma
 tarefa, é o que decide o que o código-fonte significa.** Dois profiles com raízes diferentes
@@ -184,6 +183,17 @@ o language server acima de todos — não teria o que responder.
 
 Não confundir com `profiles.<nome>.source`, que continua sendo o caminho do arquivo de
 entrada. Um diz **onde os nomes de módulo resolvem**; o outro, **qual arquivo rodar**.
+
+**A consequência, dita em voz alta.** É uma regra só e sem exceção — `use a/b/c` procura
+`./src/a/b/c.ar` a partir de onde você chamou o comando —, e o preço dela é que **um projeto
+com módulos se roda da raiz dele**. Hoje `aurora run` funciona de dentro de `src/`, porque o
+manifesto é achado subindo os diretórios e os caminhos do profile resolvem contra a raiz do
+projeto; de lá, um `use` passaria a procurar `src/src/…` e não acharia nada.
+
+Isso vira trabalho e não surpresa: quando um módulo não é encontrado, **o erro diz de onde
+procurou** — `não encontrei src/a/b/c.ar a partir de <diretório>; módulos resolvem a partir de
+onde o comando foi executado`. E o README do projeto de exemplo, que hoje diz que os comandos
+também funcionam de dentro de `src/`, ganha a ressalva quando módulos chegarem.
 
 ### O que o lexer precisa
 
@@ -698,8 +708,14 @@ só não os lê. O token continua no nó, para posição.
 
 O que ainda não foi batido o martelo, e é o que vale discutir antes de começar:
 
-1. **O índice de environs é mapa ou árvore.** Proposta acima: mapa, porque `a/b` e `a/b/c` não
-   têm parentesco.
-2. **Sem manifesto, `src/` é relativo a quê.** Proposta: ao diretório do arquivo de entrada.
-3. **Transitividade, `use` só no topo, o que um módulo expõe, alias dividindo espaço de nomes
-   com `ident`, `struct` local ao arquivo.** Todos propostos acima; nenhum discutido.
+1. **`use` só no topo do arquivo.** Proposta: sim, obrigatoriamente — o leitor sabe as
+   dependências sem rolar a tela, e a regra é uma linha no `ParseExprs`.
+2. **O que um módulo expõe.** Proposta: tudo que ele declara no topo, sem marcação.
+3. **Alias e `ident` dividem o mesmo espaço de nomes.** Proposta: sim, e é isso que torna o
+   `.` não-ambíguo sem token novo.
+4. **`struct` é local ao arquivo.** Proposta: sim no primeiro corte, pelo custo de parse
+   descrito acima.
+
+Decididos na revisão, e já escritos acima: o índice é um **mapa**; a raiz de módulos é
+relativa ao **diretório de onde o comando rodou**; **não há transitividade** — cada arquivo
+declara os seus.

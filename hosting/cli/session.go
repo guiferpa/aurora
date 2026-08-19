@@ -7,7 +7,9 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
 )
 
 // A Session is one use of the command line: the phases it was handed, how wide a value is,
@@ -24,9 +26,12 @@ type Session struct {
 	// holds the names a program bound, the scopes it deferred and the assertions that ran, and
 	// "aurora test" checks one file after another, each of which is its own program.
 	newEvaluator func() *evaluator.Evaluator
-	tapeSize     int
-	stdout       io.Writer
-	warnings     io.Writer
+	// resolver finds the files a program is made of. It arrives built because what it
+	// resolves from — the source root — is decided with the target, next to the flags.
+	resolver *resolver.Resolver
+	tapeSize int
+	stdout   io.Writer
+	warnings io.Writer
 }
 
 type NewSessionOptions struct {
@@ -34,6 +39,7 @@ type NewSessionOptions struct {
 	Parser       parser.Parser
 	Emitter      emitter.Emitter
 	NewEvaluator func() *evaluator.Evaluator
+	Resolver     *resolver.Resolver
 	// TapeSize is the width in bytes of every value. It is the width the phases were built
 	// with; the session carries it to answer for what it wrote.
 	TapeSize int
@@ -53,12 +59,37 @@ func (s *Session) evaluator() (*evaluator.Evaluator, error) {
 	return s.newEvaluator(), nil
 }
 
+// compile turns the file somebody named into the program it is: every module it needs, in
+// the order they load, with every qualified name checked and the whole thing in one stream.
+//
+// It is what every command that runs Aurora goes through. A file that imports nothing comes
+// out of it as a program of one module, which is the shape everything already had.
+func (s *Session) compile(source string) (loader.Program, error) {
+	if s.resolver == nil {
+		return loader.Program{}, errors.New("no resolver was given to this session")
+	}
+	modules, err := s.resolver.Resolve(source)
+	if err != nil {
+		return loader.Program{}, err
+	}
+	return loader.Load(modules, s.emitter.EmitProgram)
+}
+
+// report says what compiling each module had to say, naming the file it came from — a warning
+// about a module is not about the file somebody asked to run.
+func (s *Session) report(program loader.Program) {
+	for _, each := range program.Ranges {
+		ReportWarnings(s.warnings, each.Filename, each.Warnings)
+	}
+}
+
 func NewSession(opts NewSessionOptions) *Session {
 	return &Session{
 		lexer:        opts.Lexer,
 		parser:       opts.Parser,
 		emitter:      opts.Emitter,
 		newEvaluator: opts.NewEvaluator,
+		resolver:     opts.Resolver,
 		tapeSize:     opts.TapeSize,
 		stdout:       opts.Stdout,
 		warnings:     opts.Warnings,

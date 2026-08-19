@@ -2,13 +2,18 @@ package cli
 
 import (
 	"io"
+	"os"
 	"testing"
 
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
+	"github.com/guiferpa/aurora/shared/manifest"
 	"github.com/guiferpa/aurora/shared/printer"
+	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 )
 
 // A command is a method on a session, and a session is what cmd/aurora puts together. A test
@@ -27,6 +32,30 @@ type sessionOpts struct {
 	asserts bool
 }
 
+// newTestResolver puts the front of the pipeline together the way cmd/aurora does: a test
+// wires what main wires, since a host is handed its phases rather than building them.
+func newTestResolver(tapeSize int) *resolver.Resolver {
+	lx := lexer.New()
+	ps := parser.New()
+
+	return resolver.New(resolver.Options{
+		SourceRoot: manifest.DefaultSourceRoot,
+		Read:       os.ReadFile,
+		Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+			tokens, err := lx.GetFilledTokens(source)
+			if err != nil {
+				return ast.AST{}, err
+			}
+			return ps.Parse(parser.ParseInput{
+				Filename: filename,
+				Tokens:   tokens,
+				TapeSize: tapeSize,
+				Module:   string(id),
+			})
+		},
+	})
+}
+
 func newSession(t *testing.T, o sessionOpts) *Session {
 	t.Helper()
 
@@ -41,9 +70,10 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 	size := o.tapeSize
 
 	return NewSession(NewSessionOptions{
-		Lexer:   lexer.New(),
-		Parser:  parser.New(),
-		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		Lexer:    lexer.New(),
+		Parser:   parser.New(),
+		Emitter:  emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		Resolver: newTestResolver(size),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{
 				PrintBytes:   printer.Bytes(printed, size),

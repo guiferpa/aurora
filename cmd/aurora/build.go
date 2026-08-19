@@ -67,6 +67,7 @@ func runBuild(cmd *cobra.Command, args []string) error {
 		Lexer:    lexer.New(),
 		Parser:   parser.New(),
 		Emitter:  emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		Resolver: newResolver(size, target.SourceRoot),
 		TapeSize: size,
 		Stdout:   cmd.OutOrStdout(),
 		Warnings: os.Stderr,

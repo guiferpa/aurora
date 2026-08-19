@@ -31,6 +31,33 @@ func (m Module) IsEntry() bool {
 	return m.ID == ""
 }
 
+// Separator is what stands between a module and a name inside it: a/b/c.add.
+//
+// It is a character no identifier can hold — the lexer takes letters, digits and _ - ? ! > <
+// — so a qualified name is never something anyone could have typed, and reading one back is
+// unambiguous: exactly one of these, and neither side can contain another.
+const Separator = "."
+
+// Qualify writes a name as it is written inside a module. The parser is what calls it, when
+// it decides what an identifier is called.
+func Qualify(id ID, name string) string {
+	if id == "" {
+		return name
+	}
+	return string(id) + Separator + name
+}
+
+// Split reads a qualified name back: which module it belongs to, what it is called there, and
+// whether it belongs to one at all. The evaluator is what calls it, to find where to look
+// when a name is not in the chain.
+func Split(name string) (ID, string, bool) {
+	id, symbol, found := strings.Cut(name, Separator)
+	if !found {
+		return "", name, false
+	}
+	return ID(id), symbol, true
+}
+
 // Symbol is a name of this module as the file typed it, with the module taken off the front.
 // It is what somebody writing `x.add` asks for, and what an error about a missing name has to
 // say back to them.
@@ -38,5 +65,5 @@ func (m Module) Symbol(name string) string {
 	if m.IsEntry() {
 		return name
 	}
-	return strings.TrimPrefix(name, string(m.ID)+".")
+	return strings.TrimPrefix(name, string(m.ID)+Separator)
 }

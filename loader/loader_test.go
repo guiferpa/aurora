@@ -93,7 +93,7 @@ func TestAQualifiedNameIsTheNameTheModuleBound(t *testing.T) {
 	if len(references) != 1 {
 		t.Fatalf("the entry read %d qualified names, want 1", len(references))
 	}
-	if got := references[0].Name(); got != binding.Id {
+	if got := module.Qualify(module.ID(references[0].Module), references[0].Symbol); got != binding.Id {
 		t.Errorf("the entry asked for %q and the module bound %q", got, binding.Id)
 	}
 }

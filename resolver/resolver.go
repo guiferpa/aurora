@@ -91,30 +91,39 @@ func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
 // written in two files, neither of which the resolver would have read on its own. Both are
 // asked what they need, because a test names the modules it uses like any other file.
 func (r *Resolver) Dependencies(entry string, trees ...ast.AST) ([]module.Module, error) {
-	state := &resolution{found: make(map[module.ID]bool), entry: path.Clean(entry)}
+	uses := make([]ast.UseDeclaration, 0)
 	for _, tree := range trees {
-		if err := r.dependencies(state, tree); err != nil {
+		uses = append(uses, declarationsOf(tree)...)
+	}
+	return r.DependenciesOf(entry, uses)
+}
+
+// DependenciesOf answers the same, for a caller that has the declarations without a tree.
+//
+// An editor is that caller. A document is too broken to parse most of the time somebody is
+// looking at it — the moment a dot is typed there is no name after it yet — and what is
+// inside a module is exactly what is wanted then. The declarations are the top of the file
+// and readable from the tokens alone, so they arrive that way.
+func (r *Resolver) DependenciesOf(entry string, uses []ast.UseDeclaration) ([]module.Module, error) {
+	state := &resolution{found: make(map[module.ID]bool), entry: path.Clean(entry)}
+	for _, declaration := range uses {
+		if err := r.resolveOne(state, declaration); err != nil {
 			return nil, err
 		}
 	}
 	return state.order, nil
 }
 
-// dependencies resolves every module a tree names, in the order the file names them.
-//
-// The declarations are top-level nodes, so this reads the list a file opens with rather than
-// walking anything.
-func (r *Resolver) dependencies(state *resolution, tree ast.AST) error {
+// declarationsOf reads the imports out of a tree. They are top-level nodes, so this reads the
+// list a file opens with rather than walking anything.
+func declarationsOf(tree ast.AST) []ast.UseDeclaration {
+	uses := make([]ast.UseDeclaration, 0)
 	for _, node := range tree.Nodes {
-		declaration, ok := node.(ast.UseDeclaration)
-		if !ok {
-			continue
-		}
-		if err := r.resolveOne(state, declaration); err != nil {
-			return err
+		if declaration, ok := node.(ast.UseDeclaration); ok {
+			uses = append(uses, declaration)
 		}
 	}
-	return nil
+	return uses
 }
 
 // resolveOne finds one module, everything under it, and adds it to the order.
@@ -148,8 +157,10 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 	}
 
 	state.open = append(state.open, id)
-	if err := r.dependencies(state, tree); err != nil {
-		return err
+	for _, declaration := range declarationsOf(tree) {
+		if err := r.resolveOne(state, declaration); err != nil {
+			return err
+		}
 	}
 	state.open = state.open[:len(state.open)-1]
 

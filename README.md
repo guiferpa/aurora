@@ -1,12 +1,19 @@
-<img src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/mascot.png" width="112px" height="140px">
+<p align="center">
+  <img src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/mascot_02.png" width="200px" alt="Aurora mascot" />
+</p>
 
-# aurora
+<h1 align="center">aurora</h1>
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/guiferpa/aurora.svg)](https://pkg.go.dev/github.com/guiferpa/aurora)
-[![Last commit](https://img.shields.io/github/last-commit/guiferpa/aurora)](https://img.shields.io/github/last-commit/guiferpa/aurora)
-[![Go Report Card](https://goreportcard.com/badge/github.com/guiferpa/aurora)](https://goreportcard.com/report/github.com/guiferpa/aurora)
-![Pipeline workflow](https://github.com/guiferpa/aurora/actions/workflows/pipeline.yml/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/guiferpa/aurora/badge.svg?branch=main)](https://coveralls.io/github/guiferpa/aurora?branch=main)
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/guiferpa/aurora">
+    <img src="https://pkg.go.dev/badge/github.com/guiferpa/aurora.svg" alt="Go Reference" />
+  </a>
+  <img src="https://img.shields.io/github/last-commit/guiferpa/aurora" alt="Last commit" />
+  <img src="https://github.com/guiferpa/aurora/actions/workflows/pipeline.yml/badge.svg" alt="Pipeline status" />
+  <a href="https://coveralls.io/github/guiferpa/aurora?branch=main">
+    <img src="https://coveralls.io/repos/github/guiferpa/aurora/badge.svg?branch=main" alt="Coverage status" />
+  </a>
+</p>
 
 > ⚠ **Alpha** — don't use in production. Stuff can change. See [CHANGELOG.md](CHANGELOG.md) for known limitations and what's in/out.
 

@@ -17,16 +17,23 @@ import (
 // The server has no notion of a profile — a document is a file, and the project it belongs
 // to is decided by where the file is. That is the same walk the CLI does.
 
-// projectWidth is what was found for one directory, and what says whether it still holds.
-type projectWidth struct {
+// projectSettings is what was found for one directory, and what says whether it still holds.
+//
+// Two things come out of the same walk — how wide a value is, and where a module name
+// resolves from — so they are read together and kept together.
+type projectSettings struct {
 	manifest string // path of the manifest that answered; empty when there is no project
 	modTime  time.Time
 	tapeSize int
+	// sourceRoot is absolute. A server has no working directory worth speaking of, so where
+	// a module name resolves from is the project's root joined with what the manifest says
+	// — which is what the command line arrives at too, whenever it is run from that root.
+	sourceRoot string
 }
 
 // stale reports whether the manifest changed or went away since it was read. The alternative
 // is a server answering with the width a project had when the editor was opened.
-func (w projectWidth) stale() bool {
+func (w projectSettings) stale() bool {
 	info, err := os.Stat(w.manifest)
 	if err != nil {
 		return true
@@ -35,47 +42,75 @@ func (w projectWidth) stale() bool {
 }
 
 var (
-	widthsMu sync.Mutex
+	projectsMu sync.Mutex
 	// Keyed by the directory the document sits in. Only a directory that resolved to a
 	// project is kept: a file with no project above it is cheap to answer for, and caching
 	// the absence would outlive someone running "aurora init" next to it.
-	widths = make(map[string]projectWidth)
+	projects = make(map[string]projectSettings)
 )
 
-// tapeSizeFor answers the width the project holding filename is written in, and zero — which
-// means the default — when there is no project or its manifest cannot be read.
+// settingsFor answers what the project holding filename says, and whether there is one.
 //
 // A manifest that does not load is not the editor's to complain about: the CLI says so out
 // loud, and a diagnostic about the source stays about the source.
-func tapeSizeFor(filename string) int {
+func settingsFor(filename string) (projectSettings, bool) {
 	dir, err := filepath.Abs(filepath.Dir(filename))
 	if err != nil {
-		return 0
+		return projectSettings{}, false
 	}
 
-	widthsMu.Lock()
-	defer widthsMu.Unlock()
+	projectsMu.Lock()
+	defer projectsMu.Unlock()
 
-	if width, ok := widths[dir]; ok && !width.stale() {
-		return width.tapeSize
+	if found, ok := projects[dir]; ok && !found.stale() {
+		return found, true
 	}
-	delete(widths, dir)
+	delete(projects, dir)
 
 	root, err := manifest.FindProjectRootFrom(dir)
 	if err != nil {
-		return 0
+		return projectSettings{}, false
 	}
 	m, err := manifest.Load(root)
 	if err != nil {
-		return 0
+		return projectSettings{}, false
+	}
+
+	found := projectSettings{
+		tapeSize:   m.Project.TapeSize,
+		sourceRoot: filepath.Join(root, m.SourceRoot()),
 	}
 
 	path := filepath.Join(root, manifest.Filename)
 	info, err := os.Stat(path)
 	if err != nil {
-		return m.Project.TapeSize
+		return found, true
 	}
-	widths[dir] = projectWidth{manifest: path, modTime: info.ModTime(), tapeSize: m.Project.TapeSize}
+	found.manifest = path
+	found.modTime = info.ModTime()
+	projects[dir] = found
 
-	return m.Project.TapeSize
+	return found, true
+}
+
+// tapeSizeFor answers the width the project holding filename is written in, and zero — which
+// means the default — when there is no project.
+func tapeSizeFor(filename string) int {
+	if found, ok := settingsFor(filename); ok {
+		return found.tapeSize
+	}
+	return 0
+}
+
+// sourceRootFor answers where a module name resolves from for this document: what the project
+// says, and src/ next to the file when it belongs to no project.
+func sourceRootFor(filename string) string {
+	if found, ok := settingsFor(filename); ok {
+		return found.sourceRoot
+	}
+	dir, err := filepath.Abs(filepath.Dir(filename))
+	if err != nil {
+		return manifest.DefaultSourceRoot
+	}
+	return filepath.Join(dir, manifest.DefaultSourceRoot)
 }

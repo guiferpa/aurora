@@ -1,10 +1,16 @@
 package textdoc
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
+	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 )
 
 // What one file says about the modules it brings in, which is all the editor knows: that a
@@ -48,7 +54,7 @@ func TestScanUses(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := scanUses(session().Analyze(Document{Filename: "main.ar", Source: tc.source}).Tokens)
+			got := aliasesOf(scanUses(session().Analyze(Document{Filename: "main.ar", Source: tc.source}).Tokens))
 			if len(got) != len(tc.want) {
 				t.Fatalf("read %v, want %v", got, tc.want)
 			}
@@ -126,5 +132,157 @@ func TestCompletionOffersTheModules(t *testing.T) {
 		if !strings.Contains(item.Detail, specifier) {
 			t.Errorf("the alias %s is described as %q, want it to name %s", alias, item.Detail, specifier)
 		}
+	}
+}
+
+// From here on the editor reads the other files too, through the port it is handed. These
+// hand it a project in memory: what is on a disk is the server's business, and this package
+// answers with values whatever the world it is put in.
+func withModuleFiles(files map[string]string) *Session {
+	lx := lexer.New()
+	ps := parser.New()
+
+	return NewSession(NewSessionOptions{
+		Lexer:  lx,
+		Parser: ps,
+		Resolve: func(doc Document, uses []ast.UseDeclaration) ([]module.Module, error) {
+			return resolver.New(resolver.Options{
+				SourceRoot: "src",
+				Read: func(path string) ([]byte, error) {
+					source, ok := files[path]
+					if !ok {
+						return nil, fmt.Errorf("no such file")
+					}
+					return []byte(source), nil
+				},
+				Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+					tokens, err := lx.GetFilledTokens(source)
+					if err != nil {
+						return ast.AST{}, err
+					}
+					return ps.Parse(parser.ParseInput{Filename: filename, Tokens: tokens, Module: string(id)})
+				},
+			}).DependenciesOf(doc.Filename, uses)
+		},
+	})
+}
+
+const geometry = "ident area = defer { feed(0) * feed(1); };\nident base = 10;"
+
+// What the imports say is underlined where it was written, and the message is the compiler's
+// own — the editor adds nothing to it.
+func TestModuleDiagnostics(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source string
+		want   string
+		line   int
+	}{
+		{
+			name:   "a module that is not there",
+			source: "use a/b as x;\nprintd 1;",
+			want:   "module a/b is not there",
+			line:   0,
+		},
+		{
+			name:   "a name the module does not have",
+			source: "use geometry as g;\nprintd g.volume(1, 2);",
+			want:   "module geometry has no volume",
+			line:   1,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			session := withModuleFiles(map[string]string{"src/geometry.ar": geometry})
+			diagnostics := session.ValidateCode(Document{Filename: "src/main.ar", Source: tc.source})
+
+			if len(diagnostics) != 1 {
+				t.Fatalf("reported %d diagnostics, want 1: %+v", len(diagnostics), diagnostics)
+			}
+			if !strings.Contains(diagnostics[0].Message, tc.want) {
+				t.Errorf("said %q, want it to say %q", diagnostics[0].Message, tc.want)
+			}
+			if diagnostics[0].Range.Start.Line != tc.line {
+				t.Errorf("underlined line %d, want %d", diagnostics[0].Range.Start.Line, tc.line)
+			}
+		})
+	}
+}
+
+// A program whose imports are all there says nothing, which is the case that matters most.
+func TestNoDiagnosticWhenTheModulesAreThere(t *testing.T) {
+	session := withModuleFiles(map[string]string{"src/geometry.ar": geometry})
+	diagnostics := session.ValidateCode(Document{
+		Filename: "src/main.ar",
+		Source:   "use geometry as g;\nprintd g.area(2, 3);",
+	})
+
+	if len(diagnostics) != 0 {
+		t.Errorf("reported %+v, want nothing", diagnostics)
+	}
+}
+
+// After the dot, what the module declared — and only that.
+func TestCompletionOffersWhatTheModuleDeclared(t *testing.T) {
+	session := withModuleFiles(map[string]string{"src/geometry.ar": geometry})
+	items := session.CompletionItemsFor(Document{
+		Filename: "src/main.ar",
+		Source:   "use geometry as g;\nprintd g.\n",
+	}, lsp.Position{Line: 1, Character: 9}, false)
+
+	if len(items) != 2 {
+		t.Fatalf("offered %d items, want the two the module declared: %+v", len(items), items)
+	}
+	for i, want := range []string{"area", "base"} {
+		if items[i].Label != want {
+			t.Errorf("offered %q, want %q", items[i].Label, want)
+		}
+		if !strings.Contains(items[i].Detail, "geometry") {
+			t.Errorf("described %q as %q, want it to name the module", items[i].Label, items[i].Detail)
+		}
+	}
+	if !strings.Contains(items[0].Detail, "deferred scope") {
+		t.Errorf("area is described as %q, want it to say what it is", items[0].Detail)
+	}
+}
+
+// A module that could not be found offers nothing rather than everything: the diagnostic
+// already says it is missing.
+func TestCompletionAfterAMissingModule(t *testing.T) {
+	session := withModuleFiles(map[string]string{})
+	items := session.CompletionItemsFor(Document{
+		Filename: "src/main.ar",
+		Source:   "use gone as g;\nprintd g.\n",
+	}, lsp.Position{Line: 1, Character: 9}, false)
+
+	if len(items) != 0 {
+		t.Errorf("offered %d items for a module that is not there", len(items))
+	}
+}
+
+// Hover reads the other file too, so a name reached through a module says what it is.
+func TestHoverReadsTheModule(t *testing.T) {
+	session := withModuleFiles(map[string]string{"src/geometry.ar": geometry})
+	got := session.HoverInfo(Document{
+		Filename: "src/main.ar",
+		Source:   "use geometry as g;\nprintd g.area(2, 3);",
+	}, lsp.Position{Line: 1, Character: 10})
+
+	for _, want := range []string{"of module geometry", "deferred scope"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("hover = %q, want it to contain %q", got, want)
+		}
+	}
+}
+
+// Without the port a document is read on its own, which is what a page with one editor in it
+// is: nothing is missing, because nothing could have been imported.
+func TestWithoutThePortNothingIsResolved(t *testing.T) {
+	diagnostics := session().ValidateCode(Document{
+		Filename: "main.ar",
+		Source:   "use a/b as x;\nprintd 1;",
+	})
+
+	if len(diagnostics) != 0 {
+		t.Errorf("reported %+v, want nothing said about a module nobody looked for", diagnostics)
 	}
 }

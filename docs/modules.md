@@ -187,8 +187,10 @@ never mentioned.
 - A `struct` cannot be exported.
 - There is no `private`: a module offers everything it binds at the top.
 - The REPL does not take `use`.
-- The language server does not follow imports yet, so it underlines what is wrong inside a
-  file and says nothing about a name that lives in another one.
+- The editor follows an import — it underlines a module that is not there and a name a module
+  does not have, and offers what a module declared after the dot — but it does not go to a
+  definition in another file, and it only notices a change in a file you have open. Editing a
+  module outside the editor updates what depends on it the next time you touch that file.
 - The manifest does not list dependencies of any kind. The file system is the whole story
   until third-party packages exist.
 

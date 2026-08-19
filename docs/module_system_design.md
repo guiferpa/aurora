@@ -2,6 +2,8 @@
 
 **Status: proposal.** Nothing here is implemented. The previous attempt was removed (see below); this document exists so the next one starts from a decided shape.
 
+**An open RFC decides how this gets built, and overrides two things below**: [rfcs/module_system.md](../rfcs/module_system.md). The specifier is a bare path from a single root — `use a/b/c as x;` — with no quotes and no relative form, and the binding is written at parse time rather than by a pass of its own. Read it before implementing anything here.
+
 ---
 
 ## What went wrong the first time

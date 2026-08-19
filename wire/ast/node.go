@@ -265,3 +265,19 @@ type ShapedExpression struct {
 	Struct     string      `json:"struct"`
 	Token      token.Token `json:"-"`
 }
+
+// UseDeclaration brings a module in under an alias: `use a/b/c as x;`.
+//
+// It declares rather than binds. The alias names something only the compiler resolves — a
+// module — and not a value, so nothing prints it, passes it or keeps it, exactly like the
+// name a struct declares. That is also why it emits no work.
+type UseDeclaration struct {
+	mark
+	// Specifier is the module's path from the source root, without the extension: "a/b/c"
+	// reads a/b/c.ar. It is the module's identity, and it is the same text for every file
+	// that imports it, which is what makes it the key of everything downstream.
+	Specifier string `json:"specifier"`
+	// Alias is how this file reaches what is inside, and it belongs to this file alone.
+	Alias string      `json:"alias"`
+	Token token.Token `json:"-"`
+}

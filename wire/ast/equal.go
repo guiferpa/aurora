@@ -70,6 +70,8 @@ func nodeEqual(a, b Node) bool {
 		return sameKind(b, va, unaryEqual)
 	case StructDeclaration:
 		return sameKind(b, va, structDeclarationEqual)
+	case UseDeclaration:
+		return sameKind(b, va, useDeclarationEqual)
 	case StructLiteral:
 		return sameKind(b, va, structLiteralEqual)
 	case FieldExpression:
@@ -171,6 +173,12 @@ func assertEqual(a, b AssertStatement) bool {
 // how the declaration was written.
 func structDeclarationEqual(a, b StructDeclaration) bool {
 	return a.Name == b.Name && slices.Equal(a.Fields, b.Fields)
+}
+
+// An import is the module it names and the name it is reached by. The same module under two
+// aliases is two declarations, and so is two modules under one alias.
+func useDeclarationEqual(a, b UseDeclaration) bool {
+	return a.Specifier == b.Specifier && a.Alias == b.Alias
 }
 
 func structLiteralEqual(a, b StructLiteral) bool {

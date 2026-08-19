@@ -30,12 +30,16 @@ import (
 type Declarations struct {
 	Structs map[string][]string // struct name -> its fields, in order
 	Shapes  map[string]string   // identifier name -> the struct it is read as
+	// Modules is what `use` declared: alias -> specifier. It belongs to the file that wrote
+	// it and to no other, which is the whole point of the alias being mandatory.
+	Modules map[string]string
 }
 
 func NewDeclarations() *Declarations {
 	return &Declarations{
 		Structs: make(map[string][]string),
 		Shapes:  make(map[string]string),
+		Modules: make(map[string]string),
 	}
 }
 

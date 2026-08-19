@@ -15,7 +15,7 @@ import (
 //
 // Two things come out of it. Two modules binding the same word are two different names, which
 // is what lets them share one environ at run time. And the name says which module it belongs
-// to, which is what the second hop of a lookup follows: see rfcs/module_system.md.
+// to, which is what the second hop of a lookup follows: see docs/module_system_design.md.
 
 // name is what an identifier is called in the program. The file somebody asked to run has no
 // module, and its names are written as they were typed.

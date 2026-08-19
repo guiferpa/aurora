@@ -65,16 +65,32 @@ this.
 
 ## Modules
 
-One file is one program. `use` was rolled back in v0.2.0-alpha because it never resolved a
-symbol.
+A program is as many files as it needs. `use a/b/c as x;` reads `a/b/c.ar` from the source
+root, every import carries an alias, and a name inside a module is written with the module in
+front of it — so which `add` a call means is answered while compiling.
+[modules.md](modules.md) is the reference; [module_system_design.md](module_system_design.md)
+is why it has that shape.
 
-The design is decided and the plan to build it is accepted:
-[rfcs/module_system.md](../rfcs/module_system.md). `use a/b/c as x;` resolves from a source
-root, every import carries a mandatory alias, each module gets an environ of its own indexed
-by its prefix, and a name carries the module it belongs to — so which `add` a call means is
-answered while compiling rather than while running. `.` is shared with the struct field it
-already reads: the head of the access decides which of the two it is. Five pull requests, and
-the first three change nothing a user can see.
+What it does not do yet:
+
+- **A `struct` does not cross a module.** Exporting one would mean knowing another module's
+  struct table while parsing, which is exactly the dependency the design removed — the parse
+  of a file needs nothing from any other file. It would come back as a table the loader hands
+  the parser, which is a different shape from the one that exists.
+- **There is no `private`.** A module offers everything it binds with `ident` at the top. The
+  boundary exists now, so marking part of it later breaks nothing.
+- **The REPL does not take `use`.** It compiles one line at a time into one buffer, and a
+  module is a file — what a `use` would mean there is a question nobody has answered.
+- **The language server does not follow an import.** It parses a file on its own, which is
+  what it needs to answer fast, so it underlines what is wrong inside one and says nothing
+  about a name that lives in another. Going through the resolver would give it both.
+- **Nothing lists a dependency but the file system.** There are no third-party packages, so
+  there is nothing for the manifest to name yet.
+
+Two things are decided against rather than missing. **An import is not passed on**: if `main`
+uses `a` and `a` uses `b`, `main` writes its own line for `b`, so a name used in a file has
+its origin declared in that file. And **an import is not a value** — `ident m = use ...;` was
+considered and refused, with the reasoning in the design document.
 
 ---
 

@@ -15,19 +15,33 @@ server. Everything else exists to serve one of the two.
 The pipeline, and what travels along it:
 
 ```
-(lexer) → {tokens} → (parser) → {tree} → (emitter) → {IR} → (builder) │ (evaluator)
+(resolver) → {modules} → (loader) → {stream} → (evaluator) │ (builder)
+     ↑                        ↑
+  (lexer) → {tokens}      (emitter) → {IR}
+     → (parser) → {tree}
 ```
 
 Between parentheses are the phases. Between braces is what crosses between them, and **those
 are packages too** — which is the least obvious decision here and the one the rest follows
 from.
 
+**It stopped being a straight line when a program stopped being one file.** A resolver reads
+what the entry says it needs and keeps going until nothing is left to find; a loader turns what
+it found into one stream of instructions with the range of each module in it. Both are phases
+by the rule that matters — they take values, answer with values and touch nothing — and both
+drive other phases, which arrive as ports the way anything else a phase needs does: a resolver
+is handed a way to read a file and a way to parse one, a loader a way to emit.
+
+That is what lets the same resolver serve a command line reading a disk and a page in a browser
+holding its files in memory, which is not a hypothetical — the playground compiles in
+`js/wasm`, where there is no file system to read.
+
 ## Five kinds of package
 
 | kind | what it is | may import | is imported by |
 |---|---|---|---|
-| **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator` | wire, util | nothing directly — it arrives injected |
-| **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval` | wire, util, and nothing else of the project | everyone |
+| **vital** | a step of the pipeline: `lexer`, `parser`, `emitter`, `builder/evm`, `evaluator`, `resolver`, `loader` | wire, util | nothing directly — it arrives injected |
+| **wire** | what crosses a boundary: `wire/token`, `wire/ast`, `wire/ir`, `wire/diag`, `wire/eval`, `wire/module` | wire, util, and nothing else of the project | everyone |
 | **util** | behaviour worth reusing that never touches the world: `byteutil`, `logger` | nothing of the project | everyone |
 | **hosting** | one kind of interaction: `hosting/cli`, `hosting/repl`, `hosting/lsp` | wire, util, shared | `main` |
 | **shared** | serves the hosting *layer* rather than one interaction: `shared/fileutil`, `shared/manifest`, `shared/printer` | wire, util | hosting, `main` |

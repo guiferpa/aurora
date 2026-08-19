@@ -11,6 +11,11 @@ type Environ struct {
 	defers map[string][]byte // key = hex(len at store time), value = blob (from, to, returnKey)
 	temps  map[string][]byte
 	prev   *Environ
+	// modules is where a program's modules keep their names, indexed by the module's own
+	// name. It is born on the environ every chain ends at, because a module's names belong
+	// to the program and not to a scope, and every module environ is handed the same map so
+	// that a body running anywhere can reach it.
+	modules map[string]*Environ
 }
 
 func (e *Environ) Ahead(next *Environ) *Environ {
@@ -45,10 +50,23 @@ func (e *Environ) SetIdent(key string, value []byte) {
 }
 
 func (e *Environ) GetIdent(key string) []byte {
+	if home := e.Holder(key); home != nil {
+		return home.idents[key]
+	}
+	return nil
+}
+
+// Holder answers the environ a name is bound in, from here outwards, and nil when nothing on
+// the chain has it.
+//
+// Which environ it was is worth knowing on its own: a deferred scope is an index counted in
+// the environ that created it, so whoever wants the body has to look for it where the name
+// was found and nowhere else.
+func (e *Environ) Holder(key string) *Environ {
 	curr := e
 	for curr != nil {
-		if c, ok := curr.idents[key]; ok {
-			return c
+		if _, ok := curr.idents[key]; ok {
+			return curr
 		}
 		curr = curr.prev
 	}
@@ -80,6 +98,61 @@ func (e *Environ) GetDefer(key string) []byte {
 		curr = curr.prev
 	}
 	return nil
+}
+
+// GetLocalDefer answers the deferred scope stored here, without walking outwards.
+func (e *Environ) GetLocalDefer(key string) []byte {
+	return e.defers[key]
+}
+
+// Module answers the environ a module keeps its names in, and nil when no module of that name
+// ever ran.
+func (e *Environ) Module(id string) *Environ {
+	return e.index()[id]
+}
+
+// OpenModule answers it too, making it the first time it is asked for. Whoever runs a module's
+// body is what calls this: what that body binds belongs to the module rather than to whatever
+// scope happened to be open.
+//
+// The environ it makes stands on its own, with no chain behind it. A module sees what it
+// declared and what it imported, and nothing of whoever imported it.
+func (e *Environ) OpenModule(id string) *Environ {
+	root := e.root()
+	if root.modules == nil {
+		root.modules = make(map[string]*Environ)
+	}
+	if existing, ok := root.modules[id]; ok {
+		return existing
+	}
+	next := NewEnviron(NewEnvironOptions{})
+	next.modules = root.modules
+	root.modules[id] = next
+	return next
+}
+
+// index answers the module index this environ can reach. A module body runs with its own
+// environ at the head of the chain and a called scope runs at the head of its caller's, so
+// either way the index is somewhere along it.
+func (e *Environ) index() map[string]*Environ {
+	curr := e
+	for curr != nil {
+		if curr.modules != nil {
+			return curr.modules
+		}
+		curr = curr.prev
+	}
+	return nil
+}
+
+// root is the far end of the chain: the environ a program starts in, and where its modules
+// are indexed.
+func (e *Environ) root() *Environ {
+	curr := e
+	for curr.prev != nil {
+		curr = curr.prev
+	}
+	return curr
 }
 
 func (e *Environ) SetArgument(key uint64, value []byte) {

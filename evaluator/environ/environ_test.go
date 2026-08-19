@@ -275,3 +275,86 @@ func TestGetDefer(t *testing.T) {
 		}
 	})
 }
+
+// A module keeps its names in an environ of its own, indexed by the module's name, and asking
+// for it twice is asking for the same one — a module's body runs once and what it bound has
+// to still be there when somebody calls into it.
+func TestOpenModuleAnswersTheSameEnviron(t *testing.T) {
+	root := NewEnviron(NewEnvironOptions{})
+
+	first := root.OpenModule("a/b/c")
+	first.SetIdent("k", []byte{7})
+
+	if again := root.OpenModule("a/b/c"); again != first {
+		t.Fatal("opening a module twice made two environs")
+	}
+	if got := root.Module("a/b/c").GetLocalIdent("k"); !bytes.Equal(got, []byte{7}) {
+		t.Errorf("the module holds %v, want the value it bound", got)
+	}
+}
+
+// A module nobody ran is not there, and asking is not a way of making one.
+func TestAModuleThatNeverRan(t *testing.T) {
+	root := NewEnviron(NewEnvironOptions{})
+	if got := root.Module("a/b/c"); got != nil {
+		t.Errorf("a module that never ran answered %v", got)
+	}
+}
+
+// The index is reachable from anywhere on a chain, which is what a scope called from another
+// module needs: it runs at the head of its caller's chain, and still has to find its own file.
+func TestTheModuleIndexIsReachableFromAScope(t *testing.T) {
+	root := NewEnviron(NewEnvironOptions{})
+	root.OpenModule("a/b/c").SetIdent("k", []byte{7})
+
+	inner := root.Ahead(NewEnviron(NewEnvironOptions{})).Ahead(NewEnviron(NewEnvironOptions{}))
+
+	home := inner.Module("a/b/c")
+	if home == nil {
+		t.Fatal("a scope two levels down cannot reach the module index")
+	}
+	if got := home.GetLocalIdent("k"); !bytes.Equal(got, []byte{7}) {
+		t.Errorf("the module holds %v, want the value it bound", got)
+	}
+}
+
+// A module sees what it declared, and nothing of whoever imported it: its environ stands on
+// its own rather than hanging off the program's.
+func TestAModuleHasNoChainBehindIt(t *testing.T) {
+	root := NewEnviron(NewEnvironOptions{})
+	root.SetIdent("outside", []byte{1})
+
+	if got := root.OpenModule("m").GetIdent("outside"); got != nil {
+		t.Errorf("a module read %v from the program that uses it", got)
+	}
+}
+
+// Holder is which environ has the name, which is what a call needs: a deferred scope is an
+// index counted where it was created, so the body is looked for exactly there.
+func TestHolderAnswersWhereANameLives(t *testing.T) {
+	root := NewEnviron(NewEnvironOptions{})
+	root.SetIdent("k", []byte{1})
+	inner := root.Ahead(NewEnviron(NewEnvironOptions{}))
+
+	if got := inner.Holder("k"); got != root {
+		t.Error("the name was not found in the environ that has it")
+	}
+	if got := inner.Holder("nothing"); got != nil {
+		t.Errorf("a name nobody bound was found in %v", got)
+	}
+}
+
+// And a deferred scope is not looked for outwards: index 0 of one environ is a different
+// scope from index 0 of another.
+func TestGetLocalDeferDoesNotWalkOutwards(t *testing.T) {
+	root := NewEnviron(NewEnvironOptions{})
+	root.SetDefer("0", []byte{9})
+	inner := root.Ahead(NewEnviron(NewEnvironOptions{}))
+
+	if got := inner.GetLocalDefer("0"); got != nil {
+		t.Errorf("a scope of the environ outside was found: %v", got)
+	}
+	if got := inner.GetDefer("0"); !bytes.Equal(got, []byte{9}) {
+		t.Errorf("walking outwards answered %v, want the scope that is there", got)
+	}
+}

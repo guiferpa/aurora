@@ -1,6 +1,7 @@
 package textdoc
 
 import (
+	"github.com/guiferpa/aurora/lexer"
 	"reflect"
 	"testing"
 )
@@ -118,5 +119,20 @@ func TestSemanticTokensDataIsWellFormed(t *testing.T) {
 	data := session().SemanticTokensFor("ident a = 1;\n#- note\nprintb a;\n")
 	if len(data)%5 != 0 {
 		t.Fatalf("data length %d is not a multiple of 5", len(data))
+	}
+}
+
+// Every keyword the lexer knows is coloured as something.
+//
+// The list in semanticTypeOf is written by hand, so it drifts the moment the language gains a
+// word — which is exactly what happened when "use" arrived: it lexed as a keyword, hovered
+// with its description, and stayed the colour of ordinary text. Not every keyword is coloured
+// as a keyword, since "and" and "or" read as operators, but a word the language reserves is
+// never invisible.
+func TestEveryKeywordIsColoured(t *testing.T) {
+	for word, tag := range lexer.Keywords {
+		if _, ok := semanticTypeOf(tag.Id); !ok {
+			t.Errorf("the keyword %q (%s) has no colour", word, tag.Id)
+		}
 	}
 }

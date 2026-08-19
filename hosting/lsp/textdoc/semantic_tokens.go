@@ -129,12 +129,17 @@ func collectSemanticTokens(mapper *lsp.Mapper, tokens []token.Token) []semanticT
 
 // semanticTypeOf maps a lexer tag to a tk type. Tags with no visual meaning
 // (whitespace, line breaks, EOF, punctuation) report false and are skipped.
+//
+// The list of keywords is written out rather than derived, because being a keyword is not
+// the same question as being coloured as one: and and or are keywords the lexer knows and
+// operators to whoever reads them. What a list like this drifts from is the lexer, so a test
+// asks the lexer for every keyword it knows and requires each to be coloured as something.
 func semanticTypeOf(tag string) (int, bool) {
 	switch tag {
 	case token.IDENT, token.IF, token.ELSE, token.BRANCH, token.DEFER,
 		token.PRINTB, token.PRINTC, token.PRINTD, token.ASSERT, token.FEED,
 		token.HEAD, token.TAIL, token.PUSH, token.PULL, token.TRUE, token.FALSE,
-		token.STRUCT, token.AS:
+		token.STRUCT, token.AS, token.USE:
 		return SemanticKeyword, true
 	case token.NUMBER:
 		return SemanticNumber, true

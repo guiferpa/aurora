@@ -210,3 +210,57 @@ func TestFindProjectRootWithNoProject(t *testing.T) {
 		t.Error("a directory with no manifest was taken for a project")
 	}
 }
+
+// Where module names resolve from is the project's, and it has a default: a project that says
+// nothing resolves them from src.
+func TestSourceRoot(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		manifest string
+		want     string
+	}{
+		{
+			name:     "what the project says",
+			manifest: "[project]\nname = \"p\"\nsource_root = \"lib\"\n",
+			want:     "lib",
+		},
+		{
+			name:     "and the default when it says nothing",
+			manifest: "[project]\nname = \"p\"\n",
+			want:     DefaultSourceRoot,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, err := Load(write(t, tc.manifest))
+			if err != nil {
+				t.Fatalf("loading: %v", err)
+			}
+			if got := m.SourceRoot(); got != tc.want {
+				t.Errorf("source root is %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// And it is refused inside a profile for the same reason tape_size is: it decides what the
+// source means, so one specifier naming two files is not something to read and ignore.
+func TestLoadRefusesASourceRootInsideAProfile(t *testing.T) {
+	dir := write(t, `
+[project]
+name = "p"
+
+[profiles.other]
+source = "src/other.ar"
+source_root = "lib"
+`)
+
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("the manifest was accepted")
+	}
+	for _, want := range []string{"source_root", "profiles.other", "[project]"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the error says %q, want it to name %q", err, want)
+		}
+	}
+}

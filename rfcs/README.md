@@ -22,7 +22,7 @@ Toda RFC abre dizendo em que estado está:
 
 | RFC | Estado | Sobre |
 |---|---|---|
-| [module_system.md](module_system.md) | proposta | módulos: resolver, loader e a ligação de nomes |
+| [module_system.md](module_system.md) | aceita | módulos: resolver, loader e a ligação de nomes |
 
 A última fechada foi `phase_coupling.md` — fases não se conhecem: artefatos viram pacotes de
 `wire`, a montagem sobe para o `main`. Foi implementada inteira e o que ficou decidido está em

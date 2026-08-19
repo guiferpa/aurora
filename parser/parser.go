@@ -55,6 +55,9 @@ type pr struct {
 	// reference so a caller compiling one file across several parses — the REPL — keeps
 	// what was declared earlier.
 	declarations *Declarations
+	// useAllowed says whether a `use` may still be read: it is true at the start of a file
+	// and false from the first node that is not one, and inside every body.
+	useAllowed bool
 }
 
 // Helper functions to validate node types for tape operations
@@ -776,6 +779,9 @@ func (p *pr) ParseExpr() (ast.Node, error) {
 	if lookahead.GetTag().Id == token.ASSERT {
 		return p.ParseAssert()
 	}
+	if lookahead.GetTag().Id == token.USE {
+		return p.ParseUse()
+	}
 	if lookahead.GetTag().Id == token.STRUCT {
 		return p.ParseStruct()
 	}
@@ -897,6 +903,12 @@ func (p *pr) ParseFeed() (ast.Node, error) {
 }
 
 func (p *pr) ParseExprs(t token.Tag) ([]ast.Node, error) {
+	// Anything read until a token other than the end of the file is a body, and a body is
+	// not the top of a file.
+	if t.Id != token.EOF {
+		p.useAllowed = false
+	}
+
 	exprs := make([]ast.Node, 0)
 	for {
 		lookahead := p.GetLookahead()
@@ -909,6 +921,9 @@ func (p *pr) ParseExprs(t token.Tag) ([]ast.Node, error) {
 		}
 		if _, err := p.EatToken(token.SEMICOLON); err != nil {
 			return exprs, err
+		}
+		if _, isUse := expr.(ast.UseDeclaration); !isUse {
+			p.useAllowed = false
 		}
 		exprs = append(exprs, expr)
 	}
@@ -948,6 +963,7 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 	p.tokens = in.Tokens
 	p.tapeSize = byteutil.TapeSize(in.TapeSize)
 	p.cursor = 0
+	p.useAllowed = true
 	p.declarations = in.Declarations
 	if p.declarations == nil {
 		p.declarations = NewDeclarations()

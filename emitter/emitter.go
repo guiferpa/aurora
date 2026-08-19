@@ -48,6 +48,8 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 		return emitTapeBracketExpression(tc, insts, n, tapeSize)
 	case ast.StructDeclaration:
 		return emitStructDeclaration(tc, insts, n, tapeSize)
+	case ast.UseDeclaration:
+		return emitUseDeclaration(tc, insts, n, tapeSize)
 	case ast.StructLiteral:
 		return emitStructLiteral(tc, insts, n, tapeSize)
 	case ast.FieldExpression:
@@ -212,6 +214,17 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclaration, tapeSize int) ir.Label {
 	// A declaration emits no work. It still answers with a value, because everything in
 	// Aurora is an expression, and the neutral one is what a declaration is worth.
+	l := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, byteutil.FalseTape(tapeSize), nil))
+	return l
+
+}
+
+// emitUseDeclaration answers the neutral value: an import is resolved before the emitter runs.
+func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, tapeSize int) ir.Label {
+	// Like a struct declaration, and for the same reason: it declares a name the compiler
+	// uses and the program never touches, so there is no work to do and still a value to
+	// answer with.
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, byteutil.FalseTape(tapeSize), nil))
 	return l

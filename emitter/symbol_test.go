@@ -66,3 +66,17 @@ func TestANodeWithoutATokenStillCarriesItsName(t *testing.T) {
 		t.Errorf("OpLoad carries %q, want %q", got, "a")
 	}
 }
+
+// A declaration does no work, and an import is one: it names a module the compiler resolves
+// before the emitter ever runs, so what comes out is the neutral value and nothing else. The
+// same shape as a struct declaration, and for the same reason.
+func TestAnImportEmitsNoWork(t *testing.T) {
+	program := compile(t, "use a/b/c as x;")
+
+	if len(program.Instructions) != 1 {
+		t.Fatalf("an import emitted %d instructions, want 1", len(program.Instructions))
+	}
+	if got := program.Instructions[0].GetOpCode(); got != ir.OpSave {
+		t.Errorf("an import emitted %s, want OpSave of the neutral value", ir.ResolveOpCode(got))
+	}
+}

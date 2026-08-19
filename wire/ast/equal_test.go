@@ -309,6 +309,27 @@ var comparisonCases = []struct {
 	},
 
 	{
+		name: "use declaration, alike",
+		a:    UseDeclaration{Specifier: "a/b/c", Alias: "x"},
+		b:    UseDeclaration{Specifier: "a/b/c", Alias: "x"},
+		want: true,
+	},
+	{
+		name: "use declaration, another module",
+		a:    UseDeclaration{Specifier: "a/b/c", Alias: "x"},
+		b:    UseDeclaration{Specifier: "a/b/d", Alias: "x"},
+		want: false,
+	},
+	{
+		// The alias belongs to the file that wrote it, so it is part of the declaration and
+		// not a way of spelling the same one.
+		name: "use declaration, another alias",
+		a:    UseDeclaration{Specifier: "a/b/c", Alias: "x"},
+		b:    UseDeclaration{Specifier: "a/b/c", Alias: "y"},
+		want: false,
+	},
+
+	{
 		name: "struct literal, alike",
 		a:    StructLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
 		b:    StructLiteral{Name: "Point", Values: []Node{number(1), number(2)}},

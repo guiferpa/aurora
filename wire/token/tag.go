@@ -125,6 +125,7 @@ var processableTags = []Tag{
 	TagPull,
 	TagStruct,
 	TagAs,
+	TagUse,
 }
 
 func GetProcessableTags() []Tag {

@@ -106,7 +106,7 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 // after a name; declaring a struct called `flag` and testing on it is the one ambiguity left,
 // and it is the same one Go has.
 func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
-	fields := p.declarations.Structs[id.Value]
+	fields := p.declarations.Structs[typed(id)]
 
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
@@ -135,10 +135,10 @@ func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
 	// rather than a run padded with the neutral value.
 	if len(values) != len(fields) {
 		return nil, token.NewError(closing, "struct %s has %d fields (%s) but got %d at line %d and column %d",
-			id.Value, len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
+			typed(id), len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
 	}
 
-	return ast.StructLiteral{Name: id.Value, Values: values, Token: id.Token}, nil
+	return ast.StructLiteral{Name: typed(id), Values: values, Token: id.Token}, nil
 }
 
 // parsePostfix applies what binds tightest of all: reading a field, and naming the shape a
@@ -177,6 +177,14 @@ func (p *pr) parseField(expr ast.Node) (ast.Node, error) {
 		return nil, err
 	}
 	field := string(name.GetMatch())
+
+	// The head decides which of the two things a dot is. An alias is a name in this file's
+	// scope and cannot also be a value, so there is nothing to be ambiguous about.
+	if head, ok := expr.(ast.IdentifierLiteral); ok {
+		if specifier, isModule := p.declarations.Modules[typed(head)]; isModule {
+			return p.parseMember(specifier, field, name)
+		}
+	}
 
 	shape := p.shapeOf(expr)
 	if shape == "" {

@@ -185,11 +185,38 @@ quente do interpretador.
 
 ### O índice é um mapa, não uma árvore
 
-Ponto a discutir: um índice **plano**, de id para environ, e não uma árvore por segmento de
-caminho. No DNS a delegação de `c.b.a` para `b.a` existe de verdade; aqui `a/b` e `a/b/c` não
-têm parentesco nenhum — `a/b` pode nem existir como arquivo, e um nome de um não é alcançável
-pelo outro. Uma árvore afirmaria um vínculo que a linguagem não dá. A busca é hierárquica no
-**nome**; a estrutura que a guarda pode ser um mapa.
+O índice é **um mapa só, do id inteiro do módulo para o environ dele**, guardado na raiz:
+
+```
+modules = {
+  "a/b/c" -> environ de a/b/c   { idents: a/b/c.base, a/b/c.add   defers: 0 }
+  "d/e"   -> environ de d/e     { idents: d/e.trim               defers: 0, 1 }
+  ""      -> environ da entrada { idents: base                   defers: - }
+}
+```
+
+Achar um módulo é uma consulta: `modules["a/b/c"]`. O nome chega inteiro no operando da
+instrução, então não há o que percorrer.
+
+A alternativa seria uma **árvore por segmento** — um nó para `a`, dentro dele um para `b`,
+dentro dele `c` — e ela custa mais do que parece:
+
+- **`a/b` pode não existir.** Aí o nó do meio é um environ que não é de ninguém, inventado
+  pela estrutura e não pelo programa.
+- **Se `a/b` existir, a árvore afirma um parentesco que a linguagem não dá.** Aninhado, o
+  natural é supor que `a/b/c` enxerga os nomes de `a/b`, ou que `a/b` alcança os de `a/b/c`.
+  Nenhum dos dois é verdade: dois módulos cujos ids compartilham prefixo têm exatamente tanto
+  a ver um com o outro quanto dois que não compartilham — ou seja, nada.
+- **A busca é pelo nome inteiro de qualquer jeito**, então descer segmento por segmento seria
+  trabalho para chegar no mesmo lugar.
+
+No DNS a árvore se paga porque a delegação é real: quem responde por `b.a` decide o que é
+`c.b.a`. Aqui ninguém delega nada. **O nome parece hierárquico; o armazenamento não precisa
+ser.**
+
+Quando a árvore passaria a valer: se um diretório virar um pacote que reexporta os filhos, ou
+se `private` quiser dizer "visível para quem está sob o mesmo caminho". Os dois são não-metas
+hoje, e os dois entram depois sem custo, porque a chave continua sendo o id inteiro.
 
 ---
 
@@ -209,6 +236,84 @@ alguém escreveu.
 importados levam prefixos distintos entre si, então não há colisão possível. É o que mantém
 tudo que existe hoje — mensagem de erro, golden do emitter, REPL, language server — exatamente
 como está. Na prática: `ParseInput` ganha um campo `Module`, e vazio significa sem prefixo.
+
+---
+
+## Um exemplo inteiro, do arquivo ao environ
+
+Dois arquivos, e os dois declaram `base` — que é a colisão que derrubava a tentativa antiga.
+
+```
+# src/a/b/c.ar
+ident base = 10;
+ident add = defer { feed(0) + feed(1) + base; };
+```
+
+```
+# src/main.ar
+use a/b/c as x;
+
+ident base = 3;
+printd x.add(base, 1);
+```
+
+Responde `14`: `feed(0)` é o `base` da entrada, `3`; `feed(1)` é `1`; e o `base` que o corpo
+soma é o do módulo onde ele foi escrito, `10`.
+
+**1. O resolver** parte de `src/main.ar`, parseia, vê `use a/b/c as x`, resolve `a/b/c` para
+`src/a/b/c.ar` pela porta de leitura e parseia também. Ninguém importa mais ninguém, então a
+ordem topológica é `a/b/c` e depois a entrada.
+
+**2. O parser** escreve os nomes. Em `a/b/c.ar`, que veio com `Module = "a/b/c"`, tudo leva o
+prefixo; em `main.ar`, que é a entrada e veio sem módulo, os nomes ficam crus, e `x.add` vira
+`a/b/c.add` porque o `use` acima diz quem é `x`:
+
+```
+a/b/c.ar   ident a/b/c.base = 10;
+           ident a/b/c.add  = defer { feed(0) + feed(1) + a/b/c.base; };
+
+main.ar    ident base = 3;
+           printd a/b/c.add(base, 1);
+```
+
+O parser também anota, para o loader conferir: `{módulo a/b/c, símbolo add, token}`.
+
+**3. O loader** monta a tabela de exports de `a/b/c` — `base` e `add`, varredura rasa do topo
+—, confere a referência anotada contra ela, emite os dois e concatena:
+
+```
+faixa      módulo    o que tem lá
+[0, 8)     a/b/c     OpSave 10 · OpIdent "a/b/c.base" · OpDefer … · OpIdent "a/b/c.add"
+[8, 20)    entrada   OpSave 3 · OpIdent "base" · OpPushFeed ×2
+                     OpCall "a/b/c.add" · OpPrintDecimal
+```
+
+**4. O evaluator** roda faixa por faixa, cada uma com o environ do seu módulo na base.
+
+Depois da primeira, o environ de `a/b/c` tem `idents["a/b/c.base"] = 10`, `defers[0]` com o
+blob do corpo, e `idents["a/b/c.add"] = 0` — o índice, como tape. Depois da segunda, o environ
+da entrada tem `idents["base"] = 3`.
+
+E aí o `OpCall "a/b/c.add"` resolve assim:
+
+| Passo | O que acontece |
+|---|---|
+| 1 | o nome tem prefixo, então o módulo é `a/b/c`; procura na cadeia da entrada e **não acha** |
+| 2 | segundo salto: environ de `a/b/c` → `idents["a/b/c.add"]` → a tape `0` |
+| 3 | `defers[deferKey(0)]` **no mesmo environ**, o de `a/b/c` → o blob com `from`, `to` e a chave de retorno |
+| 4 | entra num environ novo à frente da cadeia de quem chamou, com `feed(0) = 3` e `feed(1) = 1` |
+| 5 | o corpo executa e lê `a/b/c.base`: não está na cadeia — que é a do chamador —, então segundo salto de novo, environ de `a/b/c`, `10` |
+| 6 | responde `3 + 1 + 10`, e o `printd` escreve `14` |
+
+**O passo 5 é o desenho inteiro num lugar só.** Sem o prefixo, aquele `base` acharia o `base`
+da entrada na cadeia e o programa responderia `7` — um módulo lendo, sem querer, o nome de
+quem o chamou. Sem o segundo salto, não acharia nada e o programa quebraria. É por isso que as
+duas coisas andam juntas: o prefixo diz **de quem** o nome é, e o índice diz **onde** aquele
+alguém guarda o que tem.
+
+E o passo 3 é o que o argumento antigo errava: o índice `0` só precisa ser único dentro do
+environ de `a/b/c`, porque é lá que ele é procurado. A entrada também pode ter o seu `defer 0`
+sem que os dois se cruzem.
 
 ---
 

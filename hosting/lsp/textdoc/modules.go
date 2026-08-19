@@ -4,6 +4,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/guiferpa/aurora/loader"
+	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -19,19 +22,29 @@ import (
 // moduleAliases is what the use lines declared: the alias, and the module it names.
 type moduleAliases map[string]string
 
-// scanUses reads `use a/b/c as x;` out of a token chain.
-func scanUses(tokens []token.Token) moduleAliases {
-	found := make(moduleAliases)
+// scanUses reads every `use a/b/c as x;` out of a token chain, with the token of each so
+// whatever goes wrong with one can be underlined where it was written.
+func scanUses(tokens []token.Token) []ast.UseDeclaration {
+	found := make([]ast.UseDeclaration, 0)
 	for i := 0; i < len(tokens); i++ {
 		if tokens[i].GetTag().Id != token.USE {
 			continue
 		}
 		if alias, specifier, next := readUse(tokens, i); alias != "" {
-			found[alias] = specifier
+			found = append(found, ast.UseDeclaration{Specifier: specifier, Alias: alias, Token: tokens[i]})
 			i = next
 		}
 	}
 	return found
+}
+
+// aliasesOf is what those declarations say about names: the alias, and what it means.
+func aliasesOf(uses []ast.UseDeclaration) moduleAliases {
+	aliases := make(moduleAliases, len(uses))
+	for _, declaration := range uses {
+		aliases[declaration.Alias] = declaration.Specifier
+	}
+	return aliases
 }
 
 // readUse reads one declaration starting at the use token: the path it names, and the alias
@@ -108,4 +121,70 @@ func moduleCompletions(aliases moduleAliases) []CompletionItem {
 		return strings.Compare(a.Label, b.Label)
 	})
 	return items
+}
+
+// exportCompletions offers what a module declared, which is read from the module's own tree.
+//
+// A module that could not be found offers nothing rather than everything: the diagnostic
+// already says it is missing, and a list of keywords would be the one answer that is
+// certainly wrong.
+func exportCompletions(analysis *Analysis, specifier string) []CompletionItem {
+	found, ok := analysis.module(specifier)
+	if !ok {
+		return []CompletionItem{}
+	}
+
+	names := loader.Exports(found)
+	items := make([]CompletionItem, 0, len(names))
+	for _, name := range names {
+		items = append(items, CompletionItem{
+			Label:  name,
+			Detail: describeNode(exportedValue(found, name)) + " of module " + specifier,
+			Kind:   Variable,
+		})
+	}
+	return items
+}
+
+// describeExport says what a name reached through a module is, when the module is there to
+// say — the same description an ordinary identifier gets, read from the other file.
+func describeExport(analysis *Analysis, subject token.Token) string {
+	specifier, ok := moduleOfSubject(analysis, subject)
+	if !ok {
+		return ""
+	}
+	found, loaded := analysis.module(specifier)
+	if !loaded {
+		return ""
+	}
+	value := exportedValue(found, string(subject.GetMatch()))
+	if value == nil {
+		return ""
+	}
+	return "\nvalue: " + describeNode(value)
+}
+
+// moduleOfSubject answers the module a token is reached through, when it follows a dot on an
+// alias.
+func moduleOfSubject(analysis *Analysis, subject token.Token) (string, bool) {
+	aliases := aliasesOf(scanUses(analysis.Tokens))
+	for i, t := range analysis.Tokens {
+		if t.GetCursor() != subject.GetCursor() || i < 2 || analysis.Tokens[i-1].GetTag().Id != token.DOT {
+			continue
+		}
+		specifier, ok := aliases[string(analysis.Tokens[i-2].GetMatch())]
+		return specifier, ok
+	}
+	return "", false
+}
+
+// exportedValue is what a module bound a name to, or nil when it bound no such name.
+func exportedValue(found module.Module, name string) ast.Node {
+	for _, node := range found.Tree.Nodes {
+		binding, ok := node.(ast.IdentLiteral)
+		if ok && found.Symbol(binding.Id) == name {
+			return binding.Value
+		}
+	}
+	return nil
 }

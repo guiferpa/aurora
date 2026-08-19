@@ -81,9 +81,19 @@ What it does not do yet:
   boundary exists now, so marking part of it later breaks nothing.
 - **The REPL does not take `use`.** It compiles one line at a time into one buffer, and a
   module is a file — what a `use` would mean there is a question nobody has answered.
-- **The language server does not follow an import.** It parses a file on its own, which is
-  what it needs to answer fast, so it underlines what is wrong inside one and says nothing
-  about a name that lives in another. Going through the resolver would give it both.
+- **The language server follows an import, and stops short of two things.** It reads what a
+  document imports on every pass, from the editor's buffers before the disk, so a module that
+  is not there and a name a module does not have are underlined where they were written, and
+  what a module declared is offered after the dot. What it does not do is go to a definition
+  in another file — no `textDocument/definition` exists for anything yet — and it does not
+  watch a file nobody has open, so editing a module outside the editor updates what depends
+  on it only when that file is touched. Neither needs the resolver; both need a capability
+  the server does not have.
+- **Nothing measures what following an import costs.** Every pass reads and parses every
+  module the document imports, with no cache, which is the honest place to start: a cache has
+  invalidation, and invalidation is a bug that reads as the editor lying. The shape to copy
+  when it is measured and found wanting is next door — the width of a project is cached per
+  directory and invalidated by the manifest's mtime.
 - **Nothing lists a dependency but the file system.** There are no third-party packages, so
   there is nothing for the manifest to name yet.
 

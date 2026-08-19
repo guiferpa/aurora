@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/state"
 	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
@@ -44,12 +45,18 @@ func main() {
 	// The phases are built here, once, and the session that holds them answers every request.
 	// A document carries the width of the project it belongs to, which is why one session
 	// serves whatever the editor opens.
+	//
+	// What a client has open is made here too, because the module resolution needs it: a
+	// file it has to read may be one the person is editing, and the version that counts is
+	// theirs rather than the disk's.
+	documents := state.New()
 	sv := server{textdoc: textdoc.NewSession(textdoc.NewSessionOptions{
-		Lexer:  lexer.New(),
-		Parser: parser.New(),
+		Lexer:   lexer.New(),
+		Parser:  parser.New(),
+		Resolve: resolveModules(documents),
 	})}
 
-	lsp.Listen(logger, os.Stdin, os.Stdout, sv.handlers())
+	lsp.Listen(logger, os.Stdin, os.Stdout, documents, sv.handlers())
 
 	logger.Println("Server stopped")
 }

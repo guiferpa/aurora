@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -22,16 +24,33 @@ const (
 )
 
 // Analysis is one pass of the compiler front end over a single document: the tk
-// stream, the parsed namespace (nil when parsing failed) and a position mapper.
+// stream, the parsed tree (nil when parsing failed), a position mapper, and the modules the
+// document imports.
 //
-// The server analyses the open document alone, which is also the compiler's unit: there is
-// no module system yet (see docs/module_system_design.md).
+// The modules are read only when the document parses, because until it does there is no list
+// of imports to read. They are the one thing here that comes from outside the document, and
+// they arrive through a port: see Resolve.
 type Analysis struct {
-	Source string
-	Mapper *lsp.Mapper
-	Tokens []token.Token
-	AST    *ast.AST
-	Err    error
+	Source  string
+	Mapper  *lsp.Mapper
+	Tokens  []token.Token
+	AST     *ast.AST
+	Err     error
+	Modules []module.Module
+	// ModuleErr is what the imports had to say: a module that is not there, a circle, or a
+	// name a module does not have. It is kept apart from Err because it is found after the
+	// parse and only when the parse worked.
+	ModuleErr error
+}
+
+// module answers the module of a specifier among the ones this document imports.
+func (a *Analysis) module(specifier string) (module.Module, bool) {
+	for _, each := range a.Modules {
+		if string(each.ID) == specifier {
+			return each, true
+		}
+	}
+	return module.Module{}, false
 }
 
 // Document is what an analysis reads: the source, the path behind the URI — which decides
@@ -61,6 +80,14 @@ func (s *Session) Analyze(doc Document) *Analysis {
 		return analysis
 	}
 
+	// What the document imports is read from the tokens, before anything is parsed: a
+	// document being edited is broken most of the time, and what is inside a module is
+	// wanted exactly then. What that costs is one read of each imported file.
+	if s.resolve != nil {
+		modules, err := s.resolve(doc, scanUses(tokens))
+		analysis.Modules, analysis.ModuleErr = modules, err
+	}
+
 	// How wide a value is decides what fits in one, so the document is read in the dialect it
 	// belongs to rather than in the default.
 	tree, err := s.parser.Parse(parser.ParseInput{
@@ -74,6 +101,11 @@ func (s *Session) Analyze(doc Document) *Analysis {
 	}
 	analysis.AST = &tree
 
+	// The names have to be there too, and only a parsed document has names to check.
+	if analysis.ModuleErr == nil && s.resolve != nil {
+		analysis.ModuleErr = loader.Check(append(analysis.Modules, module.Module{ID: "", Tree: tree}))
+	}
+
 	return analysis
 }
 
@@ -83,7 +115,15 @@ func (s *Session) Analyze(doc Document) *Analysis {
 // fixing it reveals the next one.
 func (a *Analysis) Diagnostics() Diagnostics {
 	diagnostics := Diagnostics{}
-	if a.Err == nil {
+
+	// The parse comes first: a document that does not parse has no imports to be wrong
+	// about, and saying both at once would be saying the second about a tree that is not
+	// there.
+	failure := a.Err
+	if failure == nil {
+		failure = a.ModuleErr
+	}
+	if failure == nil {
 		return diagnostics
 	}
 
@@ -93,7 +133,7 @@ func (a *Analysis) Diagnostics() Diagnostics {
 	// Position comes from the structured error carried by the lexer and the parser,
 	// so the underline covers the offending tk instead of guessing from the message.
 	var perr *token.Error
-	if errors.As(a.Err, &perr) {
+	if errors.As(failure, &perr) {
 		rng = a.rangeFor(perr.Offset, perr.Length)
 	}
 
@@ -101,7 +141,7 @@ func (a *Analysis) Diagnostics() Diagnostics {
 		Range:    rng,
 		Severity: SeverityError,
 		Source:   source,
-		Message:  a.Err.Error(),
+		Message:  failure.Error(),
 	})
 }
 
@@ -175,8 +215,8 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 		return "boolean: " + match
 	case token.ID:
 		// A module is not a value, so it is answered for before anything looks for one.
-		if info := scanUses(analysis.Tokens).describe(analysis.Tokens, tk); info != "" {
-			return info
+		if info := aliasesOf(scanUses(analysis.Tokens)).describe(analysis.Tokens, tk); info != "" {
+			return info + describeExport(analysis, tk)
 		}
 		// A struct name or a field read out of one: the declaration is what says these are
 		// anything other than a name, so it is what hover has to answer with.
@@ -215,12 +255,11 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 		return fieldCompletions(fields)
 	}
 
-	// After a dot on a module alias, what can follow is what that module declared — which is
-	// in another file, and nothing here has read it. Offering the keywords instead would be
-	// offering the one thing that certainly cannot go there.
-	aliases := scanUses(analysis.Tokens)
-	if _, isModule := aliases.moduleBefore(analysis.Tokens, offset); isModule {
-		return []CompletionItem{}
+	// After a dot on a module alias, what can follow is what that module declared, and
+	// nothing else — the same rule as a struct's fields, answered from another file.
+	aliases := aliasesOf(scanUses(analysis.Tokens))
+	if specifier, isModule := aliases.moduleBefore(analysis.Tokens, offset); isModule {
+		return exportCompletions(analysis, specifier)
 	}
 
 	items := make([]CompletionItem, 0)

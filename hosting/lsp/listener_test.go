@@ -26,7 +26,7 @@ func TestListenDispatchesToHandler(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 
 	called := 0
-	Listen(discardLogger(), in, out, map[Method]MethodHandler{
+	Listen(discardLogger(), in, out, state.New(), map[Method]MethodHandler{
 		"initialize": func(l *log.Logger, s *state.State, contents []byte) any {
 			called++
 			return NullResponse{Response: Response{RPC: "2.0", ID: intPtr(1)}}
@@ -48,7 +48,7 @@ func TestListenAnswersUnknownRequest(t *testing.T) {
 		frame(`{"jsonrpc":"2.0","method":"exit"}`))
 	out := bytes.NewBuffer(nil)
 
-	Listen(discardLogger(), in, out, map[Method]MethodHandler{})
+	Listen(discardLogger(), in, out, state.New(), map[Method]MethodHandler{})
 
 	body := out.String()
 	if !strings.Contains(body, fmt.Sprint(CodeMethodNotFound)) {
@@ -64,7 +64,7 @@ func TestListenIgnoresUnknownNotification(t *testing.T) {
 		frame(`{"jsonrpc":"2.0","method":"exit"}`))
 	out := bytes.NewBuffer(nil)
 
-	Listen(discardLogger(), in, out, map[Method]MethodHandler{})
+	Listen(discardLogger(), in, out, state.New(), map[Method]MethodHandler{})
 
 	if out.Len() != 0 {
 		t.Errorf("a notification needs no answer, got %q", out.String())
@@ -78,7 +78,7 @@ func TestListenAnswersShutdownAndStopsOnExit(t *testing.T) {
 	out := bytes.NewBuffer(nil)
 
 	called := 0
-	Listen(discardLogger(), in, out, map[Method]MethodHandler{
+	Listen(discardLogger(), in, out, state.New(), map[Method]MethodHandler{
 		"initialize": func(l *log.Logger, s *state.State, contents []byte) any {
 			called++
 			return nil
@@ -112,7 +112,7 @@ func TestListenHandlesMessageLargerThan64KB(t *testing.T) {
 
 	in := strings.NewReader(frame(string(body)) + frame(`{"jsonrpc":"2.0","method":"exit"}`))
 	got := 0
-	Listen(discardLogger(), in, bytes.NewBuffer(nil), map[Method]MethodHandler{
+	Listen(discardLogger(), in, bytes.NewBuffer(nil), state.New(), map[Method]MethodHandler{
 		"textDocument/didChange": func(l *log.Logger, s *state.State, contents []byte) any {
 			got = len(contents)
 			return nil

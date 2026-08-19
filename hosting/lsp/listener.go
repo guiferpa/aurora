@@ -16,11 +16,15 @@ const maxMessageBytes = 16 << 20
 
 type MethodHandler func(l *log.Logger, s *state.State, contents []byte) any
 
-func Listen(l *log.Logger, r io.Reader, w io.Writer, handlers map[Method]MethodHandler) {
+// Listen reads messages and hands each to the handler for its method.
+//
+// The state arrives rather than being made here: what a client has open is the server's, and
+// the server has to reach it while putting itself together — the module resolution reads the
+// buffers of the files it needs before it reads a disk.
+func Listen(l *log.Logger, r io.Reader, w io.Writer, s *state.State, handlers map[Method]MethodHandler) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 0, 64*1024), maxMessageBytes)
 	scanner.Split(messenger.Split)
-	s := state.New()
 
 	for scanner.Scan() {
 		method, id, contents, err := messenger.Decode(scanner.Bytes())

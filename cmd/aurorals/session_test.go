@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/hosting/lsp/state"
 	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
@@ -32,7 +33,7 @@ func runSession(t *testing.T, messages ...string) []map[string]any {
 		Lexer:  lexer.New(),
 		Parser: parser.New(),
 	})}
-	lsp.Listen(log.New(io.Discard, "", 0), in, out, sv.handlers())
+	lsp.Listen(log.New(io.Discard, "", 0), in, out, state.New(), sv.handlers())
 
 	replies := make([]map[string]any, 0)
 	rest := out.Bytes()

@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/guiferpa/aurora/shared/manifest"
 )
 
 // exampleSources lists every example that runs on its own, the project ones included.
@@ -32,6 +34,23 @@ func exampleSources(t *testing.T) ([]string, error) {
 	return sources, err
 }
 
+// runFrom makes the directory an example is run from the current one, and answers with the
+// path to name it by from there.
+func runFrom(t *testing.T, source string) string {
+	t.Helper()
+
+	dir := filepath.Dir(source)
+	if root, err := manifest.FindProjectRootFrom(dir); err == nil {
+		dir = root
+	}
+	entry, err := filepath.Rel(dir, source)
+	if err != nil {
+		t.Fatalf("naming %s from %s: %v", source, dir, err)
+	}
+	t.Chdir(dir)
+	return entry
+}
+
 // Every example must run. The header of each file documents the output it produces, and
 // that output was pasted from a real run — this keeps them from rotting.
 func TestExamplesRun(t *testing.T) {
@@ -45,7 +64,11 @@ func TestExamplesRun(t *testing.T) {
 
 	for _, source := range sources {
 		t.Run(filepath.Base(source), func(t *testing.T) {
-			err := newSession(t, sessionOpts{stdout: io.Discard}).Run(t.Context(), source)
+			// An example runs from where a person would run it: the root of the project it
+			// belongs to, since that is what module names resolve from. A loose example
+			// belongs to no project and runs from where it sits.
+			entry := runFrom(t, source)
+			err := newSession(t, sessionOpts{stdout: io.Discard}).Run(t.Context(), entry)
 			if err != nil {
 				t.Errorf("%s failed: %v", source, err)
 			}
@@ -54,16 +77,45 @@ func TestExamplesRun(t *testing.T) {
 }
 
 // The examples that are tests must pass, which also covers the pairing rule end to end.
+//
+// Every one of them, not the loose one alone: the test inside examples/project was never run
+// by anything, so it could have said whatever it liked about a source it no longer matched.
 func TestExamplesTestsPass(t *testing.T) {
-	report, err := tested(t, filepath.Join(repoRoot(t), "examples", "greeting.test.ar"), sessionOpts{stdout: io.Discard})
+	tests := make([]string, 0)
+	err := filepath.WalkDir(filepath.Join(repoRoot(t), "examples"), func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.HasSuffix(d.Name(), TestExtension) {
+			tests = append(tests, path)
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("running the example tests: %v", err)
+		t.Fatalf("walking examples: %v", err)
 	}
-	if !report.OK() {
-		t.Errorf("the example tests should pass: %d failed", report.Failed)
+	if len(tests) == 0 {
+		t.Fatal("no example tests found")
 	}
-	if report.Passed == 0 {
-		t.Error("expected assertions to have run")
+
+	for _, test := range tests {
+		name, relErr := filepath.Rel(repoRoot(t), test)
+		if relErr != nil {
+			name = test
+		}
+		t.Run(name, func(t *testing.T) {
+			entry := runFrom(t, test)
+			report, err := tested(t, entry, sessionOpts{stdout: io.Discard})
+			if err != nil {
+				t.Fatalf("running %s: %v", name, err)
+			}
+			if !report.OK() {
+				t.Errorf("%s should pass: %d failed", name, report.Failed)
+			}
+			if report.Passed == 0 {
+				t.Errorf("%s asserts nothing", name)
+			}
+		})
 	}
 }
 
@@ -124,8 +176,9 @@ func TestExamplesMatchTheirDeclaredOutput(t *testing.T) {
 		checked++
 
 		t.Run(name, func(t *testing.T) {
+			entry := runFrom(t, source)
 			stdout := &strings.Builder{}
-			if err := newSession(t, sessionOpts{stdout: stdout}).Run(t.Context(), source); err != nil {
+			if err := newSession(t, sessionOpts{stdout: stdout}).Run(t.Context(), entry); err != nil {
 				t.Fatalf("%s failed: %v", source, err)
 			}
 

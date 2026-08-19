@@ -144,10 +144,18 @@ func runSnippet(t *testing.T, doc string, s snippet) {
 func runNamedExample(t *testing.T, doc string, named []snippet) {
 	t.Helper()
 
+	// The example is written where a person would stand to run it, because that is what
+	// module names resolve from — a block naming src/a/b.ar is a module of the project the
+	// other blocks are in.
 	dir := t.TempDir()
+	t.Chdir(dir)
+
 	var tests []string
 	for _, s := range named {
-		path := filepath.Join(dir, s.file)
+		path := filepath.Join(dir, filepath.FromSlash(s.file))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(path, []byte(s.code), 0o644); err != nil {
 			t.Fatal(err)
 		}

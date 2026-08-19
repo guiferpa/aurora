@@ -61,8 +61,13 @@ Project-wide metadata. Used for identification and future tooling (e.g. a regist
 | **`name`** | Yes      | Base name of the folder where `aurora init` was run | Project identifier. Keep it short and valid for use in tooling (e.g. no spaces). |
 | **`version`** | No   | `"0.1.0"` | Project version. Semantic versioning (e.g. `1.2.3`) is recommended. |
 | **`tape_size`** | No | `8` | Width in bytes of every value in the project, from 1 to 32. A literal that does not fit is rejected at compile time. Overridden by `--tape-size` on the command line. See [language-design.md](language-design.md#tape-size-how-many-bytes-a-value-has). |
+| **`source_root`** | No | `"src"` | Directory a module name resolves from: `use a/b/c as x;` reads `<source_root>/a/b/c.ar`. Relative to the directory the command was run in. See [modules.md](modules.md). |
 
 **Why:** `name` and `version` give the project an identity and allow scripts or future features (e.g. publishing) to refer to it in a stable way.
+
+**`source_root` is the project's for the same reason `tape_size` is**: it decides what the source means rather than what one task does with it. Two profiles with two roots would make one `use` line name two different files, and leave anything reading the project as a whole with nothing to answer. It is refused inside a profile, with the message saying where to move it.
+
+Note that it is relative to **where the command was run**, with a manifest or without — which is one rule with no exception, and why a project with modules is run from its own root.
 
 **`tape_size` is the project's and not a profile's** because it is not a path or a setting: it is the dialect the source is written in. At one byte `255 + 1` is `0` and `"Gui"` does not compile; at eight both answer otherwise. Two profiles with two widths made one file mean two things, and left everything that reads the project as a whole — the language server above all — with no width to answer for. A `tape_size` left inside a profile is refused, with the message saying where to move it.
 

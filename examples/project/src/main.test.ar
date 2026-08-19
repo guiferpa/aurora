@@ -1,7 +1,11 @@
 #- Tests for src/main.ar.
 #-
-#- "aurora test" from the project root finds this file: the main profile points
-#- at src/main.ar, so the search starts in src/ and goes down.
+#- "aurora test" from the project root finds this file: the main profile points at
+#- src/main.ar, so the search starts in src/ and goes down.
+#-
+#- A test and the file it tests are one module written in two files, which is why g means
+#- src/geometry.ar here without this file saying so: the alias the source declared is in
+#- scope, the same way a struct it declared would be.
 #-
 #- Run: cd examples/project && aurora test
 #-
@@ -12,5 +16,5 @@
 #-
 #-   2 passed, 0 failed in 1 file
 
-assert(area(3, 4) equals 12, "area multiplies its sides");
-assert(area(0, 5) equals 0, "area of a line is zero");
+assert(g.area(3, 4) equals 12, "area multiplies its sides");
+assert(g.area(0, 5) equals 0, "area of a line is zero");

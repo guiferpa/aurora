@@ -1,0 +1,12 @@
+#- A module, which is what every Aurora file is.
+#-
+#- Its name is the path it has from src/, so this one is "geometry" — nothing in here says
+#- so, because what a module is called is decided by where it sits and not by what it holds.
+#-
+#- What it offers is what it binds with ident at the top: area, and nothing else. Names
+#- bound anywhere deeper belong to the scope that binds them.
+#-
+#- It prints nothing on its own, so it declares no output: a module of declarations does its
+#- work when somebody imports it.
+
+ident area = defer { feed(0) * feed(1); };

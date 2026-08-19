@@ -13,6 +13,18 @@ A profile is a named set of paths and settings, so a command does not need them 
 
 `main` is the one used when no profile is named. A project holds as many profiles as it has things to build, and the two here are unrelated programs — that is what a profile is for.
 
+## The module
+
+[`src/geometry.ar`](src/geometry.ar) is a module, which is what every Aurora file is. `src/main.ar` opens with
+
+```
+use geometry as g;
+```
+
+and reaches what is inside it as `g.area`. The name `geometry` is the path the file has from `src/`, and the alias `g` belongs to `src/main.ar` alone.
+
+Full reference: [modules](../../docs/modules.md).
+
 ## Running it
 
 From **this directory**:
@@ -31,7 +43,9 @@ aurora build label      # writes bin/label
 aurora build label -o /tmp/x.bin   # -o wins over the profile
 ```
 
-The manifest is found by walking up from the working directory, so these commands also work from `src/`. Running from outside the project, a path still works — `aurora run examples/project/src/main.ar` needs no manifest at all.
+The manifest is found by walking up from the working directory, so these commands also work from `src/` — **except that a program with modules is run from the project root**. A module name resolves from `src/` under the directory the command was run in, so from inside `src/` this program would look for `src/src/geometry.ar` and say so.
+
+Running from outside the project, a path still works for a file that imports nothing; `src/main.ar` imports, so it wants to be run from here.
 
 ## Running the tests
 

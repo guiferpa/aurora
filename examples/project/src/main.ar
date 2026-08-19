@@ -1,9 +1,18 @@
-#- The "main" profile points here, so "aurora run" from the project root runs
-#- this file with the default 8-byte tapes.
+#- The "main" profile points here, so "aurora run" from the project root runs this file with
+#- the default 8-byte tapes.
+#-
+#- What it multiplies comes from a module: "use geometry as g;" reads src/geometry.ar, and g
+#- is the only way to reach what is inside it. The alias is this file's alone.
+#-
+#- Modules resolve from src/ under the directory the command was run in, so this one is run
+#- from the project root.
+#-
+#- Output:
+#-   [0 0 0 0 0 0 2 88]
 
-ident area = defer { feed(0) * feed(1); };
+use geometry as g;
 
 ident width = 30;
 ident height = 20;
 
-printb area(width, height);
+printb g.area(width, height);

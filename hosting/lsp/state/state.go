@@ -28,6 +28,21 @@ func (s *State) GetDocument(key string) string {
 	return s.docs[key]
 }
 
+// Documents answers every open document, keyed by the URI it arrived under.
+//
+// Whoever wants to find one by something other than that key does the translating: a URI is
+// the client's idea of a name, and this package keeps what it was handed. The one caller
+// today is the module resolution, which has a path and needs the buffer rather than the file
+// on disk — an editor that answered from the disk would be answering about a version the
+// person editing has already moved past.
+func (s *State) Documents() map[string]string {
+	open := make(map[string]string, len(s.docs))
+	for uri, text := range s.docs {
+		open[uri] = text
+	}
+	return open
+}
+
 // DeleteDocument drops a document the client closed.
 func (s *State) DeleteDocument(key string) {
 	delete(s.docs, key)

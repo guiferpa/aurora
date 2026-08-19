@@ -1,6 +1,7 @@
 coverage.out
 bin/
 graph.svg
+.DS_Store
 
 # What 'aurora init' writes at the repository root, which is a scratch project rather
 # than part of the compiler. The examples are tracked; these are not.

@@ -20,6 +20,9 @@ type Target struct {
 	Binary   string // output path from the profile; empty for a loose file
 	TapeSize int    // tape width of the project the file belongs to; zero means the default
 	Profile  string // profile name; empty for a loose file
+	// SourceRoot is where module names resolve from, relative to the directory the command
+	// was run in — with a manifest or without, which is what keeps the rule one sentence.
+	SourceRoot string
 }
 
 // FromProfile reports whether the target came from the manifest rather than a path.
@@ -42,7 +45,7 @@ func ResolveTarget(arg string) (Target, error) {
 		if err != nil {
 			return Target{}, err
 		}
-		return Target{Source: arg, TapeSize: tapeSize}, nil
+		return Target{Source: arg, TapeSize: tapeSize, SourceRoot: ProjectSourceRoot(arg)}, nil
 	}
 
 	if arg != "" && looksLikePath(arg) {
@@ -60,10 +63,11 @@ func ResolveTarget(arg string) (Target, error) {
 	}
 
 	return Target{
-		Source:   env.AbsPath(env.Profile.Source),
-		Binary:   env.AbsPath(env.Profile.Binary),
-		TapeSize: env.Manifest.Project.TapeSize,
-		Profile:  name,
+		Source:     env.AbsPath(env.Profile.Source),
+		Binary:     env.AbsPath(env.Profile.Binary),
+		TapeSize:   env.Manifest.Project.TapeSize,
+		Profile:    name,
+		SourceRoot: env.Manifest.SourceRoot(),
 	}, nil
 }
 
@@ -88,6 +92,28 @@ func ProjectTapeSize(source string) (int, error) {
 		return 0, err
 	}
 	return m.Project.TapeSize, nil
+}
+
+// ProjectSourceRoot answers where module names resolve from for a file named by path, which
+// is what the project it sits in says, or "src" when it sits in none.
+//
+// The root is relative to the directory the command was run in either way. That is one rule
+// with no exception, and the price of it is that a project with modules is run from its own
+// root — which is what the error says when a module is not found there.
+func ProjectSourceRoot(source string) string {
+	dir, err := filepath.Abs(filepath.Dir(source))
+	if err != nil {
+		return manifest.DefaultSourceRoot
+	}
+	root, err := manifest.FindProjectRootFrom(dir)
+	if err != nil {
+		return manifest.DefaultSourceRoot
+	}
+	m, err := manifest.Load(root)
+	if err != nil {
+		return manifest.DefaultSourceRoot
+	}
+	return m.SourceRoot()
 }
 
 // looksLikePath catches an argument that was meant as a file but lost its extension, so

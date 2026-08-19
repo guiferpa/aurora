@@ -33,7 +33,7 @@ Comparados lado a lado, para o documento em inglês ser corrigido quando isto fo
 | Arquivo de teste | pergunta em aberto | é parte do módulo que testa |
 
 O que **não** muda: um arquivo é um módulo, alias obrigatório, nada de `:refer`, o `.ar`
-implícito, diretório é erro, e um módulo expõe tudo que declara no topo.
+implícito, diretório é erro, e um módulo expõe o que liga no topo.
 
 ---
 
@@ -595,8 +595,10 @@ de falha silenciosa que `EmitInstruction` já tem: nó não tratado passa sem li
 
 ### O loader, passo a passo
 
-1. Para cada módulo, na ordem, monta a **tabela de exports**: varredura rasa dos nós de topo
-   (`IdentLiteral`, `StructDeclaration`). Não é walk de árvore.
+1. Para cada módulo, na ordem, monta a **tabela de exports**: varredura rasa dos
+   `IdentLiteral` de topo, e nada mais. Não é walk de árvore. Um `struct` não entra porque ele
+   não atravessa módulo, e um `defer` entra sem caso especial — o valor de um `defer` é o
+   índice dele, como tape, então ele já é o que um `ident` liga.
 2. Confere as **referências qualificadas** anotadas pelo parser contra as tabelas; o que não
    existe vira erro com posição, que é o que o language server sublinha.
 3. Confere que nenhum alias colide com um nome de topo do próprio arquivo — o alias é uma
@@ -807,8 +809,9 @@ só não os lê. O token continua no nó, para posição.
 - **`struct` não atravessa módulo.** Exportar um `struct` exigiria a tabela de structs do
   outro módulo **durante** o parse, que é exatamente a dependência que este desenho acabou de
   eliminar. Fica local ao arquivo, e é dito em voz alta.
-- **Não há `private`/`export`.** Um módulo expõe tudo que declara no topo. Com environ por
-  módulo isso vira fácil de adicionar depois, porque a fronteira passa a existir de verdade.
+- **Não há `private`/`export`.** Um módulo expõe **tudo que liga com `ident` no topo**, seja
+  uma tape ou um `defer`, e nada mais — `struct` não sai do arquivo. Com environ por módulo,
+  marcar depois fica fácil, porque a fronteira passa a existir de verdade.
 - **Não há reexport nem transitividade.** `main` usa `a`, `a` usa `m`; `main` não enxerga `m`.
   Cada arquivo declara os seus, como no Clojure.
 - **O manifesto não lista dependências.** O sistema de arquivos é a história inteira até
@@ -834,18 +837,23 @@ só não os lê. O token continua no nó, para posição.
 
 ---
 
-## Em aberto
+## Decidido na revisão
 
-O que ainda não foi batido o martelo, e é o que vale discutir antes de começar:
+Nada em aberto. O que foi discutido e fechado, para a leitura final ser uma conferência:
 
-1. **`use` só no topo do arquivo.** Proposta: sim, obrigatoriamente — o leitor sabe as
-   dependências sem rolar a tela, e a regra é uma linha no `ParseExprs`.
-2. **O que um módulo expõe.** Proposta: tudo que ele declara no topo, sem marcação.
-3. **Alias e `ident` dividem o mesmo espaço de nomes.** Proposta: sim, e é isso que torna o
-   `.` não-ambíguo sem token novo.
-4. **`struct` é local ao arquivo.** Proposta: sim no primeiro corte, pelo custo de parse
-   descrito acima.
-
-Decididos na revisão, e já escritos acima: o índice é um **mapa**; a raiz de módulos é
-relativa ao **diretório de onde o comando rodou**; **não há transitividade** — cada arquivo
-declara os seus.
+| Decisão | |
+|---|---|
+| **Sintaxe** | `use a/b/c as x;` — caminho nu, alias obrigatório, `.ar` implícito, diretório é erro |
+| **`ident m = use ...`** | recusada, com o porquê e com a variante do índice, na seção da sintaxe |
+| **`use` só no topo** | sim, obrigatoriamente |
+| **Raiz de módulos** | `src/` por padrão, `[project] source_root` para mudar, relativa ao diretório de onde o comando roda |
+| **Environ** | um por módulo, indexado pelo prefixo, num **mapa** plano do id inteiro |
+| **Busca de nome** | dois saltos: a cadeia primeiro, o environ do módulo do nome depois |
+| **Prefixo** | uniforme dentro de um módulo importado; o arquivo de entrada fica com os nomes crus |
+| **O que um módulo expõe** | tudo que ele liga com `ident` no topo — tape ou `defer`. `struct` não atravessa |
+| **Transitividade** | não existe: cada arquivo declara os seus |
+| **Alias e `ident`** | mesmo espaço de nomes, sem shadowing e sem redeclaração |
+| **Ciclo** | recusado, com a cadeia inteira no erro |
+| **`resolver` e `loader`** | pacotes **vitais**, na raiz, com a leitura chegando por porta |
+| **`print` na carga** | acontece, e está certo assim |
+| **`use` como identificador** | quebra aceita |

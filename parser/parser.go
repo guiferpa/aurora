@@ -39,6 +39,12 @@ type ParseInput struct {
 	// session, and answers for files of different projects — and for the same project after
 	// its manifest is edited, which has to reach the next keystroke.
 	TapeSize int
+	// Module is the module this file is, and it decides what the names inside it are called:
+	// inside a/b/c, `ident base` is written a/b/c.base, so two modules binding the same word
+	// are two different names. Empty is the file somebody asked to run, whose names are
+	// written as they were typed — which is every file compiled on its own, the language
+	// server and the REPL included.
+	Module string
 	// Declarations carries what `struct` and `as` declared across parses of the same file.
 	// Nil starts empty, which is what compiling a file in one go wants; the REPL passes the
 	// same value every line so a struct declared earlier is still known.
@@ -58,6 +64,10 @@ type pr struct {
 	// useAllowed says whether a `use` may still be read: it is true at the start of a file
 	// and false from the first node that is not one, and inside every body.
 	useAllowed bool
+	module     string
+	// references is every qualified name this parse read. It leaves with the tree because
+	// only whoever holds the other modules can say whether the name is really there.
+	references []ast.Reference
 }
 
 // Helper functions to validate node types for tape operations
@@ -113,7 +123,7 @@ func (p *pr) ParseIdentifier() (ast.IdentifierLiteral, error) {
 	if err != nil {
 		return ast.IdentifierLiteral{}, err
 	}
-	return ast.IdentifierLiteral{Value: string(tok.GetMatch()), Token: tok}, nil
+	return ast.IdentifierLiteral{Value: p.name(string(tok.GetMatch())), Token: tok}, nil
 }
 
 func (p *pr) ParseBooleanTrue() (ast.BooleanLiteral, error) {
@@ -250,13 +260,24 @@ func (p *pr) parsePrimaryExpr() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, declared := p.declarations.Structs[id.Value]; declared {
+	// An alias names a module, and a module is not a value: nothing loads under it. Reaching
+	// something inside is the only thing it is for, and that is a dot away.
+	if specifier, isModule := p.declarations.Modules[typed(id)]; isModule {
+		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.DOT {
+			return id, nil
+		}
+		return nil, token.NewError(id.Token, "%s is the module %s at line %d and column %d: reach something inside it with %s.name",
+			typed(id), specifier, id.Token.GetLine(), id.Token.GetColumn(), typed(id))
+	}
+	// A struct's name never reaches the instructions and never leaves the file, so it is
+	// looked up as it was typed rather than as the module writes it.
+	if _, declared := p.declarations.Structs[typed(id)]; declared {
 		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_CUR_BRK {
 			return p.ParseStructLiteral(id)
 		}
 		// A struct is a declaration, not a value: there is nothing to load under its name.
 		return nil, token.NewError(id.Token, "%s is a struct at line %d and column %d: build a value with %s{...}",
-			id.Value, id.Token.GetLine(), id.Token.GetColumn(), id.Value)
+			typed(id), id.Token.GetLine(), id.Token.GetColumn(), typed(id))
 	}
 	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_PAREN {
 		return p.ParseCallee(id)
@@ -753,6 +774,13 @@ func (p *pr) ParseIdent() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	// An alias is a name in this file's scope and follows the rules of every other one, so
+	// binding over it is a redeclaration. It can only happen in this order: a use is read
+	// before anything else in the file.
+	if specifier, ok := p.declarations.Modules[string(id.GetMatch())]; ok {
+		return nil, token.NewError(id, "%s is already the alias of %s at line %d and column %d",
+			id.GetMatch(), specifier, id.GetLine(), id.GetColumn())
+	}
 	if _, err := p.EatToken(token.ASSIGN); err != nil {
 		return nil, err
 	}
@@ -762,10 +790,11 @@ func (p *pr) ParseIdent() (ast.Node, error) {
 	}
 	// Binding a value with a shape carries the shape to the name, so `p.x` reads after
 	// `ident p = feed(0) as Point;`.
+	name := p.name(string(id.GetMatch()))
 	if shape := p.shapeOf(expr); shape != "" {
-		p.declarations.Shapes[string(id.GetMatch())] = shape
+		p.declarations.Shapes[name] = shape
 	}
-	return ast.IdentLiteral{Id: string(id.GetMatch()), Token: id, Value: expr}, nil
+	return ast.IdentLiteral{Id: name, Token: id, Value: expr}, nil
 }
 
 func (p *pr) ParseExpr() (ast.Node, error) {
@@ -964,6 +993,8 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 	p.tapeSize = byteutil.TapeSize(in.TapeSize)
 	p.cursor = 0
 	p.useAllowed = true
+	p.module = in.Module
+	p.references = nil
 	p.declarations = in.Declarations
 	if p.declarations == nil {
 		p.declarations = NewDeclarations()
@@ -974,7 +1005,7 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 		return ast.AST{}, err
 	}
 
-	return ast.AST{Filename: p.filename, Nodes: nodes}, nil
+	return ast.AST{Filename: p.filename, Nodes: nodes, References: p.references}, nil
 }
 
 // New builds a parser. It takes nothing: a parser is the same whatever it is asked to read,

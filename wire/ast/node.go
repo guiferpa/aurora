@@ -223,6 +223,28 @@ type AST struct {
 	mark
 	Filename string `json:"filename"`
 	Nodes    []Node `json:"nodes"`
+	// References is every qualified name the file used — `x.add` after `use a/b as x;`.
+	//
+	// It rides alongside the tree instead of in it because it is not shape: the nodes already
+	// carry the name the instruction will hold, and this is the list of what has to be found
+	// somewhere else. Only whoever holds the other modules can answer that, which is why the
+	// parse hands it over instead of deciding.
+	References []Reference `json:"references,omitempty"`
+}
+
+// A Reference is one qualified name, and where it was written.
+type Reference struct {
+	// Module is the module the name belongs to — the specifier, not the alias, because the
+	// alias means nothing outside the file that declared it.
+	Module string      `json:"module"`
+	Symbol string      `json:"symbol"`
+	Token  token.Token `json:"-"`
+}
+
+// Name is what the reference is called in the program: the module in front of the symbol,
+// which is the same text the module itself writes when it binds it.
+func (r Reference) Name() string {
+	return r.Module + "." + r.Symbol
 }
 
 // StructDeclaration names the fields of a run of tapes: `struct Point { x, y };`.

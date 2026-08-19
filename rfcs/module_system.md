@@ -168,6 +168,77 @@ printb x.add(1, 2);
    mantém o parse puro e sem entrada nova além do módulo em que ele está.
 3. Some a canonicalização de caminho, que era metade do trabalho chato do resolver.
 
+### Por que não `ident m = use std/math;`
+
+Essa forma foi proposta e recusada, e o registro importa porque **ela é mais coerente com a
+filosofia da linguagem que a escolhida**: Aurora é só expressão, `ident` é *a* forma de ligar
+um nome, e `ident area = defer { ... };` é o precedente exato — um nome ligado a algo que não
+é um número. Ela também apagaria uma duplicação: hoje a RFC afirma que o alias "segue as
+regras do `ident`", e isso é implementado duas vezes, na tabela do parser e na conferência do
+loader. Sendo um `ident`, viraria fato em vez de afirmação.
+
+Foi recusada pela premissa da linguagem: **um nome ligado por `ident` guarda uma tape.** Um
+módulo não tem bytes, não tem largura e não cabe em `tape_size`. E a forma promete o
+contrário — se `m` foi ligado por `ident`, o leitor espera `printb m`, espera passar `m` para
+um `defer`, espera guardar `m` num campo. Cada uma dessas vira um erro que **surpreende**,
+porque em todo outro caso o que `ident` liga se imprime e se passa adiante.
+
+`defer` não é contraexemplo: ele produz um valor de verdade, um índice como tape
+(`evaluator/evaluator.go:450`). Por isso ele pode estar do lado direito de um `ident`. `use`
+não produziria nada.
+
+E a linguagem já tem duas coisas diferentes no topo de um arquivo:
+
+| Forma | O que introduz | Dá para imprimir? |
+|---|---|---|
+| `ident x = 10;` | uma **ligação**: um nome que guarda uma tape | sim |
+| `struct Point { x, y };` | uma **declaração**: um nome que só o compilador usa | não |
+
+`Point` é um nome que se usa (`Point{1,2}`, `as Point`) e que não se imprime, não se passa e
+não se guarda — que é exatamente o que um alias de módulo é. E repara que a linguagem não
+escreveu `ident Point = struct { x, y };`. **O import é irmão do `struct`, não do `ident`.**
+
+#### A variante que resolveria a tape, e o que ela cobra
+
+Há uma saída para a objeção acima: `m` guarda **um índice na tabela de módulos**, exatamente
+como um `defer` guarda um índice na tabela de defers. Aí `m` é uma tape de verdade, e a
+premissa deixa de ser violada.
+
+O paralelo com o `defer` cobre metade:
+
+| | `defer` | módulo como valor |
+|---|---|---|
+| **guardar** | um índice numa tabela do environ | igual, e funciona |
+| **acessar** | `OpCall` recebe o nome, acha o índice e salta | `m.add` teria que ler um valor **e depois** procurar um símbolo dentro dele |
+
+Essa segunda linha é máquina nova, e ela custa quatro coisas:
+
+- **Um opcode novo** para acesso a membro. E um opcode que o `builder/evm` não implementa
+  compila em silêncio, que é o problema que o roadmap descreve. Hoje módulo **não custa nada
+  na chain**; com isso, custa um buraco novo.
+- **A resolução sai de tempo de compilação e vai para runtime** — de Clojure para Python —,
+  com uma indireção por acesso, para sempre.
+- **O `.` passaria a significar dois mecanismos:** índice resolvido no parse para campo de
+  struct, busca por nome em runtime para membro de módulo.
+- **Um módulo viraria valor de primeira classe** — passável para um `defer`, guardável num
+  campo — enquanto um *escopo* ainda não é: o roadmap registra que `o.run()` não parseia e que
+  `OpCall` resolve um nome, não um valor. Módulo entraria na frente de escopo na fila, o que é
+  ao contrário.
+
+Se um dia a linguagem quiser módulo de primeira classe, este é o caminho — e ele começa por
+escopo de primeira classe, não por módulo.
+
+#### E o `as`, que já significa outra coisa
+
+`as` já quer dizer "leia este valor com a forma deste struct" (`parseShape`), então
+`use a/b/c as x` é um segundo sentido para a mesma palavra. É ruído, não defeito: as duas
+posições gramaticais não se cruzam, e Rust faz exatamente os dois (`use std::io as io2;` e
+`x as u64`), como Python, TypeScript e Clojure fazem com apelido.
+
+A alternativa, se um dia o ruído incomodar, é `use m = std/math;` — continua sendo declaração,
+não promete valor nenhum, e o `=` dá o gosto de nomeação. É o desenho do Zig
+(`const m = @import("std")`) sem a parte em que Zig se safa porque lá um tipo é um valor.
+
 ### Onde a raiz é declarada
 
 | | |

@@ -68,8 +68,6 @@ type resolution struct {
 // The entry is a path rather than a module name because it is the file somebody asked to
 // run, and it is the one module with no id.
 func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
-	state := &resolution{found: make(map[module.ID]bool), entry: path.Clean(entry)}
-
 	source, err := r.read(entry)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", entry, err)
@@ -78,11 +76,28 @@ func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := r.dependencies(state, tree); err != nil {
+
+	modules, err := r.Dependencies(entry, tree)
+	if err != nil {
 		return nil, err
 	}
+	return append(modules, module.Module{ID: "", Tree: tree}), nil
+}
 
-	return append(state.order, module.Module{ID: "", Tree: tree}), nil
+// Dependencies answers with everything the given trees need, and nothing of the trees
+// themselves.
+//
+// It is for a caller that already has them, which is what "aurora test" is: one module
+// written in two files, neither of which the resolver would have read on its own. Both are
+// asked what they need, because a test names the modules it uses like any other file.
+func (r *Resolver) Dependencies(entry string, trees ...ast.AST) ([]module.Module, error) {
+	state := &resolution{found: make(map[module.ID]bool), entry: path.Clean(entry)}
+	for _, tree := range trees {
+		if err := r.dependencies(state, tree); err != nil {
+			return nil, err
+		}
+	}
+	return state.order, nil
 }
 
 // dependencies resolves every module a tree names, in the order the file names them.

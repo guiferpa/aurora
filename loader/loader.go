@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/diag"
+	"github.com/guiferpa/aurora/wire/ir"
 	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
@@ -86,4 +88,60 @@ func listing(names map[string]bool) string {
 	}
 	slices.Sort(offered)
 	return strings.Join(offered, ", ")
+}
+
+// A Program is what runs: one stream of instructions, and which module each range of it is.
+//
+// The stream is never sliced. A deferred scope records where its body sits as positions in
+// the instructions being executed, so a call reaching into another module lands on a body
+// that has to be among them — what changes from range to range is where the names go, not
+// which instructions are there.
+type Program struct {
+	Instructions []ir.Instruction
+	Ranges       []Range
+}
+
+// A Range is one module's instructions inside the stream, and what compiling it had to say.
+type Range struct {
+	Module   module.ID
+	Filename string
+	From, To uint64
+	Warnings []diag.Warning
+}
+
+// Emit compiles one tree. It is a port because the loader is a phase like any other and does
+// not know the emitter.
+type Emit func(ast.AST) (ir.Program, error)
+
+// Load turns the modules a resolver found into a program: every qualified name checked, every
+// module compiled, and one stream with the range of each.
+//
+// Dependencies come first because that is the order they were found in, and it is the order
+// they have to run in: a module's body is a program, and it runs before whoever needs what it
+// bound.
+func Load(modules []module.Module, emit Emit) (Program, error) {
+	if err := Check(modules); err != nil {
+		return Program{}, err
+	}
+
+	program := Program{
+		Instructions: make([]ir.Instruction, 0),
+		Ranges:       make([]Range, 0, len(modules)),
+	}
+	for _, each := range modules {
+		compiled, err := emit(each.Tree)
+		if err != nil {
+			return Program{}, err
+		}
+		from := uint64(len(program.Instructions))
+		program.Instructions = append(program.Instructions, compiled.Instructions...)
+		program.Ranges = append(program.Ranges, Range{
+			Module:   each.ID,
+			Filename: each.Tree.Filename,
+			From:     from,
+			To:       uint64(len(program.Instructions)),
+			Warnings: compiled.Warnings,
+		})
+	}
+	return program, nil
 }

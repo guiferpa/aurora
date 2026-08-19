@@ -5,10 +5,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/resolver"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/ir"
 	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
@@ -180,5 +182,71 @@ func TestAReferenceToAModuleThatWasNeverLoaded(t *testing.T) {
 	err := Check(modules)
 	if err == nil || !strings.Contains(err.Error(), "never loaded") {
 		t.Errorf("error = %v, want it to say the module was never loaded", err)
+	}
+}
+
+// The ranges tile the stream: every instruction belongs to exactly one module, and they are
+// laid down in the order the modules load, which is dependencies first.
+func TestLoadLaysEveryModuleEndToEnd(t *testing.T) {
+	modules, err := load(t, map[string]string{
+		"src/main.ar": "use a/b as x;\nprintd x.area(2, 3);",
+		"src/a/b.ar":  "ident area = defer { feed(0) * feed(1); };",
+	})
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+
+	program, err := Load(modules, emitter.New(emitter.NewEmitterOptions{}).EmitProgram)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if len(program.Ranges) != 2 {
+		t.Fatalf("laid %d ranges, want one per module", len(program.Ranges))
+	}
+	if program.Ranges[0].Module != "a/b" || program.Ranges[1].Module != "" {
+		t.Errorf("ranges are %q and %q, want the module before the entry",
+			program.Ranges[0].Module, program.Ranges[1].Module)
+	}
+	if program.Ranges[0].Filename != "src/a/b.ar" {
+		t.Errorf("the range names %q, want the file it came from", program.Ranges[0].Filename)
+	}
+
+	previous := uint64(0)
+	for i, each := range program.Ranges {
+		if each.From != previous {
+			t.Errorf("range %d starts at %d, want %d", i, each.From, previous)
+		}
+		if each.To <= each.From {
+			t.Errorf("range %d is empty", i)
+		}
+		previous = each.To
+	}
+	if previous != uint64(len(program.Instructions)) {
+		t.Errorf("the ranges cover %d instructions, the program has %d", previous, len(program.Instructions))
+	}
+}
+
+// A name that is not there stops the load, rather than being compiled into a program that
+// would look for it while running.
+func TestLoadRefusesBeforeItEmits(t *testing.T) {
+	modules, err := load(t, map[string]string{
+		"src/main.ar": "use a/b as x;\nprintd x.perimeter(1);",
+		"src/a/b.ar":  "ident area = defer { feed(0); };",
+	})
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+
+	emitted := 0
+	_, err = Load(modules, func(tree ast.AST) (ir.Program, error) {
+		emitted++
+		return ir.Program{}, nil
+	})
+	if err == nil {
+		t.Fatal("expected a refusal")
+	}
+	if emitted != 0 {
+		t.Errorf("emitted %d modules before refusing, want none", emitted)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/guiferpa/aurora/evaluator/environ"
 	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/ir"
+	"github.com/guiferpa/aurora/wire/module"
 )
 
 // deferMark opens every defer blob. The value handed to a program is an ordinary tape
@@ -360,8 +361,35 @@ func (e *Evaluator) EvaluateSave(label, left, right []byte) error {
 	return nil
 }
 
+// resolve answers what a name is bound to, and the environ it lives in.
+//
+// Two hops. The chain first — every scope open around here, which is what a deferred scope
+// sees of whoever called it, and what has always been the whole of a lookup. Then the environ
+// of the module the name says it belongs to, which is why a name inside a module carries the
+// module in front of it: a scope from another file, running in somebody else's chain, still
+// finds what its own file bound.
+//
+// The environ comes back with the value because a deferred scope is an index counted in the
+// environ that created it. A call has to look for the body where it found the name, and a
+// second module's index 0 is a different scope from the first one's.
+func (e *Evaluator) resolve(name []byte) ([]byte, *environ.Environ) {
+	key := byteutil.ToHex(name)
+	if home := e.environ.Holder(key); home != nil {
+		return home.GetLocalIdent(key), home
+	}
+	id, _, qualified := module.Split(string(name))
+	if !qualified {
+		return nil, nil
+	}
+	home := e.environ.Module(string(id))
+	if home == nil {
+		return nil, nil
+	}
+	return home.GetLocalIdent(key), home
+}
+
 func (e *Evaluator) EvaluateLoad(label, left, right []byte) error {
-	val := e.environ.GetIdent(byteutil.ToHex(left))
+	val, _ := e.resolve(left)
 	if val == nil {
 		return fmt.Errorf("identifier %s not found", left)
 	}
@@ -454,12 +482,12 @@ func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
 }
 
 func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
-	val := e.environ.GetIdent(byteutil.ToHex(left))
+	val, home := e.resolve(left)
 	if val == nil {
 		return fmt.Errorf("call: %s identifier not found", left)
 	}
 	index := byteutil.ToUint256(val, e.tapeSize).Uint64()
-	blob := e.environ.GetDefer(deferKey(index))
+	blob := home.GetLocalDefer(deferKey(index))
 	if blob == nil {
 		return fmt.Errorf("call: value is not a deferred scope")
 	}
@@ -661,6 +689,27 @@ func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (eval
 	e.environ.ClearTemps()
 	returns, err := e.ExecuteInstructions(from, to)
 	return returns, err
+}
+
+// EvaluateModule runs one module's range, in the environ that module's names belong to.
+//
+// A program of several files is one stream of instructions, and each module is a range of it
+// — a call reaching across modules lands on a body that has to be there, so the stream is
+// never sliced. What changes from range to range is where the names go: a module binds into
+// an environ of its own, which is what lets two modules bind the same word.
+//
+// The empty name is the file somebody asked to run. It has no environ of its own; it has the
+// one every chain ends at, which is where a program with no modules at all has always run.
+func (e *Evaluator) EvaluateModule(insts []ir.Instruction, from, to uint64, id string) (eval.Returns, error) {
+	if id == "" {
+		return e.EvaluateRange(insts, from, to)
+	}
+
+	outer := e.environ
+	e.environ = outer.OpenModule(id)
+	defer func() { e.environ = outer }()
+
+	return e.EvaluateRange(insts, from, to)
 }
 
 type NewEvaluatorOptions struct {

@@ -174,6 +174,10 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 	case token.TRUE, token.FALSE:
 		return "boolean: " + match
 	case token.ID:
+		// A module is not a value, so it is answered for before anything looks for one.
+		if info := scanUses(analysis.Tokens).describe(analysis.Tokens, tk); info != "" {
+			return info
+		}
 		// A struct name or a field read out of one: the declaration is what says these are
 		// anything other than a name, so it is what hover has to answer with.
 		if shape, fields, index := scanStructs(analysis.Tokens).structAt(analysis.Tokens, tk); shape != "" {
@@ -206,8 +210,17 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 
 	// Right after a dot the fields are the answer, and the only one: nothing else can
 	// follow it.
-	if fields := shapes.fieldsBefore(analysis.Tokens, analysis.Mapper.Offset(pos)); len(fields) > 0 {
+	offset := analysis.Mapper.Offset(pos)
+	if fields := shapes.fieldsBefore(analysis.Tokens, offset); len(fields) > 0 {
 		return fieldCompletions(fields)
+	}
+
+	// After a dot on a module alias, what can follow is what that module declared — which is
+	// in another file, and nothing here has read it. Offering the keywords instead would be
+	// offering the one thing that certainly cannot go there.
+	aliases := scanUses(analysis.Tokens)
+	if _, isModule := aliases.moduleBefore(analysis.Tokens, offset); isModule {
+		return []CompletionItem{}
 	}
 
 	items := make([]CompletionItem, 0)
@@ -215,6 +228,7 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 		items = append(items, keywordCompletion(tag, snippets))
 	}
 	items = append(items, structCompletions(shapes, snippets)...)
+	items = append(items, moduleCompletions(aliases)...)
 
 	if analysis.AST == nil {
 		return items

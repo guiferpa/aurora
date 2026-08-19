@@ -81,6 +81,68 @@ contrário do que um alias obrigatório existe para dar.
 
 ---
 
+## Como o Solidity faz, e o que isso diz do backend
+
+Clojure e Python dizem o que um namespace é. O Solidity é o único dos três que já responde a
+pergunta que vem depois: **o que sobra disso quando o alvo é a EVM.**
+
+**A unidade é o arquivo**, igual — um *source unit*. E há quatro formas de importar:
+
+```
+import "a/b/c.sol";                  // joga todo símbolo global no escopo daqui
+import * as x from "a/b/c.sol";      // apelido, e é o nosso "use ... as x"
+import "a/b/c.sol" as x;             // o mesmo, escrito de outro jeito
+import {add, sub} from "a/b/c.sol";  // nomes soltos, com "as" opcional em cada um
+```
+
+Ficamos com a segunda e recusamos a primeira e a quarta pelo mesmo motivo que recusamos
+`:refer` e `from x import y`: as duas escondem a origem do nome no ponto de uso.
+
+**O compilador não lê disco.** O `solc` tem um sistema de arquivos virtual e um *import
+callback*: quem chama entrega o conteúdo de cada source unit, e no Standard JSON o conteúdo
+pode vir inline, sem arquivo nenhum. É assim que o Remix compila dentro do navegador. **É
+exatamente a porta de leitura desta RFC, pelo mesmo motivo** — e é a validação mais forte que
+a decisão tem: o compilador de contrato mais usado do mundo resolve módulo sem tocar num
+sistema de arquivos.
+
+**A identidade é o nome do source unit, não o caminho.** Os *remappings*
+(`@openzeppelin/=node_modules/@openzeppelin/`) reescrevem prefixo de specifier para caminho, e
+o nosso `source_root` é a versão mínima disso. Remapping inteiro só se paga quando existir
+pacote de terceiro.
+
+### Em runtime não existe módulo nenhum
+
+Essa é a parte que interessa ao backend. Nada em Solidity resolve nome em tempo de execução:
+
+| O quê | Como termina no bytecode |
+|---|---|
+| função livre, e função `internal` de uma `library` | **inlinada no contrato de quem chama** — vira jump dentro do mesmo código |
+| `library` com função `external` | contrato à parte, chamado por `DELEGATECALL`, com o endereço costurado no bytecode no deploy (os placeholders `__$hash$__`) |
+
+O primeiro caso é o nosso stream único, com outro nome: vários arquivos viram um corpo de
+código só, e o que era chamada entre módulos vira salto interno. O segundo é onde existe um
+**linker de verdade** — e é o cenário que o documento de desenho previu ao dizer que o nome
+"linker" pode ficar certo mais tarde.
+
+E tem um paralelo que cai bem no nosso environ: `DELEGATECALL` roda o código do outro contrato
+**no armazenamento de quem chamou**; `CALL` roda no do próprio. A nossa busca é as duas coisas,
+na ordem certa — a cadeia primeiro, que é o `DELEGATECALL`, e o environ do módulo depois, que
+é o `CALL`. Escopo dinâmico dentro do módulo, isolamento na fronteira.
+
+### O que isso decide para quando o backend voltar
+
+**Módulo não custa nada na chain.** Como tudo é resolvido em tempo de compilação — o prefixo é
+escrito no parse, e o índice de environs é do evaluator —, o `builder/evm` continua recebendo
+um programa plano com nomes únicos. Só mais deles.
+
+A única consequência real é de tamanho, e ela já está no roadmap: offsets de memória e alvos
+de jump são escritos com `PUSH1`, o que limita os identificadores a cerca de sete slots. Mais
+módulos significam mais identificadores, então **o teto chega mais cedo** — não é um teto novo,
+é o mesmo mais perto. Nada aqui abre o backend; isto fica registrado para quando ele for
+aberto.
+
+---
+
 ## A sintaxe
 
 ```

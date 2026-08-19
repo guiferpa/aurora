@@ -47,6 +47,7 @@ const (
 	SUM          = "SUM"       // +
 	TAIL         = "TAIL"      // tail
 	TRUE         = "TRUE"      // true
+	USE          = "USE"       // use - brings a module in under an alias
 	WHITESPACE   = "WHITESPACE"
 )
 
@@ -103,6 +104,7 @@ var (
 	TagSum        = Tag{SUM, "+", ""}
 	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
 	TagTrue       = Tag{TRUE, "true", ""}
+	TagUse        = Tag{USE, "use", "Bring a module in under an alias"}
 	TagWhitespace = Tag{WHITESPACE, " ", ""}
 )
 

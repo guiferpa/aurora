@@ -68,8 +68,10 @@ func TestScanToken(t *testing.T) {
 		// "as" was an import keyword, became an ordinary identifier when namespaces were
 		// rolled back, and is a keyword again: it names the shape a value is read with.
 		{"keyword as", "as", true, token.AS, "as"},
-		// "use" was the other import keyword and stays an ordinary identifier.
-		{"use is an identifier", "use", true, token.ID, "use"},
+		// "use" was the other import keyword, became an ordinary identifier when namespaces
+		// were rolled back, and is a keyword again: it brings a module in.
+		{"keyword use", "use", true, token.USE, "use"},
+		{"use prefix", "useful", true, token.ID, "useful"},
 
 		{"if with space", "if x", true, token.IF, "if"},
 		{"if with paren", "if(", true, token.IF, "if"},

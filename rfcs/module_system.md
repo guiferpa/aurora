@@ -280,6 +280,28 @@ Quando a árvore passaria a valer: se um diretório virar um pacote que reexport
 se `private` quiser dizer "visível para quem está sob o mesmo caminho". Os dois são não-metas
 hoje, e os dois entram depois sem custo, porque a chave continua sendo o id inteiro.
 
+### E o grafo de import, não deveria estruturar o índice?
+
+Ele existe, é montado pelo resolver e não é jogado fora — mas responde **outra pergunta**. O
+grafo diz *em que ordem carregar* e *se há ciclo*; o índice diz *de quem é este nome*. São
+perguntas de momentos diferentes, e quando o programa começa a rodar o grafo já fez o trabalho
+dele.
+
+Três motivos para ele não virar a estrutura do índice:
+
+- **Ele não é uma árvore, é um DAG.** Se `a/b/c` e `d/e` importam `f`, então `f` tem dois pais
+  — e carrega uma vez só, então existe **um** environ de `f` e nenhum lugar óbvio para
+  pendurá-lo.
+- **As arestas não carregam nome nenhum.** Import não é transitivo: `main` importar `a` não dá
+  a `main` acesso ao que `a` importou. Pendurar o environ de `a` no de `main` faria a
+  estrutura afirmar uma visibilidade que a linguagem nega.
+- **A resolução não percorre nada.** O nome chega inteiro no operando e aponta para um módulo
+  só. É uma consulta, não uma travessia.
+
+O grafo fica guardado em `wire/module` para o que ele serve de verdade: a ordem das faixas, a
+cadeia inteira quando um ciclo é recusado, e poder dizer quem importou o quê quando um módulo
+não é encontrado.
+
 ---
 
 ## A regra do prefixo

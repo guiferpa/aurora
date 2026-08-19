@@ -211,22 +211,81 @@ O paralelo com o `defer` cobre metade:
 | **guardar** | um índice numa tabela do environ | igual, e funciona |
 | **acessar** | `OpCall` recebe o nome, acha o índice e salta | `m.add` teria que ler um valor **e depois** procurar um símbolo dentro dele |
 
-Essa segunda linha é máquina nova, e ela custa quatro coisas:
+A segunda linha move a resolução de tempo de compilação para tempo de execução. O que vem
+abaixo é **por que esse movimento é inevitável** na variante, e não preço de implementação que
+alguém consiga espremer depois.
 
-- **Um opcode novo** para acesso a membro. E um opcode que o `builder/evm` não implementa
-  compila em silêncio, que é o problema que o roadmap descreve. Hoje módulo **não custa nada
-  na chain**; com isso, custa um buraco novo.
-- **A resolução sai de tempo de compilação e vai para runtime** — de Clojure para Python —,
-  com uma indireção por acesso, para sempre.
-- **O `.` passaria a significar dois mecanismos:** índice resolvido no parse para campo de
-  struct, busca por nome em runtime para membro de módulo.
-- **Um módulo viraria valor de primeira classe** — passável para um `defer`, guardável num
-  campo — enquanto um *escopo* ainda não é: o roadmap registra que `o.run()` não parseia e que
-  `OpCall` resolve um nome, não um valor. Módulo entraria na frente de escopo na fila, o que é
-  ao contrário.
+**Hoje a resposta está escrita na instrução.** O parser vê `use std/math as m;` e vê `m.add`
+no mesmo arquivo, então escreve o nome inteiro:
 
-Se um dia a linguagem quiser módulo de primeira classe, este é o caminho — e ele começa por
-escopo de primeira classe, não por módulo.
+```
+OpCall "std/math.add"
+```
+
+Em runtime nada é decidido: é uma consulta com uma chave que não tem como ser outra.
+
+**Com módulo como valor, a instrução deixa de conter a resposta:**
+
+```
+OpLoad   "m"                  <- lê o valor de m: a tape com o índice do módulo
+OpMember <label de m>, "add"  <- só agora se descobre em qual tabela procurar "add"
+```
+
+São dois passos, e o segundo depende do que o primeiro produziu **naquela execução**.
+
+**E o parser não pode continuar escrevendo a resposta.** Ele até pode, no caso fácil — mas no
+momento em que `m` é um valor, isto vira gramatical:
+
+```
+ident m = use std/math;
+ident n = use std/geo;
+ident chosen = if flag { m; } else { n; };
+
+printd chosen.add(1, 2);
+```
+
+Qual `add` é esse depende de `flag`, que só existe enquanto o programa roda. Sobram duas
+saídas, e as duas são ruins:
+
+- **permitir** → a resolução tem que ser em runtime para **todo** acesso, porque o compilador
+  não separa o caso fácil do difícil sem análise de fluxo;
+- **proibir** → `m` vira um valor que se liga mas não se passa, não se devolve e não se
+  escolhe. Um valor que não é um valor, que é exatamente a surpresa que virar valor existia
+  para evitar.
+
+**É esse o nó:** virar valor só compensa se a coisa se comportar como valor, e comportar-se
+como valor é o que torna o nome irresolvível no parse. A variante compra a premissa da tape e
+gasta ela na mesma linha.
+
+Daí saem os custos, em ordem de peso:
+
+- **A conferência do loader vira "quando der".** Conferir que `add` existe mesmo em `std/math`
+  é o passo que faltou na tentativa antiga e é metade da razão desta RFC existir. Com
+  resolução em runtime ele vale no caso fácil e não vale no resto — e um check que serve para
+  alguns programas é pior que um que serve para todos.
+- **O language server perde o mesmo**: "ir para a definição" em `m.add` deixa de ser exato.
+- **Um opcode novo** para acesso a membro. E opcode que o `builder/evm` não implementa compila
+  em silêncio, que é o problema descrito no roadmap: hoje módulo **não custa nada na chain**,
+  e com isso passa a custar um buraco novo.
+- **Custo por acesso, para sempre**: ler uma tape, indexar uma tabela e procurar um nome, em
+  vez de uma consulta com a chave já pronta.
+- **A chain não tem onde guardar nome.** O contrato teria que carregar os nomes dos símbolos
+  **dentro do bytecode implantado** e procurá-los durante a execução. Nenhuma linguagem que
+  compila para a EVM faz isso — o Solidity resolve tudo estaticamente por esse motivo, e byte
+  em bytecode é gás.
+- **Um módulo viraria valor de primeira classe** enquanto um escopo ainda não é: o roadmap
+  registra que `o.run()` não parseia e que `OpCall` resolve um nome, não um valor. Módulo
+  entraria na frente de escopo na fila, o que é ao contrário.
+
+O nome disso é *early binding* contra *late binding*. Python liga tarde — por isso `import` é
+um comando que executa e liga um objeto, e por isso monkey-patching funciona. Clojure resolve
+o símbolo na leitura. Quem compila para máquina — Rust, Go, Solidity — liga cedo, porque a
+máquina não tem tabela de nomes em tempo de execução.
+
+Aurora tem a EVM como um dos alvos. Para nós isso não é preferência de estilo: **é o alvo que
+não tem onde guardar a pergunta para responder depois.** Se um dia a linguagem quiser módulo
+de primeira classe, este é o caminho — e ele começa por escopo de primeira classe, não por
+módulo.
 
 #### E o `as`, que já significa outra coisa
 

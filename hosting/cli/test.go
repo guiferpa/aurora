@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -13,9 +14,11 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/eval"
-	"github.com/guiferpa/aurora/wire/ir"
+	"github.com/guiferpa/aurora/wire/module"
 )
 
 // TestExtension marks a test file. A test belongs to the source file of the same name:
@@ -164,16 +167,37 @@ func failedAt(file, source string, err error) error {
 	return fmt.Errorf("%s: %w", filepath.Base(source), err)
 }
 
+// parseFile reads one file and parses it as part of the module somebody asked to run, which
+// is the one with no name of its own.
+func (s *Session) parseFile(file string, declarations *parser.Declarations) (ast.AST, error) {
+	bs, err := os.ReadFile(file)
+	if err != nil {
+		return ast.AST{}, err
+	}
+	tokens, err := s.lexer.GetFilledTokens(bs)
+	if err != nil {
+		return ast.AST{}, err
+	}
+	return s.parser.Parse(parser.ParseInput{
+		Filename:     file,
+		Tokens:       tokens,
+		Declarations: declarations,
+		TapeSize:     s.tapeSize,
+	})
+}
+
 // SourceForTest returns the file a test belongs to: greeting.test.ar -> greeting.ar.
 func SourceForTest(path string) string {
 	return strings.TrimSuffix(path, TestExtension) + SourceExtension
 }
 
-// runTestFile evaluates a test together with the source it belongs to.
+// runTestFile evaluates a test together with the source it belongs to, and everything the
+// two of them import.
 //
-// Both run in one evaluator, so what the source declares is in scope for the test — its
-// bindings and its deferred scopes alike, since the defer counter belongs to the environ.
-// Whatever the source does at its top level happens too, prints included.
+// They are one module written in two files: what the source declares is in scope for the
+// test — its bindings and its deferred scopes alike, since the defer counter belongs to the
+// environ — and neither of them carries a module name, so the names in both are written as
+// they were typed. Whatever the source does at its top level happens too, prints included.
 func (s *Session) runTestFile(path string) FileReport {
 	report := FileReport{Path: path}
 
@@ -187,51 +211,42 @@ func (s *Session) runTestFile(path string) FileReport {
 	}
 
 	// The two files are one scope, so they are one set of declarations: a struct declared in
-	// the source is known in the test. They are parsed apart because each keeps its own name —
-	// which is what decides that assert belongs to the test file — and its own line numbers.
+	// the source is known in the test, and so is a module the source brought in. They are
+	// parsed apart because each keeps its own name — which is what decides that assert
+	// belongs to the test file — and its own line numbers.
+	//
+	// They are also read here rather than by the resolver, which reads the modules: these
+	// two are the file somebody asked for, and there is no name to look them up by.
 	declarations := parser.NewDeclarations()
-
-	// Both programs go into one instruction stream, and each is run as a range of it. A
-	// deferred scope records where its body sits as indexes into the stream, so handing
-	// the evaluator a different slice afterwards would point those indexes at unrelated
-	// instructions — a call would then run whatever happened to be there. The REPL keeps
-	// one buffer across lines for the same reason. Each range clears the temps first,
-	// since the two were emitted separately and both number their labels from zero.
-	instructions := make([]ir.Instruction, 0)
-	boundary := 0
-
+	trees := make([]ast.AST, 0, 2)
 	for _, file := range []string{source, path} {
-		bs, err := os.ReadFile(file)
-		if err != nil {
-			report.Err = err
-			return report
-		}
-
-		tokens, err := s.lexer.GetFilledTokens(bs)
+		tree, err := s.parseFile(file, declarations)
 		if err != nil {
 			report.Err = failedAt(file, source, err)
 			return report
 		}
+		trees = append(trees, tree)
+	}
 
-		tree, err := s.parser.Parse(parser.ParseInput{
-			Filename:     file,
-			Tokens:       tokens,
-			Declarations: declarations,
-			TapeSize:     s.tapeSize,
-		})
-		if err != nil {
-			report.Err = failedAt(file, source, err)
-			return report
-		}
+	// What the two of them import, and then the two of them: one program, with the modules
+	// before what needs them and the test last.
+	if s.resolver == nil {
+		report.Err = errors.New("no resolver was given to this session")
+		return report
+	}
+	modules, err := s.resolver.Dependencies(source, trees...)
+	if err != nil {
+		report.Err = err
+		return report
+	}
+	for _, tree := range trees {
+		modules = append(modules, module.Module{ID: "", Tree: tree})
+	}
 
-		program, err := s.emitter.EmitProgram(tree)
-		if err != nil {
-			report.Err = failedAt(file, source, err)
-			return report
-		}
-
-		boundary = len(instructions)
-		instructions = append(instructions, program.Instructions...)
+	program, err := loader.Load(modules, s.emitter.EmitProgram)
+	if err != nil {
+		report.Err = err
+		return report
 	}
 
 	ev, err := s.evaluator()
@@ -240,12 +255,18 @@ func (s *Session) runTestFile(path string) FileReport {
 		return report
 	}
 
-	if _, err := ev.EvaluateRange(instructions, 0, uint64(boundary)); err != nil {
-		report.Err = fmt.Errorf("%s: %w", source, err)
-		return report
-	}
-	if _, err := ev.EvaluateRange(instructions, uint64(boundary), uint64(len(instructions))); err != nil {
-		report.Err = err
+	// Every range runs, in order, and the last one is the test. A failure before it is a
+	// failure of the code being checked rather than of the check, so it says which file.
+	for i, each := range program.Ranges {
+		_, err := ev.EvaluateModule(program.Instructions, each.From, each.To, string(each.Module))
+		if err == nil {
+			continue
+		}
+		if i < len(program.Ranges)-1 {
+			report.Err = fmt.Errorf("%s: %w", each.Filename, err)
+		} else {
+			report.Err = err
+		}
 		return report
 	}
 

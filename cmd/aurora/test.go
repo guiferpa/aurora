@@ -38,6 +38,15 @@ func init() {
 	testCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
 }
 
+// firstOf answers the file the project is found from, and nothing when there are none to run
+// — in which case no module is ever looked for.
+func firstOf(files []string) string {
+	if len(files) == 0 {
+		return ""
+	}
+	return files[0]
+}
+
 func runTest(cmd *cobra.Command, args []string) error {
 	var target string
 	if len(args) > 0 {
@@ -59,6 +68,9 @@ func runTest(cmd *cobra.Command, args []string) error {
 		Lexer:   lexer.New(),
 		Parser:  parser.New(),
 		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		// A test file belongs to a project, and the project says where module names resolve
+		// from — the same answer for the file it tests and for the modules the two import.
+		Resolver: newResolver(size, cli.ProjectSourceRoot(firstOf(files))),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{
 				// A test says what held and what did not; what the program printed on the

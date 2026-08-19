@@ -125,3 +125,67 @@ func TestWhatARefusalSays(t *testing.T) {
 		})
 	}
 }
+
+// A test runs against the source it belongs to and everything the two of them import.
+//
+// The two files are one module written twice, so the test calls what the source declared by
+// the name the source typed, and the module the source brought in answers under its alias.
+func TestATestSeesWhatItsSourceImports(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/geometry.ar":  "ident area = defer { feed(0) * feed(1); };",
+		"src/main.ar":      "use geometry as g;\nident box = defer { g.area(feed(0), feed(1)); };",
+		"src/main.test.ar": "assert(box(3, 4) equals 12, \"a box is its sides multiplied\");",
+	})
+
+	report, err := tested(t, "", sessionOpts{asserts: true})
+	if err != nil {
+		t.Fatalf("testing: %v", err)
+	}
+	if !report.OK() {
+		t.Errorf("the run did not pass: %+v", report.Files)
+	}
+	if report.Passed != 1 {
+		t.Errorf("%d assertions held, want 1", report.Passed)
+	}
+}
+
+// And a test names the modules it uses like any other file, including one its source never
+// mentioned.
+func TestATestImportsOnItsOwn(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/numbers.ar":   "ident double = defer { feed(0) * 2; };",
+		"src/main.ar":      "ident v = 21;",
+		"src/main.test.ar": "use numbers as n;\nassert(n.double(v) equals 42, \"doubling what the source bound\");",
+	})
+
+	report, err := tested(t, "", sessionOpts{asserts: true})
+	if err != nil {
+		t.Fatalf("testing: %v", err)
+	}
+	if !report.OK() {
+		t.Errorf("the run did not pass: %+v", report.Files)
+	}
+}
+
+// A module that is not there is reported against the file that runs, rather than crashing the
+// whole run.
+func TestATestWhoseModuleIsNotThere(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/main.ar":      "use missing as m;\nident v = 1;",
+		"src/main.test.ar": "assert(v equals 1, \"holds\");",
+	})
+
+	report, err := tested(t, "", sessionOpts{asserts: true})
+	if err != nil {
+		t.Fatalf("testing: %v", err)
+	}
+	if report.OK() {
+		t.Fatal("the run passed with a module that is not there")
+	}
+	if len(report.Files) != 1 || report.Files[0].Err == nil {
+		t.Fatalf("no file reported the refusal: %+v", report.Files)
+	}
+	if got := report.Files[0].Err.Error(); !strings.Contains(got, "module missing is not there") {
+		t.Errorf("the error says %q", got)
+	}
+}

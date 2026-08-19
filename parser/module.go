@@ -2,6 +2,7 @@ package parser
 
 import (
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -19,10 +20,7 @@ import (
 // name is what an identifier is called in the program. The file somebody asked to run has no
 // module, and its names are written as they were typed.
 func (p *pr) name(text string) string {
-	if p.module == "" {
-		return text
-	}
-	return p.module + "." + text
+	return module.Qualify(module.ID(p.module), text)
 }
 
 // typed is what an identifier says in the file, which is what a struct name and an alias are
@@ -39,7 +37,7 @@ func typed(id ast.IdentifierLiteral) string {
 func (p *pr) parseMember(specifier, symbol string, at token.Token) (ast.Node, error) {
 	p.references = append(p.references, ast.Reference{Module: specifier, Symbol: symbol, Token: at})
 
-	qualified := ast.IdentifierLiteral{Value: specifier + "." + symbol, Token: at}
+	qualified := ast.IdentifierLiteral{Value: module.Qualify(module.ID(specifier), symbol), Token: at}
 	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_PAREN {
 		return p.ParseCallee(qualified)
 	}

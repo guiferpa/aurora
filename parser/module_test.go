@@ -110,9 +110,6 @@ func TestQualifiedNamesLeaveWithTheTree(t *testing.T) {
 		if got.Token == nil {
 			t.Errorf("reference %d carries no token, so nothing can point at it", i)
 		}
-		if got.Name() != want.Module+"."+want.Symbol {
-			t.Errorf("reference %d is called %q", i, got.Name())
-		}
 	}
 }
 

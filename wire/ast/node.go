@@ -241,12 +241,6 @@ type Reference struct {
 	Token  token.Token `json:"-"`
 }
 
-// Name is what the reference is called in the program: the module in front of the symbol,
-// which is the same text the module itself writes when it binds it.
-func (r Reference) Name() string {
-	return r.Module + "." + r.Symbol
-}
-
 // StructDeclaration names the fields of a run of tapes: `struct Point { x, y };`.
 //
 // It declares a shape for whoever writes the source; it is not a value. The compiler reads it to

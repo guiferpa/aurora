@@ -86,9 +86,13 @@ What it does not do yet:
   it came from. What it does not do is watch a file nobody has open, so editing a module
   outside the editor updates what depends on it only when that file is touched. It does not
   need the resolver; it needs a capability the server does not have.
-- **A jump lands on a declaration and nothing else.** There is no
-  `textDocument/references` — every place a name is used — and so no rename either, which is
-  the same walk with an edit at the end of it.
+- **A rename stops at the file it is asked in.** A name bound inside a scope and an alias are
+  renamed everywhere they are written; a name bound at the top of a file is refused, with the
+  reason, because another file may be importing it. Completing those needs the walk that is
+  missing: which files of a project import this module, and under which alias. Nothing walks
+  a project today — the resolver reads what a file names, never who names it.
+- **Nothing lists where a name is used.** There is no `textDocument/references`. Renaming
+  works the list out and shows it to nobody, which is the whole of what is missing.
 - **Nothing measures what following an import costs.** Every pass reads and parses every
   module the document imports, with no cache, which is the honest place to start: a cache has
   invalidation, and invalidation is a bug that reads as the editor lying. The shape to copy

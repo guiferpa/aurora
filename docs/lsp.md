@@ -13,6 +13,7 @@
 | **Hover** | `textDocument/hover` | The description of the keyword under the cursor, what an identifier was bound to, a shape's fields, or which tape a field reads |
 | **Completion** | `textDocument/completion` | Keywords as snippets, the identifiers and shapes declared in the document, and — right after a `.` — the fields of a shape or what a module offers |
 | **Go to definition** | `textDocument/definition` | Where the name under the cursor was declared, in this file or in the module it came from |
+| **Rename** | `textDocument/rename`, `textDocument/prepareRename` | A name changed everywhere it is written — for the names that cannot leave the file |
 
 Document sync is **full** (`textDocumentSync: 1`): the client resends the whole file on each change.
 
@@ -94,13 +95,46 @@ A module that is not there, and a name a module does not have, are jumps that do
 The diagnostic already says what is wrong, and an editor that opens nothing is better than one
 that opens the wrong file.
 
+### Rename
+
+A name is changed everywhere it is written, in one pass, and the editor is handed every edit
+at once.
+
+It refuses more than it accepts, and that is deliberate. An editor that offers a rename it
+cannot finish is worse than one that offers none: the half that was renamed compiles, the half
+that was not is in somebody else's file, and nothing on screen says which is which.
+
+| Under the cursor | |
+|---|---|
+| a name bound inside a scope | renamed, everywhere that scope reads it |
+| an alias | renamed, in the `use` line and every reach through it |
+| a name bound at the top of a file | **refused** — another file may be importing it |
+| a field | **refused** — it belongs to a shape, and a shape crosses |
+| a name of another module | **refused** — it is declared in a file this one does not own |
+
+The refusal carries its reason, and a client shows it. It arrives at `prepareRename`, before
+the box opens, for a client that asks — and again from the rename itself, for one that does
+not.
+
+A new name is checked before anything is rewritten. Whether it is a name at all is asked of
+the lexer, so a keyword, a number or two words are refused for the same reason the compiler
+would refuse them; and a shape's new name has to start with a capital letter.
+
+**Scopes are read as the language reads them.** A declaration is a name inside the block it
+was written in, and the block ends at its brace. A name written where two declarations reach
+it means the deeper one, and where one block declares it twice, the one above it. Where there
+is none above, the one below answers: a deferred scope runs when it is called, so its body may
+name something written under it.
+
 **Scope:** the server lexes and parses the open document and the files it imports, and never evaluates. The imported files arrive through a port the host fills in — the command line reads a disk, the playground reads a map it already holds, since a browser has no files — so the same package answers wherever it is put. An imported file that is open in the editor is read as it is on screen, not as it is on disk: a name just typed resolves, and one just deleted stops resolving. See [modules.md](modules.md) for what a module is.
 
 **Known limitations**
 
 - The parser stops at the first error, so **one diagnostic per pass**. Fix it and the next one appears.
 - Go to definition lands on a declaration, never on every place a name is used: there is no
-  `textDocument/references`, and no rename that follows from it.
+  `textDocument/references`. Renaming knows those places, and shows them to nobody.
+- A rename stops at the file. What a module offers is refused rather than followed into the
+  files that import it, which is a walk of the project the server does not do yet.
 - Scope is read as the file is written, so a name declared inside a deferred scope and one
   declared at the top are told apart by which comes first, not by which is visible.
 - No code actions, no formatting, no incremental sync.

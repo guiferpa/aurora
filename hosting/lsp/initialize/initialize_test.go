@@ -75,6 +75,17 @@ func TestNewResponse(t *testing.T) {
 	if len(capabilities.SemanticTokensProvider.Legend.TokenTypes) == 0 {
 		t.Error("the legend cannot be empty, or the client has no names for the tokens")
 	}
+	if !capabilities.DefinitionProvider {
+		t.Error("go to definition should be advertised")
+	}
+	// A capability nobody announces is a feature nobody can use: the client decides what to
+	// ask for from this list alone.
+	if capabilities.RenameProvider == nil {
+		t.Fatal("rename should be advertised")
+	}
+	if !capabilities.RenameProvider.PrepareProvider {
+		t.Error("the server answers prepareRename, which is where a refusal is heard first")
+	}
 }
 
 // A client reads this as JSON, so the shape on the wire is what matters.

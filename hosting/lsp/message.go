@@ -12,6 +12,11 @@ const (
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#responseMessage
 const CodeMethodNotFound = -32601
 
+// CodeRequestFailed is a request the server understood and could not carry out. The message
+// is shown to whoever asked, so it is written for them.
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#errorCodes
+const CodeRequestFailed = -32803
+
 type URI string
 
 type Request struct {
@@ -54,6 +59,14 @@ func NewMethodNotFoundResponse(id int, method string) ErrorResponse {
 	}
 }
 
+// NewFailedResponse answers a request the server understood and refused, with the reason.
+func NewFailedResponse(id int, reason string) ErrorResponse {
+	return ErrorResponse{
+		Response: Response{RPC: "2.0", ID: &id},
+		Error:    ResponseError{Code: CodeRequestFailed, Message: reason},
+	}
+}
+
 func NewNullResponse(id *int) NullResponse {
 	return NullResponse{Response: Response{RPC: "2.0", ID: id}, Result: nil}
 }
@@ -80,8 +93,16 @@ type ServerCapabilities struct {
 	TextDocumentSync       int                    `json:"textDocumentSync"`
 	HoverProvider          bool                   `json:"hoverProvider"`
 	DefinitionProvider     bool                   `json:"definitionProvider"`
+	RenameProvider         *RenameOptions         `json:"renameProvider,omitempty"`
 	CompletionProvider     map[string]any         `json:"completionProvider"`
 	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
+}
+
+// RenameOptions says the server answers textDocument/prepareRename as well, which is what
+// lets a client ask whether a name can be renamed before it asks for a new one.
+// https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#renameOptions
+type RenameOptions struct {
+	PrepareProvider bool `json:"prepareProvider"`
 }
 
 type ServerInfo struct {

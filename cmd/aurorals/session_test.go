@@ -363,3 +363,59 @@ func TestSessionHoverOfNothingIsNull(t *testing.T) {
 		t.Errorf("answered %v, want a null result", replies[1])
 	}
 }
+
+// The round trip of a rename: every edit in one file, under the URI the client knows it by.
+func TestSessionRenameAnswersWithTheEdits(t *testing.T) {
+	uri := "file:///tmp/main.ar"
+	replies := runSession(t,
+		didOpen(uri, "ident area = defer {\n  ident side = feed(0);\n  side * side;\n};\n"),
+		request(9, "textDocument/rename", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": 2, "character": 3},
+			"newName":      "edge",
+		}),
+		exitMessage,
+	)
+
+	if len(replies) != 2 {
+		t.Fatalf("expected diagnostics plus the rename reply, got %d: %v", len(replies), replies)
+	}
+	changes := replies[1]["result"].(map[string]any)["changes"].(map[string]any)
+	edits, touched := changes[uri]
+	if !touched || len(changes) != 1 {
+		t.Fatalf("changed %v, want the open file alone", changes)
+	}
+	if len(edits.([]any)) != 3 {
+		t.Errorf("made %d edits, want the declaration and its two readings", len(edits.([]any)))
+	}
+	for _, edit := range edits.([]any) {
+		if edit.(map[string]any)["newText"] != "edge" {
+			t.Errorf("an edit writes %v, want the new name", edit)
+		}
+	}
+}
+
+// A name that cannot be renamed is refused with the reason, which is what a client shows to
+// whoever asked — and it is refused at the prepare step, before the box opens.
+func TestSessionRenameIsRefusedWithAReason(t *testing.T) {
+	uri := "file:///tmp/main.ar"
+	replies := runSession(t,
+		didOpen(uri, "ident total = 1;\nprintd total;\n"),
+		request(10, "textDocument/prepareRename", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": 1, "character": 8},
+		}),
+		exitMessage,
+	)
+
+	if len(replies) != 2 {
+		t.Fatalf("expected diagnostics plus the refusal, got %d: %v", len(replies), replies)
+	}
+	failure, refused := replies[1]["error"].(map[string]any)
+	if !refused {
+		t.Fatalf("answered %v, want a refusal", replies[1])
+	}
+	if !strings.Contains(fmt.Sprint(failure["message"]), "another file may be importing it") {
+		t.Errorf("said %v, want it to say why", failure["message"])
+	}
+}

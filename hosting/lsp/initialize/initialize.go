@@ -69,6 +69,9 @@ func NewResponse(id int) InitializeResponse {
 				// Where a name was declared. Every name in Aurora is declared in the file
 				// that uses it or in a module it named, so the answer is always one place.
 				DefinitionProvider: true,
+				// Renaming a name everywhere it is written, with the prepare step: a client
+				// that asks first hears the refusal before it asks for a new name.
+				RenameProvider: &lsp.RenameOptions{PrepareProvider: true},
 				// The dot is declared as a trigger so a client asks for completion the
 				// moment someone types it — which is when the fields of a shape are
 				// what they want, and the only moment the document does not parse.

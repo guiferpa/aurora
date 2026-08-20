@@ -218,13 +218,15 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 	case token.TRUE, token.FALSE:
 		return "boolean: " + match
 	case token.ID:
+		aliases := aliasesOf(parser.ScanUses(analysis.Tokens))
 		// A module is not a value, so it is answered for before anything looks for one.
-		if info := aliasesOf(parser.ScanUses(analysis.Tokens)).describe(analysis.Tokens, tk); info != "" {
+		if info := aliases.describe(analysis.Tokens, tk); info != "" {
 			return info + describeExport(analysis, tk)
 		}
 		// A struct name or a field read out of one: the declaration is what says these are
-		// anything other than a name, so it is what hover has to answer with.
-		if shape, fields, index := scanStructs(analysis.Tokens).structAt(analysis.Tokens, tk); shape != "" {
+		// anything other than a name, so it is what hover has to answer with. The declaration
+		// may be in another file, which is why the imports are read here too.
+		if shape, fields, index := shapesOf(analysis, aliases).structAt(analysis.Tokens, tk); shape != "" {
 			if index < 0 {
 				return "struct " + shape + "\nfields: " + strings.Join(fields, ", ")
 			}
@@ -250,7 +252,8 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 // the cursor, and a document being edited usually does not parse.
 func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bool) []CompletionItem {
 	analysis := s.Analyze(doc)
-	shapes := scanStructs(analysis.Tokens)
+	aliases := aliasesOf(parser.ScanUses(analysis.Tokens))
+	shapes := shapesOf(analysis, aliases)
 
 	// Right after a dot the fields are the answer, and the only one: nothing else can
 	// follow it.
@@ -261,7 +264,6 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 
 	// After a dot on a module alias, what can follow is what that module declared, and
 	// nothing else — the same rule as a struct's fields, answered from another file.
-	aliases := aliasesOf(parser.ScanUses(analysis.Tokens))
 	if specifier, isModule := aliases.moduleBefore(analysis.Tokens, offset); isModule {
 		return exportCompletions(analysis, specifier)
 	}

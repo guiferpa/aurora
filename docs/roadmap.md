@@ -80,7 +80,9 @@ What it does not do yet:
 - **The language server follows an import, and stops short of two things.** It reads what a
   document imports on every pass, from the editor's buffers before the disk, so a module that
   is not there and a name a module does not have are underlined where they were written, and
-  what a module declared is offered after the dot. What it does not do is go to a definition
+  what a module declared is offered after the dot — its structs included, and the fields of a
+  name whose shape came from another file, because what the imports offer is written down
+  before the document is read. What it does not do is go to a definition
   in another file — no `textDocument/definition` exists for anything yet — and it does not
   watch a file nobody has open, so editing a module outside the editor updates what depends
   on it only when that file is touched. Neither needs the resolver; both need a capability

@@ -18,13 +18,16 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Abertas:**
+**Nenhuma aberta no momento.**
 
-| RFC | Estado | Sobre |
-|---|---|---|
-| [returns.md](returns.md) | proposta | `returns`: um escopo promete a forma que responde, e o compilador confere |
+A última foi `returns.md` — um bloco promete a forma que responde, e o compilador recusa o
+bloco que não cumpre. Foi implementada no mesmo dia em que foi escrita, e o que ficou decidido
+está em [docs/language-design.md](../docs/language-design.md), na seção "Promising a shape with
+`returns`" — incluindo o que ela decidiu **contra**: a promessa não é exigida, e não será nunca,
+porque um escopo não tem assinatura e exigir que ele declare o que responde seria declarar uma
+ponta e não a outra.
 
-A última foi `module_system.md` — um arquivo é um módulo, um nome carrega o módulo a que
+Antes dela, `module_system.md` — um arquivo é um módulo, um nome carrega o módulo a que
 pertence, e cada módulo guarda os seus nomes num environ próprio. Foi implementada em seis
 pull requests e o que ficou decidido está em [docs/modules.md](../docs/modules.md), que é a
 referência, e em [docs/module_system_design.md](../docs/module_system_design.md), que é o

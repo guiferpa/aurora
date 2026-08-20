@@ -331,13 +331,35 @@ etapa 2 crescer.
 
 ---
 
-## Em aberto
+## Decidido
 
-1. **A promessa pode ser exigida?** Hoje um escopo sem `returns` continua legal e quem chama
-   escreve `as`. Um dia isso pode virar aviso; não agora.
-**Decidido, e medido:** `branch` entra junto com `if` porque **é** `if` — ele vira
-`ast.IfExpression` no parse, então não há segunda travessia a escrever. Um `if` sem `else` não
-promete nada. E a gramática ganha uma produção só, no bloco.
+Nada em aberto. O que a discussão fechou, para a leitura final ser uma conferência:
 
-**Decidido:** o nome é `returns`. `answers` foi considerado e recusado — um escopo está de
-fato **devolvendo** um valor ao escopo de fora, e essa é a palavra para isso.
+| Decisão | |
+|---|---|
+| **A palavra** | `returns`, depois da chave que fecha o bloco |
+| **A gramática** | uma produção, no bloco. `if` e `branch` nunca a recebem |
+| **`branch`** | entra junto com `if` porque **é** `if`: vira `ast.IfExpression` no parse |
+| **`if` sem `else`** | não promete nada — um caminho responde o valor neutro |
+| **O que a promessa nomeia** | um `struct`, que é a única forma que a linguagem tem hoje para uma corrida de tapes |
+| **`as`** | continua, para onde há alegação a fazer em vez de promessa a cumprir |
+| **Exigir a promessa** | **nunca** |
+
+### Por que a promessa não será exigida, nunca
+
+Não é "não agora". É uma decisão sobre o que a linguagem é.
+
+Aurora é **sem tipos**, e um escopo não tem assinatura: ele não declara quantos valores recebe
+nem o que eles são — `feed` entrega bytes e nada mais, por desenho. Exigir que ele declarasse
+o que responde seria declarar uma ponta e não a outra, e a ponta declarada seria a única coisa
+da linguagem que alguém é obrigado a escrever.
+
+E há o argumento que veio da própria conversa: **`returns` é o que se ganha ao prometer, não
+um pedágio para escrever um bloco.** Exigido, ele deixaria de ser ganho e viraria imposto —
+e o programa que hoje funciona sem ele passaria a não compilar por não ter dito algo que o
+compilador já sabia viver sem.
+
+Uma consequência que vale ficar escrita: como nada pode contar com a promessa existir, nada
+pode ser construído em cima dela. O language server pode oferecer mais quando ela está lá, e
+não pode supor que esteja; e o que um dia fizer um `struct` atravessar módulo terá de
+funcionar para um escopo que não prometeu nada.

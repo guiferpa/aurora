@@ -106,12 +106,23 @@ isto: um `if` escolhendo entre dois resultados. A lista, em ordem de necessidade
 | `Result{...}` | ✓ | — |
 | `x as Result` | ✓ | — |
 | um nome anotado | ✓ | — |
-| `if c { Result{...}; } else { Result{...}; }` | ✗ | os dois ramos concordando; um `if` sem `else` não promete nada |
+| `if c { Result{...}; } else { Result{...}; }` | ✗ | os dois ramos concordando |
 | `{ ...; Result{...}; }` | ✗ | a última expressão do bloco |
 | `f()` onde `f` prometeu | ✗ | a tabela nova |
 
-Um `branch` com várias saídas é a mesma regra do `if`, e fica como pergunta aberta se entra
-agora ou depois.
+**Um `if` sem `else` não promete nada.** Quando o teste falha, aquele caminho responde o
+valor neutro, e o valor neutro não é um `Person` — então prometer ali seria prometer o que
+metade das execuções não cumpre. A recusa diz isso:
+
+```
+this block answers with Person and its if has no else: one path answers with nothing
+```
+
+E um ramo que responde outra coisa é recusado nomeando o ramo, não o bloco:
+
+```
+this block answers with Person and the else answers with a number
+```
 
 E o que **não** dá para enxergar continua não dando: um valor vindo de `feed`, ou de qualquer
 lugar que o compilador não acompanha, segue precisando de `as`. `returns` não substitui `as` —
@@ -132,6 +143,31 @@ Um `defer` é um bloco com uma palavra na frente (`ast.DeferExpression` guarda u
 `BlockExpression`), então ler `returns` no fim de `ParseBlockExpr` cobre os dois sem caso
 especial. O corpo de um `if` não passa por ali — ele é lido com `ParseExprs` direto —, então
 `if c { ... } returns P` não é gramática, e é bom que não seja.
+
+### A gramática ganha uma produção, e só
+
+```
+block := "{" exprs "}" [ "returns" ID ]
+```
+
+É tudo. **Um `if` e um `branch` nunca recebem `returns`** — os corpos deles são lidos com
+`ParseExprs` direto (`parser/parser.go`), sem passar por `ParseBlockExpr`, então
+`if c { ... } returns P` não é gramática e o erro é o comum, de um token onde se esperava
+outro. Não há ambiguidade a resolver porque não há segunda produção.
+
+O que um `if` e um `branch` ganham não é sintaxe, é **serem enxergados**: quando um deles é a
+última expressão de um bloco que prometeu, a promessa olha através dele. Isso é regra de
+forma, não de gramática, e mora no `shapeOf`.
+
+### E `branch` sai de graça
+
+`branch` não é um nó. `ParseBranch` devolve um `ast.IfExpression` — ele é desaçucarado em
+`if`s aninhados no parse, e o último item da lista, o que não tem teste, vira o `Else` mais
+interno. Não existe `BranchExpression` na árvore para ninguém percorrer.
+
+Então o que `shapeOf` aprender sobre `if` vale para `branch` sem uma linha a mais. E como um
+`branch` sempre termina com aquele item sem teste, ele **sempre tem else** — a regra abaixo
+nunca o recusa por falta de saída, só por um dos ramos responder outra coisa.
 
 Nada disso chega ao emitter. Como `struct`, `returns` é declaração: ela é lida, confere,
 anota, e morre no fim da compilação. O binário não sabe que existiu.
@@ -186,10 +222,11 @@ etapa 2 crescer.
 
 ## Em aberto
 
-1. **`branch` entra junto com `if`?** A regra é a mesma; o custo é outra travessia.
-2. **Um `if` sem `else` promete alguma coisa?** Proposta: não — um caminho que não passa pelo
-   ramo não produz o struct.
-3. **A promessa pode ser exigida?** Hoje um escopo sem `returns` continua legal e quem chama
+1. **A promessa pode ser exigida?** Hoje um escopo sem `returns` continua legal e quem chama
    escreve `as`. Um dia isso pode virar aviso; não agora.
+**Decidido, e medido:** `branch` entra junto com `if` porque **é** `if` — ele vira
+`ast.IfExpression` no parse, então não há segunda travessia a escrever. Um `if` sem `else` não
+promete nada. E a gramática ganha uma produção só, no bloco.
+
 **Decidido:** o nome é `returns`. `answers` foi considerado e recusado — um escopo está de
 fato **devolvendo** um valor ao escopo de fora, e essa é a palavra para isso.

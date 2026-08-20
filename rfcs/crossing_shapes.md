@@ -120,6 +120,20 @@ dele antes. Dois jeitos:
 **Proposta: o cabeçalho** — e ele é mais barato do que parece, porque o editor já faz
 exatamente isso.
 
+### O editor já sabe, e por isso hoje ele cala
+
+O editor consegue oferecer, depois de `m.`, os nomes que `math` liga — sem que exista chamada
+nenhuma no arquivo aberto, porque ele lê a árvore do outro módulo. Oferecer os **structs** dele
+junto seriam as mesmas duas linhas.
+
+Ele não faz porque estaria oferecendo **o que o compilador recusa**: você aceitaria `m.Prime` e
+levaria erro de sintaxe. A diferença entre o que ele pode responder e o que o parser pode não é
+conhecimento, é consequência — um mostra um nome, e o outro grava um número num nó que vai
+executar. Nome errado se apaga; índice errado roda.
+
+Depois desta RFC ele passa a poder oferecer com verdade, porque o compilador aceita o que ele
+ofereceu.
+
 ### O caro já está pago, e quem pagou foi o editor
 
 `Analyze` (`hosting/lsp/textdoc/validator.go`) roda nesta ordem hoje:
@@ -189,7 +203,7 @@ importa e ele descobre sozinho ao ler o próprio `use`.
 | `parser.ParseInput` | as promessas do que este arquivo importa, por specifier |
 | `resolver` | ordem de dependência primeiro, e a porta de cabeçalho |
 | `loader` | nada — a conferência de nome já é dele e não muda |
-| `hosting/lsp` | juntar as promessas dos módulos resolvidos às formas lidas dos tokens |
+| `hosting/lsp` | juntar as promessas dos módulos resolvidos às formas lidas dos tokens, e passar a oferecer os structs de um módulo depois do ponto |
 | `hosting/repl` | passar as promessas dos módulos já carregados para o parse da próxima linha |
 | emitter, IR, evaluator, builder | nada |
 

@@ -146,7 +146,7 @@ func ifEqual(a, b IfExpression) bool {
 }
 
 func blockEqual(a, b BlockExpression) bool {
-	return nodesEqual(a.Body, b.Body)
+	return a.Returns == b.Returns && nodesEqual(a.Body, b.Body)
 }
 
 func elseEqual(a, b ElseExpression) bool {

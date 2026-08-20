@@ -150,7 +150,11 @@ type BooleanExpression struct {
 
 type BlockExpression struct {
 	mark
-	Body []Node `json:"body"`
+	// Returns is the struct this block promised to answer with, and empty when it promised
+	// nothing. It is checked where it is written and never reaches an instruction: like the
+	// declaration it names, it is read while compiling and dropped.
+	Returns string `json:"returns,omitempty"`
+	Body    []Node `json:"body"`
 }
 
 // DeferExpression is "defer { ... }". It produces a value that is a pointer to the scope

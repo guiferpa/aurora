@@ -28,6 +28,7 @@ var keywordTags = []token.Tag{
 	token.TagStruct,
 	token.TagAs,
 	token.TagUse,
+	token.TagReturns,
 }
 
 var Keywords = func() map[string]token.Tag {

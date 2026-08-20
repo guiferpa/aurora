@@ -39,6 +39,7 @@ const (
 	PRINTD       = "PRINTD"    // printd - a value as a decimal number
 	PULL         = "PULL"      // pull
 	PUSH         = "PUSH"      // push
+	RETURNS      = "RETURNS"   // returns - the shape a block answers with
 	SEMICOLON    = "SEMICOLON" // ;
 	SMALLER      = "SMALLER"   // smaller
 	STRING       = "STRING"    // text literal "text" - one more way of writing a tape
@@ -96,6 +97,7 @@ var (
 	TagOr         = Tag{OR, "or", ""}
 	TagPull       = Tag{PULL, "pull", "Pull item in right to left"}
 	TagPush       = Tag{PUSH, "push", "Push item in left to right"}
+	TagReturns    = Tag{RETURNS, "returns", "Name the struct a block answers with"}
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagSmaller    = Tag{SMALLER, "smaller", ""}
 	TagString     = Tag{STRING, "", ""} // Text literal: "text", the bytes it holds, in a tape
@@ -126,6 +128,7 @@ var processableTags = []Tag{
 	TagStruct,
 	TagAs,
 	TagUse,
+	TagReturns,
 }
 
 func GetProcessableTags() []Tag {

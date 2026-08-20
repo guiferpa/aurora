@@ -341,3 +341,25 @@ func TestSessionDefinitionCrossesIntoAModule(t *testing.T) {
 		t.Errorf("points at %v, want line 0 character 6", start)
 	}
 }
+
+// Hover over something with nothing to say — a semicolon — answers null, not silence: a
+// request is answered whatever the answer is.
+func TestSessionHoverOfNothingIsNull(t *testing.T) {
+	uri := "file:///tmp/main.ar"
+	replies := runSession(t,
+		didOpen(uri, "printd 42;\n"),
+		request(8, "textDocument/hover", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": 0, "character": 9},
+		}),
+		exitMessage,
+	)
+
+	if len(replies) != 2 {
+		t.Fatalf("expected diagnostics plus the null reply, got %d replies: %v", len(replies), replies)
+	}
+	result, answered := replies[1]["result"]
+	if !answered || result != nil {
+		t.Errorf("answered %v, want a null result", replies[1])
+	}
+}

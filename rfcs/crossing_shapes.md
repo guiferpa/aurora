@@ -242,6 +242,44 @@ A propriedade que a versão anterior comprava — um struct só é interface qua
 nomeia — se perde, e é uma perda real: qualquer struct de topo passa a ser alcançável de fora.
 Vale menos que a coerência da regra, e um dia `private` a devolve para quem quiser.
 
+## O nome de um struct nunca vira nó
+
+Vale dizer como a nomeação funciona, porque a saída errada é tentadora: deixar `m.Prime` virar
+um nó e o emitter ignorá-lo. Não é isso.
+
+Nas três posições em que um nome de struct aparece legitimamente, ele não é nó nenhum — é
+**texto pendurado num nó que já existe**:
+
+| escrito | onde o nome fica |
+|---|---|
+| `as m.Prime` | `ShapedExpression.Struct` |
+| `returns m.Prime` | `BlockExpression.Returns` |
+| `m.Prime{1, 2}` | `StructLiteral.Name`, que o emitter nem lê |
+
+É como um struct local já funciona, e é melhor que ignorar no emitter por um motivo concreto:
+`EmitInstruction` termina num `default` que devolve o valor neutro **em silêncio** — o roadmap
+já registra isso como defeito. Um nó que viaja para ser ignorado está a um `switch` de
+distância de virar zero sem ninguém ver.
+
+O que existe é **roteamento, antes**. `parsePrimaryExpr` já faz para o caso local:
+
+```
+if o nome está na tabela de structs {
+    se vier "{" → constrói
+    senão       → recusa: "Point is a struct: build a value with Point{...}"
+}
+```
+
+Três linhas, e são elas que impedem `printd Point;` de virar carregamento de nome. Para
+`m.Prime` é a mesma pergunta, à mesma tabela — que precisa ter os structs importados. Se for
+forma e vier `{`, constrói; se for forma e vier `;`, recusa com a frase que já existe; se for
+valor, faz o nome qualificado que já faz hoje.
+
+A decisão é do parser, no instante em que ele lê a linha. Não há terceira porta, e é por isso
+que o conhecimento tem de estar lá antes.
+
+---
+
 ## O que continua de fora
 
 - **Promessa transitiva.** Se `a` promete um struct que veio de `b`, o que atravessa é a forma

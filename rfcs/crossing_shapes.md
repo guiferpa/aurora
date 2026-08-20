@@ -1,6 +1,6 @@
 # A forma atravessa junto com a promessa
 
-**Estado:** proposta · **Data:** 2026-08-20
+**Estado:** aceita · **Data:** 2026-08-20
 
 Um escopo importado responde uma corrida de tapes e quem importa não tem nome para a forma
 delas. Esta RFC faz **a promessa carregar a forma**: nada de nomear struct de outro módulo,
@@ -71,6 +71,36 @@ A forma importada entra em `Structs` sob o nome qualificado do módulo — `os.E
 mesmo formato que os identificadores já usam e que o lexer não deixa ninguém escrever (`/` e
 `.` não cabem num identificador). Dois módulos com um `Env` cada são duas entradas, sem
 colisão e sem regra nova.
+
+---
+
+## O modelo é o do Go, e não o do Java
+
+Há duas famílias, e a escolha entre elas é a decisão que este documento toma:
+
+| família | quem | como |
+|---|---|---|
+| **dependência primeiro** | Go, Rust, e o `#include` do C na versão mais crua | ordena e lê as dependências antes; o dependente já encontra o que elas oferecem |
+| **parseia tudo, resolve depois** | Java, TypeScript | lê todos os arquivos, e uma fase separada liga os nomes |
+
+**Escolhemos a primeira**, por três coisas que já são verdade neste código:
+
+1. **O pré-requisito está pago.** Ordem por dependência só existe sem ciclo, e ciclo já é
+   recusado com a cadeia inteira na mensagem — desde o primeiro pull request de módulos. O
+   Java permite import circular justamente porque o modelo dele não precisa de ordem.
+2. **O editor já é Go.** Ele lê o cabeçalho, resolve os módulos e só então parseia o documento
+   aberto. Escolher Java faria o compilador e o editor usarem estratégias diferentes.
+3. **O modelo do Java é caro aqui.** Ele precisa de uma fase que **escreve de volta** na
+   árvore, e a nossa é feita de valores imutáveis sem helper de travessia: patchar significa
+   reconstruir, que é a travessia de vinte e cinco casos que o desenho de módulos já evitou
+   uma vez.
+
+E há a coerência: a Aurora **já é "decidir no parse" no pequeno** — `.x` vira índice no parse,
+`as` anota no parse, `returns` confere no parse. O modelo do Go é essa mesma disciplina no
+grande. Adotar o do Java só para módulos deixaria o compilador com duas cabeças.
+
+O que se abre mão já está fora: import circular, que recusamos de propósito, e parsear um
+arquivo em isolamento sabendo tudo — que o editor já não faz.
 
 ---
 

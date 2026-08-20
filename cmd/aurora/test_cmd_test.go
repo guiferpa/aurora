@@ -63,7 +63,7 @@ func runTestCmd(t *testing.T, args ...string) error {
 func TestTestCommandPasses(t *testing.T) {
 	dir := testProject(t)
 	writeSource(t, filepath.Join(dir, "src"), "main.ar", "ident double = defer { feed(0) * 2; };\n")
-	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(double(4) equals 8, "doubles");`)
+	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", "use main as m;\n"+`assert(m.double(4) equals 8, "doubles");`)
 
 	if err := runTestCmd(t); err != nil {
 		t.Errorf("a passing suite should not error: %v", err)
@@ -73,8 +73,8 @@ func TestTestCommandPasses(t *testing.T) {
 // A failure has to reach the exit code, or a CI job would treat a broken suite as green.
 func TestTestCommandFails(t *testing.T) {
 	dir := testProject(t)
-	writeSource(t, filepath.Join(dir, "src"), "main.ar", "ident a = 1;\n")
-	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(a equals 2, "does not hold");`)
+	writeSource(t, filepath.Join(dir, "src"), "main.ar", "printd 1;\n")
+	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", "ident a = 1;\n"+`assert(a equals 2, "does not hold");`)
 
 	err := runTestCmd(t)
 	if err == nil {
@@ -87,13 +87,13 @@ func TestTestCommandFails(t *testing.T) {
 
 func TestTestCommandWithAFileThatCannotRun(t *testing.T) {
 	dir := testProject(t)
-	writeSource(t, filepath.Join(dir, "src"), "main.ar", "ident a = 1;\n")
-	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(a equals 1, "holds");`)
-	writeSource(t, filepath.Join(dir, "src"), "orphan.test.ar", `assert(1 equals 1, "no source");`)
+	writeSource(t, filepath.Join(dir, "src"), "main.ar", "printd 1;\n")
+	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(1 equals 1, "holds");`)
+	writeSource(t, filepath.Join(dir, "src"), "lost.test.ar", "use nowhere as n;\n"+`assert(1 equals 1, "never runs");`)
 
 	err := runTestCmd(t)
 	if err == nil {
-		t.Fatal("a test without its source should surface as an error")
+		t.Fatal("a test naming a module that is not there should surface as an error")
 	}
 	if !strings.Contains(err.Error(), "could not run") {
 		t.Errorf("error = %q, want it to say a file could not run", err)
@@ -102,8 +102,8 @@ func TestTestCommandWithAFileThatCannotRun(t *testing.T) {
 
 func TestTestCommandWithATapeSize(t *testing.T) {
 	dir := testProject(t)
-	writeSource(t, filepath.Join(dir, "src"), "main.ar", "ident a = 200;\n")
-	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(a + 100 equals 44, "wraps on one byte");`)
+	writeSource(t, filepath.Join(dir, "src"), "main.ar", "printd 1;\n")
+	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(200 + 100 equals 44, "wraps on one byte");`)
 
 	if err := runTestCmd(t, "--tape-size", "1"); err != nil {
 		t.Errorf("the flag should have set a one-byte tape: %v", err)
@@ -112,8 +112,8 @@ func TestTestCommandWithATapeSize(t *testing.T) {
 
 func TestTestCommandWithAPath(t *testing.T) {
 	dir := testProject(t)
-	writeSource(t, filepath.Join(dir, "src"), "main.ar", "ident a = 1;\n")
-	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(a equals 1, "holds");`)
+	writeSource(t, filepath.Join(dir, "src"), "main.ar", "printd 1;\n")
+	writeSource(t, filepath.Join(dir, "src"), "main.test.ar", `assert(1 equals 1, "holds");`)
 
 	if err := runTestCmd(t, filepath.Join("src", "main.test.ar")); err != nil {
 		t.Errorf("naming a file should run it: %v", err)

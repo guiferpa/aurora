@@ -44,42 +44,65 @@ func writeAt(t *testing.T, dir, name, content string) string {
 	return path
 }
 
-func TestSourceForTest(t *testing.T) {
-	cases := []struct {
-		in   string
-		want string
-	}{
-		{in: "greeting.test.ar", want: "greeting.ar"},
-		{in: "src/utils/text.test.ar", want: filepath.FromSlash("src/utils/text.ar")},
-		{in: "/abs/x.test.ar", want: filepath.FromSlash("/abs/x.ar")},
-	}
-	for _, tc := range cases {
-		t.Run(tc.in, func(t *testing.T) {
-			if got := SourceForTest(tc.in); got != tc.want {
-				t.Errorf("SourceForTest(%q) = %q, want %q", tc.in, got, tc.want)
-			}
-		})
-	}
-}
-
-// A test sees what the source of the same name declared, because both run in one
-// evaluator, with the source first.
-func TestRunsAgainstTheSourceItBelongsTo(t *testing.T) {
+// A test reaches the code it checks by naming it, the way every other file does.
+func TestATestImportsWhatItChecks(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident double = defer { feed(0) * 2; };\nident base = 10;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(double(4) equals 8, "doubles");
-assert(base equals 10, "sees the binding too");
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/geometry.ar", "ident double = defer { feed(0) * 2; };\nident base = 10;\n")
+	writeAt(t, dir, "src/geometry.test.ar", `use geometry as g;
+assert(g.double(4) equals 8, "doubles");
+assert(g.base equals 10, "sees what it binds too");
 `)
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
+	if file := report.Files[0]; file.Err != nil {
+		t.Fatalf("the test did not run: %v", file.Err)
+	}
 	if report.Passed != 2 || report.Failed != 0 {
 		t.Errorf("got %d passed and %d failed, want 2 and 0", report.Passed, report.Failed)
 	}
+}
+
+// A test file no longer belongs to a source file of the same name, so there does not have to
+// be one. It is a program like any other, and a program that imports nothing is a program.
+func TestATestNeedsNoSourceOfItsOwnName(t *testing.T) {
+	dir := project(t)
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/alone.test.ar", `assert(2 * 21 equals 42, "checks what it says itself");`)
+
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
+	if err != nil {
+		t.Fatalf("Test: %v", err)
+	}
 	if !report.OK() {
-		t.Error("the report should be a pass")
+		t.Errorf("a test with no source next to it should run: %+v", report.Files)
+	}
+}
+
+// Two modules are two scopes, so a test may bind a name the module it checks also binds.
+// Under the old rule the two files were one scope and this was a conflict.
+func TestATestMayBindANameItsModuleAlsoBinds(t *testing.T) {
+	dir := project(t)
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/counter.ar", "ident total = 1;\n")
+	writeAt(t, dir, "src/counter.test.ar", `use counter as c;
+ident total = 2;
+assert(total equals 2, "its own");
+assert(c.total equals 1, "and the module's");
+`)
+
+	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
+	if err != nil {
+		t.Fatalf("Test: %v", err)
+	}
+	if file := report.Files[0]; file.Err != nil {
+		t.Fatalf("the two names collided: %v", file.Err)
+	}
+	if report.Failed != 0 {
+		t.Errorf("got %d failures: %+v", report.Failed, report.Files[0].Results)
 	}
 }
 
@@ -87,13 +110,11 @@ assert(base equals 10, "sees the binding too");
 // it belongs to another part of the project.
 func TestSearchesFromTheSourceDirectoryDown(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "root of the search");`)
-	writeAt(t, dir, "src/utils/text.ar", "ident b = 2;\n")
-	writeAt(t, dir, "src/utils/text.test.ar", `assert(b equals 2, "a leaf");`)
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/main.test.ar", `assert(1 equals 1, "root of the search");`)
+	writeAt(t, dir, "src/utils/text.test.ar", `assert(2 equals 2, "a leaf");`)
 	// Above the starting point, so out of reach.
-	writeAt(t, dir, "outside.ar", "ident c = 3;\n")
-	writeAt(t, dir, "outside.test.ar", `assert(c equals 4, "must not run");`)
+	writeAt(t, dir, "outside.test.ar", `assert(3 equals 4, "must not run");`)
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
@@ -115,10 +136,9 @@ func TestSearchesFromTheSourceDirectoryDown(t *testing.T) {
 
 func TestRunsASingleFileByPath(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "one");`)
-	writeAt(t, dir, "src/other.ar", "ident b = 2;\n")
-	writeAt(t, dir, "src/other.test.ar", `assert(b equals 2, "two");`)
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/main.test.ar", `assert(1 equals 1, "one");`)
+	writeAt(t, dir, "src/other.test.ar", `assert(2 equals 2, "two");`)
 
 	report, err := tested(t, filepath.Join("src", "other.test.ar"), sessionOpts{stdout: io.Discard})
 	if err != nil {
@@ -134,8 +154,9 @@ func TestRunsASingleFileByPath(t *testing.T) {
 
 func TestReportsFailures(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "holds");
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/main.test.ar", `ident a = 1;
+assert(a equals 1, "holds");
 assert(a equals 2, "does not hold");
 assert(a bigger 0, "still runs after a failure");
 `)
@@ -165,93 +186,44 @@ assert(a bigger 0, "still runs after a failure");
 	}
 }
 
-// A test cannot run without the source it belongs to: it would not see the code it checks.
-func TestFailsWithoutItsSource(t *testing.T) {
+// A shape crosses from the module a test names, which is how a test builds one: the promise
+// and the name both travel, and a field is an index resolved while parsing.
+func TestAShapeCrossesFromTheModuleATestNames(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "fine");`)
-	writeAt(t, dir, "src/orphan.test.ar", `assert(1 equals 1, "no source");`)
-
-	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
-	if err != nil {
-		t.Fatalf("Test: %v", err)
-	}
-	if report.OK() {
-		t.Error("a test without its source is a failure")
-	}
-
-	var found bool
-	for _, file := range report.Files {
-		if strings.Contains(file.Path, "orphan") {
-			found = true
-			if file.Err == nil {
-				t.Fatal("expected an error for the orphan")
-			}
-			if !strings.Contains(file.Err.Error(), "orphan.ar") {
-				t.Errorf("error = %q, want it to name the missing file", file.Err)
-			}
-		}
-	}
-	if !found {
-		t.Error("the orphan should appear in the report")
-	}
-}
-
-// The two files share one scope, so a name declared in both is a conflict rather than a
-// shadow. It is the documented consequence of the test seeing the source.
-func TestNameDeclaredInBothFilesConflicts(t *testing.T) {
-	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
-	writeAt(t, dir, "src/main.test.ar", "ident a = 2;\nassert(a equals 2, \"never gets here\");\n")
-
-	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
-	if err != nil {
-		t.Fatalf("Test: %v", err)
-	}
-	if report.OK() {
-		t.Fatal("the conflict should have been reported")
-	}
-	if file := report.Files[0]; file.Err == nil || !strings.Contains(file.Err.Error(), "conflict between identifiers") {
-		t.Errorf("error = %v, want the identifier conflict", file.Err)
-	}
-}
-
-// A test sees what its source declared, and a shape is declared while parsing rather than
-// while running. The two files used to be parsed with a set of declarations each, so a test
-// could call a defer from its source but could not build a shape it declared: `Point{1, 2}`
-// stopped at the brace, because the name meant nothing to that parse.
-func TestSeesAShapeDeclaredInItsSource(t *testing.T) {
-	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "shape Point { x, y };\n")
-	writeAt(t, dir, "src/main.test.ar",
-		"ident p = Point{10, 20};\nassert(p.y equals 20, \"a shape crosses the pair\");\n")
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/point.ar", "shape Point { x, y };\nident origin = Point{0, 0};\n")
+	writeAt(t, dir, "src/point.test.ar", `use point as p;
+ident here = p.Point{10, 20};
+assert(here.y equals 20, "a shape crosses");
+assert((p.origin as p.Point).x equals 0, "and a value claimed with as reads too");
+`)
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
 	if file := report.Files[0]; file.Err != nil {
-		t.Fatalf("the pair did not compile: %v", file.Err)
+		t.Fatalf("the test did not compile: %v", file.Err)
 	}
 	if !report.OK() {
-		t.Errorf("the assertion did not hold: %+v", report.Files[0].Results)
+		t.Errorf("an assertion did not hold: %+v", report.Files[0].Results)
 	}
 }
 
-// The other way round is not true: what the test declares is its own. The source is compiled
-// before the test exists as far as the parser is concerned, and a source that leaned on its
-// test would not compile under "aurora run".
-func TestASourceDoesNotSeeWhatItsTestDeclares(t *testing.T) {
+// A module is compiled without its test, so it cannot lean on what the test declares — under
+// `aurora run` there is no test at all.
+func TestAModuleDoesNotSeeWhatItsTestDeclares(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident p = Point{1, 2};\n")
-	writeAt(t, dir, "src/main.test.ar", "shape Point { x, y };\nassert(1 equals 1, \"unreached\");\n")
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/point.ar", "ident p = Point{1, 2};\n")
+	writeAt(t, dir, "src/point.test.ar", "use point as p;\nshape Point { x, y };\nassert(1 equals 1, \"unreached\");\n")
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
 	if file := report.Files[0]; file.Err == nil {
-		t.Fatal("the source built a shape that only its test declares")
+		t.Fatal("the module built a shape only its test declares")
 	}
 }
 
@@ -270,9 +242,9 @@ func TestUsesTheProjectTapeSize(t *testing.T) {
 		t.Fatalf("writing manifest: %v", err)
 	}
 	t.Chdir(dir)
-	writeAt(t, dir, "src/main.ar", "ident a = 200;\n")
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
 	// 200 + 100 wraps to 44 on a one-byte tape.
-	writeAt(t, dir, "src/main.test.ar", `assert(a + 100 equals 44, "wraps at the tape width");`)
+	writeAt(t, dir, "src/main.test.ar", `assert(200 + 100 equals 44, "wraps at the tape width");`)
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
@@ -285,8 +257,8 @@ func TestUsesTheProjectTapeSize(t *testing.T) {
 
 func TestFlagOverridesTheProfileTapeSize(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 200;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(a + 100 equals 44, "wraps only on one byte");`)
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/main.test.ar", `assert(200 + 100 equals 44, "wraps only on one byte");`)
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard, tapeSize: 1})
 	if err != nil {
@@ -325,7 +297,7 @@ func TestErrors(t *testing.T) {
 
 	t.Run("a test that does not compile", func(t *testing.T) {
 		dir := project(t)
-		writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
+		writeAt(t, dir, "src/main.ar", "printd 1;\n")
 		writeAt(t, dir, "src/main.test.ar", "assert(@@@);\n")
 
 		report, err := tested(t, "", sessionOpts{stdout: io.Discard})
@@ -337,10 +309,11 @@ func TestErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("a source that does not compile", func(t *testing.T) {
+	t.Run("a module the test names does not compile", func(t *testing.T) {
 		dir := project(t)
-		writeAt(t, dir, "src/main.ar", "ident = ;\n")
-		writeAt(t, dir, "src/main.test.ar", `assert(1 equals 1, "never runs");`)
+		writeAt(t, dir, "src/main.ar", "printd 1;\n")
+		writeAt(t, dir, "src/broken.ar", "ident = ;\n")
+		writeAt(t, dir, "src/broken.test.ar", "use broken as b;\nassert(1 equals 1, \"never runs\");\n")
 
 		report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 		if err != nil {
@@ -349,8 +322,8 @@ func TestErrors(t *testing.T) {
 		if report.OK() {
 			t.Error("a source that does not compile is a failure")
 		}
-		if file := report.Files[0]; file.Err == nil || !strings.Contains(file.Err.Error(), "main.ar") {
-			t.Errorf("error = %v, want it to name the source", file.Err)
+		if file := report.Files[0]; file.Err == nil || !strings.Contains(file.Err.Error(), "broken.ar") {
+			t.Errorf("error = %v, want it to name the module", file.Err)
 		}
 	})
 }
@@ -358,8 +331,9 @@ func TestErrors(t *testing.T) {
 // The report is what the command prints, so its shape matters.
 func TestWritesAReport(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "ident a = 1;\n")
-	writeAt(t, dir, "src/main.test.ar", `assert(a equals 1, "holds");
+	writeAt(t, dir, "src/main.ar", "printd 1;\n")
+	writeAt(t, dir, "src/main.test.ar", `ident a = 1;
+assert(a equals 1, "holds");
 assert(a equals 2, "does not hold");
 `)
 

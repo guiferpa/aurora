@@ -1,0 +1,38 @@
+#- Assertions
+#-
+#- "assert" checks a condition and names it. It only runs under "aurora test":
+#- a plain "aurora run" warns about each one and carries on, so a program that
+#- happens to hold an assertion does not fail because of it.
+#-
+#- A file may only hold assertions if it is named *.test.ar, and that name is
+#- also how "aurora test" knows which files to run.
+#-
+#- This one checks what it declares itself, which is why it runs on its own,
+#- with no project around it. A test that checks another file names it with
+#- "use" like any other file does — examples/project/src/geometry.test.ar is
+#- that one.
+#-
+#- Run: aurora test examples/assertions.test.ar
+#-
+#- Output:
+#-   examples/assertions.test.ar
+#-     ok    twice doubles
+#-     ok    twice of zero is zero
+#-     ok    bigger_of takes the larger one
+#-     ok    bigger_of is not fooled by order
+#-
+#-   4 passed, 0 failed in 1 file
+
+ident twice = defer { feed(0) * 2; };
+
+ident bigger_of = defer {
+  ident a = feed(0);
+  ident b = feed(1);
+  if a bigger b { a; } else { b; };
+};
+
+assert(twice(21) equals 42, "twice doubles");
+assert(twice(0) equals 0, "twice of zero is zero");
+
+assert(bigger_of(10, 3) equals 10, "bigger_of takes the larger one");
+assert(bigger_of(3, 10) equals 10, "bigger_of is not fooled by order");

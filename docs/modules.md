@@ -20,7 +20,9 @@ printd g.area(width, height);
 ```
 
 ```aurora
-#- src/main.test.ar
+#- src/geometry.test.ar
+use geometry as g;
+
 assert(g.area(3, 4) equals 12, "area multiplies its sides");
 assert(g.perimeter(3, 4) equals 14, "perimeter walks around them");
 ```
@@ -229,22 +231,25 @@ modules go in a circle at line 1 and column 1: one → two → one
 
 ## Modules and tests
 
-A test and the file it tests are **one module written in two files**. What the source declared
-is in scope for the test — its bindings, its shapes, and the modules it brought in:
+A test file is a module like any other, and it reaches code the way any file does — by naming
+it. There is no rule tying a test to a file of the same name, and nothing is in scope that was
+not imported:
 
 ```
-#- src/main.test.ar
-assert(g.area(3, 4) equals 12, "the alias the source declared is the alias here");
+#- src/geometry.test.ar
+use geometry as g;
+
+assert(g.area(3, 4) equals 12, "the alias this file declared is the alias here");
 ```
 
-A test also names modules on its own, with a `use` at its own top, including one its source
-never mentioned.
+It names as many modules as it needs, each one loading once and running before it. What
+`.test.ar` decides is which files `aurora test` runs and which files may hold an assertion —
+see [testing.md](testing.md).
 
 ---
 
 ## What is not there yet
 
-- A `shape` cannot be exported.
 - There is no `private`: a module offers everything it binds at the top.
 - The REPL takes `use`, reading from where it was started, and brings a module in once per
   session — a second `use` of the same one is a use of what is already there.

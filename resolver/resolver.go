@@ -204,7 +204,9 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 
 	tree, err := r.parse(filename, id, source, OffersOf(state.order))
 	if err != nil {
-		return err
+		// Which file it was. The entry is the file somebody named and needs no introduction;
+		// a module is one they may not have opened, and a line and column alone name nothing.
+		return fmt.Errorf("%s: %w", filename, err)
 	}
 
 	// Appended after everything it needs, which is what makes the order topological.

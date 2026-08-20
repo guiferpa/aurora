@@ -139,15 +139,14 @@ func TestWhatARefusalSays(t *testing.T) {
 	}
 }
 
-// A test runs against the source it belongs to and everything the two of them import.
-//
-// The two files are one module written twice, so the test calls what the source declared by
-// the name the source typed, and the module the source brought in answers under its alias.
-func TestATestSeesWhatItsSourceImports(t *testing.T) {
+// A test names what it checks, and what it checks names what it needs: a chain of modules
+// loads before the test, each one once.
+func TestATestReachesThroughAChainOfModules(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/geometry.ar":  "ident area = defer { feed(0) * feed(1); };",
-		"src/main.ar":      "use geometry as g;\nident box = defer { g.area(feed(0), feed(1)); };",
-		"src/main.test.ar": "assert(box(3, 4) equals 12, \"a box is its sides multiplied\");",
+		"src/geometry.ar":   "ident area = defer { feed(0) * feed(1); };",
+		"src/boxes.ar":      "use geometry as g;\nident box = defer { g.area(feed(0), feed(1)); };",
+		"src/main.ar":       "printd 1;",
+		"src/boxes.test.ar": "use boxes as b;\nassert(b.box(3, 4) equals 12, \"a box is its sides multiplied\");",
 	})
 
 	report, err := tested(t, "", sessionOpts{asserts: true})
@@ -162,13 +161,13 @@ func TestATestSeesWhatItsSourceImports(t *testing.T) {
 	}
 }
 
-// And a test names the modules it uses like any other file, including one its source never
-// mentioned.
-func TestATestImportsOnItsOwn(t *testing.T) {
+// And it names as many as it needs, which is what it has instead of a file it belongs to.
+func TestATestImportsEverythingItNeeds(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/numbers.ar":   "ident double = defer { feed(0) * 2; };",
-		"src/main.ar":      "ident v = 21;",
-		"src/main.test.ar": "use numbers as n;\nassert(n.double(v) equals 42, \"doubling what the source bound\");",
+		"src/values.ar":    "ident v = 21;",
+		"src/main.ar":      "printd 1;",
+		"src/main.test.ar": "use numbers as n;\nuse values as v;\nassert(n.double(v.v) equals 42, \"doubling what another module bound\");",
 	})
 
 	report, err := tested(t, "", sessionOpts{asserts: true})
@@ -184,8 +183,8 @@ func TestATestImportsOnItsOwn(t *testing.T) {
 // whole run.
 func TestATestWhoseModuleIsNotThere(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/main.ar":      "use missing as m;\nident v = 1;",
-		"src/main.test.ar": "assert(v equals 1, \"holds\");",
+		"src/main.ar":      "printd 1;",
+		"src/main.test.ar": "use missing as m;\nassert(1 equals 1, \"holds\");",
 	})
 
 	report, err := tested(t, "", sessionOpts{asserts: true})
@@ -300,13 +299,12 @@ func TestAScopeThatPromisedNothingCrossesNothing(t *testing.T) {
 	}
 }
 
-// A test reads a promised shape too, since the file it belongs to and the file testing it are
-// one module, and what they import is read before either of them is parsed.
+// A test reads a promised shape like anybody else, because it imports like anybody else.
 func TestATestReadsAPromisedShape(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/os.ar":        "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
-		"src/main.ar":      "use os as o;\nident r = o.lookup(0);",
-		"src/main.test.ar": "assert(r.value equals 42, \"the field is read through the promise\");",
+		"src/main.ar":      "printd 1;",
+		"src/main.test.ar": "use os as o;\nident r = o.lookup(0);\nassert(r.value equals 42, \"the field is read through the promise\");",
 	})
 
 	report, err := tested(t, "", sessionOpts{asserts: true})

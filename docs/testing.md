@@ -21,52 +21,61 @@ The command exits non-zero when an assertion fails or a file could not run, so a
 
 ---
 
-## A test belongs to the source of the same name
+## A test names what it checks
 
-`greeting.test.ar` tests `greeting.ar`. That file is evaluated **first**, and the test runs in the same scope — so everything the source declared is already there, with no import:
+A test file is a file like any other: it reaches other code the way every file does, with
+`use`. The `.test.ar` in its name does two things and no more — it tells `aurora test` which
+files to run, and it tells the compiler which files may hold an assertion.
 
 ```aurora
-#- greeting.ar
+#- src/greeting.ar
 ident hello = defer { 1; };
 ident twice = defer { feed(0) * 2; };
 ```
 
 ```aurora
-#- greeting.test.ar
-assert(hello() equals 1, "hello answers 1");
-assert(twice(21) equals 42, "twice doubles");
+#- src/greeting.test.ar
+use greeting as g;
+
+assert(g.hello() equals 1, "hello answers 1");
+assert(g.twice(21) equals 42, "twice doubles");
 ```
 
-There is no module system yet, so this pairing is how a test reaches the code it checks. When there is one, the rule becomes "a test belongs to the module of the same name" — the same sentence.
+This used to be a pairing: `greeting.test.ar` tested `greeting.ar` because it was named after
+it, the two ran as one scope, and neither imported anything. That was how a test reached code
+before modules existed. It is gone, and what replaces it is not a rule about tests at all —
+it is the module system, doing here what it does everywhere else.
 
-Three consequences follow, and none of them is worked around:
+Three things follow, and each of them is what a module already meant:
 
-- **The source has to exist.** A `.test.ar` with no `.ar` next to it is an error: it would not see the code it is meant to check.
-- **Whatever the source does at its top level happens.** If `greeting.ar` prints, you see that output during the test.
-- **The two files share one scope.** Declaring in the test a name the source already declares is a conflict, not a shadow:
+- **A test runs on its own.** It loads what it names and nothing else. A file that names
+  nothing is a program of one file, and a perfectly good test of what it declares itself.
+- **A module runs when it is loaded.** If the module a test names prints at its top level, you
+  see that output during the test. That is the module running, not the test.
+- **Two files are two scopes.** A test may bind a name the module it checks also binds; they
+  are different names, and the module's is reached through the alias.
 
-  ```
-  conflict between identifiers named a
-  ```
-
-A `shape` crosses as well, and it crosses earlier: a name is resolved while the program runs, a shape while it is read. So a test builds and reads a shape its source declared, without declaring it again:
+A shape crosses the way it crosses anywhere: named through the alias, or carried by a promise.
 
 ```aurora
-#- point.ar
+#- src/point.ar
 shape Point { x, y };
 
 ident origin = Point{0, 0};
 ```
 
 ```aurora
-#- point.test.ar
-ident p = Point{10, 20};
+#- src/point.test.ar
+use point as p;
 
-assert(p.y equals 20, "a shape crosses the pair");
-assert(origin.x equals 0, "and so does what the source built with it");
+ident here = p.Point{10, 20};
+
+assert(here.y equals 20, "a shape is named through the alias");
+assert((p.origin as p.Point).x equals 0, "and a value the module built is claimed with as");
 ```
 
-The other way round does not hold: the source is read on its own, so it cannot use a shape only its test declares — under `aurora run` there is no test at all.
+The other way round does not hold: a module is compiled without its test, so it cannot lean on
+anything the test declares — under `aurora run` there is no test at all.
 
 ---
 
@@ -123,14 +132,13 @@ src/greeting.test.ar:2:1: warning: assert only runs under 'aurora test'; ignored
 
 The warning carries the position, so an editor can jump to it. A program that happens to hold an assertion that would fail is not affected: `run` exits zero.
 
-Note that `aurora run` on a test file runs **only that file** — the source it belongs to is not evaluated, so anything it declares is missing. That is a job for `aurora test`.
+`aurora run` on a test file runs it like any other file: what it names is loaded, and the assertions are skipped with a warning. Checking them is a job for `aurora test`.
 
 ---
 
 ## What is not here yet
 
 - **No grouping.** One file is one test; there is no `case` or `describe`. The message of each assertion is the name of the check.
-- **A test cannot reach another file** beyond the one it is paired with. That waits on the [module system](module_system_design.md).
 - **No fixtures, no setup or teardown, no mocks.** A test is an ordinary Aurora file that happens to hold assertions.
 
-A worked example lives in [examples/greeting.ar](../examples/greeting.ar) and [examples/greeting.test.ar](../examples/greeting.test.ar), and `aurora init` writes a smaller one into every new project.
+A test that checks another file is worked out in [examples/project](../examples/project) — `src/geometry.ar` and `src/geometry.test.ar` next to it. One that checks what it declares itself, and runs with no project around it, is [examples/assertions.test.ar](../examples/assertions.test.ar). `aurora init` writes a small one of the first kind into every new project.

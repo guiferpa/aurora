@@ -31,7 +31,7 @@ type Read func(path string) ([]byte, error)
 // positions and file-scoped rules are about; ID is the module the names inside belong to; and
 // imports is what the modules it names promised, which it needs while parsing because a shape
 // is resolved there and a struct's name never leaves the file that declared it.
-type Parse func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error)
+type Parse func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error)
 
 // Header answers what a source imports, without parsing it.
 //
@@ -98,25 +98,26 @@ func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
 		return nil, err
 	}
 
-	tree, err := r.parse(entry, "", source, PromisesOf(modules))
+	tree, err := r.parse(entry, "", source, OffersOf(modules))
 	if err != nil {
 		return nil, err
 	}
 	return append(modules, module.Module{ID: "", Tree: tree}), nil
 }
 
-// PromisesOf is what a set of modules promised, by the name they are imported under.
+// OffersOf is what a set of modules offer, by the name they are imported under.
 //
 // Everything found so far is handed over rather than only what one file names: a parse looks
 // up the specifiers it actually wrote, so an entry nobody asks for costs nothing.
-func PromisesOf(modules []module.Module) map[string][]ast.Promise {
-	promises := make(map[string][]ast.Promise, len(modules))
+func OffersOf(modules []module.Module) map[string]ast.Offer {
+	offers := make(map[string]ast.Offer, len(modules))
 	for _, each := range modules {
-		if len(each.Tree.Promises) > 0 {
-			promises[string(each.ID)] = each.Tree.Promises
+		if len(each.Tree.Promises) == 0 && len(each.Tree.Shapes) == 0 {
+			continue
 		}
+		offers[string(each.ID)] = ast.Offer{Shapes: each.Tree.Shapes, Promises: each.Tree.Promises}
 	}
-	return promises
+	return offers
 }
 
 // Dependencies answers with everything the given trees need, and nothing of the trees
@@ -201,7 +202,7 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 	}
 	state.open = state.open[:len(state.open)-1]
 
-	tree, err := r.parse(filename, id, source, PromisesOf(state.order))
+	tree, err := r.parse(filename, id, source, OffersOf(state.order))
 	if err != nil {
 		return err
 	}

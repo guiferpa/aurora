@@ -234,9 +234,27 @@ type AST struct {
 	// somewhere else. Only whoever holds the other modules can answer that, which is why the
 	// parse hands it over instead of deciding.
 	References []Reference `json:"references,omitempty"`
-	// Promises is what this file's top-level scopes said they answer with. It leaves with the
-	// tree for whoever imports this file: see Promise.
+	// Promises is what this file's top-level scopes said they answer with, and Shapes is every
+	// struct it declared. Both leave with the tree for whoever imports this file.
 	Promises []Promise `json:"promises,omitempty"`
+	Shapes   []Shape   `json:"shapes,omitempty"`
+}
+
+// An Offer is what a module hands whoever imports it, as far as shapes are concerned: the
+// structs it declares, and what its scopes said they answer with.
+type Offer struct {
+	Shapes   []Shape   `json:"shapes,omitempty"`
+	Promises []Promise `json:"promises,omitempty"`
+}
+
+// A Shape is a struct a module declared, and what it is made of.
+//
+// The name does not cross on its own — it is written in another file as the module's, never
+// as itself — and the fields cross with it, because an index is a position and a position
+// needs the whole list.
+type Shape struct {
+	Name   string   `json:"name"`
+	Fields []string `json:"fields"`
 }
 
 // A Promise is what one exported scope said it answers with, and what that struct is made

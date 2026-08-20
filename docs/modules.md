@@ -127,8 +127,8 @@ which is the same thing since a scope's value is its index. Nothing else:
 
 - a name bound inside a block or a deferred body belongs to the scope that binds it, and is
   gone when that scope is;
-- a `struct`'s **name** does not cross a module, and cannot be written in another file. What
-  does cross is the shape of one a scope promised — see below;
+- a `struct`'s **name** stays in the file that declared it, and is written elsewhere as the
+  module's: `g.Square` builds one, names one with `as`, and promises one with `returns`;
 - an import is not passed on. If `main` uses `a` and `a` uses `b`, then `main` does not reach
   `b` — it writes its own `use b as ...;`. Every file declares what it needs, and a name used
   in a file has its origin declared in that file.
@@ -176,12 +176,30 @@ printd r.found;
 printd r.value;
 ```
 
-Nothing in `main.ar` mentions `Env`, and nothing can: a struct's name stays in the file that
-declared it. What crossed is the promise — the struct and the fields it is made of — which is
-what turns `found` into the first tape of the run.
+Nothing in `main.ar` mentions `Env`, and nothing has to. What crossed is the promise — the
+struct and the fields it is made of — which is what turns `found` into the first tape of the
+run.
 
 A scope that promised nothing hands over a run of tapes and no shape, exactly as it did
-before: the file reading it has to name one, and there is nothing to name.
+before: the file reading it has to name one.
+
+### And a shape can be named
+
+A struct's name belongs to the file that declared it, so elsewhere it is written as the
+module's:
+
+```
+use geometry as g;
+
+ident s = g.Square{4, 5};          #- built
+ident t = feed(0) as g.Square;     #- claimed
+ident make = defer { g.Square{1, 2}; } returns g.Square;
+```
+
+A `Square` declared here and a `Square` declared there are **two shapes**, never one: what the
+compiler knows them by carries the module, and nobody can type that. And a struct of another
+module is not a value there any more than a local one is here — `printd g.Square;` is refused
+the same way `printd Square;` is.
 
 ---
 

@@ -382,9 +382,9 @@ ident make = defer { Result{1, 42}; };
 printd make() as Result.value;   #- 42
 ```
 
-A struct's **name** does not cross a module — it is a way of naming the tapes of a run while
-one file is compiled, and it stays in the file that declared it. What crosses is the shape,
-and only where a promise names it: see below.
+A struct's **name** belongs to the file that declared it: another file writes it as the
+module's, `g.Point`, and a promise carries the shape where nothing names it at all. See
+[modules.md](modules.md).
 
 ### Promising a shape with `returns`
 

@@ -97,7 +97,7 @@ func (s *Session) Analyze(doc Document) *Analysis {
 		TapeSize: doc.TapeSize,
 		// What the modules it imports promised, which the resolution above just found: a
 		// shape is resolved while parsing, so it has to be in hand by now.
-		Imports: resolver.PromisesOf(analysis.Modules),
+		Imports: resolver.OffersOf(analysis.Modules),
 	})
 	if err != nil {
 		analysis.Err = err

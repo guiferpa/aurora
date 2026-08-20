@@ -97,12 +97,21 @@ func exportCompletions(analysis *Analysis, specifier string) []CompletionItem {
 	}
 
 	names := loader.Exports(found)
-	items := make([]CompletionItem, 0, len(names))
+	items := make([]CompletionItem, 0, len(names)+len(found.Tree.Shapes))
 	for _, name := range names {
 		items = append(items, CompletionItem{
 			Label:  name,
 			Detail: describeNode(exportedValue(found, name)) + " of module " + specifier,
 			Kind:   Variable,
+		})
+	}
+	// The structs a module declares can be written now — built, claimed with as, promised
+	// with returns — so they are offered, and offering them is telling the truth.
+	for _, shape := range found.Tree.Shapes {
+		items = append(items, CompletionItem{
+			Label:  shape.Name,
+			Detail: "struct of module " + specifier + ": " + strings.Join(shape.Fields, ", "),
+			Kind:   Struct,
 		})
 	}
 	return items

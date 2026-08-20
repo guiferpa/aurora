@@ -18,13 +18,15 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Abertas:**
+**Nenhuma aberta no momento.**
 
-| RFC | Estado | Sobre |
-|---|---|---|
-| [crossing_shapes.md](crossing_shapes.md) | proposta | a forma de um struct atravessa módulo junto com a promessa que a nomeia |
+A última foi `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
+escrito como o do módulo. Foi implementada em dois pull requests, e o que ficou decidido está
+em [docs/modules.md](../docs/modules.md). O que ela decidiu antes de tudo foi **em que ordem
+ler os arquivos**: dependência primeiro, como Go e Rust, e não parseia-tudo-resolve-depois como
+Java e TypeScript — porque os dois adiam para um alvo que carrega nomes, e a EVM não carrega.
 
-A última foi `returns.md` — um bloco promete a forma que responde, e o compilador recusa o
+Antes dela, `returns.md` — um bloco promete a forma que responde, e o compilador recusa o
 bloco que não cumpre. Foi implementada no mesmo dia em que foi escrita, e o que ficou decidido
 está em [docs/language-design.md](../docs/language-design.md), na seção "Promising a shape with
 `returns`" — incluindo o que ela decidiu **contra**: a promessa não é exigida, e não será nunca,

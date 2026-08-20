@@ -155,7 +155,7 @@ func withModuleFiles(files map[string]string) *Session {
 					}
 					return []byte(source), nil
 				},
-				Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
+				Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 					tokens, err := lx.GetFilledTokens(source)
 					if err != nil {
 						return ast.AST{}, err
@@ -291,5 +291,35 @@ func TestWithoutThePortNothingIsResolved(t *testing.T) {
 
 	if len(diagnostics) != 0 {
 		t.Errorf("reported %+v, want nothing said about a module nobody looked for", diagnostics)
+	}
+}
+
+// A module's structs are offered after the dot too, now that they can be written: built,
+// claimed with as, or promised with returns.
+func TestTheEditorOffersAModuleStructs(t *testing.T) {
+	session := withModuleFiles(map[string]string{
+		"src/geometry.ar": "struct Square { width, height };\nident area = defer { feed(0); };",
+	})
+	items := session.CompletionItemsFor(Document{
+		Filename: "src/main.ar",
+		Source:   "use geometry as g;\nprintd g.\n",
+	}, lsp.Position{Line: 1, Character: 9}, false)
+
+	found := make(map[string]CompletionItem)
+	for _, item := range items {
+		found[item.Label] = item
+	}
+	shape, offered := found["Square"]
+	if !offered {
+		t.Fatalf("the struct was not offered: %+v", items)
+	}
+	if shape.Kind != Struct {
+		t.Errorf("Square is offered as kind %d, want a struct", shape.Kind)
+	}
+	if !strings.Contains(shape.Detail, "width, height") {
+		t.Errorf("Square is described as %q, want its fields", shape.Detail)
+	}
+	if _, ok := found["area"]; !ok {
+		t.Error("the names it binds are no longer offered")
 	}
 }

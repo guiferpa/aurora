@@ -182,7 +182,7 @@ func typedIn(t *testing.T, dir, lines string, tapeSize int) string {
 		Resolver: resolver.New(resolver.Options{
 			SourceRoot: "src",
 			Read:       os.ReadFile,
-			Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
+			Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 				tokens, err := lx.GetFilledTokens(source)
 				if err != nil {
 					return ast.AST{}, err

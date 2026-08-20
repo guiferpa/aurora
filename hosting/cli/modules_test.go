@@ -102,17 +102,17 @@ func TestWhatARefusalSays(t *testing.T) {
 			want: []string{"module a/b has no area", "it has base"},
 		},
 		{
-			// A struct's name is not something a module offers, and the refusal has to stay
-			// where it is. Adding struct declarations to the export list would make this
-			// compile — as a name being loaded, since that is what a qualified name is —
-			// and then fail while running, with a name nobody bound. A refusal that moves
-			// from the compiler to the run is the bug the whole design exists to prevent.
-			name: "a struct name is not offered by a module",
+			// A struct of another module is not a value there, any more than a local one is
+			// here: it is built, or it names what a value is read as. This used to be
+			// refused for the module having no such name, because the name did not cross;
+			// it crosses now, and the refusal says what it is instead. What both versions
+			// prevent is the same — a name being loaded at run time that nobody bound.
+			name: "a struct of another module is not a value",
 			files: map[string]string{
 				"src/a/b.ar":  "struct Prime { p };\nident v = 1;",
 				"src/main.ar": "use a/b as x;\nprintd x.Prime;",
 			},
-			want: []string{"module a/b has no Prime", "it has v"},
+			want: []string{"Prime is a struct of module a/b", "build a value with Prime{...}"},
 		},
 		{
 			name: "two modules in a circle",
@@ -315,5 +315,83 @@ func TestATestReadsAPromisedShape(t *testing.T) {
 	}
 	if !report.OK() {
 		t.Errorf("the run did not pass: %+v", report.Files)
+	}
+}
+
+// Naming a struct another module declared: built, claimed with `as`, and promised with
+// `returns` — the three places a struct's name is written, all reading the qualified form the
+// way a qualified value already did.
+func TestNamingAStructOfAnotherModule(t *testing.T) {
+	const geometry = "struct Square { width, height };\nident area = defer { ident s = feed(0) as Square; s.width * s.height; };"
+
+	for _, tc := range []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "built here and fed there",
+			source: "use geometry as g;\nprintd g.area(g.Square{4, 5});",
+			want:   "20",
+		},
+		{
+			name:   "claimed with as",
+			source: "use geometry as g;\nident s = g.Square{6, 7} as g.Square;\nprintd s.height;",
+			want:   "7",
+		},
+		{
+			name: "promised with returns",
+			source: "use geometry as g;\n" +
+				"ident make = defer { g.Square{2, 3}; } returns g.Square;\n" +
+				"ident s = make();\nprintd s.width;",
+			want: "2",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			projectOf(t, map[string]string{"src/geometry.ar": geometry, "src/main.ar": tc.source})
+			printed, err := run(t, "src/main.ar")
+			if err != nil {
+				t.Fatalf("running: %v", err)
+			}
+			if strings.TrimSpace(printed) != tc.want {
+				t.Errorf("printed %q, want %q", printed, tc.want)
+			}
+		})
+	}
+}
+
+// And a shape a module does not have is refused where it was named, saying which module was
+// asked — rather than with a qualified name nobody typed.
+func TestAShapeAModuleDoesNotHave(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/geometry.ar": "struct Square { width, height };",
+		"src/main.ar":     "use geometry as g;\nident s = 1 as g.Circle;",
+	})
+
+	_, err := run(t, "src/main.ar")
+	if err == nil {
+		t.Fatal("a shape nobody declared was named")
+	}
+	if !strings.Contains(err.Error(), "module geometry has no struct named Circle") {
+		t.Errorf("error = %q", err)
+	}
+}
+
+// A struct declared here and one of the same name there are two shapes, because the name that
+// crosses is written the way an identifier of that module is — which nobody can type.
+func TestTwoStructsOfTheSameNameAreTwoShapes(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/geometry.ar": "struct Square { width, height };\nident make = defer { Square{3, 4}; } returns Square;",
+		"src/main.ar": "use geometry as g;\nstruct Square { side };\n" +
+			"ident mine = Square{9};\nident theirs = g.make();\n" +
+			"printd mine.side;\nprintd theirs.height;",
+	})
+
+	printed, err := run(t, "src/main.ar")
+	if err != nil {
+		t.Fatalf("running: %v", err)
+	}
+	if got := strings.Fields(printed); len(got) != 2 || got[0] != "9" || got[1] != "4" {
+		t.Errorf("printed %q, want 9 and 4", printed)
 	}
 }

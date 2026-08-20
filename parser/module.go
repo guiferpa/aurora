@@ -35,6 +35,17 @@ func typed(id ast.IdentifierLiteral) string {
 // everything downstream — a call, a load, the environ — goes on treating it as any other
 // name. The alias is gone by then: it belonged to this file and to nothing else.
 func (p *pr) parseMember(specifier, symbol string, at token.Token) (ast.Node, error) {
+	// A shape of that module is not a value there any more than a local one is here: it is
+	// built, or it names what a value is read as, and nothing else.
+	shape := module.Qualify(module.ID(specifier), symbol)
+	if _, declared := p.declarations.Structs[shape]; declared {
+		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_CUR_BRK {
+			return p.parseStructValue(shape, symbol, at)
+		}
+		return nil, token.NewError(at, "%s is a struct of module %s at line %d and column %d: build a value with %s{...}",
+			symbol, specifier, at.GetLine(), at.GetColumn(), symbol)
+	}
+
 	p.references = append(p.references, ast.Reference{Module: specifier, Symbol: symbol, Token: at})
 
 	qualified := ast.IdentifierLiteral{Value: module.Qualify(module.ID(specifier), symbol), Token: at}

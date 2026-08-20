@@ -114,12 +114,38 @@ dele antes. Dois jeitos:
 
 | | Como | Custo |
 |---|---|---|
-| **Cabeçalho** | ler as declarações `use` dos tokens, antes do parse completo | uma porta nova e um leitor de ~40 linhas — que já existe no editor, em `scanUses` |
+| **Cabeçalho** | ler as declarações `use` dos tokens, antes do parse completo | um leitor de ~40 linhas, **que já existe e já roda** |
 | **Parsear duas vezes** | parsear sem as tabelas para descobrir os `use`, e de novo com elas | nenhuma linha nova; custa um parse a mais por arquivo que importa |
 
-**Proposta: o cabeçalho.** Parsear duas vezes é mais simples e dobra a latência do language
-server a cada tecla em qualquer arquivo com import, que é justamente o caminho que a camada 2
-acabou de deixar rápido.
+**Proposta: o cabeçalho** — e ele é mais barato do que parece, porque o editor já faz
+exatamente isso.
+
+### O caro já está pago, e quem pagou foi o editor
+
+`Analyze` (`hosting/lsp/textdoc/validator.go`) roda nesta ordem hoje:
+
+| | o que faz |
+|---|---|
+| 1 | lexa o documento aberto |
+| 2 | `scanUses(tokens)` — lê o cabeçalho `use` **dos tokens** |
+| 3 | resolve: lê e parseia todo módulo importado |
+| 4 | **só então** parseia o documento aberto |
+
+Ele chegou aí por outro motivo — completar é pedido quando o documento não parseia, então a
+resolução não podia esperar o parse —, e o resultado é que **a ordem que esta RFC propõe já é
+a ordem do editor**, e o leitor de cabeçalho que ela pede é o `scanUses`, que roda a cada
+tecla.
+
+Então o custo, medido em vez de estimado:
+
+- **compilação e runtime:** zero. Cada módulo é parseado uma vez nos dois desenhos; muda o
+  *quando*, não o *quanto*;
+- **language server:** zero novo. Ele já lê e parseia toda dependência a cada tecla, sem
+  cache. O que muda é o passo 4 receber as tabelas que o passo 3 já achou.
+
+E o invariante em jogo é mais estreito do que a primeira versão desta RFC dizia. A ordem já
+mudou onde ela custava; o que cai é **"um parse não consome nada de outro arquivo"**, e a
+degradação disso é graciosa, como está escrito acima.
 
 ### A degradação é graciosa
 

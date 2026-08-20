@@ -189,3 +189,40 @@ func TestATestWhoseModuleIsNotThere(t *testing.T) {
 		t.Errorf("the error says %q", got)
 	}
 }
+
+// What crosses a module and what does not, which is a sharper line than it looks.
+//
+// The value crosses whole: a struct is a run of tapes and nothing in it says a struct built
+// it, so a scope in another file answers with one and the bytes arrive intact. What does not
+// cross is the declaration — the table that turns a field name into an index — because it is
+// read while a file is parsed and belongs to that file.
+func TestAStructValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
+	files := map[string]string{
+		"src/a/b.ar":  "struct Result { failed, value };\nident make = defer { Result{1, 42}; };",
+		"src/main.ar": "use a/b as x;\nprintd x.make();",
+	}
+
+	t.Run("the value arrives whole", func(t *testing.T) {
+		projectOf(t, files)
+		printed, err := run(t, "src/main.ar")
+		if err != nil {
+			t.Fatalf("running: %v", err)
+		}
+		if strings.TrimSpace(printed) != "1 42" {
+			t.Errorf("printed %q, want the two tapes the module built", printed)
+		}
+	})
+
+	t.Run("and the field name has nowhere to be resolved", func(t *testing.T) {
+		reading := map[string]string{
+			"src/a/b.ar":  files["src/a/b.ar"],
+			"src/main.ar": "use a/b as x;\nident r = x.make();\nprintd r.value;",
+		}
+		projectOf(t, reading)
+		if _, err := run(t, "src/main.ar"); err == nil {
+			t.Fatal("the field was read without a shape")
+		} else if !strings.Contains(err.Error(), "nothing says which struct this value is") {
+			t.Errorf("error = %q", err)
+		}
+	})
+}

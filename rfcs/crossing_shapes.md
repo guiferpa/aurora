@@ -95,6 +95,23 @@ Há duas famílias, e a escolha entre elas é a decisão que este documento toma
    reconstruir, que é a travessia de vinte e cinco casos que o desenho de módulos já evitou
    uma vez.
 
+### Por que o modelo do Java não resolveria o nosso problema
+
+Vale saber o que ele resolve, porque não é isto: **Java e TypeScript não têm este problema.**
+
+O TypeScript nunca transforma `.found` num índice — o parse é sintático, um *binder* monta as
+tabelas e um *checker* resolve por nome, sob demanda, atravessando arquivo. E o alvo dele é
+JavaScript, que também acessa por nome, então a pergunta "qual índice" não existe na pipeline
+inteira. O Java escreve `getfield #7`, e a entrada #7 guarda **o nome do campo e a classe**;
+quem resolve é a JVM, no carregamento.
+
+Os dois adiam para um alvo que **carrega nomes**. É a mesma saída que esta linguagem recusa por
+premissa: na EVM, nome dentro do bytecode é gás gasto procurando o que já se sabia — o mesmo
+argumento que recusou o módulo como valor.
+
+Adotando a estrutura deles, ainda teríamos de produzir o índice antes do emitter. Ganharíamos
+liberdade de ordem e ficaríamos com a parte cara: escrever o número de volta.
+
 E há a coerência: a Aurora **já é "decidir no parse" no pequeno** — `.x` vira índice no parse,
 `as` anota no parse, `returns` confere no parse. O modelo do Go é essa mesma disciplina no
 grande. Adotar o do Java só para módulos deixaria o compilador com duas cabeças.

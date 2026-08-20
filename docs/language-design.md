@@ -386,6 +386,67 @@ A struct does not cross a **module**, though — it is a way of naming the tapes
 one file is compiled, and it stays in the file that declared it. A scope imported from another
 module can answer with a run of tapes, and the file reading it has no name for their shape.
 
+### Promising a shape with `returns`
+
+`as` is what whoever reads a value claims about it, and the compiler believes it. `returns` is
+the other end: what a block promises about itself, checked where it is written.
+
+```aurora
+struct Result { failed, value };
+
+ident divide = defer {
+  if feed(1) equals 0 {
+    Result{1, 0};
+  } else {
+    Result{0, feed(0) / feed(1)};
+  };
+} returns Result;
+
+ident r = divide(10, 2);
+printd r.failed;   #- 0
+printd r.value;    #- 5
+```
+
+The word comes after the brace that closes the block, and that is the only place it goes — a
+block, or a deferred scope, which is a block with a word in front of it. An `if` never takes
+one; it is looked *through*, which is why the example above compiles: both arms answer with a
+`Result`. A `branch` is nested ifs by the time anything reads it, and its last item is the
+innermost else, so its way out is always covered.
+
+A block that does not keep its promise does not compile:
+
+```aurora
+#- fails: answers with Person and ends with a number
+struct Person { name };
+
+{
+  ident p = Person{"Joana"};
+  10;
+} returns Person;
+```
+
+An `if` with no else promises nothing, since the path where the test fails answers with the
+neutral value:
+
+```aurora
+#- fails: its if has no else
+struct Person { name };
+
+{
+  if true { Person{"Joana"}; };
+} returns Person;
+```
+
+**What it buys is the other end.** A call to a scope that promised has a shape, so `as`
+disappears from the place it was repeated once per call — and it stops being a claim, since
+the promise was checked. A scope that promises nothing is unchanged: it answers with a run of
+tapes, and whoever reads its fields writes `as`.
+
+The promise is never required, and never will be. A scope has no signature — it does not
+declare how many values it receives or what they are — so requiring it to declare what it
+answers with would be declaring one end and not the other. `returns` is what you gain by
+promising, not a toll for writing a block.
+
 ### What is an error
 
 Because the declaration exists to catch mistakes, these stop the compilation, with the line

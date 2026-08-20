@@ -129,6 +129,48 @@ func uriOf(path string) lsp.URI {
 	return lsp.URI("file://" + filepath.ToSlash(absolute))
 }
 
+// prepareRename answers the range about to be renamed, or the reason it cannot be.
+//
+// The reason travels as an error because that is what a client shows: a rename box that opens
+// and then fails is worse than one that never opens.
+func (sv server) prepareRename(l *log.Logger, s *state.State, contents []byte) any {
+	req, err := textdoc.ParsePrepareRenameRequest(contents)
+	if err != nil {
+		l.Println(err)
+		return nil
+	}
+
+	uri := req.Params.TextDocument.URI
+	at, err := sv.textdoc.PrepareRename(document(uri, s.GetDocument(string(uri))), req.Params.Position)
+	if err != nil {
+		return lsp.NewFailedResponse(req.ID, err.Error())
+	}
+	return textdoc.NewPrepareRenameResponse(req.ID, at)
+}
+
+// rename answers every edit the change is made of, in the one file it touches.
+func (sv server) rename(l *log.Logger, s *state.State, contents []byte) any {
+	req, err := textdoc.ParseRenameRequest(contents)
+	if err != nil {
+		l.Println(err)
+		return nil
+	}
+
+	uri := req.Params.TextDocument.URI
+	found, err := sv.textdoc.RenameFor(document(uri, s.GetDocument(string(uri))), req.Params.Position, req.Params.NewName)
+	if err != nil {
+		return lsp.NewFailedResponse(req.ID, err.Error())
+	}
+
+	edits := make([]textdoc.TextEdit, 0, len(found.Ranges))
+	for _, at := range found.Ranges {
+		edits = append(edits, textdoc.TextEdit{Range: at, NewText: req.Params.NewName})
+	}
+	return textdoc.NewRenameResponse(req.ID, textdoc.WorkspaceEdit{
+		Changes: map[lsp.URI][]textdoc.TextEdit{uriOf(found.Filename): edits},
+	})
+}
+
 func (sv server) semanticTokens(l *log.Logger, s *state.State, contents []byte) any {
 	req, err := textdoc.ParseSemanticTokensRequest(contents)
 	if err != nil {

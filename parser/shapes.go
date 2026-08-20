@@ -3,6 +3,8 @@ package parser
 import (
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/module"
@@ -67,6 +69,17 @@ func (d *Declarations) Import(specifier string, offer ast.Offer) {
 	}
 }
 
+// capitalized says whether a name is written the way a shape's name has to be.
+//
+// The rule exists because a shape's name is the one name that is not a value. Everything else
+// written in a file is something to load, and `Point{1, 2}` next to `point(1, 2)` is the
+// difference between building a run of tapes and feeding a scope — a capital says which,
+// before the braces do.
+func capitalized(name string) bool {
+	first, _ := utf8.DecodeRuneInString(name)
+	return unicode.IsUpper(first)
+}
+
 // ParseShape reads `shape Point { x, y };`.
 func (p *pr) ParseShape() (ast.Node, error) {
 	tok, err := p.EatToken(token.SHAPE)
@@ -79,6 +92,10 @@ func (p *pr) ParseShape() (ast.Node, error) {
 		return nil, err
 	}
 	shapeName := string(name.GetMatch())
+	if !capitalized(shapeName) {
+		return nil, token.NewError(name, "shape %s must start with a capital letter at line %d and column %d",
+			shapeName, name.GetLine(), name.GetColumn())
+	}
 	if _, declared := p.declarations.Shapes[shapeName]; declared {
 		return nil, token.NewError(name, "shape %s is already declared at line %d and column %d",
 			shapeName, name.GetLine(), name.GetColumn())

@@ -74,6 +74,11 @@ func TestShapeDeclarationReportsMistakes(t *testing.T) {
 			want:   "already has a field named x",
 		},
 		{
+			name:   "a name that does not start with a capital",
+			source: "shape person { name };",
+			want:   "shape person must start with a capital letter",
+		},
+		{
 			name:   "shape declared twice",
 			source: "shape Point { x, y };\nshape Point { a, b };",
 			want:   "shape Point is already declared",
@@ -112,6 +117,20 @@ func TestShapeDeclarationReportsMistakes(t *testing.T) {
 
 // A field is one tape wide, so it is never a shape itself and reading a field of a field
 // has no shape to work from.
+// The capital belongs to the shape's name and to nothing else: a field is read out of a value
+// and a value is bound to whatever name its author likes, both of them lowercase here.
+func TestOnlyTheShapeNameIsCapitalized(t *testing.T) {
+	nodes := parse(t, "shape Point { x, y };\nident p = Point{1, 2};\np.y;")
+
+	declaration, ok := nodes[0].(ast.ShapeDeclaration)
+	if !ok {
+		t.Fatalf("first node is %T, want a shape declaration", nodes[0])
+	}
+	if declaration.Name != "Point" || declaration.Fields[1] != "y" {
+		t.Errorf("declared %s%v, want Point with x and y", declaration.Name, declaration.Fields)
+	}
+}
+
 func TestFieldOfAFieldHasNoShape(t *testing.T) {
 	_, err := parseSource(t, "shape Point { x, y };\nident p = Point{1, 2};\np.x.y;", "main.ar")
 	if err == nil {

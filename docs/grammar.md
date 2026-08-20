@@ -170,6 +170,9 @@ _field  -> _prie DOT _id
 _read   -> _prie AS _id
 ```
 
+The `_id` a shape is declared with starts with a capital letter, which the parser checks and
+the grammar cannot say: it is the only name in a file that is not a value.
+
 A shape names the tapes of a run. `Point{10, 20}` is two tapes laid end to end, with
 nothing in it saying a shape built it: no header, no length and no tag. A field is exactly
 one tape wide, so the field at index *i* sits at `i × tape_size`.

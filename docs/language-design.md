@@ -310,6 +310,18 @@ printd p;   #- 10 20 — the whole run
 no header, no length, no tag. A shape is not a new kind of value, and a field is exactly one
 tape wide, so the field at index *i* sits at `i × tape_size`.
 
+A shape's name **starts with a capital letter**, and the compiler refuses one that does not:
+
+```aurora
+#- fails: shape person must start with a capital letter
+shape person { name };
+```
+
+It is the one name in a file that is not a value. Everything else written down is something
+to load, and the capital says so before the braces do — `Point{1, 2}` builds a run of tapes,
+`point(1, 2)` feeds a scope. Fields keep whatever case their author likes: they are read out
+of a value, not declared as one.
+
 The keyword was `struct` first. The word changed because this page, and every other one, had
 been calling it a shape for as long as it existed — the declaration says what
 a run of tapes is shaped like, and it makes no type, no layout and no object. A word the

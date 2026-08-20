@@ -131,7 +131,7 @@ importa e ele descobre sozinho ao ler o próprio `use`.
 | Onde | O quê |
 |---|---|
 | `wire/ast` | `Promise` e `AST.Promises` |
-| `parser` | anotar as promessas dos escopos de topo; ler as importadas para `Structs` e `Returns` sob o nome qualificado |
+| `parser` | anotar as promessas e as declarações de topo; ler as importadas para `Structs` e `Returns` sob o nome qualificado; aceitar o nome qualificado em `as`, `returns` e construção |
 | `parser.ParseInput` | as promessas do que este arquivo importa, por specifier |
 | `resolver` | ordem de dependência primeiro, e a porta de cabeçalho |
 | `loader` | nada — a conferência de nome já é dele e não muda |
@@ -141,15 +141,47 @@ importa e ele descobre sozinho ao ler o próprio `use`.
 
 ---
 
+## Nomear um struct importado entra junto
+
+A primeira versão desta RFC deixava isso de fora, com o argumento de que a promessa carregando
+a forma tornava a nomeação desnecessária. Uma pergunta derrubou o argumento:
+
+```
+use math as m;
+
+ident n = { 3; } returns m.Prime;
+```
+
+**É o caso em que a promessa não ajuda**, porque é a promessa que precisa nomear a forma
+alheia. E deixá-lo de fora produziria uma regra que não se explica: como as promessas já
+chegam antes do parse, `m.Prime` estaria disponível **se** `math` tivesse prometido com ela em
+algum lugar, e indisponível se ele apenas a declarou. "Dá para nomear quando o outro módulo
+por acaso promete" não é regra, é acidente.
+
+O que mudou o cálculo é que **o caro aqui é a ordem**, e ela já está paga por tudo que veio
+antes. Sobre a ordem, nomear custa:
+
+| | |
+|---|---|
+| exportar as declarações de topo, e não só as prometidas | ~20 |
+| o nome qualificado em `as`, em `returns` e na construção | ~60 |
+| a conferência de que o módulo tem mesmo aquele struct, com posição | ~20 |
+
+Então entra: `as m.Prime`, `returns m.Prime` e `m.Prime{1, 2}` são todos a mesma leitura de um
+nome qualificado, do jeito que `m.sum` já é.
+
+A propriedade que a versão anterior comprava — um struct só é interface quando uma promessa o
+nomeia — se perde, e é uma perda real: qualquer struct de topo passa a ser alcançável de fora.
+Vale menos que a coerência da regra, e um dia `private` a devolve para quem quiser.
+
 ## O que continua de fora
 
-- **Nomear um struct importado**: `as o.Env`, `o.Env{1, 2}`. Não há sintaxe, e sem ela não há
-  construção de valor importado nem alegação sobre ele.
-- **Struct declarado num módulo e usado como declaração em outro.** Se dois módulos precisam
-  da mesma forma, cada um declara a sua — são a mesma corrida de tapes de qualquer jeito, que
-  é o que os testes de fronteira já mostram.
 - **Promessa transitiva.** Se `a` promete um struct que veio de `b`, o que atravessa é a forma
   final: campos, não a origem. Ninguém precisa saber de `b`.
+- **Struct declarado num módulo e usado como declaração em outro** continua não existindo como
+  conceito: não há herança de declaração, há um nome qualificado que se lê. E quem preferir
+  declarar o seu continua podendo — duas declarações de mesma largura são o mesmo valor, o que
+  `Point{1,2} equals Pair{1,2}` já mostra.
 
 ---
 
@@ -164,8 +196,9 @@ importa e ele descobre sozinho ao ler o próprio `use`.
 5. **Documentação**: `docs/modules.md`, `docs/language-design.md` e o roadmap, que hoje dizem
    que struct não atravessa.
 
-Ordem de grandeza: ~200 linhas de código e ~250 de teste, um pull request, ou dois se a etapa 2
-crescer.
+Ordem de grandeza: ~280 linhas de código e ~330 de teste, dois pull requests — a ordem e as
+promessas num, a nomeação no outro, já que o segundo só é possível depois do primeiro e é o que
+alguém consegue revisar de uma vez.
 
 ---
 

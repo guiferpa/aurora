@@ -22,15 +22,23 @@ type structShapes struct {
 	promises map[string]string
 }
 
-// scanStructs reads the declarations out of a token stream: `struct Point { x, y }` for the
-// fields, and `ident p = Point{...}` or `... as Point` for what a name is read as.
-func scanStructs(tokens []token.Token) structShapes {
-	found := structShapes{
+// newStructShapes is what nothing has been read into yet.
+func newStructShapes() structShapes {
+	return structShapes{
 		fields:   make(map[string][]string),
 		shapes:   make(map[string]string),
 		promises: make(map[string]string),
 	}
+}
 
+// scan reads the declarations out of a token stream, on top of whatever is already known:
+// `struct Point { x, y }` for the fields, and `ident p = Point{...}` or `... as Point` for
+// what a name is read as.
+//
+// It reads on top rather than from nothing because a document is not the only thing that
+// declares a shape. What its modules offer is written down first, and a name bound here from
+// a call over there is only read when both halves are in the same table.
+func (found structShapes) scan(tokens []token.Token) structShapes {
 	for i := 0; i < len(tokens); i++ {
 		switch tokens[i].GetTag().Id {
 		case token.STRUCT:
@@ -104,13 +112,13 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 				return name, shape, promised, called
 			}
 		case token.RETURNS:
-			if depth == 0 && j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.ID {
-				promised = string(tokens[j+1].GetMatch())
+			if claimed := claimedAt(tokens, j+1); depth == 0 && claimed != "" {
+				promised = claimed
 			}
 		case token.AS:
 			// The nearest `as` wins, which is the one the value ends up with.
-			if depth == 0 && j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.ID {
-				shape = string(tokens[j+1].GetMatch())
+			if claimed := claimedAt(tokens, j+1); depth == 0 && claimed != "" {
+				shape = claimed
 			}
 		case token.ID:
 			if depth != 0 || j+1 >= len(tokens) {
@@ -119,14 +127,40 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 			switch tokens[j+1].GetTag().Id {
 			case token.O_CUR_BRK:
 				// A construction: the name of a struct in front of a brace.
-				shape = string(tokens[j].GetMatch())
+				shape = nameAt(tokens, j)
 			case token.O_PAREN:
 				// A call: what it answers with is known when that scope promised.
-				called = string(tokens[j].GetMatch())
+				called = nameAt(tokens, j)
 			}
 		}
 	}
 	return name, shape, promised, called
+}
+
+// nameAt reads the name at this position the way the document wrote it: `Square`, or
+// `g.Square` when it hangs off a dot on an alias.
+//
+// The alias comes along because it is part of the name. A shape of another module is never
+// written without one, and two files reached through two aliases may both call a struct
+// Square.
+func nameAt(tokens []token.Token, j int) string {
+	name := string(tokens[j].GetMatch())
+	if j >= 2 && tokens[j-1].GetTag().Id == token.DOT && tokens[j-2].GetTag().Id == token.ID {
+		return string(tokens[j-2].GetMatch()) + "." + name
+	}
+	return name
+}
+
+// claimedAt reads the struct name written after `as` or `returns`, and nothing when what
+// follows is not one yet.
+func claimedAt(tokens []token.Token, j int) string {
+	if j >= len(tokens) || tokens[j].GetTag().Id != token.ID {
+		return ""
+	}
+	if j+2 < len(tokens) && tokens[j+1].GetTag().Id == token.DOT && tokens[j+2].GetTag().Id == token.ID {
+		return nameAt(tokens, j+2)
+	}
+	return string(tokens[j].GetMatch())
 }
 
 // fieldsBefore answers the fields offered at a position, when what sits in front of the

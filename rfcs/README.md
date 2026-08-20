@@ -18,7 +18,11 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Nenhuma aberta no momento.**
+**Abertas:**
+
+| RFC | Estado | Sobre |
+|---|---|---|
+| [crossing_shapes.md](crossing_shapes.md) | proposta | a forma de um struct atravessa módulo junto com a promessa que a nomeia |
 
 A última foi `returns.md` — um bloco promete a forma que responde, e o compilador recusa o
 bloco que não cumpre. Foi implementada no mesmo dia em que foi escrita, e o que ficou decidido

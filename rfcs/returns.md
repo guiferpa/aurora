@@ -144,6 +144,117 @@ Um `defer` é um bloco com uma palavra na frente (`ast.DeferExpression` guarda u
 especial. O corpo de um `if` não passa por ali — ele é lido com `ParseExprs` direto —, então
 `if c { ... } returns P` não é gramática, e é bom que não seja.
 
+### Como se escreve
+
+A palavra vem **depois da chave que fecha o bloco**, e é a mesma posição nos dois lugares onde
+um bloco aparece:
+
+```
+struct Person { name };
+
+{
+  ident p = Person{"Joana"};
+  p;
+} returns Person;
+```
+
+```
+ident make = defer {
+  Person{"Joana"};
+} returns Person;
+```
+
+Com um `if` dentro, a palavra continua no fim do bloco do `defer` — o `if` é a última
+expressão dele, e é através dela que a promessa olha:
+
+```
+struct Result { failed, value };
+
+ident divide = defer {
+  if feed(1) equals 0 {
+    Result{1, 0};
+  } else {
+    Result{0, feed(0) / feed(1)};
+  };
+} returns Result;
+
+ident r = divide(10, 2);
+printd r.value;
+```
+
+Com um `branch`, idem — e como ele vira `if`s aninhados, o item sem teste é o `else` mais
+interno, então a saída está sempre coberta:
+
+```
+ident classify = defer {
+  branch {
+    feed(0) equals 0: Result{0, 100},
+    feed(0) equals 1: Result{0, 200},
+    Result{1, 0};
+  };
+} returns Result;
+```
+
+Nenhum desses `if` e `branch` recebe a palavra. Ela está no bloco, uma vez, no fim.
+
+### O que é recusado
+
+```
+{
+  ident p = Person{"Joana"};
+  10;
+} returns Person;
+```
+
+```
+this block answers with Person and ends with a number
+```
+
+Um caminho sem saída:
+
+```
+ident maybe = defer {
+  if feed(0) equals 0 {
+    Person{"Joana"};
+  };
+} returns Person;
+```
+
+```
+this block answers with Person and its if has no else: one path answers with nothing
+```
+
+E um ramo que responde outra coisa, nomeando o ramo:
+
+```
+ident maybe = defer {
+  if feed(0) equals 0 {
+    Person{"Joana"};
+  } else {
+    0;
+  };
+} returns Person;
+```
+
+```
+this block answers with Person and the else answers with a number
+```
+
+### Sem `returns`, nada muda
+
+A palavra é opcional e continua sendo. Um bloco sem ela responde uma corrida de tapes como
+sempre respondeu, e quem lê os campos escreve `as` — que é uma alegação, como sempre foi:
+
+```
+ident make = defer { Person{"Joana"}; };
+
+ident p = make() as Person;
+printc p.name;
+```
+
+Os dois convivem no mesmo programa, e é assim que isto entra sem quebrar uma linha do que
+existe: `returns` é o que se ganha ao prometer, não um pedágio para escrever um bloco.
+
 ### A gramática ganha uma produção, e só
 
 ```

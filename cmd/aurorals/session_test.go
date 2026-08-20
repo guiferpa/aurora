@@ -222,3 +222,52 @@ func TestSessionCompletionOffersKeywords(t *testing.T) {
 		}
 	}
 }
+
+// The whole round trip of a jump: a document opened, a position asked about, and a location
+// coming back — with the URI the client knows the file by, which is this side's half of the
+// answer.
+func TestSessionDefinitionAnswersWithALocation(t *testing.T) {
+	uri := "file:///tmp/main.ar"
+	replies := runSession(t,
+		didOpen(uri, "ident total = 1;\nprintd total;\n"),
+		request(5, "textDocument/definition", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": 1, "character": 8},
+		}),
+		exitMessage,
+	)
+
+	if len(replies) != 2 {
+		t.Fatalf("expected diagnostics plus the definition reply, got %d", len(replies))
+	}
+	result := replies[1]["result"].(map[string]any)
+	if result["uri"] != uri {
+		t.Errorf("points at %v, want %s", result["uri"], uri)
+	}
+	start := result["range"].(map[string]any)["start"].(map[string]any)
+	if start["line"] != float64(0) || start["character"] != float64(6) {
+		t.Errorf("points at %v, want line 0 character 6", start)
+	}
+}
+
+// A position with no name under it is answered with null rather than with nothing. A request
+// carries an id and the client waits on it: silence is a client that waits forever.
+func TestSessionDefinitionOfNothingIsNull(t *testing.T) {
+	uri := "file:///tmp/main.ar"
+	replies := runSession(t,
+		didOpen(uri, "printd 42;\n"),
+		request(6, "textDocument/definition", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": 0, "character": 8},
+		}),
+		exitMessage,
+	)
+
+	if len(replies) != 2 {
+		t.Fatalf("expected diagnostics plus the null reply, got %d replies: %v", len(replies), replies)
+	}
+	result, answered := replies[1]["result"]
+	if !answered || result != nil {
+		t.Errorf("answered %v, want a null result", replies[1])
+	}
+}

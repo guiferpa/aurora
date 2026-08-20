@@ -66,6 +66,9 @@ func NewResponse(id int) InitializeResponse {
 				// 1 = full sync: the client resends the whole document on each change.
 				TextDocumentSync: 1,
 				HoverProvider:    true,
+				// Where a name was declared. Every name in Aurora is declared in the file
+				// that uses it or in a module it named, so the answer is always one place.
+				DefinitionProvider: true,
 				// The dot is declared as a trigger so a client asks for completion the
 				// moment someone types it — which is when the fields of a shape are
 				// what they want, and the only moment the document does not parse.

@@ -78,6 +78,7 @@ func (sv server) handlers() map[lsp.Method]lsp.MethodHandler {
 		"textDocument/didClose":            sv.didClose,
 		"textDocument/completion":          sv.completion,
 		"textDocument/hover":               sv.hover,
+		"textDocument/definition":          sv.definition,
 		"textDocument/semanticTokens/full": sv.semanticTokens,
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -23,17 +25,41 @@ func frame(body string) string {
 	return fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(body), body)
 }
 
-// runSession feeds the messages to the server and returns every decoded reply.
+// runSession feeds the messages to a server that reads one document and nothing around it,
+// and returns every decoded reply.
 func runSession(t *testing.T, messages ...string) []map[string]any {
+	t.Helper()
+
+	return session(t, func(documents *state.State) textdoc.NewSessionOptions {
+		return textdoc.NewSessionOptions{Lexer: lexer.New(), Parser: parser.New()}
+	}, messages...)
+}
+
+// runSessionInProject feeds them to a server wired the way main wires it, which is the one
+// that reaches the files a document imports. The directory is the project it is run from,
+// because that is what module names resolve against.
+func runSessionInProject(t *testing.T, dir string, messages ...string) []map[string]any {
+	t.Helper()
+	t.Chdir(dir)
+
+	return session(t, func(documents *state.State) textdoc.NewSessionOptions {
+		return textdoc.NewSessionOptions{
+			Lexer:   lexer.New(),
+			Parser:  parser.New(),
+			Resolve: resolveModules(documents),
+		}
+	}, messages...)
+}
+
+// session runs one server over the messages and decodes what it wrote.
+func session(t *testing.T, options func(*state.State) textdoc.NewSessionOptions, messages ...string) []map[string]any {
 	t.Helper()
 
 	in := strings.NewReader(strings.Join(messages, ""))
 	out := bytes.NewBuffer(nil)
-	sv := server{textdoc: textdoc.NewSession(textdoc.NewSessionOptions{
-		Lexer:  lexer.New(),
-		Parser: parser.New(),
-	})}
-	lsp.Listen(log.New(io.Discard, "", 0), in, out, state.New(), sv.handlers())
+	documents := state.New()
+	sv := server{textdoc: textdoc.NewSession(options(documents))}
+	lsp.Listen(log.New(io.Discard, "", 0), in, out, documents, sv.handlers())
 
 	replies := make([]map[string]any, 0)
 	rest := out.Bytes()
@@ -269,5 +295,49 @@ func TestSessionDefinitionOfNothingIsNull(t *testing.T) {
 	result, answered := replies[1]["result"]
 	if !answered || result != nil {
 		t.Errorf("answered %v, want a null result", replies[1])
+	}
+}
+
+// The jump that crosses a file, through the server that reads the disk: the answer names the
+// module's file by the URI the client knows it as, which is the half of the answer this side
+// of the port is responsible for.
+func TestSessionDefinitionCrossesIntoAModule(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, source := range map[string]string{
+		// The manifest is what makes this a project, which is what makes src/ the root a
+		// module name resolves from.
+		"aurora.toml":     "[project]\n  name = \"jump\"\n\n[profiles]\n  [profiles.main]\n    source = \"src/main.ar\"\n    binary = \"bin/main\"\n",
+		"src/geometry.ar": "ident area = defer { feed(0) * feed(1); };\n",
+		"src/main.ar":     "use geometry as g;\nprintd g.area(2, 3);\n",
+	} {
+		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(name)), []byte(source), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	uri := "file://" + filepath.ToSlash(filepath.Join(dir, "src", "main.ar"))
+	replies := runSessionInProject(t, dir,
+		didOpen(uri, "use geometry as g;\nprintd g.area(2, 3);\n"),
+		request(7, "textDocument/definition", map[string]any{
+			"textDocument": map[string]any{"uri": uri},
+			"position":     map[string]any{"line": 1, "character": 11},
+		}),
+		exitMessage,
+	)
+
+	if len(replies) != 2 {
+		t.Fatalf("expected diagnostics plus the definition reply, got %d: %v", len(replies), replies)
+	}
+	result := replies[1]["result"].(map[string]any)
+	want := "file://" + filepath.ToSlash(filepath.Join(dir, "src", "geometry.ar"))
+	if result["uri"] != want {
+		t.Errorf("points at %v, want %s", result["uri"], want)
+	}
+	start := result["range"].(map[string]any)["start"].(map[string]any)
+	if start["line"] != float64(0) || start["character"] != float64(6) {
+		t.Errorf("points at %v, want line 0 character 6", start)
 	}
 }

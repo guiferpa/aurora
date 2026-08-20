@@ -140,3 +140,120 @@ func TestDefinitionOfANameBoundFurtherDown(t *testing.T) {
 		t.Errorf("points at %+v, want the binding below it", found.Range)
 	}
 }
+
+// Across a module: the answer is in the other file, and the other file is the one the editor
+// is told to open.
+func TestDefinitionInsideAModule(t *testing.T) {
+	const geometry = "shape Square { width, height };\n" +
+		"ident new_square = defer { Square{feed(0), feed(1)}; } returns Square;\n" +
+		"ident area = defer { feed(0) * feed(1); };\n"
+	const main = "use geometry as g;\n" +
+		"ident s = g.new_square(30, 20);\n" +
+		"printd g.area(s.width, s.height);\n"
+
+	for _, tc := range []struct {
+		name string
+		at   lsp.Position
+		want lsp.Range
+	}{
+		{
+			name: "a scope the module binds",
+			at:   lsp.Position{Line: 1, Character: 14},
+			want: lsp.LineRange(1, 6, 16),
+		},
+		{
+			name: "a shape the module declares, through a name that reads as one",
+			at:   lsp.Position{Line: 2, Character: 17},
+			want: lsp.LineRange(0, 15, 20),
+		},
+		{
+			name: "the alias, from where it is used",
+			at:   lsp.Position{Line: 2, Character: 7},
+			want: lsp.LineRange(0, 0, 0),
+		},
+		{
+			name: "the path in the use line",
+			at:   lsp.Position{Line: 0, Character: 6},
+			want: lsp.LineRange(0, 0, 0),
+		},
+		{
+			name: "the alias in the use line",
+			at:   lsp.Position{Line: 0, Character: 16},
+			want: lsp.LineRange(0, 0, 0),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			session := withModuleFiles(map[string]string{"src/geometry.ar": geometry})
+			found, ok := session.DefinitionFor(Document{Filename: "src/main.ar", Source: main}, tc.at)
+			if !ok {
+				t.Fatal("nothing was found")
+			}
+			if found.Filename != "src/geometry.ar" {
+				t.Errorf("points at %s, want the module's file", found.Filename)
+			}
+			if found.Range != tc.want {
+				t.Errorf("points at %+v, want %+v", found.Range, tc.want)
+			}
+		})
+	}
+}
+
+// A shape written as the module's — built, claimed or promised — is declared over there too.
+func TestDefinitionOfAShapeNamedThroughItsModule(t *testing.T) {
+	session := withModuleFiles(map[string]string{"src/geometry.ar": "shape Square { width, height };\n"})
+	found, ok := session.DefinitionFor(Document{
+		Filename: "src/main.ar",
+		Source:   "use geometry as g;\nident s = g.Square{4, 5};\n",
+	}, lsp.Position{Line: 1, Character: 14})
+
+	if !ok {
+		t.Fatal("nothing was found")
+	}
+	if found.Filename != "src/geometry.ar" || found.Range != lsp.LineRange(0, 6, 12) {
+		t.Errorf("points at %s %+v, want the declaration in the module", found.Filename, found.Range)
+	}
+}
+
+// A module that is not there is a jump that does not happen. The diagnostic already says it
+// is missing, and an editor that opens nothing is better than one that opens the wrong file.
+func TestDefinitionIntoAModuleThatIsNotThere(t *testing.T) {
+	session := withModuleFiles(map[string]string{})
+	for _, at := range []lsp.Position{{Line: 0, Character: 6}, {Line: 1, Character: 9}} {
+		if found, ok := session.DefinitionFor(Document{
+			Filename: "src/main.ar",
+			Source:   "use gone as g;\nprintd g.area(1, 2);\n",
+		}, at); ok {
+			t.Errorf("answered %+v for a module that is not there", found)
+		}
+	}
+}
+
+// A name a module does not have is refused the same way, and the file is not opened at its
+// top as a consolation: the question was about a name.
+func TestDefinitionOfANameTheModuleDoesNotHave(t *testing.T) {
+	session := withModuleFiles(map[string]string{"src/geometry.ar": "ident area = defer { feed(0); };\n"})
+	if found, ok := session.DefinitionFor(Document{
+		Filename: "src/main.ar",
+		Source:   "use geometry as g;\nprintd g.volume(1, 2);\n",
+	}, lsp.Position{Line: 1, Character: 11}); ok {
+		t.Errorf("answered %+v, want nothing", found)
+	}
+}
+
+// Without the port nothing is resolved, so a name reached through a module has nowhere to
+// land — and the document is still answered for on its own.
+func TestDefinitionWithoutThePort(t *testing.T) {
+	const source = "use a/b as x;\nident here = 1;\nprintd x.there(here);\n"
+	doc := Document{Filename: "main.ar", Source: source}
+
+	if found, ok := session().DefinitionFor(doc, lsp.Position{Line: 2, Character: 11}); ok {
+		t.Errorf("answered %+v for a module nobody looked for", found)
+	}
+	found, ok := session().DefinitionFor(doc, lsp.Position{Line: 2, Character: 16})
+	if !ok {
+		t.Fatal("a name of this file was not found")
+	}
+	if found.Range != lsp.LineRange(1, 6, 10) {
+		t.Errorf("points at %+v, want the binding in this file", found.Range)
+	}
+}

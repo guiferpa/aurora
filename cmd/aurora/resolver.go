@@ -24,7 +24,7 @@ func newResolver(tapeSize int, sourceRoot string) *resolver.Resolver {
 	return resolver.New(resolver.Options{
 		SourceRoot: sourceRoot,
 		Read:       os.ReadFile,
-		Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+		Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
 			tokens, err := lx.GetFilledTokens(source)
 			if err != nil {
 				return ast.AST{}, err
@@ -34,7 +34,17 @@ func newResolver(tapeSize int, sourceRoot string) *resolver.Resolver {
 				Tokens:   tokens,
 				TapeSize: tapeSize,
 				Module:   string(id),
+				Imports:  imports,
 			})
+		},
+		// What a file imports is read from the top of it, without a parse: a module has to be
+		// read before whoever imports it, and knowing what to read cannot itself need one.
+		Header: func(source []byte) ([]ast.UseDeclaration, error) {
+			tokens, err := lx.GetFilledTokens(source)
+			if err != nil {
+				return nil, err
+			}
+			return parser.ScanUses(tokens), nil
 		},
 	})
 }

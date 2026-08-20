@@ -28,8 +28,17 @@ const Extension = ".ar"
 type Read func(path string) ([]byte, error)
 
 // Parse turns one module's source into a tree. Filename is where it came from, which is what
-// positions and file-scoped rules are about; ID is the module the names inside belong to.
-type Parse func(filename string, id module.ID, source []byte) (ast.AST, error)
+// positions and file-scoped rules are about; ID is the module the names inside belong to; and
+// imports is what the modules it names promised, which it needs while parsing because a shape
+// is resolved there and a struct's name never leaves the file that declared it.
+type Parse func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error)
+
+// Header answers what a source imports, without parsing it.
+//
+// It exists because a module has to be read before whoever imports it — the parse of a file
+// needs what its dependencies promised — and knowing what to read first cannot itself require
+// a parse. The declarations are the top of the file, so reading the top is enough.
+type Header func(source []byte) ([]ast.UseDeclaration, error)
 
 // Options is what a resolver is built with.
 type Options struct {
@@ -38,16 +47,18 @@ type Options struct {
 	SourceRoot string
 	Read       Read
 	Parse      Parse
+	Header     Header
 }
 
 type Resolver struct {
 	sourceRoot string
 	read       Read
 	parse      Parse
+	header     Header
 }
 
 func New(opts Options) *Resolver {
-	return &Resolver{sourceRoot: opts.SourceRoot, read: opts.Read, parse: opts.Parse}
+	return &Resolver{sourceRoot: opts.SourceRoot, read: opts.Read, parse: opts.Parse, header: opts.Header}
 }
 
 // resolution is one call to Resolve: what has been found, what is being looked at right now,
@@ -67,21 +78,45 @@ type resolution struct {
 //
 // The entry is a path rather than a module name because it is the file somebody asked to
 // run, and it is the one module with no id.
+// Resolve answers with the entry and everything it needs, dependencies first.
+//
+// The entry is parsed last, which is the whole shape of this: a file is read before the file
+// that imports it, so by the time one is parsed, everything it named has been. Knowing what to
+// read first is what the header is for.
 func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
 	source, err := r.read(entry)
 	if err != nil {
 		return nil, fmt.Errorf("reading %s: %w", entry, err)
 	}
-	tree, err := r.parse(entry, "", source)
+	uses, err := r.header(source)
 	if err != nil {
 		return nil, err
 	}
 
-	modules, err := r.Dependencies(entry, tree)
+	modules, err := r.DependenciesOf(entry, uses)
+	if err != nil {
+		return nil, err
+	}
+
+	tree, err := r.parse(entry, "", source, PromisesOf(modules))
 	if err != nil {
 		return nil, err
 	}
 	return append(modules, module.Module{ID: "", Tree: tree}), nil
+}
+
+// PromisesOf is what a set of modules promised, by the name they are imported under.
+//
+// Everything found so far is handed over rather than only what one file names: a parse looks
+// up the specifiers it actually wrote, so an entry nobody asks for costs nothing.
+func PromisesOf(modules []module.Module) map[string][]ast.Promise {
+	promises := make(map[string][]ast.Promise, len(modules))
+	for _, each := range modules {
+		if len(each.Tree.Promises) > 0 {
+			promises[string(each.ID)] = each.Tree.Promises
+		}
+	}
+	return promises
 }
 
 // Dependencies answers with everything the given trees need, and nothing of the trees
@@ -151,18 +186,25 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 		return token.NewError(declaration.Token, "module %s is not there at line %d and column %d: no %s",
 			id, declaration.Token.GetLine(), declaration.Token.GetColumn(), filename)
 	}
-	tree, err := r.parse(filename, id, source)
+	uses, err := r.header(source)
 	if err != nil {
 		return err
 	}
 
+	// Everything this module names is read before it is, which is what lets its parse be
+	// handed what they promised.
 	state.open = append(state.open, id)
-	for _, declaration := range declarationsOf(tree) {
-		if err := r.resolveOne(state, declaration); err != nil {
+	for _, use := range uses {
+		if err := r.resolveOne(state, use); err != nil {
 			return err
 		}
 	}
 	state.open = state.open[:len(state.open)-1]
+
+	tree, err := r.parse(filename, id, source, PromisesOf(state.order))
+	if err != nil {
+		return err
+	}
 
 	// Appended after everything it needs, which is what makes the order topological.
 	state.found[id] = true

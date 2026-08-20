@@ -16,17 +16,19 @@ import (
 //
 // A keyword with no entry is offered as itself.
 var keywordSnippets = map[string]string{
-	token.IDENT:  "ident ${1:name} = ${0:value};",
-	token.DEFER:  "defer {\n\t$0\n}",
-	token.IF:     "if ${1:condition} {\n\t$0\n}",
-	token.BRANCH: "branch {\n\t${1:test}: ${2:value},\n\t${0:fallback};\n}",
-	token.STRUCT: "struct ${1:Name} { ${0:field} };",
-	token.AS:     "as ${0:Struct}",
-	token.ASSERT: "assert(${1:condition}, \"${0:message}\");",
-	token.FEED:   "feed(${0:0})",
-	token.PRINTB: "printb ${0:value};",
-	token.PRINTC: "printc ${0:value};",
-	token.PRINTD: "printd ${0:value};",
+	token.IDENT:   "ident ${1:name} = ${0:value};",
+	token.DEFER:   "defer {\n\t$0\n}",
+	token.IF:      "if ${1:condition} {\n\t$0\n}",
+	token.BRANCH:  "branch {\n\t${1:test}: ${2:value},\n\t${0:fallback};\n}",
+	token.STRUCT:  "struct ${1:Name} { ${0:field} };",
+	token.AS:      "as ${0:Struct}",
+	token.RETURNS: "returns ${0:Struct}",
+	token.USE:     "use ${1:a/b/c} as ${0:alias};",
+	token.ASSERT:  "assert(${1:condition}, \"${0:message}\");",
+	token.FEED:    "feed(${0:0})",
+	token.PRINTB:  "printb ${0:value};",
+	token.PRINTC:  "printc ${0:value};",
+	token.PRINTD:  "printd ${0:value};",
 	// The tape operations take a target and then a value; for head and tail that value is
 	// an index, and it has to be written as a number.
 	token.PULL: "pull ${1:tape} ${0:value}",

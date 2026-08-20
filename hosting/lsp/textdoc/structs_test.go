@@ -137,3 +137,62 @@ func TestSemanticTokensForStructs(t *testing.T) {
 		}
 	}
 }
+
+// A promise reaches the editor too, and it reaches it from the tokens: a document being
+// edited does not parse, and the moment somebody types a dot is the moment they want to be
+// told what is there.
+func TestTheEditorReadsAPromise(t *testing.T) {
+	const source = "struct Result { failed, value };\n" +
+		"ident divide = defer {\n" +
+		"  if feed(1) equals 0 { Result{1, 0}; } else { Result{0, 1}; };\n" +
+		"} returns Result;\n" +
+		"ident r = divide(10, 2);\n" +
+		"printd r."
+
+	document := Document{Filename: "main.ar", Source: source}
+	items := session().CompletionItemsFor(document, lsp.Position{Line: 5, Character: 9}, false)
+
+	if len(items) != 2 {
+		t.Fatalf("offered %d items after the dot, want the two fields: %+v", len(items), items)
+	}
+	for i, want := range []string{"failed", "value"} {
+		if items[i].Label != want {
+			t.Errorf("offered %q, want %q", items[i].Label, want)
+		}
+	}
+}
+
+// And a scope that promised nothing gives the editor nothing, the same way it gives the
+// compiler nothing.
+func TestTheEditorReadsNoPromiseWhereThereIsNone(t *testing.T) {
+	const source = "struct Result { failed, value };\n" +
+		"ident divide = defer { Result{1, 0}; };\n" +
+		"ident r = divide(10, 2);\n" +
+		"printd r."
+
+	document := Document{Filename: "main.ar", Source: source}
+	items := session().CompletionItemsFor(document, lsp.Position{Line: 3, Character: 9}, false)
+
+	for _, item := range items {
+		if item.Label == "failed" || item.Label == "value" {
+			t.Errorf("offered %q for a scope that promised nothing", item.Label)
+		}
+	}
+}
+
+// The body of a scope is another scope's business: a construction inside it says what that
+// scope answers with, not what the name being bound is.
+func TestABodyDoesNotShapeTheNameItIsBoundTo(t *testing.T) {
+	const source = "struct Result { failed, value };\n" +
+		"ident divide = defer { Result{1, 0}; };\n" +
+		"printd divide."
+
+	document := Document{Filename: "main.ar", Source: source}
+	items := session().CompletionItemsFor(document, lsp.Position{Line: 2, Character: 14}, false)
+
+	for _, item := range items {
+		if item.Label == "failed" || item.Label == "value" {
+			t.Errorf("offered %q: a deferred scope is not the struct its body builds", item.Label)
+		}
+	}
+}

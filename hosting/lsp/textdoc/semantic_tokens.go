@@ -139,7 +139,7 @@ func semanticTypeOf(tag string) (int, bool) {
 	case token.IDENT, token.IF, token.ELSE, token.BRANCH, token.DEFER,
 		token.PRINTB, token.PRINTC, token.PRINTD, token.ASSERT, token.FEED,
 		token.HEAD, token.TAIL, token.PUSH, token.PULL, token.TRUE, token.FALSE,
-		token.STRUCT, token.AS, token.USE:
+		token.STRUCT, token.AS, token.USE, token.RETURNS:
 		return SemanticKeyword, true
 	case token.NUMBER:
 		return SemanticNumber, true

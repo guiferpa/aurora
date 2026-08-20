@@ -73,10 +73,8 @@ is why it has that shape.
 
 What it does not do yet:
 
-- **A `struct`'s name cannot be written in another file.** `as m.Point` and `m.Point{1, 2}`
-  are not syntax, so a shape is reached only through a promise, and a module that declares one
-  without promising with it offers nothing. Naming is the half of
-  [rfcs/crossing_shapes.md](../rfcs/crossing_shapes.md) that is not built yet.
+- **There is no `private` for a shape either.** Every struct a module declares is reachable
+  as `m.Point`, the same way everything it binds is. Marking part of it later breaks nothing.
 - **There is no `private`.** A module offers everything it binds with `ident` at the top. The
   boundary exists now, so marking part of it later breaks nothing.
 - **The language server follows an import, and stops short of two things.** It reads what a

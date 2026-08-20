@@ -212,6 +212,7 @@ Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays)
 - **Printing** is three readings of the same tape: `printb` the bytes, `printd` the number they spell, `printc` the character that number names, as UTF-8.
 - **Arithmetic**: a tape read as an unsigned big-endian integer, wrapping at the tape width.
 - **Structs** group values by naming the tapes of a run: `struct Point { x, y };` then `Point{10, 20}`. The names are a compile-time directive — a struct value is a run of tapes with nothing in it saying a struct built it, and nothing about the declaration reaches the binary.
+- **Modules**: a module is a file, and `use a/b/c as x;` reads `a/b/c.ar` from the source root (`src` by default, `source_root` under `[project]` to change it). The alias is mandatory and belongs to the file that wrote it, so `x.add(1, 2)` says where `add` lives without scrolling anywhere. A module runs once, before whoever imports it, and a name that is not there is refused while compiling.
 - **No signs**: a byte runs from 0 to 255 and no bit marks a value negative, so the language has no negative numbers. `-x` is x taken away from zero and wrapped — `-5 + 5` is 0, but `-5 bigger 5` is true.
 </details>
 

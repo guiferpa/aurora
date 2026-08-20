@@ -4,6 +4,76 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.6.0-alpha — 2026-08-20
+
+### Modules
+
+- **A program can be more than one file.** A module is a file, `use` brings one in under a name of your choosing, and that name is the only way to reach what is inside it.
+
+  ```
+  # src/geometry.ar
+  ident area = defer { feed(0) * feed(1); };
+
+  # src/main.ar
+  use geometry as g;
+  printd g.area(30, 20);
+  ```
+
+  The path is written from the source root without the extension, and it is the module's name everywhere: `use a/b/c as x;` is the module `a/b/c` whoever writes the line. There is no relative form, and a directory is not a module.
+
+  Everything is answered while compiling. A module that is not there, a circle between modules, and a name a module does not have are all refused before the program runs, where they were written — which is what the previous attempt at modules never did, and why it was rolled back in v0.2.0-alpha.
+
+  A module runs once, before whoever needs it, however many files import it. What it offers is what it binds with `ident` at the top of its file — a tape or a deferred scope. A `struct` does not cross a module, and an import is not passed on: if `main` uses `a` and `a` uses `b`, `main` writes its own line for `b`, so a name used in a file has its origin declared in that file.
+
+  Full reference: [docs/modules.md](docs/modules.md). Why it has this shape, including what was refused: [docs/module_system_design.md](docs/module_system_design.md).
+
+  **Breaking:** `use` is a keyword again, so it is no longer a valid identifier. It was one until namespaces were rolled back, and it comes back with them.
+
+- **`source_root` says where module names resolve from**, under `[project]`, and `src` when a project says nothing.
+
+  ```toml
+  [project]
+    source_root = "lib"
+  ```
+
+  It is relative to the directory the command was run in, with a manifest or without — one rule with no exception, and the price of it is that a project with modules is run from its own root. When a module is not found there, the error says where it looked. Like `tape_size` it belongs to the project rather than to a profile, and a profile carrying it is refused.
+
+- **`run`, `build` and `test` compile every module.** A test and the file it tests are one module written in two files, so a test reaches what its source declared — including a module the source brought in — and may name modules of its own.
+
+- **The REPL brings a module in.** `use geometry as g;` reads the file and the lines after it can use what is inside. A module is a program, so it runs once per session: importing it again is a use of what is already there.
+
+### The editor and the playground
+
+- **A module is answered for as a module.** Hover on an alias says which module it names instead of calling it an identifier, and hover on a name reached through one says which module it comes from and what it is.
+
+- **The editor follows an import.** A module that is not there, a circle, and a name a module does not have are underlined where they were written, and what a module declared is offered after the dot — which used to offer every keyword in the language, the one thing that certainly cannot go there.
+
+  It reads the editor's buffers before the disk, so a module you are editing answers with what you are seeing rather than with what was last saved.
+
+  It does not go to a definition in another file, and it only notices a change in a file you have open.
+
+### The EVM backend
+
+- **A build says what the chain will not do.** A contract using something the builder does not write compiled, deployed and did nothing, and the only way to find out was on chain. `aurora build` now names each of those, once, in the order the program uses them — saying `by decision` for a print or an assert, which have nowhere to go on a chain, and `yet` for everything else, which is being written in slices. A program the builder writes whole is built without a word.
+
+- **A value on chain is as wide as the tape says.** A result leaving a call was cut back to the width the project declared, the way the evaluator does it, so the same program answers the same thing on a chain and off it.
+
+### Fixes
+
+- **A test can use a struct its source declared.** The two files are one scope, and they were being parsed as if they were two.
+
+### Removed
+
+- **`-l` is gone.** It printed what each phase produced, and what it showed is what a test checks: every phase has tests that read what it answers with, and those do not depend on someone running a command and looking. If it comes back, it comes back as a port, the way printing did.
+
+  **Breaking:** `aurora run -l lexer,parser,emitter` is no longer a flag.
+
+- **`-r` is gone.** It turned on a reader nobody read: the evaluator held it, nothing ever asked it for a line, and the flag had never done anything. When a program needs to be given something, the way in will be a port.
+
+  **Breaking:** `aurora run -r` is no longer a flag.
+
+---
+
 ## v0.5.0-alpha — 2026-08-16
 
 ### Manifest

@@ -191,3 +191,25 @@ func TestAStructComesOutOfAScope(t *testing.T) {
 		})
 	}
 }
+
+// A promise, kept, and the claim gone from the call site: the shape is known because the
+// scope said so, and the compiler checked that it said the truth.
+func TestAPromisedShapeIsReadWithoutAClaim(t *testing.T) {
+	const source = "struct Result { failed, value };\n" +
+		"ident divide = defer {\n" +
+		"  if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; };\n" +
+		"} returns Result;\n" +
+		"ident r = divide(10, 2);\n" +
+		"printd r.failed;\nprintd r.value;\nprintd divide(1, 0).failed;"
+
+	got := output(t, source, 0)
+	want := []string{"0", "5", "1"}
+	if len(got) != len(want) {
+		t.Fatalf("printed %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("printed %v, want %v", got, want)
+		}
+	}
+}

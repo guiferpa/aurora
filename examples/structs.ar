@@ -21,6 +21,9 @@
 #-   1
 #-   24930 98
 #-   0
+#-   0
+#-   5
+#-   1
 
 struct Point { x, y };
 
@@ -62,3 +65,28 @@ printd Pair{"ab", 98};
 #- the way head saturates and feed wraps. A claim can be wrong.
 ident single = 7 as Point;
 printd single.y;
+
+
+#- "as" is what whoever reads a value claims about it. "returns" is what a block
+#- promises about itself, and the compiler refuses the block that does not keep
+#- it — so a scope that says it answers with a Result and ends with a number
+#- does not compile.
+#-
+#- What it buys is the other end: a call to a scope that promised has a shape,
+#- so nobody has to claim one at every call site.
+struct Result { failed, value };
+
+ident divide = defer {
+  if feed(1) equals 0 {
+    Result{1, 0};
+  } else {
+    Result{0, feed(0) / feed(1)};
+  };
+} returns Result;
+
+ident r = divide(10, 2);
+printd r.failed;
+printd r.value;
+
+#- And it reads straight off the call, since the shape came with it.
+printd divide(1, 0).failed;

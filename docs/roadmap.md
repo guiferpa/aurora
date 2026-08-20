@@ -79,8 +79,6 @@ What it does not do yet:
   the parser, which is a different shape from the one that exists.
 - **There is no `private`.** A module offers everything it binds with `ident` at the top. The
   boundary exists now, so marking part of it later breaks nothing.
-- **The REPL does not take `use`.** It compiles one line at a time into one buffer, and a
-  module is a file — what a `use` would mean there is a question nobody has answered.
 - **The language server follows an import, and stops short of two things.** It reads what a
   document imports on every pass, from the editor's buffers before the disk, so a module that
   is not there and a name a module does not have are underlined where they were written, and

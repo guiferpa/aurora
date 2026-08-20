@@ -8,6 +8,7 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
+	"github.com/guiferpa/aurora/hosting/cli"
 	"github.com/guiferpa/aurora/hosting/repl"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
@@ -46,6 +47,9 @@ var replCmd = &cobra.Command{
 			In:       os.Stdin,
 			Out:      out,
 			TapeSize: size,
+			// A use line resolves from where the session was started, which is the same
+			// answer the other commands give: the project you are standing in.
+			Resolver: newResolver(size, cli.ProjectSourceRoot("")),
 		}).Start()
 		return nil
 	},

@@ -17,14 +17,18 @@ import (
 type structShapes struct {
 	fields map[string][]string // struct name -> its fields, in order
 	shapes map[string]string   // identifier name -> the struct it is read as
+	// promises is what `returns` said: the name of a scope -> the struct calling it answers
+	// with. A name bound from such a call is read as that struct without anybody claiming it.
+	promises map[string]string
 }
 
 // scanStructs reads the declarations out of a token stream: `struct Point { x, y }` for the
 // fields, and `ident p = Point{...}` or `... as Point` for what a name is read as.
 func scanStructs(tokens []token.Token) structShapes {
 	found := structShapes{
-		fields: make(map[string][]string),
-		shapes: make(map[string]string),
+		fields:   make(map[string][]string),
+		shapes:   make(map[string]string),
+		promises: make(map[string]string),
 	}
 
 	for i := 0; i < len(tokens); i++ {
@@ -35,8 +39,17 @@ func scanStructs(tokens []token.Token) structShapes {
 				i = next
 			}
 		case token.IDENT:
-			// `ident p = Point{` and `ident p = <anything> as Point` both say what p is.
-			if name, shape := readBinding(tokens, i); shape != "" {
+			// `ident p = Point{`, `ident p = <anything> as Point` and a call to a scope that
+			// promised all say what p is; `ident f = defer { ... } returns Point` says what
+			// calling f will.
+			name, shape, promised, called := readBinding(tokens, i)
+			if promised != "" {
+				found.promises[name] = promised
+			}
+			if shape == "" && called != "" {
+				shape = found.promises[called]
+			}
+			if shape != "" {
 				found.shapes[name] = shape
 			}
 		}
@@ -67,30 +80,53 @@ func readDeclaration(tokens []token.Token, i int) (string, []string, int) {
 	return name, fields, len(tokens) - 1
 }
 
-// readBinding reads what `ident name = ...` binds, up to the end of the statement.
-func readBinding(tokens []token.Token, i int) (string, string) {
+// readBinding reads what `ident name = ...` binds, up to the end of the statement: the struct
+// it is read as, the struct calling it will answer with, and the scope it was bound from.
+//
+// Only what sits at the top of the value is read. A body between braces is another scope's
+// business — the semicolons in it do not end this statement, and a construction inside it says
+// what that scope answers with rather than what this name is.
+func readBinding(tokens []token.Token, i int) (name, shape, promised, called string) {
 	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != token.ID || tokens[i+2].GetTag().Id != token.ASSIGN {
-		return "", ""
+		return "", "", "", ""
 	}
-	name := string(tokens[i+1].GetMatch())
+	name = string(tokens[i+1].GetMatch())
 
+	depth := 0
 	for j := i + 3; j < len(tokens); j++ {
 		switch tokens[j].GetTag().Id {
+		case token.O_CUR_BRK:
+			depth++
+		case token.C_CUR_BRK:
+			depth--
 		case token.SEMICOLON:
-			return name, ""
+			if depth <= 0 {
+				return name, shape, promised, called
+			}
+		case token.RETURNS:
+			if depth == 0 && j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.ID {
+				promised = string(tokens[j+1].GetMatch())
+			}
 		case token.AS:
 			// The nearest `as` wins, which is the one the value ends up with.
-			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.ID {
-				return name, string(tokens[j+1].GetMatch())
+			if depth == 0 && j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.ID {
+				shape = string(tokens[j+1].GetMatch())
 			}
 		case token.ID:
-			// A construction: the name of a struct in front of a brace.
-			if j+1 < len(tokens) && tokens[j+1].GetTag().Id == token.O_CUR_BRK {
-				return name, string(tokens[j].GetMatch())
+			if depth != 0 || j+1 >= len(tokens) {
+				continue
+			}
+			switch tokens[j+1].GetTag().Id {
+			case token.O_CUR_BRK:
+				// A construction: the name of a struct in front of a brace.
+				shape = string(tokens[j].GetMatch())
+			case token.O_PAREN:
+				// A call: what it answers with is known when that scope promised.
+				called = string(tokens[j].GetMatch())
 			}
 		}
 	}
-	return name, ""
+	return name, shape, promised, called
 }
 
 // fieldsBefore answers the fields offered at a position, when what sits in front of the

@@ -102,6 +102,19 @@ func TestWhatARefusalSays(t *testing.T) {
 			want: []string{"module a/b has no area", "it has base"},
 		},
 		{
+			// A struct's name is not something a module offers, and the refusal has to stay
+			// where it is. Adding struct declarations to the export list would make this
+			// compile — as a name being loaded, since that is what a qualified name is —
+			// and then fail while running, with a name nobody bound. A refusal that moves
+			// from the compiler to the run is the bug the whole design exists to prevent.
+			name: "a struct name is not offered by a module",
+			files: map[string]string{
+				"src/a/b.ar":  "struct Prime { p };\nident v = 1;",
+				"src/main.ar": "use a/b as x;\nprintd x.Prime;",
+			},
+			want: []string{"module a/b has no Prime", "it has v"},
+		},
+		{
 			name: "two modules in a circle",
 			files: map[string]string{
 				"src/one.ar":  "use two as t;\nident a = 1;",

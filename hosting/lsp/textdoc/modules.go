@@ -12,7 +12,7 @@ import (
 )
 
 // What the language server knows about the modules a document brings in, read straight from
-// the tokens for the same reason the structs are: a document being edited is broken most of
+// the tokens for the same reason the shapes are: a document being edited is broken most of
 // the time, and `x.` — the moment somebody wants to be told what is inside a module — never
 // parses.
 //
@@ -105,12 +105,12 @@ func exportCompletions(analysis *Analysis, specifier string) []CompletionItem {
 			Kind:   Variable,
 		})
 	}
-	// The structs a module declares can be written now — built, claimed with as, promised
+	// The shapes a module declares can be written now — built, claimed with as, promised
 	// with returns — so they are offered, and offering them is telling the truth.
 	for _, shape := range found.Tree.Shapes {
 		items = append(items, CompletionItem{
 			Label:  shape.Name,
-			Detail: "struct of module " + specifier + ": " + strings.Join(shape.Fields, ", "),
+			Detail: "shape of module " + specifier + ": " + strings.Join(shape.Fields, ", "),
 			Kind:   Struct,
 		})
 	}
@@ -160,13 +160,13 @@ func exportedValue(found module.Module, name string) ast.Node {
 	return nil
 }
 
-// shapesOf is everything the editor knows about structs while a document is being edited:
+// shapesOf is everything the editor knows about shapes while a document is being edited:
 // what the modules it imports offer, and then what the document itself says on top.
 //
 // The order is the point. A name bound here can be read as a shape declared over there —
 // `ident s = g.new_square(1, 2);` — and the reader of the tokens only knows what that call
 // answers with if the promise is already written down when it walks past the call.
-func shapesOf(analysis *Analysis, aliases moduleAliases) structShapes {
+func shapesOf(analysis *Analysis, aliases moduleAliases) shapeTable {
 	return importedShapes(analysis, aliases).scan(analysis.Tokens)
 }
 
@@ -175,11 +175,11 @@ func shapesOf(analysis *Analysis, aliases moduleAliases) structShapes {
 // through the alias or not at all.
 //
 // It is the parser's own Import with the alias in front instead of the specifier — the same
-// two halves, read for the same reason. The structs say what a construction is made of; the
+// two halves, read for the same reason. The shapes say what a construction is made of; the
 // promises say what a call answers with, which is the only shape a name bound from another
 // module's scope ever has.
-func importedShapes(analysis *Analysis, aliases moduleAliases) structShapes {
-	shapes := newStructShapes()
+func importedShapes(analysis *Analysis, aliases moduleAliases) shapeTable {
+	shapes := newShapeTable()
 	for alias, specifier := range aliases {
 		found, imported := analysis.module(specifier)
 		if !imported {
@@ -191,7 +191,7 @@ func importedShapes(analysis *Analysis, aliases moduleAliases) structShapes {
 		for _, promise := range found.Tree.Promises {
 			// A promise may name a shape of a third module, which this one never declared, so
 			// the fields come with it rather than being looked up.
-			named := alias + "." + promise.Struct
+			named := alias + "." + promise.Shape
 			shapes.fields[named] = promise.Fields
 			shapes.promises[alias+"."+promise.Scope] = named
 		}

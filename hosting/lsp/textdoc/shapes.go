@@ -7,41 +7,41 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// What the language server knows about the struct declarations, read straight from the tokens
+// What the language server knows about the shape declarations, read straight from the tokens
 // rather than from the tree.
 //
 // It has to be the tokens. A document being edited is broken most of the time — the moment
 // someone types `p.` there is no field name yet and nothing parses — and completion is
 // exactly what is wanted at that moment. The parser drops its own tables when the parse
 // ends, and would have nothing to offer here anyway.
-type structShapes struct {
-	fields map[string][]string // struct name -> its fields, in order
-	shapes map[string]string   // identifier name -> the struct it is read as
-	// promises is what `returns` said: the name of a scope -> the struct calling it answers
-	// with. A name bound from such a call is read as that struct without anybody claiming it.
+type shapeTable struct {
+	fields map[string][]string // shape name -> its fields, in order
+	reads  map[string]string   // identifier name -> the shape it is read as
+	// promises is what `returns` said: the name of a scope -> the shape calling it answers
+	// with. A name bound from such a call is read as that shape without anybody claiming it.
 	promises map[string]string
 }
 
-// newStructShapes is what nothing has been read into yet.
-func newStructShapes() structShapes {
-	return structShapes{
+// newShapeTable is what nothing has been read into yet.
+func newShapeTable() shapeTable {
+	return shapeTable{
 		fields:   make(map[string][]string),
-		shapes:   make(map[string]string),
+		reads:    make(map[string]string),
 		promises: make(map[string]string),
 	}
 }
 
 // scan reads the declarations out of a token stream, on top of whatever is already known:
-// `struct Point { x, y }` for the fields, and `ident p = Point{...}` or `... as Point` for
+// `shape Point { x, y }` for the fields, and `ident p = Point{...}` or `... as Point` for
 // what a name is read as.
 //
 // It reads on top rather than from nothing because a document is not the only thing that
 // declares a shape. What its modules offer is written down first, and a name bound here from
 // a call over there is only read when both halves are in the same table.
-func (found structShapes) scan(tokens []token.Token) structShapes {
+func (found shapeTable) scan(tokens []token.Token) shapeTable {
 	for i := 0; i < len(tokens); i++ {
 		switch tokens[i].GetTag().Id {
-		case token.STRUCT:
+		case token.SHAPE:
 			if name, fields, next := readDeclaration(tokens, i); name != "" {
 				found.fields[name] = fields
 				i = next
@@ -58,7 +58,7 @@ func (found structShapes) scan(tokens []token.Token) structShapes {
 				shape = found.promises[called]
 			}
 			if shape != "" {
-				found.shapes[name] = shape
+				found.reads[name] = shape
 			}
 		}
 	}
@@ -66,7 +66,7 @@ func (found structShapes) scan(tokens []token.Token) structShapes {
 	return found
 }
 
-// readDeclaration reads `struct Name { a, b }` starting at the struct token.
+// readDeclaration reads `shape Name { a, b }` starting at the shape token.
 func readDeclaration(tokens []token.Token, i int) (string, []string, int) {
 	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != token.ID || tokens[i+2].GetTag().Id != token.O_CUR_BRK {
 		return "", nil, i
@@ -88,8 +88,8 @@ func readDeclaration(tokens []token.Token, i int) (string, []string, int) {
 	return name, fields, len(tokens) - 1
 }
 
-// readBinding reads what `ident name = ...` binds, up to the end of the statement: the struct
-// it is read as, the struct calling it will answer with, and the scope it was bound from.
+// readBinding reads what `ident name = ...` binds, up to the end of the statement: the shape
+// it is read as, the shape calling it will answer with, and the scope it was bound from.
 //
 // Only what sits at the top of the value is read. A body between braces is another scope's
 // business — the semicolons in it do not end this statement, and a construction inside it says
@@ -126,7 +126,7 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 			}
 			switch tokens[j+1].GetTag().Id {
 			case token.O_CUR_BRK:
-				// A construction: the name of a struct in front of a brace.
+				// A construction: the name of a shape in front of a brace.
 				shape = nameAt(tokens, j)
 			case token.O_PAREN:
 				// A call: what it answers with is known when that scope promised.
@@ -141,7 +141,7 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 // `g.Square` when it hangs off a dot on an alias.
 //
 // The alias comes along because it is part of the name. A shape of another module is never
-// written without one, and two files reached through two aliases may both call a struct
+// written without one, and two files reached through two aliases may both call a shape
 // Square.
 func nameAt(tokens []token.Token, j int) string {
 	name := string(tokens[j].GetMatch())
@@ -151,7 +151,7 @@ func nameAt(tokens []token.Token, j int) string {
 	return name
 }
 
-// claimedAt reads the struct name written after `as` or `returns`, and nothing when what
+// claimedAt reads the shape name written after `as` or `returns`, and nothing when what
 // follows is not one yet.
 func claimedAt(tokens []token.Token, j int) string {
 	if j >= len(tokens) || tokens[j].GetTag().Id != token.ID {
@@ -166,16 +166,16 @@ func claimedAt(tokens []token.Token, j int) string {
 // fieldsBefore answers the fields offered at a position, when what sits in front of the
 // cursor is a dot on a value whose shape is known. Anything else gives nothing, and the
 // caller falls back to the ordinary list.
-func (s structShapes) fieldsBefore(tokens []token.Token, offset int) []string {
+func (s shapeTable) fieldsBefore(tokens []token.Token, offset int) []string {
 	owner := ownerBefore(tokens, offset)
 	if owner == nil {
 		return nil
 	}
-	return s.fields[s.shapes[string(owner.GetMatch())]]
+	return s.fields[s.reads[string(owner.GetMatch())]]
 }
 
 // ownerBefore answers the name a dot at this offset hangs off, and nil when there is no dot
-// there. Both readers of a dot ask it — a struct to offer its fields, a module to say that
+// there. Both readers of a dot ask it — a shape to offer its fields, a module to say that
 // what follows is not a field at all.
 func ownerBefore(tokens []token.Token, offset int) token.Token {
 	// The token being typed may already have started, so walk back over it first.
@@ -203,9 +203,9 @@ func ownerBefore(tokens []token.Token, offset int) token.Token {
 	return owner
 }
 
-// structAt describes the struct a token belongs to, for hover: the declaration itself, or a
+// shapeAt describes the shape a token belongs to, for hover: the declaration itself, or a
 // field being read out of a value.
-func (s structShapes) structAt(tokens []token.Token, subject token.Token) (string, []string, int) {
+func (s shapeTable) shapeAt(tokens []token.Token, subject token.Token) (string, []string, int) {
 	name := string(subject.GetMatch())
 
 	if fields, declared := s.fields[name]; declared {
@@ -222,7 +222,7 @@ func (s structShapes) structAt(tokens []token.Token, subject token.Token) (strin
 		if owner.GetTag().Id != token.ID {
 			continue
 		}
-		shape := s.shapes[string(owner.GetMatch())]
+		shape := s.reads[string(owner.GetMatch())]
 		fields := s.fields[shape]
 		if index := slices.Index(fields, name); index >= 0 {
 			return shape, fields, index

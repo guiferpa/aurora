@@ -9,32 +9,32 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// What `struct` and `as` declare, and everything it is: a way of naming the fields of a run
+// What `shape` and `as` declare, and everything it is: a way of naming the fields of a run
 // of tapes so the compiler can turn a name into an index, point at a mistake where it was
 // written, and tell the language server what is there.
 //
-// None of it outlives the compilation. A struct value is a run of tapes and nothing else —
+// None of it outlives the compilation. A shape value is a run of tapes and nothing else —
 // the same run a reel of the same length is — so the tables here are read while parsing and
 // dropped, and the tree carries indexes rather than names.
 
 // Declarations are what those two keywords leave behind while a file is compiled: the fields
-// each struct declared, and the struct a name is read as.
+// each shape declared, and the shape a name is read as.
 //
 // They were called directives, which is what a language usually calls something outside its
-// own grammar — a pragma, an annotation. These are inside it: `struct` and `as` are keywords,
+// own grammar — a pragma, an annotation. These are inside it: `shape` and `as` are keywords,
 // with a token, a parse rule and errors of their own. What sets them apart is not where they
 // live but what they leave: a declaration, and no work to do.
 //
 // They belong to a source file rather than to a parse, which is what the REPL needs — there
-// a file is typed one line at a time, with a fresh parser for each, and a struct declared on
+// a file is typed one line at a time, with a fresh parser for each, and a shape declared on
 // one line has to still be there on the next.
 type Declarations struct {
-	Structs map[string][]string // struct name -> its fields, in order
-	Shapes  map[string]string   // identifier name -> the struct it is read as
+	Shapes map[string][]string // shape name -> its fields, in order
+	Reads  map[string]string   // identifier name -> the shape it is read as
 	// Modules is what `use` declared: alias -> specifier. It belongs to the file that wrote
 	// it and to no other, which is the whole point of the alias being mandatory.
 	Modules map[string]string
-	// Returns is what `returns` promised: the name of a scope -> the struct that calling it
+	// Returns is what `returns` promised: the name of a scope -> the shape that calling it
 	// answers with. It is not the shape of the name itself — a deferred scope is an index —
 	// but the shape of what comes back from it.
 	Returns map[string]string
@@ -42,8 +42,8 @@ type Declarations struct {
 
 func NewDeclarations() *Declarations {
 	return &Declarations{
-		Structs: make(map[string][]string),
-		Shapes:  make(map[string]string),
+		Shapes:  make(map[string][]string),
+		Reads:   make(map[string]string),
 		Modules: make(map[string]string),
 		Returns: make(map[string]string),
 	}
@@ -56,20 +56,20 @@ func NewDeclarations() *Declarations {
 // an Env each are two shapes, and neither can be confused with an Env declared here.
 func (d *Declarations) Import(specifier string, offer ast.Offer) {
 	for _, shape := range offer.Shapes {
-		d.Structs[module.Qualify(module.ID(specifier), shape.Name)] = shape.Fields
+		d.Shapes[module.Qualify(module.ID(specifier), shape.Name)] = shape.Fields
 	}
 	for _, promise := range offer.Promises {
 		// A promise may name a shape of a third module, which this one never declared, so the
 		// fields come with it rather than being looked up.
-		shape := module.Qualify(module.ID(specifier), promise.Struct)
-		d.Structs[shape] = promise.Fields
+		shape := module.Qualify(module.ID(specifier), promise.Shape)
+		d.Shapes[shape] = promise.Fields
 		d.Returns[module.Qualify(module.ID(specifier), promise.Scope)] = shape
 	}
 }
 
-// ParseStruct reads `struct Point { x, y };`.
-func (p *pr) ParseStruct() (ast.Node, error) {
-	tok, err := p.EatToken(token.STRUCT)
+// ParseShape reads `shape Point { x, y };`.
+func (p *pr) ParseShape() (ast.Node, error) {
+	tok, err := p.EatToken(token.SHAPE)
 	if err != nil {
 		return nil, err
 	}
@@ -78,10 +78,10 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	structName := string(name.GetMatch())
-	if _, declared := p.declarations.Structs[structName]; declared {
-		return nil, token.NewError(name, "struct %s is already declared at line %d and column %d",
-			structName, name.GetLine(), name.GetColumn())
+	shapeName := string(name.GetMatch())
+	if _, declared := p.declarations.Shapes[shapeName]; declared {
+		return nil, token.NewError(name, "shape %s is already declared at line %d and column %d",
+			shapeName, name.GetLine(), name.GetColumn())
 	}
 
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
@@ -96,8 +96,8 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 		}
 		fieldName := string(field.GetMatch())
 		if slices.Contains(fields, fieldName) {
-			return nil, token.NewError(field, "struct %s already has a field named %s at line %d and column %d",
-				structName, fieldName, field.GetLine(), field.GetColumn())
+			return nil, token.NewError(field, "shape %s already has a field named %s at line %d and column %d",
+				shapeName, fieldName, field.GetLine(), field.GetColumn())
 		}
 		fields = append(fields, fieldName)
 
@@ -112,31 +112,31 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
 		return nil, err
 	}
-	// A struct of no fields would be a value of no tapes, which is not a value at all.
+	// A shape of no fields would be a value of no tapes, which is not a value at all.
 	if len(fields) == 0 {
-		return nil, token.NewError(tok, "struct %s has no fields at line %d and column %d",
-			structName, tok.GetLine(), tok.GetColumn())
+		return nil, token.NewError(tok, "shape %s has no fields at line %d and column %d",
+			shapeName, tok.GetLine(), tok.GetColumn())
 	}
 
-	p.declarations.Structs[structName] = fields
-	return ast.StructDeclaration{Name: structName, Fields: fields, Token: tok}, nil
+	p.declarations.Shapes[shapeName] = fields
+	return ast.ShapeDeclaration{Name: shapeName, Fields: fields, Token: tok}, nil
 }
 
-// ParseStructLiteral reads `Point{10, 20}`: one value per field, in the declared order.
+// ParseShapeLiteral reads `Point{10, 20}`: one value per field, in the declared order.
 //
 // The braces are what tell a construction from applying values to a scope, which parentheses
 // could not do on their own — `Point{1, 2}` and `greet(1, 2)` are the same shape. It is still
 // only a construction when the name was declared, because `if flag { … }` also puts a brace
-// after a name; declaring a struct called `flag` and testing on it is the one ambiguity left,
+// after a name; declaring a shape called `flag` and testing on it is the one ambiguity left,
 // and it is the same one Go has.
-func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
-	return p.parseStructValue(typed(id), typed(id), id.Token)
+func (p *pr) ParseShapeLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
+	return p.parseShapeValue(typed(id), typed(id), id.Token)
 }
 
-// parseStructValue reads `{ ... }` for a struct already known, whichever file declared it:
+// parseShapeValue reads `{ ... }` for a shape already known, whichever file declared it:
 // shape is what it is called in the tables, and named is what whoever wrote the line typed.
-func (p *pr) parseStructValue(shape, named string, at token.Token) (ast.Node, error) {
-	fields := p.declarations.Structs[shape]
+func (p *pr) parseShapeValue(shape, named string, at token.Token) (ast.Node, error) {
+	fields := p.declarations.Shapes[shape]
 
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
@@ -164,11 +164,11 @@ func (p *pr) parseStructValue(shape, named string, at token.Token) (ast.Node, er
 	// Pointing at a miscount is the whole reason the declaration exists, so it is an error
 	// rather than a run padded with the neutral value.
 	if len(values) != len(fields) {
-		return nil, token.NewError(closing, "struct %s has %d fields (%s) but got %d at line %d and column %d",
+		return nil, token.NewError(closing, "shape %s has %d fields (%s) but got %d at line %d and column %d",
 			named, len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
 	}
 
-	return ast.StructLiteral{Name: shape, Values: values, Token: at}, nil
+	return ast.ShapeLiteral{Name: shape, Values: values, Token: at}, nil
 }
 
 // parsePostfix applies what binds tightest of all: reading a field, and naming the shape a
@@ -218,14 +218,14 @@ func (p *pr) parseField(expr ast.Node) (ast.Node, error) {
 
 	shape := p.shapeOf(expr)
 	if shape == "" {
-		return nil, token.NewError(name, "cannot read field %s at line %d and column %d: nothing says which struct this value is, name it with 'as'",
+		return nil, token.NewError(name, "cannot read field %s at line %d and column %d: nothing says which shape this value is, name it with 'as'",
 			field, name.GetLine(), name.GetColumn())
 	}
 
-	fields := p.declarations.Structs[shape]
+	fields := p.declarations.Shapes[shape]
 	index := slices.Index(fields, field)
 	if index < 0 {
-		return nil, token.NewError(name, "struct %s has no field named %s at line %d and column %d (it has %s)",
+		return nil, token.NewError(name, "shape %s has no field named %s at line %d and column %d (it has %s)",
 			shape, field, name.GetLine(), name.GetColumn(), strings.Join(fields, ", "))
 	}
 
@@ -244,10 +244,10 @@ func (p *pr) parseShape(expr ast.Node) (ast.Node, error) {
 		return nil, err
 	}
 
-	return ast.ShapedExpression{Expression: expr, Struct: shape, Token: tok}, nil
+	return ast.ShapedExpression{Expression: expr, Shape: shape, Token: tok}, nil
 }
 
-// parseShapeName reads the name of a struct where one is expected: `Point`, or `m.Point` for
+// parseShapeName reads the name of a shape where one is expected: `Point`, or `m.Point` for
 // one another module declared.
 //
 // The qualified form is read the same way a qualified value is, and answers with the name the
@@ -270,21 +270,21 @@ func (p *pr) parseShapeName() (string, token.Token, error) {
 		}
 		symbol := string(named.GetMatch())
 		shape = module.Qualify(module.ID(specifier), symbol)
-		if _, declared := p.declarations.Structs[shape]; !declared {
-			return "", nil, token.NewError(named, "module %s has no struct named %s at line %d and column %d",
+		if _, declared := p.declarations.Shapes[shape]; !declared {
+			return "", nil, token.NewError(named, "module %s has no shape named %s at line %d and column %d",
 				specifier, symbol, named.GetLine(), named.GetColumn())
 		}
 		return shape, named, nil
 	}
 
-	if _, declared := p.declarations.Structs[shape]; !declared {
-		return "", nil, token.NewError(name, "%s is not a declared struct at line %d and column %d",
+	if _, declared := p.declarations.Shapes[shape]; !declared {
+		return "", nil, token.NewError(name, "%s is not a declared shape at line %d and column %d",
 			shape, name.GetLine(), name.GetColumn())
 	}
 	return shape, name, nil
 }
 
-// shapeOf answers which struct a value is read as, or empty when nothing said. A field is
+// shapeOf answers which shape a value is read as, or empty when nothing said. A field is
 // one tape wide, so reading a field of a field is never known.
 //
 // What it sees through is what a promise is worth: a block answers with its last expression,
@@ -292,12 +292,12 @@ func (p *pr) parseShapeName() (string, token.Token, error) {
 // and an if with no else agrees with nothing.
 func (p *pr) shapeOf(node ast.Node) string {
 	switch n := node.(type) {
-	case ast.StructLiteral:
+	case ast.ShapeLiteral:
 		return n.Name
 	case ast.ShapedExpression:
-		return n.Struct
+		return n.Shape
 	case ast.IdentifierLiteral:
-		return p.declarations.Shapes[n.Value]
+		return p.declarations.Reads[n.Value]
 	case ast.BlockExpression:
 		if n.Returns != "" {
 			return n.Returns
@@ -336,10 +336,10 @@ func (p *pr) shapeOfLast(body []ast.Node) string {
 // The promise is worth what shapeOf can see through, which is why that is the part that grew.
 
 // promises is what the top-level scopes of this file said they answer with, with the fields
-// of each — the only thing about a struct that leaves the file that declared it.
+// of each — the only thing about a shape that leaves the file that declared it.
 //
 // It is a join of two tables the parse already filled: which scope promised what, and what
-// each struct is made of. Whoever imports this file needs both halves, since a name is worth
+// each shape is made of. Whoever imports this file needs both halves, since a name is worth
 // nothing without the fields it stands for.
 func (p *pr) promises(nodes []ast.Node) []ast.Promise {
 	found := make([]ast.Promise, 0)
@@ -354,21 +354,21 @@ func (p *pr) promises(nodes []ast.Node) []ast.Promise {
 		}
 		found = append(found, ast.Promise{
 			Scope:  p.bare(binding.Id),
-			Struct: promised,
-			Fields: p.declarations.Structs[promised],
+			Shape:  promised,
+			Fields: p.declarations.Shapes[promised],
 		})
 	}
 	return found
 }
 
-// shapes is every struct this file declared, with what each is made of.
+// shapes is every shape this file declared, with what each is made of.
 //
 // All of them cross, and not only the ones a promise names: a file that imports this one may
 // want to build one, or to name one with `as`, and neither goes through a promise.
 func (p *pr) shapes(nodes []ast.Node) []ast.Shape {
 	found := make([]ast.Shape, 0)
 	for _, node := range nodes {
-		declaration, ok := node.(ast.StructDeclaration)
+		declaration, ok := node.(ast.ShapeDeclaration)
 		if !ok {
 			continue
 		}
@@ -452,10 +452,10 @@ func describeAnswer(node ast.Node) string {
 		return "text"
 	case ast.BooleanLiteral:
 		return "a boolean"
-	case ast.StructLiteral:
+	case ast.ShapeLiteral:
 		return "a " + n.Name
 	case ast.ShapedExpression:
-		return "a " + n.Struct
+		return "a " + n.Shape
 	case ast.IdentifierLiteral:
 		return "the name " + n.Value
 	case ast.CalleeLiteral:

@@ -113,10 +113,10 @@ func TestQualifiedNamesLeaveWithTheTree(t *testing.T) {
 	}
 }
 
-// A struct is still a struct inside a module: its name never reaches an instruction and never
+// A shape is still a shape inside a module: its name never reaches an instruction and never
 // leaves the file, so it is read as it was typed while everything around it is renamed.
-func TestAStructInsideAModule(t *testing.T) {
-	tree := mustParseIn(t, "struct Point { x, y };\nident p = Point{1, 2};\nprintd p.y;", "a/b")
+func TestAShapeInsideAModule(t *testing.T) {
+	tree := mustParseIn(t, "shape Point { x, y };\nident p = Point{1, 2};\nprintd p.y;", "a/b")
 
 	if binding := tree.Nodes[1].(ast.IdentLiteral); binding.Id != "a/b.p" {
 		t.Errorf("bound %q, want %q", binding.Id, "a/b.p")
@@ -132,13 +132,13 @@ func TestAStructInsideAModule(t *testing.T) {
 }
 
 // And it is named as it was typed when something goes wrong with it.
-func TestAStructIsNamedAsItWasTyped(t *testing.T) {
-	_, err := parseIn(t, "struct Point { x, y };\nprintd Point;", "a/b")
+func TestAShapeIsNamedAsItWasTyped(t *testing.T) {
+	_, err := parseIn(t, "shape Point { x, y };\nprintd Point;", "a/b")
 	if err == nil {
 		t.Fatal("expected a compile error")
 	}
-	if !strings.Contains(err.Error(), "Point is a struct") || strings.Contains(err.Error(), "a/b.Point") {
-		t.Errorf("error = %q, want it to name the struct as it was typed", err)
+	if !strings.Contains(err.Error(), "Point is a shape") || strings.Contains(err.Error(), "a/b.Point") {
+		t.Errorf("error = %q, want it to name the shape as it was typed", err)
 	}
 }
 

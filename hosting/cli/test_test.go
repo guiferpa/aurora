@@ -216,15 +216,15 @@ func TestNameDeclaredInBothFilesConflicts(t *testing.T) {
 	}
 }
 
-// A test sees what its source declared, and a struct is declared while parsing rather than
+// A test sees what its source declared, and a shape is declared while parsing rather than
 // while running. The two files used to be parsed with a set of declarations each, so a test
-// could call a defer from its source but could not build a struct it declared: `Point{1, 2}`
+// could call a defer from its source but could not build a shape it declared: `Point{1, 2}`
 // stopped at the brace, because the name meant nothing to that parse.
-func TestSeesAStructDeclaredInItsSource(t *testing.T) {
+func TestSeesAShapeDeclaredInItsSource(t *testing.T) {
 	dir := project(t)
-	writeAt(t, dir, "src/main.ar", "struct Point { x, y };\n")
+	writeAt(t, dir, "src/main.ar", "shape Point { x, y };\n")
 	writeAt(t, dir, "src/main.test.ar",
-		"ident p = Point{10, 20};\nassert(p.y equals 20, \"a struct crosses the pair\");\n")
+		"ident p = Point{10, 20};\nassert(p.y equals 20, \"a shape crosses the pair\");\n")
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
@@ -244,14 +244,14 @@ func TestSeesAStructDeclaredInItsSource(t *testing.T) {
 func TestASourceDoesNotSeeWhatItsTestDeclares(t *testing.T) {
 	dir := project(t)
 	writeAt(t, dir, "src/main.ar", "ident p = Point{1, 2};\n")
-	writeAt(t, dir, "src/main.test.ar", "struct Point { x, y };\nassert(1 equals 1, \"unreached\");\n")
+	writeAt(t, dir, "src/main.test.ar", "shape Point { x, y };\nassert(1 equals 1, \"unreached\");\n")
 
 	report, err := tested(t, "", sessionOpts{stdout: io.Discard})
 	if err != nil {
 		t.Fatalf("Test: %v", err)
 	}
 	if file := report.Files[0]; file.Err == nil {
-		t.Fatal("the source built a struct that only its test declares")
+		t.Fatal("the source built a shape that only its test declares")
 	}
 }
 

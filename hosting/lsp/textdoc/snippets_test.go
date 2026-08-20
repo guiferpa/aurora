@@ -28,7 +28,7 @@ func TestKeywordSnippets(t *testing.T) {
 		{keyword: "ident", want: "ident ${1:name} = ${0:value};"},
 		{keyword: "if", want: "if ${1:condition} {\n\t$0\n}"},
 		{keyword: "branch", want: "branch {\n\t${1:test}: ${2:value},\n\t${0:fallback};\n}"},
-		{keyword: "struct", want: "struct ${1:Name} { ${0:field} };"},
+		{keyword: "shape", want: "shape ${1:Name} { ${0:field} };"},
 		{keyword: "assert", want: `assert(${1:condition}, "${0:message}");`},
 		{keyword: "feed", want: "feed(${0:0})"},
 		{keyword: "printb", want: "printb ${0:value};"},
@@ -58,7 +58,7 @@ func TestKeywordSnippets(t *testing.T) {
 // A client that does not expand snippets gets the keyword and nothing else: the
 // placeholders would land in the buffer as the literal text they are.
 func TestNoSnippetsForAClientThatCannotExpandThem(t *testing.T) {
-	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: "struct Point { x, y };"}, lsp.Position{}, false)
+	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: "shape Point { x, y };"}, lsp.Position{}, false)
 
 	for _, item := range items {
 		if item.InsertText != "" || item.InsertTextFormat != 0 {
@@ -70,10 +70,10 @@ func TestNoSnippetsForAClientThatCannotExpandThem(t *testing.T) {
 	}
 }
 
-// A declared struct is offered as a way of building one, and the declaration already said
+// A declared shape is offered as a way of building one, and the declaration already said
 // what the fields are — so they become the places to fill in.
-func TestStructCompletion(t *testing.T) {
-	const source = "struct Point { x, y };\nstruct Named { label, value, tag };\n"
+func TestShapeCompletion(t *testing.T) {
+	const source = "shape Point { x, y };\nshape Named { label, value, tag };\n"
 
 	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 2}, true)
 
@@ -85,7 +85,7 @@ func TestStructCompletion(t *testing.T) {
 		t.Errorf("inserts %q", point.InsertText)
 	}
 	if point.Kind != Struct {
-		t.Errorf("kind is %d, want a struct", point.Kind)
+		t.Errorf("kind is %d, want a shape", point.Kind)
 	}
 	if !strings.Contains(point.Detail, "x, y") {
 		t.Errorf("detail is %q, want it to name the fields", point.Detail)
@@ -103,7 +103,7 @@ func TestStructCompletion(t *testing.T) {
 // Fields are names and nothing else, so they are inserted as they are even where snippets
 // are expanded.
 func TestFieldsAreNotSnippets(t *testing.T) {
-	source := "struct Point { x, y };\nident p = Point{1, 2};\np."
+	source := "shape Point { x, y };\nident p = Point{1, 2};\np."
 	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 2, Character: 2}, true)
 
 	if len(items) != 2 {

@@ -87,7 +87,7 @@ func documentationFiles(t *testing.T) []string {
 				continue
 			}
 			path := filepath.Join(root, entry.Name())
-			if isProposal(t, path) {
+			if isProposal(t, path) || isRecord(path) {
 				continue
 			}
 			docs = append(docs, path)
@@ -109,6 +109,17 @@ func isProposal(t *testing.T, path string) bool {
 		head = head[:800]
 	}
 	return strings.Contains(head, "Status: proposal")
+}
+
+// isRecord answers whether a document records what past versions did rather than saying what
+// the language is.
+//
+// The changelog is the only one, and it is the one place where a snippet is dated: the block
+// under v0.6.0-alpha shows the language of v0.6.0-alpha, and it stops running the day the
+// language moves. Rewriting it to keep it running would be rewriting the record — so it is
+// not run, and the price is that the newest entry is checked by whoever writes it.
+func isRecord(path string) bool {
+	return filepath.Base(path) == "CHANGELOG.md"
 }
 
 // runSnippet runs one standalone block and checks it did what it said it would.
@@ -243,7 +254,7 @@ func TestNoDocumentWithAuroraEscapesTheCheck(t *testing.T) {
 		if readErr != nil {
 			return readErr
 		}
-		if !auroraBlock.Match(bs) || isProposal(t, path) {
+		if !auroraBlock.Match(bs) || isProposal(t, path) || isRecord(path) {
 			return nil
 		}
 

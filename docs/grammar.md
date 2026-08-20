@@ -18,7 +18,7 @@ Every token the lexer produces. Keywords are only recognised when the word start
 | Print characters | **PRINTC** | `printc` |
 | Print decimal | **PRINTD** | `printd` |
 | Assert | **ASSERT** | `assert` |
-| Struct | **STRUCT** | `struct` |
+| Shape | **SHAPE** | `shape` |
 | As | **AS** | `as` |
 | True | **TRUE** | `true` |
 | False | **FALSE** | `false` |
@@ -161,20 +161,20 @@ _expoe -> _unae EXPO _expoe
 Right-associative, which is the convention for exponentiation: `2 ^ 3 ^ 2` is `2 ^ (3 ^ 2)`,
 512 rather than 64.
 
-### Struct
+### Shape
 
 ```
-_struct -> STRUCT _id O_CUR_BRK _id (COMMA _id)* C_CUR_BRK
+_decl   -> SHAPE _id O_CUR_BRK _id (COMMA _id)* C_CUR_BRK
 _build  -> _id O_CUR_BRK _expr (COMMA _expr)* C_CUR_BRK
 _field  -> _prie DOT _id
-_shape  -> _prie AS _id
+_read   -> _prie AS _id
 ```
 
-A struct names the tapes of a run. `Point{10, 20}` is two tapes laid end to end, with
-nothing in it saying a struct built it: no header, no length and no tag. A field is exactly
+A shape names the tapes of a run. `Point{10, 20}` is two tapes laid end to end, with
+nothing in it saying a shape built it: no header, no length and no tag. A field is exactly
 one tape wide, so the field at index *i* sits at `i × tape_size`.
 
-`struct` and `as` are **keywords that declare rather than do**: they exist for the compiler to
+`shape` and `as` are **keywords that declare rather than do**: they exist for the compiler to
 turn a name into an index, to report a mistake where it was written, and to tell the language server what is
 there. Nothing about them reaches the IR or the binary — the flow is static and the fields
 are positional, so an index is all that is needed. `Point{97, 98}` and `"ab"` are the same
@@ -185,7 +185,7 @@ crosses into a scope: `feed` hands over bytes and nothing else. It is a claim ra
 check — there is nothing in a run of bytes to check against.
 
 ```
-struct Point { x, y };
+shape Point { x, y };
 
 ident p = Point{10, 20};
 printd p.x;                  # 10
@@ -203,12 +203,12 @@ applying values to a scope — `Point(1, 2)` and `greet(1, 2)` are the same shap
 is not. It is a construction only when the name was declared, since `if flag { … }` also puts
 a brace after a name.
 
-A struct name is not a value: writing it on its own is an error, because there is nothing to
+A shape name is not a value: writing it on its own is an error, because there is nothing to
 load under it.
 
-Because the declaration exists to catch mistakes, these are compile errors: a field the struct
+Because the declaration exists to catch mistakes, these are compile errors: a field the shape
 does not have, a value whose shape nothing declared, a construction that miscounts the
-and a struct name used as a value. Reading a field past the end of a value is not one — it gives the neutral value, the
+and a shape name used as a value. Reading a field past the end of a value is not one — it gives the neutral value, the
 way `head` saturates and `feed` wraps.
 
 Reading a field binds tighter than any operator, so `p.x * p.y` multiplies two fields.
@@ -368,6 +368,6 @@ printc 26729;   hi     the bytes 104 and 105
 `assert` is only accepted in files named `*.test.ar`.
 
 Its message is a **literal**, not an expression: it is written for whoever reads the result
-of a test, the same way a struct's field names are written for whoever reads the source. It
+of a test, the same way a shape's field names are written for whoever reads the source. It
 rides in the instruction as its bytes rather than as a value, which is also what lets it be
 longer than a tape — a message usually is.

@@ -49,11 +49,11 @@ Three consequences follow, and none of them is worked around:
   conflict between identifiers named a
   ```
 
-A `struct` crosses as well, and it crosses earlier: a name is resolved while the program runs, a shape while it is read. So a test builds and reads a struct its source declared, without declaring it again:
+A `shape` crosses as well, and it crosses earlier: a name is resolved while the program runs, a shape while it is read. So a test builds and reads a shape its source declared, without declaring it again:
 
 ```aurora
 #- point.ar
-struct Point { x, y };
+shape Point { x, y };
 
 ident origin = Point{0, 0};
 ```
@@ -62,7 +62,7 @@ ident origin = Point{0, 0};
 #- point.test.ar
 ident p = Point{10, 20};
 
-assert(p.y equals 20, "a struct crosses the pair");
+assert(p.y equals 20, "a shape crosses the pair");
 assert(origin.x equals 0, "and so does what the source built with it");
 ```
 
@@ -99,7 +99,7 @@ assert(<condition>, "<message>");
 
 The condition is any expression; a tape of zeros is false and anything else is true.
 
-The message names the check, and it is what the report prints — for a passing assertion as well as a failing one. It is written as text, not computed: it is meant for whoever reads the result, the same way a struct's field names are meant for whoever reads the source. That is also why it is not limited to the width of a tape, which a message would usually exceed.
+The message names the check, and it is what the report prints — for a passing assertion as well as a failing one. It is written as text, not computed: it is meant for whoever reads the result, the same way a shape's field names are meant for whoever reads the source. That is also why it is not limited to the width of a tape, which a message would usually exceed.
 
 A file is only allowed to hold assertions if it is named `*.test.ar`. In any other file it is a compile error:
 

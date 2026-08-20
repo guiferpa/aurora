@@ -46,12 +46,12 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 		return emitBooleanExpression(tc, insts, n, tapeSize)
 	case ast.TapeBracketExpression:
 		return emitTapeBracketExpression(tc, insts, n, tapeSize)
-	case ast.StructDeclaration:
-		return emitStructDeclaration(tc, insts, n, tapeSize)
+	case ast.ShapeDeclaration:
+		return emitShapeDeclaration(tc, insts, n, tapeSize)
 	case ast.UseDeclaration:
 		return emitUseDeclaration(tc, insts, n, tapeSize)
-	case ast.StructLiteral:
-		return emitStructLiteral(tc, insts, n, tapeSize)
+	case ast.ShapeLiteral:
+		return emitShapeLiteral(tc, insts, n, tapeSize)
 	case ast.FieldExpression:
 		return emitFieldExpression(tc, insts, n, tapeSize)
 	case ast.ShapedExpression:
@@ -210,8 +210,8 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 
 }
 
-// emitStructDeclaration answers the neutral value: a declaration does no work.
-func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclaration, tapeSize int) ir.Label {
+// emitShapeDeclaration answers the neutral value: a declaration does no work.
+func emitShapeDeclaration(tc *int, insts *[]ir.Instruction, _ ast.ShapeDeclaration, tapeSize int) ir.Label {
 	// A declaration emits no work. It still answers with a value, because everything in
 	// Aurora is an expression, and the neutral one is what a declaration is worth.
 	l := GenerateLabel(tc)
@@ -222,7 +222,7 @@ func emitStructDeclaration(tc *int, insts *[]ir.Instruction, _ ast.StructDeclara
 
 // emitUseDeclaration answers the neutral value: an import is resolved before the emitter runs.
 func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, tapeSize int) ir.Label {
-	// Like a struct declaration, and for the same reason: it declares a name the compiler
+	// Like a shape declaration, and for the same reason: it declares a name the compiler
 	// uses and the program never touches, so there is no work to do and still a value to
 	// answer with.
 	l := GenerateLabel(tc)
@@ -231,8 +231,8 @@ func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, 
 
 }
 
-// emitStructLiteral lays one tape per field, end to end.
-func emitStructLiteral(tc *int, insts *[]ir.Instruction, n ast.StructLiteral, tapeSize int) ir.Label {
+// emitShapeLiteral lays one tape per field, end to end.
+func emitShapeLiteral(tc *int, insts *[]ir.Instruction, n ast.ShapeLiteral, tapeSize int) ir.Label {
 	// One tape per field, laid end to end — the shape a reel of the same length has.
 	// Instructions carry two operands, so the run is built by chaining, the way a tape
 	// literal chains ir.OpPull.

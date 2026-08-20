@@ -1,4 +1,4 @@
-struct Point { x, y };
+shape Point { x, y };
 ident p = Point{10, 20};
 ident area = defer { ident q = feed(0) as Point; q.x * q.y; };
 ident t = [1, 2, 3];

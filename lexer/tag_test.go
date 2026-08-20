@@ -68,8 +68,8 @@ func TestMatchToken(t *testing.T) {
 		// "as" was an import keyword, then an ordinary identifier, and is a keyword again:
 		// it names the shape a value is read with.
 		{[]byte(`as`), token.AS, []byte("as"), true},
-		// token.STRUCT
-		{[]byte(`struct`), token.STRUCT, []byte("struct"), true},
+		// token.SHAPE
+		{[]byte(`shape`), token.SHAPE, []byte("shape"), true},
 		// token.DOT
 		{[]byte(`.`), token.DOT, []byte("."), true},
 		// token.ASSIGN

@@ -64,7 +64,7 @@ func TestScanToken(t *testing.T) {
 		{"keyword pull", "pull", true, token.PULL, "pull"},
 		{"keyword feed", "feed", true, token.FEED, "feed"},
 		{"keyword assert", "assert", true, token.ASSERT, "assert"},
-		{"keyword struct", "struct", true, token.STRUCT, "struct"},
+		{"keyword shape", "shape", true, token.SHAPE, "shape"},
 		// "as" was an import keyword, became an ordinary identifier when namespaces were
 		// rolled back, and is a keyword again: it names the shape a value is read with.
 		{"keyword as", "as", true, token.AS, "as"},
@@ -271,15 +271,15 @@ func TestUnderscoreIdentifier(t *testing.T) {
 	}
 }
 
-// struct and as are keywords that declare rather than do: they name the fields of a run
+// shape and as are keywords that declare rather than do: they name the fields of a run
 // of tapes and say which shape a value is read with. `as` was a keyword before namespaces
 // were rolled back, and comes back here for that.
-func TestScanStructDeclarations(t *testing.T) {
+func TestScanShapeDeclarations(t *testing.T) {
 	cases := []struct {
 		source string
 		want   []string
 	}{
-		{source: "struct Point { x, y };", want: []string{token.STRUCT, token.ID, token.O_CUR_BRK, token.ID, token.COMMA, token.ID, token.C_CUR_BRK, token.SEMICOLON}},
+		{source: "shape Point { x, y };", want: []string{token.SHAPE, token.ID, token.O_CUR_BRK, token.ID, token.COMMA, token.ID, token.C_CUR_BRK, token.SEMICOLON}},
 		{source: "p.x;", want: []string{token.ID, token.DOT, token.ID, token.SEMICOLON}},
 		{source: "feed(0) as Point;", want: []string{token.FEED, token.O_PAREN, token.NUMBER, token.C_PAREN, token.AS, token.ID, token.SEMICOLON}},
 	}

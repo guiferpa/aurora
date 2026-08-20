@@ -23,7 +23,7 @@ func (p *pr) name(text string) string {
 	return module.Qualify(module.ID(p.module), text)
 }
 
-// typed is what an identifier says in the file, which is what a struct name and an alias are
+// typed is what an identifier says in the file, which is what a shape name and an alias are
 // looked up by: neither ever reaches an instruction, and neither leaves the file.
 func typed(id ast.IdentifierLiteral) string {
 	return string(id.Token.GetMatch())
@@ -38,11 +38,11 @@ func (p *pr) parseMember(specifier, symbol string, at token.Token) (ast.Node, er
 	// A shape of that module is not a value there any more than a local one is here: it is
 	// built, or it names what a value is read as, and nothing else.
 	shape := module.Qualify(module.ID(specifier), symbol)
-	if _, declared := p.declarations.Structs[shape]; declared {
+	if _, declared := p.declarations.Shapes[shape]; declared {
 		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_CUR_BRK {
-			return p.parseStructValue(shape, symbol, at)
+			return p.parseShapeValue(shape, symbol, at)
 		}
-		return nil, token.NewError(at, "%s is a struct of module %s at line %d and column %d: build a value with %s{...}",
+		return nil, token.NewError(at, "%s is a shape of module %s at line %d and column %d: build a value with %s{...}",
 			symbol, specifier, at.GetLine(), at.GetColumn(), symbol)
 	}
 

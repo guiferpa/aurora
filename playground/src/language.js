@@ -67,7 +67,7 @@ const KINDS = {
   5: 'Field',
   6: 'Variable',
   14: 'Keyword',
-  22: 'Struct',
+  22: 'Shape',
 };
 
 const SNIPPET_FORMAT = 2;
@@ -120,7 +120,7 @@ function hoverProvider() {
 }
 
 // What is offered depends on what sits in front of the cursor — right after a dot it is the
-// fields of that struct and nothing else — which is why the position goes across too.
+// fields of that shape and nothing else — which is why the position goes across too.
 function completionProvider(monaco) {
   return {
     triggerCharacters: ['.'],
@@ -175,8 +175,8 @@ export function registerAuroraLanguage(monaco, editor) {
     // so vs-dark knows what to do with them without a rule of our own.
     'semanticHighlighting.enabled': true,
     // Otherwise Monaco offers every word already in the document, next to what the compiler
-    // answered: after a dot, where the fields of a struct are the only thing that can
-    // follow, it would still offer "struct" and "ident" because they appear further up.
+    // answered: after a dot, where the fields of a shape are the only thing that can
+    // follow, it would still offer "shape" and "ident" because they appear further up.
     wordBasedSuggestions: 'off',
   });
 

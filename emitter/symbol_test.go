@@ -69,7 +69,7 @@ func TestANodeWithoutATokenStillCarriesItsName(t *testing.T) {
 
 // A declaration does no work, and an import is one: it names a module the compiler resolves
 // before the emitter ever runs, so what comes out is the neutral value and nothing else. The
-// same shape as a struct declaration, and for the same reason.
+// same form as a shape declaration, and for the same reason.
 func TestAnImportEmitsNoWork(t *testing.T) {
 	program := compile(t, "use a/b/c as x;")
 

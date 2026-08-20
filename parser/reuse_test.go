@@ -100,20 +100,20 @@ func TestAParserSurvivesASourceThatFails(t *testing.T) {
 	}
 }
 
-// What `struct` and `as` declare belongs to whoever is compiling, not to the parser: the REPL
-// hands the same declarations back every line so a struct declared earlier is still known.
+// What `shape` and `as` declare belongs to whoever is compiling, not to the parser: the REPL
+// hands the same declarations back every line so a shape declared earlier is still known.
 func TestDeclarationsComeFromTheCaller(t *testing.T) {
 	p := New()
 	declarations := NewDeclarations()
 
 	if _, err := p.Parse(ParseInput{
-		Tokens:       tokensOf(t, "struct Point { x, y };"),
+		Tokens:       tokensOf(t, "shape Point { x, y };"),
 		Declarations: declarations,
 	}); err != nil {
 		t.Fatalf("declaring: %v", err)
 	}
 
-	// The next source is a different parse, and it knows the struct because the caller kept it.
+	// The next source is a different parse, and it knows the shape because the caller kept it.
 	if _, err := p.Parse(ParseInput{
 		Tokens:       tokensOf(t, "ident p = Point{10, 20};\np.y;"),
 		Declarations: declarations,
@@ -129,7 +129,7 @@ func TestASourceDoesNotSeeWhatAnotherDeclared(t *testing.T) {
 	p := New()
 
 	if _, err := p.Parse(ParseInput{
-		Tokens:       tokensOf(t, "struct Point { x, y };"),
+		Tokens:       tokensOf(t, "shape Point { x, y };"),
 		Declarations: NewDeclarations(),
 	}); err != nil {
 		t.Fatalf("declaring: %v", err)
@@ -137,7 +137,7 @@ func TestASourceDoesNotSeeWhatAnotherDeclared(t *testing.T) {
 
 	_, err := p.Parse(ParseInput{Tokens: tokensOf(t, "ident p = Point{10, 20};")})
 	if err == nil {
-		t.Fatal("a source built a struct that nothing declared in it")
+		t.Fatal("a source built a shape that nothing declared in it")
 	}
 	// A name nothing declared is not a construction at all — it is an identifier followed by
 	// a brace — so the parse stops there rather than at the name.

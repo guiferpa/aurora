@@ -22,7 +22,7 @@ func TestRenderWritesTheTape(t *testing.T) {
 		{name: "the neutral value", value: []byte{0, 0, 0, 0, 0, 0, 0, 0}, want: "[0 0 0 0 0 0 0 0]"},
 		// "hi" is the tape holding its bytes, and nothing says it was written as text.
 		{name: "text", value: []byte{0, 0, 0, 0, 0, 0, 104, 105}, want: "[0 0 0 0 0 0 104 105]"},
-		// A run of tapes is written whole, so a struct shows its fields end to end.
+		// A run of tapes is written whole, so a shape shows its fields end to end.
 		{
 			name:  "a run of tapes",
 			value: []byte{0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2},

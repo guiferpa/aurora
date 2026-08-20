@@ -50,7 +50,7 @@ func load(t *testing.T, sources map[string]string) ([]module.Module, error) {
 func TestWhatAModuleOffers(t *testing.T) {
 	modules, err := load(t, map[string]string{
 		"src/main.ar": "use a/b as x;\nprintd x.area(2, 3);",
-		"src/a/b.ar": "struct Point { x, y };\n" +
+		"src/a/b.ar": "shape Point { x, y };\n" +
 			"ident base = 10;\n" +
 			"ident area = defer { ident inner = 1; feed(0) * feed(1); };\n" +
 			"printd 1;",

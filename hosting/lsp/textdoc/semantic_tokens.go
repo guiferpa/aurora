@@ -22,7 +22,7 @@ const (
 	SemanticVariable
 	SemanticFunction
 	SemanticProperty
-	SemanticStruct
+	SemanticShape
 )
 
 // SemanticModifierDeclaration is bit 0 of the modifier set (the only modifier reported).
@@ -38,6 +38,8 @@ var SemanticTokenTypes = []string{
 	"variable",
 	"function",
 	"property",
+	// A shape is reported as the protocol's "struct". The legend is the editor's vocabulary
+	// rather than the language's, and no editor has a colour for a word only Aurora uses.
 	"struct",
 }
 
@@ -139,7 +141,7 @@ func semanticTypeOf(tag string) (int, bool) {
 	case token.IDENT, token.IF, token.ELSE, token.BRANCH, token.DEFER,
 		token.PRINTB, token.PRINTC, token.PRINTD, token.ASSERT, token.FEED,
 		token.HEAD, token.TAIL, token.PUSH, token.PULL, token.TRUE, token.FALSE,
-		token.STRUCT, token.AS, token.USE, token.RETURNS:
+		token.SHAPE, token.AS, token.USE, token.RETURNS:
 		return SemanticKeyword, true
 	case token.NUMBER:
 		return SemanticNumber, true
@@ -160,19 +162,19 @@ func semanticTypeOf(tag string) (int, bool) {
 func classifyIdentifier(tokens []token.Token, i int) (tokenType, modifiers int) {
 	prev := prevMeaningful(tokens, i)
 
-	// A name after a dot is a field, and a name after struct or as is the struct itself —
+	// A name after a dot is a field, and a name after shape or as is the shape itself —
 	// the only places a name means something other than a value.
 	if prev != nil {
 		switch prev.GetTag().Id {
 		case token.DOT:
 			return SemanticProperty, 0
-		case token.STRUCT:
-			return SemanticStruct, SemanticModifierDeclaration
+		case token.SHAPE:
+			return SemanticShape, SemanticModifierDeclaration
 		case token.AS:
-			return SemanticStruct, 0
+			return SemanticShape, 0
 		}
 	}
-	if insideStructDeclaration(tokens, i) {
+	if insideShapeDeclaration(tokens, i) {
 		return SemanticProperty, SemanticModifierDeclaration
 	}
 
@@ -195,9 +197,9 @@ func nextMeaningful(tokens []token.Token, i int) token.Token {
 	return nil
 }
 
-// insideStructDeclaration says whether a name sits between the braces of `struct X { … }`,
+// insideShapeDeclaration says whether a name sits between the braces of `shape X { … }`,
 // where every name is a field being declared rather than a value.
-func insideStructDeclaration(tokens []token.Token, i int) bool {
+func insideShapeDeclaration(tokens []token.Token, i int) bool {
 	depth := 0
 	for j := i - 1; j >= 0; j-- {
 		switch tokens[j].GetTag().Id {
@@ -208,14 +210,14 @@ func insideStructDeclaration(tokens []token.Token, i int) bool {
 				depth--
 				continue
 			}
-			// The brace that opens the block this name is in: a struct declared it when the
-			// two things in front of it are a name and the struct keyword.
+			// The brace that opens the block this name is in: a shape declared it when the
+			// two things in front of it are a name and the shape keyword.
 			name := prevMeaningfulIndex(tokens, j)
 			if name < 0 || tokens[name].GetTag().Id != token.ID {
 				return false
 			}
 			keyword := prevMeaningfulIndex(tokens, name)
-			return keyword >= 0 && tokens[keyword].GetTag().Id == token.STRUCT
+			return keyword >= 0 && tokens[keyword].GetTag().Id == token.SHAPE
 		}
 	}
 	return false

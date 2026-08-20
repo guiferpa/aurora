@@ -150,7 +150,7 @@ type BooleanExpression struct {
 
 type BlockExpression struct {
 	mark
-	// Returns is the struct this block promised to answer with, and empty when it promised
+	// Returns is the shape this block promised to answer with, and empty when it promised
 	// nothing. It is checked where it is written and never reaches an instruction: like the
 	// declaration it names, it is read while compiling and dropped.
 	Returns string `json:"returns,omitempty"`
@@ -211,7 +211,7 @@ type IdentLiteral struct {
 // AssertStatement is `assert(condition, "message")`.
 //
 // The message is a literal held as text, not as a value: it is written for whoever reads
-// the result of a test, the same way a struct's field names are written for whoever reads
+// the result of a test, the same way a shape's field names are written for whoever reads
 // the source. Keeping it out of the values is also what lets it be longer than a tape,
 // which a message usually is.
 type AssertStatement struct {
@@ -235,19 +235,19 @@ type AST struct {
 	// parse hands it over instead of deciding.
 	References []Reference `json:"references,omitempty"`
 	// Promises is what this file's top-level scopes said they answer with, and Shapes is every
-	// struct it declared. Both leave with the tree for whoever imports this file.
+	// shape it declared. Both leave with the tree for whoever imports this file.
 	Promises []Promise `json:"promises,omitempty"`
 	Shapes   []Shape   `json:"shapes,omitempty"`
 }
 
 // An Offer is what a module hands whoever imports it, as far as shapes are concerned: the
-// structs it declares, and what its scopes said they answer with.
+// shapes it declares, and what its scopes said they answer with.
 type Offer struct {
 	Shapes   []Shape   `json:"shapes,omitempty"`
 	Promises []Promise `json:"promises,omitempty"`
 }
 
-// A Shape is a struct a module declared, and what it is made of.
+// A Shape is a shape a module declared, and what it is made of.
 //
 // The name does not cross on its own — it is written in another file as the module's, never
 // as itself — and the fields cross with it, because an index is a position and a position
@@ -257,17 +257,17 @@ type Shape struct {
 	Fields []string `json:"fields"`
 }
 
-// A Promise is what one exported scope said it answers with, and what that struct is made
+// A Promise is what one exported scope said it answers with, and what that shape is made
 // of.
 //
-// It is the only thing about a struct that leaves the file that declared it. A struct's name
+// It is the only thing about a shape that leaves the file that declared it. A shape's name
 // is read while a file is parsed and dropped, so a module that answers with one has to hand
 // over the fields as well — otherwise whoever imports it has a run of tapes and no way to
 // turn a name into an index.
 type Promise struct {
 	// Scope is the name the scope is bound to, as the module's own file typed it.
 	Scope  string   `json:"scope"`
-	Struct string   `json:"struct"`
+	Shape  string   `json:"shape"`
 	Fields []string `json:"fields"`
 }
 
@@ -280,21 +280,21 @@ type Reference struct {
 	Token  token.Token `json:"-"`
 }
 
-// StructDeclaration names the fields of a run of tapes: `struct Point { x, y };`.
+// ShapeDeclaration names the fields of a run of tapes: `shape Point { x, y };`.
 //
 // It declares a shape for whoever writes the source; it is not a value. The compiler reads it to
 // turn a field name into an index, to report a mistake where it was written, and to feed
 // the language server — and then it is gone. Nothing about it reaches the IR: the flow is
 // static, the fields are positional and every one of them is exactly a tape wide.
-type StructDeclaration struct {
+type ShapeDeclaration struct {
 	mark
 	Name   string      `json:"name"`
 	Fields []string    `json:"fields"`
 	Token  token.Token `json:"-"`
 }
 
-// StructLiteral builds the run: `Point{10, 20}` is two tapes, one per field.
-type StructLiteral struct {
+// ShapeLiteral builds the run: `Point{10, 20}` is two tapes, one per field.
+type ShapeLiteral struct {
 	mark
 	Name   string      `json:"name"`
 	Values []Node      `json:"values"`
@@ -317,7 +317,7 @@ type FieldExpression struct {
 type ShapedExpression struct {
 	mark
 	Expression Node        `json:"expression"`
-	Struct     string      `json:"struct"`
+	Shape      string      `json:"shape"`
 	Token      token.Token `json:"-"`
 }
 
@@ -325,7 +325,7 @@ type ShapedExpression struct {
 //
 // It declares rather than binds. The alias names something only the compiler resolves — a
 // module — and not a value, so nothing prints it, passes it or keeps it, exactly like the
-// name a struct declares. That is also why it emits no work.
+// name a shape declares. That is also why it emits no work.
 type UseDeclaration struct {
 	mark
 	// Specifier is the module's path from the source root, without the extension: "a/b/c"

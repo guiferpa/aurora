@@ -4,14 +4,14 @@
 #- so, because what a module is called is decided by where it sits and not by what it holds.
 #-
 #- What it offers is what it binds with ident at the top: new_square and area. Names bound
-#- anywhere deeper belong to the scope that binds them, and the struct's name stays here — a
+#- anywhere deeper belong to the scope that binds them, and the shape's name stays here — a
 #- file that imports this one cannot write Square, and does not have to: new_square promises
 #- it, and a promise carries the shape.
 #-
 #- It prints nothing on its own, so it declares no output: a module of declarations does its
 #- work when somebody imports it.
 
-struct Square { width, height };
+shape Square { width, height };
 
 ident new_square = defer { Square{feed(0), feed(1)}; } returns Square;
 

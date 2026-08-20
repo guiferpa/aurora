@@ -13,8 +13,8 @@ import (
 // `as` is a claim the compiler believes; this is a promise it checks. The two live in one
 // program, and a block that promises nothing goes on answering with a run of tapes.
 
-const person = "struct Person { name };\n"
-const result = "struct Result { failed, value };\n"
+const person = "shape Person { name };\n"
+const result = "shape Result { failed, value };\n"
 
 // The promise is read at the end of a block, and it is the same place for a deferred scope,
 // which is a block with a word in front of it.
@@ -94,8 +94,8 @@ var brokenPromises = []struct {
 		want:   "answers with Person and ends with a number",
 	},
 	{
-		name:   "ends with another struct",
-		source: person + "struct Place { city };\n{ Place{\"Recife\"}; } returns Person;",
+		name:   "ends with another shape",
+		source: person + "shape Place { city };\n{ Place{\"Recife\"}; } returns Person;",
 		want:   "answers with Person and ends with a Place",
 	},
 	{
@@ -116,7 +116,7 @@ var brokenPromises = []struct {
 	{
 		name:   "a shape nobody declared",
 		source: "{ 10; } returns Person;",
-		want:   "Person is not a declared struct",
+		want:   "Person is not a declared shape",
 	},
 	{
 		name:   "an empty block",
@@ -172,7 +172,7 @@ func TestACallToAScopeThatPromisedNothing(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected a compile error")
 	}
-	if !strings.Contains(err.Error(), "nothing says which struct this value is") {
+	if !strings.Contains(err.Error(), "nothing says which shape this value is") {
 		t.Errorf("error = %q", err)
 	}
 }

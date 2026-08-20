@@ -63,8 +63,8 @@ var pending = map[byte]string{
 	ir.OpHead: "a tape operation",
 	ir.OpTail: "a tape operation",
 
-	ir.OpJoin:  "struct",
-	ir.OpField: "struct",
+	ir.OpJoin:  "shape",
+	ir.OpField: "shape",
 }
 
 // Warnings reports what a program uses that does not reach the bytecode.

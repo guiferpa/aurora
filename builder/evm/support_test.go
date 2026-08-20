@@ -48,9 +48,9 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			want:    []string{"a tape operation does not reach the bytecode yet"},
 		},
 		{
-			name:    "a struct",
+			name:    "a shape",
 			opcodes: []byte{ir.OpJoin, ir.OpField},
-			want:    []string{"struct does not reach the bytecode yet"},
+			want:    []string{"shape does not reach the bytecode yet"},
 		},
 		{
 			name:    "calling a scope",

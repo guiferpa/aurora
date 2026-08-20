@@ -30,7 +30,7 @@ type Read func(path string) ([]byte, error)
 // Parse turns one module's source into a tree. Filename is where it came from, which is what
 // positions and file-scoped rules are about; ID is the module the names inside belong to; and
 // imports is what the modules it names promised, which it needs while parsing because a shape
-// is resolved there and a struct's name never leaves the file that declared it.
+// is resolved there and a shape's name never leaves the file that declared it.
 type Parse func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error)
 
 // Header answers what a source imports, without parsing it.

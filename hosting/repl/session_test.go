@@ -66,10 +66,10 @@ func TestSessionAnswersWithTheTape(t *testing.T) {
 			want:  []string{"= [0 0 0 0 0 0 0 14]"},
 		},
 		{
-			// The declarations are held across lines: a struct declared on one line has to still
+			// The declarations are held across lines: a shape declared on one line has to still
 			// be known on the next, and a parser is built per line.
-			name:  "a struct declared on one line is built on the next",
-			lines: "struct Point { x, y };\nident p = Point{10, 20};\np.y;\n",
+			name:  "a shape declared on one line is built on the next",
+			lines: "shape Point { x, y };\nident p = Point{10, 20};\np.y;\n",
 			want:  []string{"= [0 0 0 0 0 0 0 20]"},
 		},
 		{
@@ -285,9 +285,9 @@ func TestASessionWithoutAResolverRefusesToPretend(t *testing.T) {
 }
 
 // A shape crosses into a session with the promise that names it, so a field is read off an
-// imported scope without anybody naming the struct.
+// imported scope without anybody naming the shape.
 func TestASessionReadsAPromisedShape(t *testing.T) {
-	dir := withModule(t, "struct Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;")
+	dir := withModule(t, "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;")
 	got := typedIn(t, dir, "use geometry as g;\nident r = g.lookup(0);\nprintd r.value;\n", 0)
 
 	if !strings.Contains(got, "42") {

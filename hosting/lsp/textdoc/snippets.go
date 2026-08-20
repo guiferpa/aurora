@@ -20,9 +20,9 @@ var keywordSnippets = map[string]string{
 	token.DEFER:   "defer {\n\t$0\n}",
 	token.IF:      "if ${1:condition} {\n\t$0\n}",
 	token.BRANCH:  "branch {\n\t${1:test}: ${2:value},\n\t${0:fallback};\n}",
-	token.STRUCT:  "struct ${1:Name} { ${0:field} };",
-	token.AS:      "as ${0:Struct}",
-	token.RETURNS: "returns ${0:Struct}",
+	token.SHAPE:   "shape ${1:Name} { ${0:field} };",
+	token.AS:      "as ${0:Shape}",
+	token.RETURNS: "returns ${0:Shape}",
 	token.USE:     "use ${1:a/b/c} as ${0:alias};",
 	token.ASSERT:  "assert(${1:condition}, \"${0:message}\");",
 	token.FEED:    "feed(${0:0})",
@@ -53,16 +53,16 @@ func keywordCompletion(tag token.Tag, snippets bool) CompletionItem {
 	return item
 }
 
-// structCompletions offers each declared struct as a way of building one, with the field
+// shapeCompletions offers each declared shape as a way of building one, with the field
 // names as the places to fill in — the declaration already said what they are.
 //
-//	struct Point { x, y };   ->   Point{${1:x}, ${2:y}}
-func structCompletions(shapes structShapes, snippets bool) []CompletionItem {
+//	shape Point { x, y };   ->   Point{${1:x}, ${2:y}}
+func shapeCompletions(shapes shapeTable, snippets bool) []CompletionItem {
 	items := make([]CompletionItem, 0, len(shapes.fields))
 	for name, fields := range shapes.fields {
 		item := CompletionItem{
 			Label:  name,
-			Detail: "struct: " + strings.Join(fields, ", "),
+			Detail: "shape: " + strings.Join(fields, ", "),
 			Kind:   Struct,
 		}
 		if snippets {

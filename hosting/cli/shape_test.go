@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-// A struct value is a run of tapes, one per field, and nothing else. These check it at the
+// A shape value is a run of tapes, one per field, and nothing else. These check it at the
 // answer, which is the only place the shape can be observed at all.
-func TestStructReadsItsFields(t *testing.T) {
-	const source = "struct Point { x, y };\nident p = Point{10, 20};\n"
+func TestShapeReadsItsFields(t *testing.T) {
+	const source = "shape Point { x, y };\nident p = Point{10, 20};\n"
 
 	cases := []struct {
 		source string
@@ -16,8 +16,8 @@ func TestStructReadsItsFields(t *testing.T) {
 	}{
 		{source: source + "printd p.x;", want: "10"},
 		{source: source + "printd p.y;", want: "20"},
-		// printd walks tapes, and a struct is tapes, so it reads the whole thing without
-		// being taught anything about structs.
+		// printd walks tapes, and a shape is tapes, so it reads the whole thing without
+		// being taught anything about shapes.
 		{source: source + "printd p;", want: "10 20"},
 		{source: source + "printb p;", want: "[0 0 0 0 0 0 0 10 0 0 0 0 0 0 0 20]"},
 	}
@@ -32,33 +32,33 @@ func TestStructReadsItsFields(t *testing.T) {
 	}
 }
 
-// The invariant the whole design rests on: the declaration dies at compile time. A struct
-// value is a run of tapes and carries nothing that says a struct built it, so two structs
+// The invariant the whole design rests on: the declaration dies at compile time. A shape
+// value is a run of tapes and carries nothing that says a shape built it, so two shapes
 // of the same width are one value — checked below — and the tape at index 0 is just a tape.
-func TestStructCarriesNothingOfTheDeclaration(t *testing.T) {
-	// A field read out of a struct is the same value written on its own.
-	fromStruct := output(t, "struct Pair { a, b };\nprintb Pair{97, 98}.a;", 0)[0]
+func TestShapeCarriesNothingOfTheDeclaration(t *testing.T) {
+	// A field read out of a shape is the same value written on its own.
+	fromShape := output(t, "shape Pair { a, b };\nprintb Pair{97, 98}.a;", 0)[0]
 	onItsOwn := output(t, "printb 97;", 0)[0]
 
-	if fromStruct != onItsOwn {
-		t.Errorf("a field wrote %s, the value alone wrote %s — a field is just a tape", fromStruct, onItsOwn)
+	if fromShape != onItsOwn {
+		t.Errorf("a field wrote %s, the value alone wrote %s — a field is just a tape", fromShape, onItsOwn)
 	}
 }
 
-// Two structs of the same width are the same value, which follows from there being nothing
-// in the bytes that says which struct they came from.
-func TestStructsOfTheSameWidthAreEqual(t *testing.T) {
-	source := "struct Point { x, y };\nstruct Pair { a, b };\nprintd Point{1, 2} equals Pair{1, 2};"
+// Two shapes of the same width are the same value, which follows from there being nothing
+// in the bytes that says which shape they came from.
+func TestShapesOfTheSameWidthAreEqual(t *testing.T) {
+	source := "shape Point { x, y };\nshape Pair { a, b };\nprintd Point{1, 2} equals Pair{1, 2};"
 	if got := output(t, source, 0)[0]; got != "1" {
-		t.Errorf("comparing two structs of the same bytes gave %s, want 1", got)
+		t.Errorf("comparing two shapes of the same bytes gave %s, want 1", got)
 	}
 }
 
-// Passing a struct to a scope is the point of having one: behaviour lives in defer, and a
+// Passing a shape to a scope is the point of having one: behaviour lives in defer, and a
 // defer receives values through feed. The shape is lost crossing that line, so it is named
 // again with `as`.
-func TestStructThroughAScope(t *testing.T) {
-	source := `struct Point { x, y };
+func TestShapeThroughAScope(t *testing.T) {
+	source := `shape Point { x, y };
 
 ident area = defer {
   ident p = feed(0) as Point;
@@ -74,20 +74,20 @@ printd area(Point{10, 20});`
 
 // The annotation is an expression, so it does not need a name to hang on.
 func TestShapeAnnotatedInline(t *testing.T) {
-	source := "struct Point { x, y };\nident twice = defer { (feed(0) as Point).y * 2; };\nprintd twice(Point{3, 7});"
+	source := "shape Point { x, y };\nident twice = defer { (feed(0) as Point).y * 2; };\nprintd twice(Point{3, 7});"
 	if got := output(t, source, 0)[0]; got != "14" {
 		t.Errorf("printed %s, want 14", got)
 	}
 }
 
-// A field is a tape, and a tape holding a scope index is what a defer is, so a struct
+// A field is a tape, and a tape holding a scope index is what a defer is, so a shape
 // carries one through unharmed.
 //
 // Calling it back is another matter and does not work: OpCall resolves a name in the
 // environ, not a value, so there is nothing to apply a tape to. A field holds the scope,
 // it does not call it.
-func TestStructFieldHoldingADefer(t *testing.T) {
-	source := `struct Op { run, value };
+func TestShapeFieldHoldingADefer(t *testing.T) {
+	source := `shape Op { run, value };
 
 ident double = defer { feed(0) * 2; };
 ident op = Op{double, 21};
@@ -103,8 +103,8 @@ printd op.run;`
 
 // The offset of a field is its index times the tape width, so the same source answers the
 // same at any width.
-func TestStructAcrossTapeSizes(t *testing.T) {
-	const source = "struct Point { x, y };\nident p = Point{10, 20};\nprintd p.x;\nprintd p.y;"
+func TestShapeAcrossTapeSizes(t *testing.T) {
+	const source = "shape Point { x, y };\nident p = Point{10, 20};\nprintd p.x;\nprintd p.y;"
 
 	for _, tapeSize := range []int{1, 2, 8, 32} {
 		got := output(t, source, tapeSize)
@@ -117,7 +117,7 @@ func TestStructAcrossTapeSizes(t *testing.T) {
 // Reading past the end gives the neutral value rather than stopping the program, the way
 // head saturates and feed wraps. The annotation is a claim, and a claim can be wrong.
 func TestFieldPastTheEndIsNeutral(t *testing.T) {
-	source := "struct Point { x, y };\nident p = 7 as Point;\nprintd p.x;\nprintd p.y;"
+	source := "shape Point { x, y };\nident p = 7 as Point;\nprintd p.x;\nprintd p.y;"
 	got := output(t, source, 0)
 	if got[0] != "7" {
 		t.Errorf("first field of a one-tape value gave %s, want 7", got[0])
@@ -129,17 +129,17 @@ func TestFieldPastTheEndIsNeutral(t *testing.T) {
 
 // A field is one tape wide, and one character is one tape, so a reel of one fits.
 func TestAOneCharacterReelFitsAField(t *testing.T) {
-	source := "struct Pair { a, b };\nprintd Pair{\"a\", 1};"
+	source := "shape Pair { a, b };\nprintd Pair{\"a\", 1};"
 	if got := output(t, source, 0)[0]; got != "97 1" {
 		t.Errorf("printed %s, want \"97 1\"", got)
 	}
 }
 
-// A struct crossing a deferred scope, which is what a composite answer is made of: a scope
+// A shape crossing a deferred scope, which is what a composite answer is made of: a scope
 // that has to say two things — whether it worked and what it produced — says them as one run
 // of tapes, and whoever called it reads them back by naming the shape.
-func TestAStructComesOutOfAScope(t *testing.T) {
-	const declaration = "struct Result { failed, value };\n"
+func TestAShapeComesOutOfAScope(t *testing.T) {
+	const declaration = "shape Result { failed, value };\n"
 
 	cases := []struct {
 		name   string
@@ -195,7 +195,7 @@ func TestAStructComesOutOfAScope(t *testing.T) {
 // A promise, kept, and the claim gone from the call site: the shape is known because the
 // scope said so, and the compiler checked that it said the truth.
 func TestAPromisedShapeIsReadWithoutAClaim(t *testing.T) {
-	const source = "struct Result { failed, value };\n" +
+	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer {\n" +
 		"  if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; };\n" +
 		"} returns Result;\n" +

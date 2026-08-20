@@ -102,17 +102,17 @@ func TestWhatARefusalSays(t *testing.T) {
 			want: []string{"module a/b has no area", "it has base"},
 		},
 		{
-			// A struct of another module is not a value there, any more than a local one is
+			// A shape of another module is not a value there, any more than a local one is
 			// here: it is built, or it names what a value is read as. This used to be
 			// refused for the module having no such name, because the name did not cross;
 			// it crosses now, and the refusal says what it is instead. What both versions
 			// prevent is the same — a name being loaded at run time that nobody bound.
-			name: "a struct of another module is not a value",
+			name: "a shape of another module is not a value",
 			files: map[string]string{
-				"src/a/b.ar":  "struct Prime { p };\nident v = 1;",
+				"src/a/b.ar":  "shape Prime { p };\nident v = 1;",
 				"src/main.ar": "use a/b as x;\nprintd x.Prime;",
 			},
-			want: []string{"Prime is a struct of module a/b", "build a value with Prime{...}"},
+			want: []string{"Prime is a shape of module a/b", "build a value with Prime{...}"},
 		},
 		{
 			name: "two modules in a circle",
@@ -205,13 +205,13 @@ func TestATestWhoseModuleIsNotThere(t *testing.T) {
 
 // What crosses a module and what does not, which is a sharper line than it looks.
 //
-// The value crosses whole: a struct is a run of tapes and nothing in it says a struct built
+// The value crosses whole: a shape is a run of tapes and nothing in it says a shape built
 // it, so a scope in another file answers with one and the bytes arrive intact. What does not
 // cross is the declaration — the table that turns a field name into an index — because it is
 // read while a file is parsed and belongs to that file.
-func TestAStructValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
+func TestAShapeValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 	files := map[string]string{
-		"src/a/b.ar":  "struct Result { failed, value };\nident make = defer { Result{1, 42}; };",
+		"src/a/b.ar":  "shape Result { failed, value };\nident make = defer { Result{1, 42}; };",
 		"src/main.ar": "use a/b as x;\nprintd x.make();",
 	}
 
@@ -234,7 +234,7 @@ func TestAStructValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 		projectOf(t, reading)
 		if _, err := run(t, "src/main.ar"); err == nil {
 			t.Fatal("the field was read without a shape")
-		} else if !strings.Contains(err.Error(), "nothing says which struct this value is") {
+		} else if !strings.Contains(err.Error(), "nothing says which shape this value is") {
 			t.Errorf("error = %q", err)
 		}
 	})
@@ -242,12 +242,12 @@ func TestAStructValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 
 // A shape crosses a module with the promise that names it.
 //
-// The struct is declared in one file and read in another, and nothing in the reading file
-// names it: what crossed is the promise the scope made, with the fields of the struct it
+// The shape is declared in one file and read in another, and nothing in the reading file
+// names it: what crossed is the promise the scope made, with the fields of the shape it
 // answers with — which is what turns a field name into the index of a tape.
 func TestAPromisedShapeCrossesAModule(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/os.ar": "struct Env { found, value };\n" +
+		"src/os.ar": "shape Env { found, value };\n" +
 			"ident lookup = defer {\n" +
 			"  if feed(0) equals 0 { Env{0, 0}; } else { Env{1, 42}; };\n" +
 			"} returns Env;",
@@ -266,11 +266,11 @@ func TestAPromisedShapeCrossesAModule(t *testing.T) {
 	}
 }
 
-// A field the promised struct does not have is refused where it was written, naming what the
-// struct is made of — the same refusal a local struct gets.
+// A field the promised shape does not have is refused where it was written, naming what the
+// shape is made of — the same refusal a local shape gets.
 func TestAFieldThePromiseDoesNotHave(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/os.ar":   "struct Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
+		"src/os.ar":   "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
 		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.missing;",
 	})
 
@@ -287,7 +287,7 @@ func TestAFieldThePromiseDoesNotHave(t *testing.T) {
 // before any of this: the reading file has to name one, and there is nothing to name.
 func TestAScopeThatPromisedNothingCrossesNothing(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/os.ar":   "struct Env { found, value };\nident lookup = defer { Env{1, 42}; };",
+		"src/os.ar":   "shape Env { found, value };\nident lookup = defer { Env{1, 42}; };",
 		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.found;",
 	})
 
@@ -295,7 +295,7 @@ func TestAScopeThatPromisedNothingCrossesNothing(t *testing.T) {
 	if err == nil {
 		t.Fatal("a field was read off a scope that promised nothing")
 	}
-	if !strings.Contains(err.Error(), "nothing says which struct this value is") {
+	if !strings.Contains(err.Error(), "nothing says which shape this value is") {
 		t.Errorf("error = %q", err)
 	}
 }
@@ -304,7 +304,7 @@ func TestAScopeThatPromisedNothingCrossesNothing(t *testing.T) {
 // one module, and what they import is read before either of them is parsed.
 func TestATestReadsAPromisedShape(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/os.ar":        "struct Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
+		"src/os.ar":        "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
 		"src/main.ar":      "use os as o;\nident r = o.lookup(0);",
 		"src/main.test.ar": "assert(r.value equals 42, \"the field is read through the promise\");",
 	})
@@ -318,11 +318,11 @@ func TestATestReadsAPromisedShape(t *testing.T) {
 	}
 }
 
-// Naming a struct another module declared: built, claimed with `as`, and promised with
-// `returns` — the three places a struct's name is written, all reading the qualified form the
+// Naming a shape another module declared: built, claimed with `as`, and promised with
+// `returns` — the three places a shape's name is written, all reading the qualified form the
 // way a qualified value already did.
-func TestNamingAStructOfAnotherModule(t *testing.T) {
-	const geometry = "struct Square { width, height };\nident area = defer { ident s = feed(0) as Square; s.width * s.height; };"
+func TestNamingAShapeOfAnotherModule(t *testing.T) {
+	const geometry = "shape Square { width, height };\nident area = defer { ident s = feed(0) as Square; s.width * s.height; };"
 
 	for _, tc := range []struct {
 		name   string
@@ -364,7 +364,7 @@ func TestNamingAStructOfAnotherModule(t *testing.T) {
 // asked — rather than with a qualified name nobody typed.
 func TestAShapeAModuleDoesNotHave(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/geometry.ar": "struct Square { width, height };",
+		"src/geometry.ar": "shape Square { width, height };",
 		"src/main.ar":     "use geometry as g;\nident s = 1 as g.Circle;",
 	})
 
@@ -372,17 +372,17 @@ func TestAShapeAModuleDoesNotHave(t *testing.T) {
 	if err == nil {
 		t.Fatal("a shape nobody declared was named")
 	}
-	if !strings.Contains(err.Error(), "module geometry has no struct named Circle") {
+	if !strings.Contains(err.Error(), "module geometry has no shape named Circle") {
 		t.Errorf("error = %q", err)
 	}
 }
 
-// A struct declared here and one of the same name there are two shapes, because the name that
+// A shape declared here and one of the same name there are two shapes, because the name that
 // crosses is written the way an identifier of that module is — which nobody can type.
-func TestTwoStructsOfTheSameNameAreTwoShapes(t *testing.T) {
+func TestTwoShapesOfTheSameNameAreTwoShapes(t *testing.T) {
 	projectOf(t, map[string]string{
-		"src/geometry.ar": "struct Square { width, height };\nident make = defer { Square{3, 4}; } returns Square;",
-		"src/main.ar": "use geometry as g;\nstruct Square { side };\n" +
+		"src/geometry.ar": "shape Square { width, height };\nident make = defer { Square{3, 4}; } returns Square;",
+		"src/main.ar": "use geometry as g;\nshape Square { side };\n" +
 			"ident mine = Square{9};\nident theirs = g.make();\n" +
 			"printd mine.side;\nprintd theirs.height;",
 	})

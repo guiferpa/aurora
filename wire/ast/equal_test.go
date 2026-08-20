@@ -289,22 +289,22 @@ var comparisonCases = []struct {
 	},
 
 	{
-		name: "struct declaration, alike",
-		a:    StructDeclaration{Name: "Point", Fields: []string{"x", "y"}},
-		b:    StructDeclaration{Name: "Point", Fields: []string{"x", "y"}},
+		name: "shape declaration, alike",
+		a:    ShapeDeclaration{Name: "Point", Fields: []string{"x", "y"}},
+		b:    ShapeDeclaration{Name: "Point", Fields: []string{"x", "y"}},
 		want: true,
 	},
 	{
-		name: "struct declaration, another name",
-		a:    StructDeclaration{Name: "Point", Fields: []string{"x", "y"}},
-		b:    StructDeclaration{Name: "Pair", Fields: []string{"x", "y"}},
+		name: "shape declaration, another name",
+		a:    ShapeDeclaration{Name: "Point", Fields: []string{"x", "y"}},
+		b:    ShapeDeclaration{Name: "Pair", Fields: []string{"x", "y"}},
 		want: false,
 	},
 	{
 		// The fields are positional, so their order is part of the shape.
-		name: "struct declaration, the fields the other way round",
-		a:    StructDeclaration{Name: "Point", Fields: []string{"x", "y"}},
-		b:    StructDeclaration{Name: "Point", Fields: []string{"y", "x"}},
+		name: "shape declaration, the fields the other way round",
+		a:    ShapeDeclaration{Name: "Point", Fields: []string{"x", "y"}},
+		b:    ShapeDeclaration{Name: "Point", Fields: []string{"y", "x"}},
 		want: false,
 	},
 
@@ -330,27 +330,27 @@ var comparisonCases = []struct {
 	},
 
 	{
-		name: "struct literal, alike",
-		a:    StructLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
-		b:    StructLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
+		name: "shape literal, alike",
+		a:    ShapeLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
+		b:    ShapeLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
 		want: true,
 	},
 	{
-		name: "struct literal, another name",
-		a:    StructLiteral{Name: "Point", Values: []Node{number(1)}},
-		b:    StructLiteral{Name: "Pair", Values: []Node{number(1)}},
+		name: "shape literal, another name",
+		a:    ShapeLiteral{Name: "Point", Values: []Node{number(1)}},
+		b:    ShapeLiteral{Name: "Pair", Values: []Node{number(1)}},
 		want: false,
 	},
 	{
-		name: "struct literal, another value",
-		a:    StructLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
-		b:    StructLiteral{Name: "Point", Values: []Node{number(1), number(3)}},
+		name: "shape literal, another value",
+		a:    ShapeLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
+		b:    ShapeLiteral{Name: "Point", Values: []Node{number(1), number(3)}},
 		want: false,
 	},
 	{
-		name: "struct literal, one value fewer",
-		a:    StructLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
-		b:    StructLiteral{Name: "Point", Values: []Node{number(1)}},
+		name: "shape literal, one value fewer",
+		a:    ShapeLiteral{Name: "Point", Values: []Node{number(1), number(2)}},
+		b:    ShapeLiteral{Name: "Point", Values: []Node{number(1)}},
 		want: false,
 	},
 
@@ -375,20 +375,20 @@ var comparisonCases = []struct {
 
 	{
 		name: "shaped, alike",
-		a:    ShapedExpression{Expression: word("v"), Struct: "Point"},
-		b:    ShapedExpression{Expression: word("v"), Struct: "Point"},
+		a:    ShapedExpression{Expression: word("v"), Shape: "Point"},
+		b:    ShapedExpression{Expression: word("v"), Shape: "Point"},
 		want: true,
 	},
 	{
-		name: "shaped, another struct",
-		a:    ShapedExpression{Expression: word("v"), Struct: "Point"},
-		b:    ShapedExpression{Expression: word("v"), Struct: "Pair"},
+		name: "shaped, another shape",
+		a:    ShapedExpression{Expression: word("v"), Shape: "Point"},
+		b:    ShapedExpression{Expression: word("v"), Shape: "Pair"},
 		want: false,
 	},
 	{
 		name: "shaped, another expression",
-		a:    ShapedExpression{Expression: word("v"), Struct: "Point"},
-		b:    ShapedExpression{Expression: word("w"), Struct: "Point"},
+		a:    ShapedExpression{Expression: word("v"), Shape: "Point"},
+		b:    ShapedExpression{Expression: word("w"), Shape: "Point"},
 		want: false,
 	},
 
@@ -480,8 +480,8 @@ func TestNodeEqualTellsNodesApart(t *testing.T) {
 	}
 }
 
-// ASTEqual compares the file as well as the trees, and the trees are what TestASTEqual in
-// shapes_test.go already asks about through real sources. The name is the half nothing
+// ASTEqual compares the file as well as the trees, and the trees are what TestEqualAcrossSources in
+// the parser's tree_test.go already asks about through real sources. The name is the half nothing
 // reached: two files holding the same expressions are still two files.
 func TestASTEqualComparesTheFilename(t *testing.T) {
 	a := AST{Filename: "main.ar", Nodes: []Node{number(1)}}

@@ -18,7 +18,7 @@ const (
 	DEFER        = "DEFER"     // defer - delayed scope execution
 	DIFFERENT    = "DIFFERENT" // differenTag
 	DIV          = "DIV"       // /
-	DOT          = "DOT"       // . - reads a field of a struct
+	DOT          = "DOT"       // . - reads a field of a shape
 	ELSE         = "ELSE"      // else
 	EOF          = "EOF"
 	EQUALS       = "EQUALS" // equals
@@ -41,9 +41,9 @@ const (
 	PUSH         = "PUSH"      // push
 	RETURNS      = "RETURNS"   // returns - the shape a block answers with
 	SEMICOLON    = "SEMICOLON" // ;
+	SHAPE        = "SHAPE"     // shape - names the fields of a run of tapes
 	SMALLER      = "SMALLER"   // smaller
 	STRING       = "STRING"    // text literal "text" - one more way of writing a tape
-	STRUCT       = "STRUCT"    // struct - names the fields of a run of tapes
 	SUB          = "SUB"       // -
 	SUM          = "SUM"       // +
 	TAIL         = "TAIL"      // tail
@@ -60,7 +60,7 @@ type Tag struct {
 
 var (
 	TagAnd        = Tag{AND, "and", ""}
-	TagAs         = Tag{AS, "as", "Read a value with the shape of a struct"}
+	TagAs         = Tag{AS, "as", "Read a value with the shape of a shape"}
 	TagFeed       = Tag{FEED, "feed", "Read the nth value fed to this scope"}
 	TagAssert     = Tag{ASSERT, "assert", "Assert a condition in tests"}
 	TagAssign     = Tag{ASSIGN, "=", ""}
@@ -97,11 +97,11 @@ var (
 	TagOr         = Tag{OR, "or", ""}
 	TagPull       = Tag{PULL, "pull", "Pull item in right to left"}
 	TagPush       = Tag{PUSH, "push", "Push item in left to right"}
-	TagReturns    = Tag{RETURNS, "returns", "Name the struct a block answers with"}
+	TagReturns    = Tag{RETURNS, "returns", "Name the shape a block answers with"}
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
+	TagShape      = Tag{SHAPE, "shape", "Name the fields of a run of tapes"}
 	TagSmaller    = Tag{SMALLER, "smaller", ""}
 	TagString     = Tag{STRING, "", ""} // Text literal: "text", the bytes it holds, in a tape
-	TagStruct     = Tag{STRUCT, "struct", "Name the fields of a run of tapes"}
 	TagSub        = Tag{SUB, "-", ""}
 	TagSum        = Tag{SUM, "+", ""}
 	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
@@ -125,7 +125,7 @@ var processableTags = []Tag{
 	TagTail,
 	TagPush,
 	TagPull,
-	TagStruct,
+	TagShape,
 	TagAs,
 	TagUse,
 	TagReturns,

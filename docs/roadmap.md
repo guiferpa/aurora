@@ -131,7 +131,13 @@ using any of the following **compiles successfully and does nothing on chain**.
   On chain they are the only way a contract says anything, and they are the honest target for
   whatever Aurora ends up calling logging.
 - Jump targets and memory offsets are written with `PUSH1`, which caps a runtime at 256
-  bytes and identifiers at about seven memory slots. `PUSH2` lifts it.
+  bytes and identifiers at about seven memory slots. `PUSH2` lifts it, and lifts it far enough
+  to stop: a deployed contract cannot pass 24,576 bytes, so two bytes cover every legal one.
+- **A value is put on the stack right before whoever takes it**, which is what lets a binding
+  inside a scope work — it used to compile to an MSTORE with nothing under it, and the
+  contract answered empty. What each instruction takes and leaves is written down now, per
+  opcode, and that table is what a branch will read: the two sides of a jump have to meet with
+  the same stack under them.
 
 `aurora build` now **says what it could not carry**, once per feature, in the order the
 program uses it — so a binary that does less than the source said is at least announced. What

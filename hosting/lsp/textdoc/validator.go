@@ -10,6 +10,7 @@ import (
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
@@ -84,7 +85,7 @@ func (s *Session) Analyze(doc Document) *Analysis {
 	// document being edited is broken most of the time, and what is inside a module is
 	// wanted exactly then. What that costs is one read of each imported file.
 	if s.resolve != nil {
-		modules, err := s.resolve(doc, scanUses(tokens))
+		modules, err := s.resolve(doc, parser.ScanUses(tokens))
 		analysis.Modules, analysis.ModuleErr = modules, err
 	}
 
@@ -94,6 +95,9 @@ func (s *Session) Analyze(doc Document) *Analysis {
 		Filename: doc.Filename,
 		Tokens:   tokens,
 		TapeSize: doc.TapeSize,
+		// What the modules it imports promised, which the resolution above just found: a
+		// shape is resolved while parsing, so it has to be in hand by now.
+		Imports: resolver.PromisesOf(analysis.Modules),
 	})
 	if err != nil {
 		analysis.Err = err
@@ -215,7 +219,7 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 		return "boolean: " + match
 	case token.ID:
 		// A module is not a value, so it is answered for before anything looks for one.
-		if info := aliasesOf(scanUses(analysis.Tokens)).describe(analysis.Tokens, tk); info != "" {
+		if info := aliasesOf(parser.ScanUses(analysis.Tokens)).describe(analysis.Tokens, tk); info != "" {
 			return info + describeExport(analysis, tk)
 		}
 		// A struct name or a field read out of one: the declaration is what says these are
@@ -257,7 +261,7 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 
 	// After a dot on a module alias, what can follow is what that module declared, and
 	// nothing else — the same rule as a struct's fields, answered from another file.
-	aliases := aliasesOf(scanUses(analysis.Tokens))
+	aliases := aliasesOf(parser.ScanUses(analysis.Tokens))
 	if specifier, isModule := aliases.moduleBefore(analysis.Tokens, offset); isModule {
 		return exportCompletions(analysis, specifier)
 	}

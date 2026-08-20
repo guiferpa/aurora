@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/loader"
+	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
@@ -22,22 +23,6 @@ import (
 // moduleAliases is what the use lines declared: the alias, and the module it names.
 type moduleAliases map[string]string
 
-// scanUses reads every `use a/b/c as x;` out of a token chain, with the token of each so
-// whatever goes wrong with one can be underlined where it was written.
-func scanUses(tokens []token.Token) []ast.UseDeclaration {
-	found := make([]ast.UseDeclaration, 0)
-	for i := 0; i < len(tokens); i++ {
-		if tokens[i].GetTag().Id != token.USE {
-			continue
-		}
-		if alias, specifier, next := readUse(tokens, i); alias != "" {
-			found = append(found, ast.UseDeclaration{Specifier: specifier, Alias: alias, Token: tokens[i]})
-			i = next
-		}
-	}
-	return found
-}
-
 // aliasesOf is what those declarations say about names: the alias, and what it means.
 func aliasesOf(uses []ast.UseDeclaration) moduleAliases {
 	aliases := make(moduleAliases, len(uses))
@@ -45,29 +30,6 @@ func aliasesOf(uses []ast.UseDeclaration) moduleAliases {
 		aliases[declaration.Alias] = declaration.Specifier
 	}
 	return aliases
-}
-
-// readUse reads one declaration starting at the use token: the path it names, and the alias
-// it is reached by. A half-written line answers with nothing, which is the common case while
-// somebody is typing one.
-func readUse(tokens []token.Token, i int) (string, string, int) {
-	specifier := ""
-	for j := i + 1; j < len(tokens); j++ {
-		switch tokens[j].GetTag().Id {
-		case token.ID:
-			specifier += string(tokens[j].GetMatch())
-		case token.DIV:
-			specifier += "/"
-		case token.AS:
-			if specifier == "" || j+1 >= len(tokens) || tokens[j+1].GetTag().Id != token.ID {
-				return "", "", j
-			}
-			return string(tokens[j+1].GetMatch()), specifier, j + 1
-		default:
-			return "", "", j
-		}
-	}
-	return "", "", len(tokens) - 1
 }
 
 // moduleBefore answers the module a dot at this offset reaches into, when what sits in front
@@ -167,7 +129,7 @@ func describeExport(analysis *Analysis, subject token.Token) string {
 // moduleOfSubject answers the module a token is reached through, when it follows a dot on an
 // alias.
 func moduleOfSubject(analysis *Analysis, subject token.Token) (string, bool) {
-	aliases := aliasesOf(scanUses(analysis.Tokens))
+	aliases := aliasesOf(parser.ScanUses(analysis.Tokens))
 	for i, t := range analysis.Tokens {
 		if t.GetCursor() != subject.GetCursor() || i < 2 || analysis.Tokens[i-1].GetTag().Id != token.DOT {
 			continue

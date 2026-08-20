@@ -54,7 +54,7 @@ func TestScanUses(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := aliasesOf(scanUses(session().Analyze(Document{Filename: "main.ar", Source: tc.source}).Tokens))
+			got := aliasesOf(parser.ScanUses(session().Analyze(Document{Filename: "main.ar", Source: tc.source}).Tokens))
 			if len(got) != len(tc.want) {
 				t.Fatalf("read %v, want %v", got, tc.want)
 			}
@@ -155,12 +155,19 @@ func withModuleFiles(files map[string]string) *Session {
 					}
 					return []byte(source), nil
 				},
-				Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+				Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
 					tokens, err := lx.GetFilledTokens(source)
 					if err != nil {
 						return ast.AST{}, err
 					}
-					return ps.Parse(parser.ParseInput{Filename: filename, Tokens: tokens, Module: string(id)})
+					return ps.Parse(parser.ParseInput{Filename: filename, Tokens: tokens, Module: string(id), Imports: imports})
+				},
+				Header: func(source []byte) ([]ast.UseDeclaration, error) {
+					tokens, err := lx.GetFilledTokens(source)
+					if err != nil {
+						return nil, err
+					}
+					return parser.ScanUses(tokens), nil
 				},
 			}).DependenciesOf(doc.Filename, uses)
 		},

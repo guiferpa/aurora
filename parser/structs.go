@@ -33,6 +33,10 @@ type Declarations struct {
 	// Modules is what `use` declared: alias -> specifier. It belongs to the file that wrote
 	// it and to no other, which is the whole point of the alias being mandatory.
 	Modules map[string]string
+	// Returns is what `returns` promised: the name of a scope -> the struct that calling it
+	// answers with. It is not the shape of the name itself — a deferred scope is an index —
+	// but the shape of what comes back from it.
+	Returns map[string]string
 }
 
 func NewDeclarations() *Declarations {
@@ -40,6 +44,7 @@ func NewDeclarations() *Declarations {
 		Structs: make(map[string][]string),
 		Shapes:  make(map[string]string),
 		Modules: make(map[string]string),
+		Returns: make(map[string]string),
 	}
 }
 
@@ -224,6 +229,10 @@ func (p *pr) parseShape(expr ast.Node) (ast.Node, error) {
 
 // shapeOf answers which struct a value is read as, or empty when nothing said. A field is
 // one tape wide, so reading a field of a field is never known.
+//
+// What it sees through is what a promise is worth: a block answers with its last expression,
+// and an if answers with whatever the arm that runs answers with — so both arms have to agree,
+// and an if with no else agrees with nothing.
 func (p *pr) shapeOf(node ast.Node) string {
 	switch n := node.(type) {
 	case ast.StructLiteral:
@@ -232,6 +241,134 @@ func (p *pr) shapeOf(node ast.Node) string {
 		return n.Struct
 	case ast.IdentifierLiteral:
 		return p.declarations.Shapes[n.Value]
+	case ast.BlockExpression:
+		if n.Returns != "" {
+			return n.Returns
+		}
+		return p.shapeOfLast(n.Body)
+	case ast.CalleeLiteral:
+		// Not the shape of the name, which is a deferred scope, but of what calling it
+		// answers with — which is only known because the scope promised.
+		return p.declarations.Returns[n.Id.Value]
+	case ast.IfExpression:
+		if n.Else == nil {
+			return ""
+		}
+		shape := p.shapeOfLast(n.Body)
+		if shape != "" && shape == p.shapeOfLast(n.Else.Body) {
+			return shape
+		}
 	}
 	return ""
+}
+
+// shapeOfLast answers for the expression a body ends with, which is what the body answers with.
+func (p *pr) shapeOfLast(body []ast.Node) string {
+	if len(body) == 0 {
+		return ""
+	}
+	return p.shapeOf(body[len(body)-1])
+}
+
+// What `returns` promises, and how the promise is kept.
+//
+// `as` is a claim: the compiler believes it and has nothing to check it against, which is why
+// a wrong one reads the wrong tape and the program carries on. `returns` is the other end —
+// the block says what it answers with, and this refuses the block that does not.
+//
+// The promise is worth what shapeOf can see through, which is why that is the part that grew.
+
+// parseReturns reads `returns Person` after a block, and checks what the block ends with.
+func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) {
+	if p.GetLookahead() == nil || p.GetLookahead().GetTag().Id != token.RETURNS {
+		return "", nil
+	}
+	if _, err := p.EatToken(token.RETURNS); err != nil {
+		return "", err
+	}
+	name, err := p.EatToken(token.ID)
+	if err != nil {
+		return "", err
+	}
+
+	promised := string(name.GetMatch())
+	if _, declared := p.declarations.Structs[promised]; !declared {
+		return "", token.NewError(name, "%s is not a declared struct at line %d and column %d",
+			promised, name.GetLine(), name.GetColumn())
+	}
+	if err := p.answersWith(body, promised, "", closing); err != nil {
+		return "", err
+	}
+	return promised, nil
+}
+
+// answersWith refuses a body that ends with something other than what was promised.
+//
+// A `where` names the arm being read, so a promise broken inside a branch says which one; the
+// block itself has no name and simply ends.
+func (p *pr) answersWith(body []ast.Node, promised, where string, at token.Token) error {
+	if len(body) == 0 {
+		return brokenPromise(at, promised, where, "nothing")
+	}
+
+	last := body[len(body)-1]
+	// An if is looked through rather than at: it answers with whatever the arm that runs
+	// answers with, so every arm has to keep the promise. A branch is nested ifs by the time
+	// anything reads the tree, so this covers it too.
+	if answer, ok := last.(ast.IfExpression); ok {
+		if answer.Else == nil {
+			return token.NewError(at, "this block answers with %s and its if has no else at line %d and column %d: one path answers with nothing",
+				promised, at.GetLine(), at.GetColumn())
+		}
+		if err := p.answersWith(answer.Body, promised, "the if", at); err != nil {
+			return err
+		}
+		return p.answersWith(answer.Else.Body, promised, "the else", at)
+	}
+
+	if p.shapeOf(last) == promised {
+		return nil
+	}
+	return brokenPromise(at, promised, where, describeAnswer(last))
+}
+
+// brokenPromise says what was promised and what is there instead.
+func brokenPromise(at token.Token, promised, where, answer string) error {
+	if where == "" {
+		return token.NewError(at, "this block answers with %s and ends with %s at line %d and column %d",
+			promised, answer, at.GetLine(), at.GetColumn())
+	}
+	return token.NewError(at, "this block answers with %s and %s answers with %s at line %d and column %d",
+		promised, where, answer, at.GetLine(), at.GetColumn())
+}
+
+// describeAnswer names what a node answers with, for the message of a promise that was not
+// kept. It is the reader's words rather than the tree's: somebody reading the error is looking
+// at what they wrote, not at a node type.
+func describeAnswer(node ast.Node) string {
+	switch n := node.(type) {
+	case ast.NumberLiteral:
+		return "a number"
+	case ast.TextLiteral:
+		return "text"
+	case ast.BooleanLiteral:
+		return "a boolean"
+	case ast.StructLiteral:
+		return "a " + n.Name
+	case ast.ShapedExpression:
+		return "a " + n.Struct
+	case ast.IdentifierLiteral:
+		return "the name " + n.Value
+	case ast.CalleeLiteral:
+		return "a call to " + n.Id.Value
+	case ast.DeferExpression:
+		return "a deferred scope"
+	case ast.TapeBracketExpression:
+		return "a tape"
+	case ast.BinaryExpression:
+		return "arithmetic"
+	case ast.RelativeExpression, ast.BooleanExpression:
+		return "a comparison"
+	}
+	return "something no shape was named for"
 }

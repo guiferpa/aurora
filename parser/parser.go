@@ -689,35 +689,46 @@ func (p *pr) ParseBranch() (ast.Node, error) {
 	return item, nil
 }
 
+// ParseBlockExpr reads a block where an expression is wanted.
 func (p *pr) ParseBlockExpr() (ast.Node, error) {
+	return p.parseBlock()
+}
+
+// parseBlock reads `{ ... }` and the promise that may follow it.
+//
+// A deferred scope is a block with a word in front of it, so it comes through here too — which
+// is what gives it the promise, and what keeps the braces from being read in two places.
+func (p *pr) parseBlock() (ast.BlockExpression, error) {
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
-		return nil, err
+		return ast.BlockExpression{}, err
 	}
 	exprs, err := p.ParseExprs(token.TagCCurBrk)
 	if err != nil {
-		return nil, err
+		return ast.BlockExpression{}, err
 	}
-	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
-		return nil, err
+	closing, err := p.EatToken(token.C_CUR_BRK)
+	if err != nil {
+		return ast.BlockExpression{}, err
 	}
-	return ast.BlockExpression{Body: exprs}, nil
+
+	// The promise is read here, which is the one place it is written. The body of an if is
+	// read straight rather than through here, so it never takes one.
+	promised, err := p.parseReturns(exprs, closing)
+	if err != nil {
+		return ast.BlockExpression{}, err
+	}
+
+	return ast.BlockExpression{Body: exprs, Returns: promised}, nil
 }
 
 func (p *pr) ParseDefer() (ast.Node, error) {
 	if _, err := p.EatToken(token.DEFER); err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
-		return nil, err
-	}
-	exprs, err := p.ParseExprs(token.TagCCurBrk)
+	block, err := p.parseBlock()
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.EatToken(token.C_CUR_BRK); err != nil {
-		return nil, err
-	}
-	block := ast.BlockExpression{Body: exprs}
 	return ast.DeferExpression{Block: block}, nil
 }
 
@@ -793,6 +804,11 @@ func (p *pr) ParseIdent() (ast.Node, error) {
 	name := p.name(string(id.GetMatch()))
 	if shape := p.shapeOf(expr); shape != "" {
 		p.declarations.Shapes[name] = shape
+	}
+	// A scope that promised is not itself a struct — its value is an index — so what is
+	// written down is what calling it answers with.
+	if scope, ok := expr.(ast.DeferExpression); ok && scope.Block.Returns != "" {
+		p.declarations.Returns[name] = scope.Block.Returns
 	}
 	return ast.IdentLiteral{Id: name, Token: id, Value: expr}, nil
 }

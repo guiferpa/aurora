@@ -4,29 +4,32 @@
 #- a plain "aurora run" warns about each one and carries on, so a program that
 #- happens to hold an assertion does not fail because of it.
 #-
-#- This file tests greeting.ar — a test belongs to the source file of the same
-#- name. That file is evaluated first, so hello, twice and bigger_of are in
-#- scope here without being imported.
+#- A file may only hold assertions if it is named *.test.ar, and that name is
+#- also how "aurora test" knows which files to run.
 #-
-#- Two things follow from that:
-#-   - whatever the source does at its top level happens too (greeting.ar
-#-     prints, so you will see its output during the test)
-#-   - the two files share one scope, so declaring a name that greeting.ar
-#-     already declares is a conflict, not a shadow
+#- This one checks what it declares itself, which is why it runs on its own,
+#- with no project around it. A test that checks another file names it with
+#- "use" like any other file does — examples/project/src/geometry.test.ar is
+#- that one.
 #-
-#- Run: aurora test examples/greeting.test.ar
+#- Run: aurora test examples/assertions.test.ar
 #-
 #- Output:
-#-   examples/greeting.test.ar
-#-     ok    hello answers 1
+#-   examples/assertions.test.ar
 #-     ok    twice doubles
 #-     ok    twice of zero is zero
 #-     ok    bigger_of takes the larger one
 #-     ok    bigger_of is not fooled by order
 #-
-#-   5 passed, 0 failed in 1 file
+#-   4 passed, 0 failed in 1 file
 
-assert(hello() equals 1, "hello answers 1");
+ident twice = defer { feed(0) * 2; };
+
+ident bigger_of = defer {
+  ident a = feed(0);
+  ident b = feed(1);
+  if a bigger b { a; } else { b; };
+};
 
 assert(twice(21) equals 42, "twice doubles");
 assert(twice(0) equals 0, "twice of zero is zero");

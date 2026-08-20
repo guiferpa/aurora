@@ -1,11 +1,8 @@
 #- Greeting
 #-
-#- The code that greeting.test.ar checks. A test belongs to the source file of
-#- the same name, so this one runs first and everything it declares is in scope
-#- for the test.
+#- Deferred scopes: a name bound to a body, called with values it feeds on.
 #-
 #- Run: aurora run examples/greeting.ar
-#-      aurora test examples/greeting.test.ar
 #-
 #- Output:
 #-   [0 0 0 0 0 0 0 1]

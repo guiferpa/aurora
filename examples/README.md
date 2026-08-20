@@ -34,7 +34,8 @@ For the other way of working — a manifest with named profiles — see [project
 | [shapes.ar](shapes.ar) | `shape` and `as`: naming the tapes of a run |
 | [printing.ar](printing.ar) | `printb`, `printd`, `printc`: three readings of one tape |
 | [comments.ar](comments.ar) | `#-` |
-| [greeting.ar](greeting.ar) + [greeting.test.ar](greeting.test.ar) | `assert` and `aurora test`: a test belongs to the source of the same name |
+| [assertions.test.ar](assertions.test.ar) | `assert` and `aurora test`: one file, run on its own |
+| [greeting.ar](greeting.ar) | deferred scopes, fed with values |
 | [project/](project/) | a manifest with profiles, and what they change |
 
 ## Reading the output

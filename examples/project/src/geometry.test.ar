@@ -1,20 +1,27 @@
-#- Tests for src/main.ar.
+#- Tests for src/geometry.ar.
+#-
+#- A test file is a file like any other: it names what it checks. "use geometry as g;" reads
+#- src/geometry.ar, and g is how this file reaches what is inside it — the same line main.ar
+#- writes, because nothing about being a test changes how a name arrives.
 #-
 #- "aurora test" from the project root finds this file: the main profile points at
-#- src/main.ar, so the search starts in src/ and goes down.
-#-
-#- A test and the file it tests are one module written in two files, which is why g means
-#- src/geometry.ar here without this file saying so: the alias the source declared is in
-#- scope, the same way a shape it declared would be.
+#- src/main.ar, so the search starts in src/ and goes down. It runs on its own — src/main.ar
+#- is not loaded, because this file does not name it.
 #-
 #- Run: cd examples/project && aurora test
 #-
 #- Output:
-#-   src/main.test.ar
+#-   src/geometry.test.ar
 #-     ok    area multiplies its sides
 #-     ok    area of a line is zero
+#-     ok    new_square keeps the sides it was given
 #-
-#-   2 passed, 0 failed in 1 file
+#-   3 passed, 0 failed in 1 file
+
+use geometry as g;
 
 assert(g.area(3, 4) equals 12, "area multiplies its sides");
 assert(g.area(0, 5) equals 0, "area of a line is zero");
+
+ident s = g.new_square(6, 7);
+assert(s.width equals 6, "new_square keeps the sides it was given");

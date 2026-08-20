@@ -20,8 +20,10 @@ var testCmd = &cobra.Command{
 	Short: "Run the test files of a project",
 	Long: `Run the test files of a project.
 
-A test belongs to the source file of the same name: greeting.test.ar tests
-greeting.ar, which runs first so the test can see what it declared.
+A test file is a file like any other: it names what it checks with "use", and
+what it names runs before it. The .test.ar in the name is what marks a file as
+a test — it is how this command finds them, and the only place an assertion is
+allowed.
 
 With no argument, the "main" profile is used and its source directory is
 searched, down to the leaves. A name selects another profile. A path runs that

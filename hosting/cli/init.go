@@ -39,7 +39,7 @@ const InitSourceTemplate = `#- Welcome to Aurora.
 #- Run this with:
 #-
 #-   aurora run     the main profile, which points here
-#-   aurora test    the assertions in main.test.ar
+#-   aurora test    the assertions in main.test.ar, which names this file
 #-
 #- Every value is a tape: a fixed run of bytes, 8 by default. There are three
 #- ways to read one — printb for its bytes, printd for its number, printc for
@@ -53,8 +53,11 @@ printc greet();
 // InitTestTemplate is the test that comes with a new project.
 const InitTestTemplate = `#- Tests for main.ar.
 #-
-#- A test belongs to the source file of the same name: this file tests main.ar,
-#- which runs first, so greet is in scope here without being imported.
+#- A test file is a file like any other: it names what it checks. "use main as
+#- m;" reads src/main.ar, and m is how this file reaches what is inside it.
+#-
+#- A module runs when it is loaded, so you will see main.ar print its greeting
+#- while these run. That is not the test talking.
 #-
 #- Text is a tape holding its bytes, so two texts are equal when their bytes are
 #- — no special rule for comparing them.
@@ -63,7 +66,9 @@ const InitTestTemplate = `#- Tests for main.ar.
 #-
 #-   aurora test
 
-assert(greet() equals "Abidu abide", "greet says its piece");
+use main as m;
+
+assert(m.greet() equals "Abidu abide", "greet says its piece");
 `
 
 // InitInput is the input for the Init handler.

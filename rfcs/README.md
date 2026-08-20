@@ -18,7 +18,11 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Nenhuma aberta no momento.**
+**Abertas:**
+
+| RFC | Estado | Sobre |
+|---|---|---|
+| [syscall_and_the_chain.md](syscall_and_the_chain.md) | proposta | `syscall` como a porta para o mundo — o processo e a chain — e o que falta compilar para o beta |
 
 A última foi `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
 escrito como o do módulo. Foi implementada em dois pull requests, e o que ficou decidido está

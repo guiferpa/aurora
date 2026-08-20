@@ -24,6 +24,11 @@ type ID string
 type Module struct {
 	ID   ID
 	Tree ast.AST
+	// Source is the text the tree was read from, which the resolver had in its hands anyway.
+	// It is here for whoever has to point at a place in a file it never opened: an editor
+	// jumping to where a name was declared needs the line and column of a token in another
+	// file, and a position is counted in text.
+	Source string
 }
 
 // IsEntry reports whether this is the file that was asked for rather than one it needed.

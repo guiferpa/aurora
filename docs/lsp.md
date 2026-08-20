@@ -12,6 +12,7 @@
 | **Diagnostics** | `textDocument/publishDiagnostics` | Lexer and parser errors underlined where they happen, republished on every change |
 | **Hover** | `textDocument/hover` | The description of the keyword under the cursor, what an identifier was bound to, a shape's fields, or which tape a field reads |
 | **Completion** | `textDocument/completion` | Keywords as snippets, the identifiers and shapes declared in the document, and — right after a `.` — the fields of a shape or what a module offers |
+| **Go to definition** | `textDocument/definition` | Where the name under the cursor was declared, in this file or in the module it came from |
 
 Document sync is **full** (`textDocumentSync: 1`): the client resends the whole file on each change.
 
@@ -64,12 +65,45 @@ Snippets are offered **only to a client that said it expands them** (`snippetSup
 initialize). To anyone else the placeholders would land in the buffer as the literal text
 they are, so that client gets the bare keyword.
 
+### Go to definition
+
+Four things are names, and each one answers with where it was written:
+
+| Under the cursor | Lands on |
+|---|---|
+| a value | the `ident` that binds it |
+| a shape | the `shape` that declares it |
+| a field | the field's name inside that declaration |
+| an alias, or anywhere in a `use` line | the top of the module's file |
+
+A name reached through an alias — `g.area`, `g.Square` — is declared in that module's file and
+never in this one, so the jump goes there. So does a field of a value whose shape came from a
+module: `s.width` lands inside `shape Square { width, height };`, in the file that declared it.
+The module's own source is lexed and asked exactly what the open document is asked, which is
+why a value, a shape and a field all cross without a rule of their own.
+
+Asking about a name where it is declared answers with itself. That is what "declared here"
+looks like, and it reads differently from "not declared at all", which answers with nothing.
+
+The binding that answers is **the one above the cursor**, so a name bound twice lands on the
+one the language itself would find. A binding that only appears further down is answered with
+anyway: a deferred scope runs when it is called, so its body can name something written under
+it.
+
+A module that is not there, and a name a module does not have, are jumps that do not happen.
+The diagnostic already says what is wrong, and an editor that opens nothing is better than one
+that opens the wrong file.
+
 **Scope:** the server lexes and parses the open document and the files it imports, and never evaluates. The imported files arrive through a port the host fills in — the command line reads a disk, the playground reads a map it already holds, since a browser has no files — so the same package answers wherever it is put. An imported file that is open in the editor is read as it is on screen, not as it is on disk: a name just typed resolves, and one just deleted stops resolving. See [modules.md](modules.md) for what a module is.
 
 **Known limitations**
 
 - The parser stops at the first error, so **one diagnostic per pass**. Fix it and the next one appears.
-- No go-to-definition, no code actions, no formatting, no incremental sync.
+- Go to definition lands on a declaration, never on every place a name is used: there is no
+  `textDocument/references`, and no rename that follows from it.
+- Scope is read as the file is written, so a name declared inside a deferred scope and one
+  declared at the top are told apart by which comes first, not by which is visible.
+- No code actions, no formatting, no incremental sync.
 - Semantic token types are decided lexically. A call is anything followed by `(`, a shape anything after `shape` or `as`, a field anything after `.`.
 
 ---

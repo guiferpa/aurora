@@ -79,6 +79,7 @@ type SemanticTokensOptions struct {
 type ServerCapabilities struct {
 	TextDocumentSync       int                    `json:"textDocumentSync"`
 	HoverProvider          bool                   `json:"hoverProvider"`
+	DefinitionProvider     bool                   `json:"definitionProvider"`
 	CompletionProvider     map[string]any         `json:"completionProvider"`
 	SemanticTokensProvider *SemanticTokensOptions `json:"semanticTokensProvider,omitempty"`
 }

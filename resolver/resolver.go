@@ -102,7 +102,7 @@ func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(modules, module.Module{ID: "", Tree: tree}), nil
+	return append(modules, module.Module{ID: "", Tree: tree, Source: string(source)}), nil
 }
 
 // OffersOf is what a set of modules offer, by the name they are imported under.
@@ -209,7 +209,7 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 
 	// Appended after everything it needs, which is what makes the order topological.
 	state.found[id] = true
-	state.order = append(state.order, module.Module{ID: id, Tree: tree})
+	state.order = append(state.order, module.Module{ID: id, Tree: tree, Source: string(source)})
 	return nil
 }
 

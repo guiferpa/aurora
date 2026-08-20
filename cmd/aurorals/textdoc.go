@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"path/filepath"
 
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/hosting/lsp/state"
@@ -91,6 +92,39 @@ func (sv server) hover(l *log.Logger, s *state.State, contents []byte) any {
 	}
 
 	return textdoc.NewHoverResponse(req.ID, info)
+}
+
+// definition answers where the name under the cursor was declared.
+//
+// The path comes back from the session as a path, because which URI a file has is the
+// client's vocabulary and not the compiler's. Turning it back into one is this side's job,
+// and it is done from the absolute path so a module named from the source root — src/x.ar —
+// is the same file the editor already has open under its own URI.
+func (sv server) definition(l *log.Logger, s *state.State, contents []byte) any {
+	req, err := textdoc.ParseDefinitionRequest(contents)
+	if err != nil {
+		l.Println(err)
+		return nil
+	}
+
+	uri := req.Params.TextDocument.URI
+	found, ok := sv.textdoc.DefinitionFor(document(uri, s.GetDocument(string(uri))), req.Params.Position)
+	if !ok {
+		// A request is answered, always. Nothing under the cursor is a null result rather
+		// than silence: silence leaves the client waiting for a reply that never comes.
+		return lsp.NewNullResponse(&req.ID)
+	}
+
+	return textdoc.NewDefinitionResponse(req.ID, lsp.Location{URI: uriOf(found.Filename), Range: found.Range})
+}
+
+// uriOf turns a path into the URI the client knows the file by.
+func uriOf(path string) lsp.URI {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		absolute = path
+	}
+	return lsp.URI("file://" + filepath.ToSlash(absolute))
 }
 
 func (sv server) semanticTokens(l *log.Logger, s *state.State, contents []byte) any {

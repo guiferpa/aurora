@@ -219,7 +219,7 @@ func runRanges(ev *evaluator.Evaluator, program loader.Program) error {
 //
 // They share one set of declarations, because they are one module written in two files: a
 // struct declared in the source is known in the test, and so is a module it brought in.
-func (s *Session) parseAll(files []string, chains [][]token.Token, imports map[string][]ast.Promise) ([]ast.AST, *failure) {
+func (s *Session) parseAll(files []string, chains [][]token.Token, imports map[string]ast.Offer) ([]ast.AST, *failure) {
 	declarations := parser.NewDeclarations()
 	trees := make([]ast.AST, 0, len(files))
 
@@ -298,7 +298,7 @@ func (s *Session) runTestFile(path string) FileReport {
 		return report
 	}
 
-	trees, broken := s.parseAll(files, chains, resolver.PromisesOf(modules))
+	trees, broken := s.parseAll(files, chains, resolver.OffersOf(modules))
 	if broken != nil {
 		report.Err = failedAt(broken.file, source, broken.err)
 		return report

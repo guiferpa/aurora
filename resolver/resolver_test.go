@@ -35,7 +35,7 @@ func resolve(t *testing.T, root, entry string, sources files) ([]module.Module, 
 			}
 			return []byte(source), nil
 		},
-		Parse: func(filename string, _ module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
+		Parse: func(filename string, _ module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 			tokens, err := lexer.New().GetFilledTokens(source)
 			if err != nil {
 				return ast.AST{}, err

@@ -30,7 +30,7 @@ func load(t *testing.T, sources map[string]string) ([]module.Module, error) {
 			}
 			return []byte(source), nil
 		},
-		Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
+		Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 			tokens, err := lexer.New().GetFilledTokens(source)
 			if err != nil {
 				return ast.AST{}, err

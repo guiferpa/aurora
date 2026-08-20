@@ -45,14 +45,14 @@ type ParseInput struct {
 	// written as they were typed — which is every file compiled on its own, the language
 	// server and the REPL included.
 	Module string
-	// Imports is what the modules this file names promised, by specifier: for each of their
-	// exported scopes that promised, the struct it answers with and the fields of it.
+	// Imports is what the modules this file names offer, by specifier: the structs they
+	// declare, and what their scopes said they answer with.
 	//
 	// It arrives because a shape is resolved while parsing and a struct's name never leaves
 	// the file that declared it — so a scope of another module answering with one has to hand
 	// the fields over. Empty is a file that imports nothing, or one whose imports promised
 	// nothing, and it reads exactly as it did before any of this.
-	Imports map[string][]ast.Promise
+	Imports map[string]ast.Offer
 	// Declarations carries what `struct` and `as` declared across parses of the same file.
 	// Nil starts empty, which is what compiling a file in one go wants; the REPL passes the
 	// same value every line so a struct declared earlier is still known.
@@ -73,8 +73,8 @@ type pr struct {
 	// and false from the first node that is not one, and inside every body.
 	useAllowed bool
 	module     string
-	// imports is what the modules this file names promised, by specifier.
-	imports map[string][]ast.Promise
+	// imports is what the modules this file names offer, by specifier.
+	imports map[string]ast.Offer
 	// references is every qualified name this parse read. It leaves with the tree because
 	// only whoever holds the other modules can say whether the name is really there.
 	references []ast.Reference
@@ -1037,6 +1037,7 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 		Nodes:      nodes,
 		References: p.references,
 		Promises:   p.promises(nodes),
+		Shapes:     p.shapes(nodes),
 	}, nil
 }
 

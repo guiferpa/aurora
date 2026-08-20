@@ -33,7 +33,7 @@ func resolveModules(s *state.State) textdoc.Resolve {
 		return resolver.New(resolver.Options{
 			SourceRoot: sourceRootFor(doc.Filename),
 			Read:       readThroughBuffers(s),
-			Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
+			Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 				tokens, err := lx.GetFilledTokens(source)
 				if err != nil {
 					return ast.AST{}, err

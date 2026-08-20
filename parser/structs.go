@@ -54,8 +54,13 @@ func NewDeclarations() *Declarations {
 // A promise crossing a module is the shape and its fields together, and both are written the
 // way an identifier of that module is: with the module in front. So two modules answering with
 // an Env each are two shapes, and neither can be confused with an Env declared here.
-func (d *Declarations) Import(specifier string, promises []ast.Promise) {
-	for _, promise := range promises {
+func (d *Declarations) Import(specifier string, offer ast.Offer) {
+	for _, shape := range offer.Shapes {
+		d.Structs[module.Qualify(module.ID(specifier), shape.Name)] = shape.Fields
+	}
+	for _, promise := range offer.Promises {
+		// A promise may name a shape of a third module, which this one never declared, so the
+		// fields come with it rather than being looked up.
 		shape := module.Qualify(module.ID(specifier), promise.Struct)
 		d.Structs[shape] = promise.Fields
 		d.Returns[module.Qualify(module.ID(specifier), promise.Scope)] = shape
@@ -125,7 +130,13 @@ func (p *pr) ParseStruct() (ast.Node, error) {
 // after a name; declaring a struct called `flag` and testing on it is the one ambiguity left,
 // and it is the same one Go has.
 func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
-	fields := p.declarations.Structs[typed(id)]
+	return p.parseStructValue(typed(id), typed(id), id.Token)
+}
+
+// parseStructValue reads `{ ... }` for a struct already known, whichever file declared it:
+// shape is what it is called in the tables, and named is what whoever wrote the line typed.
+func (p *pr) parseStructValue(shape, named string, at token.Token) (ast.Node, error) {
+	fields := p.declarations.Structs[shape]
 
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return nil, err
@@ -154,10 +165,10 @@ func (p *pr) ParseStructLiteral(id ast.IdentifierLiteral) (ast.Node, error) {
 	// rather than a run padded with the neutral value.
 	if len(values) != len(fields) {
 		return nil, token.NewError(closing, "struct %s has %d fields (%s) but got %d at line %d and column %d",
-			typed(id), len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
+			named, len(fields), strings.Join(fields, ", "), len(values), closing.GetLine(), closing.GetColumn())
 	}
 
-	return ast.StructLiteral{Name: typed(id), Values: values, Token: id.Token}, nil
+	return ast.StructLiteral{Name: shape, Values: values, Token: at}, nil
 }
 
 // parsePostfix applies what binds tightest of all: reading a field, and naming the shape a
@@ -228,17 +239,49 @@ func (p *pr) parseShape(expr ast.Node) (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	name, err := p.EatToken(token.ID)
+	shape, _, err := p.parseShapeName()
 	if err != nil {
 		return nil, err
 	}
-	structName := string(name.GetMatch())
-	if _, declared := p.declarations.Structs[structName]; !declared {
-		return nil, token.NewError(name, "%s is not a declared struct at line %d and column %d",
-			structName, name.GetLine(), name.GetColumn())
+
+	return ast.ShapedExpression{Expression: expr, Struct: shape, Token: tok}, nil
+}
+
+// parseShapeName reads the name of a struct where one is expected: `Point`, or `m.Point` for
+// one another module declared.
+//
+// The qualified form is read the same way a qualified value is, and answers with the name the
+// tables know it by — which nobody can type, so a Point of this file and a Point of another
+// are two shapes and never one.
+func (p *pr) parseShapeName() (string, token.Token, error) {
+	name, err := p.EatToken(token.ID)
+	if err != nil {
+		return "", nil, err
+	}
+	shape := string(name.GetMatch())
+
+	if specifier, isModule := p.declarations.Modules[shape]; isModule {
+		if _, err := p.EatToken(token.DOT); err != nil {
+			return "", nil, err
+		}
+		named, err := p.EatToken(token.ID)
+		if err != nil {
+			return "", nil, err
+		}
+		symbol := string(named.GetMatch())
+		shape = module.Qualify(module.ID(specifier), symbol)
+		if _, declared := p.declarations.Structs[shape]; !declared {
+			return "", nil, token.NewError(named, "module %s has no struct named %s at line %d and column %d",
+				specifier, symbol, named.GetLine(), named.GetColumn())
+		}
+		return shape, named, nil
 	}
 
-	return ast.ShapedExpression{Expression: expr, Struct: structName, Token: tok}, nil
+	if _, declared := p.declarations.Structs[shape]; !declared {
+		return "", nil, token.NewError(name, "%s is not a declared struct at line %d and column %d",
+			shape, name.GetLine(), name.GetColumn())
+	}
+	return shape, name, nil
 }
 
 // shapeOf answers which struct a value is read as, or empty when nothing said. A field is
@@ -318,6 +361,22 @@ func (p *pr) promises(nodes []ast.Node) []ast.Promise {
 	return found
 }
 
+// shapes is every struct this file declared, with what each is made of.
+//
+// All of them cross, and not only the ones a promise names: a file that imports this one may
+// want to build one, or to name one with `as`, and neither goes through a promise.
+func (p *pr) shapes(nodes []ast.Node) []ast.Shape {
+	found := make([]ast.Shape, 0)
+	for _, node := range nodes {
+		declaration, ok := node.(ast.StructDeclaration)
+		if !ok {
+			continue
+		}
+		found = append(found, ast.Shape{Name: declaration.Name, Fields: declaration.Fields})
+	}
+	return found
+}
+
 // bare is a name of this file without the module in front of it, which is how the file that
 // wrote it reads it and how whoever imports it asks for it.
 func (p *pr) bare(name string) string {
@@ -332,15 +391,9 @@ func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) 
 	if _, err := p.EatToken(token.RETURNS); err != nil {
 		return "", err
 	}
-	name, err := p.EatToken(token.ID)
+	promised, _, err := p.parseShapeName()
 	if err != nil {
 		return "", err
-	}
-
-	promised := string(name.GetMatch())
-	if _, declared := p.declarations.Structs[promised]; !declared {
-		return "", token.NewError(name, "%s is not a declared struct at line %d and column %d",
-			promised, name.GetLine(), name.GetColumn())
 	}
 	if err := p.answersWith(body, promised, "", closing); err != nil {
 		return "", err

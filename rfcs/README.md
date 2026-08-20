@@ -18,7 +18,11 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Nenhuma aberta no momento.**
+**Abertas:**
+
+| RFC | Estado | Sobre |
+|---|---|---|
+| [syscall_and_stdlib.md](syscall_and_stdlib.md) | proposta | ler o ambiente: a palavra `syscall` e o primeiro módulo da biblioteca padrão |
 
 A última foi `module_system.md` — um arquivo é um módulo, um nome carrega o módulo a que
 pertence, e cada módulo guarda os seus nomes num environ próprio. Foi implementada em seis

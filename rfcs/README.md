@@ -18,7 +18,11 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Nenhuma aberta no momento.**
+**Abertas:**
+
+| RFC | Estado | Sobre |
+|---|---|---|
+| [storage.md](storage.md) | proposta | o que sobrevive à chamada: `sload`/`sstore` e o módulo `storage` por cima |
 
 A última foi `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
 escrito como o do módulo. Foi implementada em dois pull requests, e o que ficou decidido está

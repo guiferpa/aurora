@@ -18,7 +18,11 @@ Toda RFC abre dizendo em que estado está:
 | **implementada** | virou código; o arquivo sai daqui na sequência |
 | **recusada** | decidida contra, e o porquê fica registrado |
 
-**Nenhuma aberta no momento.**
+**Abertas:**
+
+| RFC | Estado | Sobre |
+|---|---|---|
+| [if_and_call.md](if_and_call.md) | proposta | como `if` e `call` viram bytecode, e a recursão que sai do segundo |
 
 A última foi `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
 escrito como o do módulo. Foi implementada em dois pull requests, e o que ficou decidido está

@@ -88,7 +88,9 @@ func (sv server) hover(l *log.Logger, s *state.State, contents []byte) any {
 	uri := req.Params.TextDocument.URI
 	info := sv.textdoc.HoverInfo(document(uri, s.GetDocument(string(uri))), req.Params.Position)
 	if info == "" {
-		return nil
+		// Nothing to say is a null result rather than silence, for the same reason a jump
+		// that lands nowhere is: the request carries an id and the client waits on it.
+		return lsp.NewNullResponse(&req.ID)
 	}
 
 	return textdoc.NewHoverResponse(req.ID, info)

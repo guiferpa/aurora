@@ -3,10 +3,13 @@
 #- Its name is the path it has from src/, so this one is "geometry" — nothing in here says
 #- so, because what a module is called is decided by where it sits and not by what it holds.
 #-
-#- What it offers is what it binds with ident at the top: new_square and area. Names bound
-#- anywhere deeper belong to the scope that binds them, and the shape's name stays here — a
-#- file that imports this one cannot write Square, and does not have to: new_square promises
-#- it, and a promise carries the shape.
+#- What it offers is what it binds with ident at the top: new_square and area, and the shape
+#- Square. Names bound anywhere deeper belong to the scope that binds them.
+#-
+#- A file that imports this one writes the shape as g.Square, never as Square: the name of a
+#- shape carries the module it was declared in, so a Square here and a Square there are two
+#- shapes. It does not have to write it at all — new_square promises one, and a promise
+#- carries the fields with it.
 #-
 #- It prints nothing on its own, so it declares no output: a module of declarations does its
 #- work when somebody imports it.

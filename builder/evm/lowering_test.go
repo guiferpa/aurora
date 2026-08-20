@@ -12,33 +12,9 @@ import (
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
-func TestOperandStackDelta(t *testing.T) {
-	cases := []struct {
-		name string
-		op   byte
-		want int
-	}{
-		{name: "OpGetFeed_push", op: ir.OpGetFeed, want: 1},
-		{name: "OpSave_push", op: ir.OpSave, want: 1},
-		{name: "OpLoad_push", op: ir.OpLoad, want: 1},
-		{name: "OpSubtract_pop2_push1", op: ir.OpSubtract, want: -1},
-		{name: "OpDivide_pop2_push1", op: ir.OpDivide, want: -1},
-		{name: "OpBeginScope_neutral", op: ir.OpBeginScope, want: 0},
-		{name: "OpReturn_neutral", op: ir.OpReturn, want: 0},
-		{name: "OpIdent_neutral", op: ir.OpIdent, want: 0},
-		{name: "OpDefer_neutral", op: ir.OpDefer, want: 0},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := OperandStackDelta(tc.op)
-			if got != tc.want {
-				t.Errorf("OperandStackDelta(0x%02x) = %d, want %d", tc.op, got, tc.want)
-			}
-		})
-	}
-}
-
-func TestGetOperandStackDeltaDepth(t *testing.T) {
+// The depth after each instruction, which is what says a scope is balanced — and what the two
+// sides of a branch will have to agree on when there are branches.
+func TestStackDepth(t *testing.T) {
 	cases := []struct {
 		name  string
 		insts []ir.Instruction
@@ -50,89 +26,91 @@ func TestGetOperandStackDeltaDepth(t *testing.T) {
 			want:  []int{0},
 		},
 		{
-			name: "single_GetArg",
+			name: "one argument is one value",
 			insts: []ir.Instruction{
 				ir.NewInstruction([]byte("0"), ir.OpGetFeed, byteutil.FromUint64(0), nil),
 			},
 			want: []int{0, 1},
 		},
 		{
-			name: "two_GetArg",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, byteutil.FromUint64(0), nil),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, byteutil.FromUint64(1), nil),
-			},
-			want: []int{0, 1, 2},
-		},
-		{
-			name: "GetArg_GetArg_Add",
+			name: "two arguments and a sum leave one",
 			insts: []ir.Instruction{
 				ir.NewInstruction([]byte("0"), ir.OpGetFeed, byteutil.FromUint64(0), nil),
 				ir.NewInstruction([]byte("1"), ir.OpGetFeed, byteutil.FromUint64(1), nil),
 				ir.NewInstruction([]byte("2"), ir.OpAdd, []byte("0"), []byte("1")),
 			},
-			want: []int{0, 1, 2, 2},
-		},
-		{
-			name: "GetArg_GetArg_Sub",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, byteutil.FromUint64(0), nil),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, byteutil.FromUint64(1), nil),
-				ir.NewInstruction([]byte("2"), ir.OpSubtract, []byte("0"), []byte("1")),
-			},
 			want: []int{0, 1, 2, 1},
 		},
 		{
-			name: "GetArg_GetArg_GetArg_Sub_Sub",
+			name: "a binding takes its value and leaves nothing",
 			insts: []ir.Instruction{
 				ir.NewInstruction([]byte("0"), ir.OpGetFeed, byteutil.FromUint64(0), nil),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, byteutil.FromUint64(1), nil),
-				ir.NewInstruction([]byte("2"), ir.OpGetFeed, byteutil.FromUint64(2), nil),
-				ir.NewInstruction([]byte("3"), ir.OpSubtract, []byte("0"), []byte("1")),
-				ir.NewInstruction([]byte("4"), ir.OpSubtract, []byte("2"), []byte("3")),
+				ir.NewInstruction([]byte("1"), ir.OpIdent, []byte("side"), []byte("0")),
 			},
-			want: []int{0, 1, 2, 3, 2, 1},
+			want: []int{0, 1, 0},
 		},
 		{
-			name: "BeginScope_GetArg_GetArg_Sub_Return",
+			name: "a return takes the answer with it",
 			insts: []ir.Instruction{
-				ir.NewInstruction(nil, ir.OpBeginScope, nil, nil),
 				ir.NewInstruction([]byte("0"), ir.OpGetFeed, byteutil.FromUint64(0), nil),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, byteutil.FromUint64(1), nil),
-				ir.NewInstruction([]byte("2"), ir.OpSubtract, []byte("0"), []byte("1")),
-				ir.NewInstruction(nil, ir.OpReturn, nil, nil),
+				ir.NewInstruction([]byte("1"), ir.OpReturn, nil, []byte("0")),
 			},
-			want: []int{0, 0, 1, 2, 1, 1},
+			want: []int{0, 1, 0},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := GetOperandStackDeltaDepth(tc.insts)
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("GetOperandStackDeltaDepth(...) = %v, want %v", got, tc.want)
+			if got := StackDepth(tc.insts); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("StackDepth(...) = %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestIsAsociativeOperator(t *testing.T) {
+// What an instruction takes, and in which order it has to reach the stack. Subtraction and
+// division read theirs the other way round, which is the one case worth a table.
+func TestWhatAnInstructionTakes(t *testing.T) {
 	cases := []struct {
+		name string
+		op   byte
+		want []field
+	}{
+		{name: "a sum takes both, left first", op: ir.OpAdd, want: []field{fieldLeft, fieldRight}},
+		{name: "a subtraction takes them the other way round", op: ir.OpSubtract, want: []field{fieldRight, fieldLeft}},
+		{name: "a division too", op: ir.OpDivide, want: []field{fieldRight, fieldLeft}},
+		{name: "a binding takes the value it binds", op: ir.OpIdent, want: []field{fieldRight}},
+		{name: "a return takes what it answers with", op: ir.OpReturn, want: []field{fieldRight}},
+		{name: "an argument takes nothing", op: ir.OpGetFeed, want: nil},
+		{name: "opening a scope takes nothing", op: ir.OpBeginScope, want: nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := consumes(tc.op); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("consumes(0x%02x) = %v, want %v", tc.op, got, tc.want)
+			}
+		})
+	}
+}
+
+// What is left on the stack afterwards. A binding is the one that surprises: it writes to
+// memory and the stack comes out as it went in.
+func TestWhatAnInstructionLeaves(t *testing.T) {
+	for _, tc := range []struct {
 		name string
 		op   byte
 		want bool
 	}{
-		{name: "Sub", op: ir.OpSubtract, want: true},
-		{name: "Div", op: ir.OpDivide, want: true},
-		{name: "Mul", op: ir.OpMultiply, want: false},
-		{name: "Add", op: ir.OpAdd, want: false},
-		{name: "GetArg", op: ir.OpGetFeed, want: false},
-		{name: "Return", op: ir.OpReturn, want: false},
-	}
-	for _, tc := range cases {
+		{name: "a constant", op: ir.OpSave, want: true},
+		{name: "an argument", op: ir.OpGetFeed, want: true},
+		{name: "a read of a name", op: ir.OpLoad, want: true},
+		{name: "a sum", op: ir.OpAdd, want: true},
+		{name: "a binding", op: ir.OpIdent, want: false},
+		{name: "a return", op: ir.OpReturn, want: false},
+		{name: "opening a scope", op: ir.OpBeginScope, want: false},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := IsAssociativeOperator(tc.op)
-			if got != tc.want {
-				t.Errorf("IsAssociativeOperator(0x%02x) = %v, want %v", tc.op, got, tc.want)
+			if got := produces(tc.op); got != tc.want {
+				t.Errorf("produces(0x%02x) = %v, want %v", tc.op, got, tc.want)
 			}
 		})
 	}
@@ -251,7 +229,7 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
-			got := ResolveOperandsOrder(insts)
+			got := ResolveOperandsOrder(insts, 0)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("\ngot =\n%v \nwant =\n%v", ir.Format(got), ir.Format(tc.want))
 			}
@@ -296,7 +274,7 @@ func TestLowering(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Lowering(tc.insts)
+			got := Lowering(tc.insts, 0)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("Lowering(%v) = %v, want %v", tc.insts, got, tc.want)
 			}

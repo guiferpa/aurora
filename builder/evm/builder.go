@@ -68,7 +68,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 		return nil, cursor, false
 	}
 	body := b.insts[cursor+1 : end]
-	body = Lowering(body)
+	body = Lowering(body, b.tapeSize)
 
 	// Emit EVM bytecode for the defer body (OpBeginScope, ...exprs..., OpReturn).
 	code := bytes.NewBuffer(make([]byte, 0))
@@ -115,7 +115,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	}
 
 	if len(rootinsts) > 0 {
-		rootinsts = Lowering(rootinsts)
+		rootinsts = Lowering(rootinsts, b.tapeSize)
 		root := bytes.NewBuffer(make([]byte, 0))
 		if _, err := WriteCode(root, b.identManager, rootinsts, b.tapeSize); err != nil {
 			return nil, err

@@ -204,3 +204,43 @@ func TestArithmeticWrapsAtTheTapeWidthOnBothSides(t *testing.T) {
 		})
 	}
 }
+
+// A name bound inside a scope, which is what a body of more than one line is made of.
+//
+// It compiled before this and answered nothing: the lowering handed values to arithmetic and
+// to a return and to nothing else, so the one the binding meant to store was never pushed and
+// its MSTORE ran on an empty stack. The contract deployed, the call succeeded, and the answer
+// came back empty — which reads as zero, and reads as nothing being wrong.
+func TestALocalInsideAScopeAnswersTheSameOnChainAndOff(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source string
+		args   []string
+	}{
+		{
+			name:   "read twice",
+			source: "ident area = defer {\n  ident side = feed(0);\n  side * side;\n};",
+			args:   []string{"5"},
+		},
+		{
+			name:   "two of them, and one reads the other",
+			source: "ident total = defer {\n  ident base = feed(0) + feed(1);\n  ident twice = base * 2;\n  twice + base;\n};",
+			args:   []string{"3", "4"},
+		},
+		{
+			name:   "one that nothing reads",
+			source: "ident area = defer {\n  ident unused = feed(1);\n  feed(0) * feed(0);\n};",
+			args:   []string{"6", "9"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, functionOf(tc.source), tc.args, 0)
+		})
+	}
+}
+
+// functionOf reads the name of the first scope a source binds, which is the one these call.
+func functionOf(source string) string {
+	name := strings.TrimPrefix(source, "ident ")
+	return strings.TrimSpace(name[:strings.Index(name, "=")])
+}

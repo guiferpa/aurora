@@ -347,6 +347,45 @@ printd area(Point{10, 20});   #- 200
 claim reads the wrong tapes, and reading past the end gives the neutral value rather than
 stopping the program — the same rule `head` and `feed` follow.
 
+### A shape coming back out
+
+The same crossing happens the other way. A scope that has to say two things — whether it
+worked and what it produced — says them as one run of tapes, and whoever called it names the
+shape to read them back:
+
+```aurora
+struct Result { failed, value };
+
+ident divide = defer {
+  if feed(1) equals 0 {
+    Result{1, 0};
+  } else {
+    Result{0, feed(0) / feed(1)};
+  };
+};
+
+ident r = divide(10, 2) as Result;
+printd r.failed;   #- 0
+printd r.value;    #- 5
+```
+
+Nothing about the scope says it answers with a `Result`, and nothing has to: the answer is a
+run of two tapes, and `as` names what they are. The claim is the caller's, the same way it is
+on the way in.
+
+The shape binds tighter than anything else, so a name in between is optional:
+
+```aurora
+struct Result { failed, value };
+ident make = defer { Result{1, 42}; };
+
+printd make() as Result.value;   #- 42
+```
+
+A struct does not cross a **module**, though — it is a way of naming the tapes of a run while
+one file is compiled, and it stays in the file that declared it. A scope imported from another
+module can answer with a run of tapes, and the file reading it has no name for their shape.
+
 ### What is an error
 
 Because the declaration exists to catch mistakes, these stop the compilation, with the line

@@ -134,3 +134,60 @@ func TestAOneCharacterReelFitsAField(t *testing.T) {
 		t.Errorf("printed %s, want \"97 1\"", got)
 	}
 }
+
+// A struct crossing a deferred scope, which is what a composite answer is made of: a scope
+// that has to say two things — whether it worked and what it produced — says them as one run
+// of tapes, and whoever called it reads them back by naming the shape.
+func TestAStructComesOutOfAScope(t *testing.T) {
+	const declaration = "struct Result { failed, value };\n"
+
+	cases := []struct {
+		name   string
+		source string
+		want   []string
+	}{
+		{
+			name:   "built inside and read outside",
+			source: declaration + "ident make = defer { Result{1, 42}; };\nident r = make() as Result;\nprintd r.failed;\nprintd r.value;",
+			want:   []string{"1", "42"},
+		},
+		{
+			name: "chosen by a branch",
+			source: declaration +
+				"ident divide = defer { if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; }; };\n" +
+				"ident ok = divide(10, 2) as Result;\nident bad = divide(10, 0) as Result;\n" +
+				"printd ok.failed;\nprintd ok.value;\nprintd bad.failed;",
+			want: []string{"0", "5", "1"},
+		},
+		{
+			// The shape binds tighter than anything, so it can be named and read through in
+			// one expression, without a name in between.
+			name:   "shaped and read in one expression",
+			source: declaration + "ident make = defer { Result{1, 42}; };\nprintd make() as Result.value;",
+			want:   []string{"42"},
+		},
+		{
+			name: "fed into another scope",
+			source: declaration +
+				"ident make = defer { Result{0, 7}; };\n" +
+				"ident twice = defer { ident r = feed(0) as Result; r.value * 2; };\n" +
+				"printd twice(make());",
+			want: []string{"14"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := output(t, tc.source, 0)
+			if len(got) != len(tc.want) {
+				t.Fatalf("printed %v, want %v", got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Errorf("printed %v, want %v", got, tc.want)
+					break
+				}
+			}
+		})
+	}
+}

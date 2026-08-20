@@ -99,7 +99,7 @@ Mental model: a cursor over the instruction slice plus a chain of `Environ` fram
 2. **Watch the instruction-count invariants** whenever you add or move emitted instructions near `OpIf`/`OpJump`/`OpDefer`.
 3. **Respect temp semantics**: one write, one read, same frame. If a value must survive, bind it to an ident or return it through `OpReturn`.
 4. **Tests**: `make test` (uses `tparse`; writes `coverage.out`), or `go test ./evaluator/... ./parser/...`. Evaluator tests are the de-facto integration suite (source → assert bytes) — the emitter has no direct unit tests. `parser/testutil.go` has AST comparison helpers. Add cases to `evaluator/evaluator_test.go` for any semantic change and to `builder/evm/*_test.go` for bytecode changes. `make lint` runs golangci-lint.
-5. **Keep the repo's style**: small focused packages, `NewXOptions` structs for constructors, interfaces named by the package's role, comments only where non-obvious. Commit messages follow `feat:` / `chore:`.
+5. **Keep the repo's style**: small focused packages, `NewXOptions` shapes for constructors, interfaces named by the package's role, comments only where non-obvious. Commit messages follow `feat:` / `chore:`.
 6. **Report drift explicitly.** When the code contradicts a doc, tell the user which is which and offer to fix the doc — don't silently follow either one.
 7. Don't touch `aurora.toml`'s `privkey` or run `deploy`/`call` against a network unless the user explicitly asks.
 

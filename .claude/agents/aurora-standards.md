@@ -18,7 +18,7 @@ The language proves itself in the **evaluator** and in the **REPL**, and the EVM
 
 **The backend is on stand-by** while the architecture lands. What it gained before stopping is the differential harness in `cli/evm_harness_test.go` — same source, compiled and deployed to an EVM in memory, called, and compared against the evaluator. A change to the backend that the harness does not cover is a change nobody can vouch for, which is why nothing is written there until the packages are where they belong.
 
-So: a new feature does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for. And the print builtins are **logs**: they do not compile to bytecode, by decision.
+So: a new feature does **not** need bytecode to be finished. `shape` and text-as-a-tape shipped without it, and that is the expectation, not a debt to apologise for. And the print builtins are **logs**: they do not compile to bytecode, by decision.
 
 ## The architecture
 

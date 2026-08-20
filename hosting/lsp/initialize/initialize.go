@@ -67,7 +67,7 @@ func NewResponse(id int) InitializeResponse {
 				TextDocumentSync: 1,
 				HoverProvider:    true,
 				// The dot is declared as a trigger so a client asks for completion the
-				// moment someone types it — which is when the fields of a struct are
+				// moment someone types it — which is when the fields of a shape are
 				// what they want, and the only moment the document does not parse.
 				CompletionProvider: map[string]any{
 					"triggerCharacters": []string{"."},

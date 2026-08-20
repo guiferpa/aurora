@@ -8,10 +8,10 @@
 
 | Capability | Method | What you get |
 |---|---|---|
-| **Semantic tokens** | `textDocument/semanticTokens/full` | Coloring for keywords, numbers, text, comments, operators, identifiers, calls, structs and fields |
+| **Semantic tokens** | `textDocument/semanticTokens/full` | Coloring for keywords, numbers, text, comments, operators, identifiers, calls, shapes and fields |
 | **Diagnostics** | `textDocument/publishDiagnostics` | Lexer and parser errors underlined where they happen, republished on every change |
-| **Hover** | `textDocument/hover` | The description of the keyword under the cursor, what an identifier was bound to, a struct's fields, or which tape a field reads |
-| **Completion** | `textDocument/completion` | Keywords as snippets, the identifiers and structs declared in the document, and — right after a `.` — the fields of a struct or what a module offers |
+| **Hover** | `textDocument/hover` | The description of the keyword under the cursor, what an identifier was bound to, a shape's fields, or which tape a field reads |
+| **Completion** | `textDocument/completion` | Keywords as snippets, the identifiers and shapes declared in the document, and — right after a `.` — the fields of a shape or what a module offers |
 
 Document sync is **full** (`textDocumentSync: 1`): the client resends the whole file on each change.
 
@@ -19,31 +19,31 @@ Document sync is **full** (`textDocumentSync: 1`): the client resends the whole 
 
 Three things come back, depending on where the cursor is.
 
-**Right after a dot on a value**, the fields of that struct and nothing else. The shape comes
+**Right after a dot on a value**, the fields of that shape and nothing else. The shape comes
 from what was declared — `ident p = Point{...}`, `... as Point`, or a call to a scope that
 promised with `returns` — read straight from the tokens rather than from the tree, because a
 document being edited hardly ever parses: the moment someone types `p.` there is no field name
 yet, and that is exactly when completion is wanted. The dot is declared as a trigger character,
 so the client asks on its own.
 
-The struct does not have to be declared here. What the imported modules offer is written down
-first — their structs, and what their scopes promised — under the alias this file gave them, so
+The shape does not have to be declared here. What the imported modules offer is written down
+first — their shapes, and what their scopes promised — under the alias this file gave them, so
 `ident s = g.new_square(4, 5);` is enough for `s.` to answer with `width` and `height`. That is
 the same table the parser fills, read the same way.
 
 **Right after a dot on a module alias**, what that module offers: the names it binds with
-`ident`, each described by what it is, and the structs it declares, each with its fields. A
+`ident`, each described by what it is, and the shapes it declares, each with its fields. A
 module that could not be found offers nothing rather than everything — the diagnostic already
 says it is missing.
 
-**Everywhere else**, the keywords and whatever the document declares. A declared struct comes
+**Everywhere else**, the keywords and whatever the document declares. A declared shape comes
 back as a way of building one, with its own field names as the places to fill in:
 
 ```
-struct Point { x, y };   ->   Point{${1:x}, ${2:y}}
+shape Point { x, y };   ->   Point{${1:x}, ${2:y}}
 ```
 
-A struct of an imported module comes back the same way, under the name this file has to write
+A shape of an imported module comes back the same way, under the name this file has to write
 it with: `g.Square{${1:width}, ${2:height}}`.
 
 **Keywords expand into their shape**, for the forms that have one to get wrong:
@@ -54,7 +54,7 @@ it with: `g.Square{${1:width}, ${2:height}}`.
 | `ident` | `ident name = value;` |
 | `if` | `if condition {` … `}` |
 | `branch` | `branch {` test`:` value`,` fallback`; }` |
-| `struct` | `struct Name { field };` |
+| `shape` | `shape Name { field };` |
 | `assert` | `assert(condition, "message");` |
 | `printb` `printc` `printd` | `printb value;` |
 | `feed` | `feed(0)` |
@@ -70,7 +70,7 @@ they are, so that client gets the bare keyword.
 
 - The parser stops at the first error, so **one diagnostic per pass**. Fix it and the next one appears.
 - No go-to-definition, no code actions, no formatting, no incremental sync.
-- Semantic token types are decided lexically. A call is anything followed by `(`, a struct anything after `struct` or `as`, a field anything after `.`.
+- Semantic token types are decided lexically. A call is anything followed by `(`, a shape anything after `shape` or `as`, a field anything after `.`.
 
 ---
 

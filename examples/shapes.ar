@@ -1,15 +1,15 @@
-#- Structs
+#- Shapes
 #-
-#- A struct groups values by giving names to the tapes of a run. It is not a new
+#- A shape groups values by giving names to the tapes of a run. It is not a new
 #- kind of value: Point{10, 20} is two tapes laid end to end, and nothing in it
-#- says a struct built it. There is no header, no length and no tag.
+#- says a shape built it. There is no header, no length and no tag.
 #-
-#- So `struct` and `as` are directives for whoever writes the source. They let
+#- So `shape` and `as` are directives for whoever writes the source. They let
 #- the compiler turn a name into an index, point at a mistake where it was
 #- written, and tell the editor what is there — and then they are gone. Nothing
 #- about them reaches the compiled program.
 #-
-#- Run: aurora run examples/structs.ar
+#- Run: aurora run examples/shapes.ar
 #-
 #- Output:
 #-   10
@@ -25,7 +25,7 @@
 #-   5
 #-   1
 
-struct Point { x, y };
+shape Point { x, y };
 
 ident p = Point{10, 20};
 
@@ -34,7 +34,7 @@ printd p.x;
 printd p.y;
 
 #- The value itself is the run, and printd walks tapes without being told
-#- anything about structs.
+#- anything about shapes.
 printd p;
 printb p;
 
@@ -52,9 +52,9 @@ printd area(Point{10, 20});
 ident twice = defer { (feed(0) as Point).y * 2; };
 printd twice(Point{3, 7});
 
-#- Two structs of the same width are the same value. There is nothing in a run
-#- of tapes that says which struct built it.
-struct Pair { a, b };
+#- Two shapes of the same width are the same value. There is nothing in a run
+#- of tapes that says which shape built it.
+shape Pair { a, b };
 printd Point{1, 2} equals Pair{1, 2};
 
 #- A field is a tape, and text is a tape, so text goes in a field like anything
@@ -74,7 +74,7 @@ printd single.y;
 #-
 #- What it buys is the other end: a call to a scope that promised has a shape,
 #- so nobody has to claim one at every call site.
-struct Result { failed, value };
+shape Result { failed, value };
 
 ident divide = defer {
   if feed(1) equals 0 {

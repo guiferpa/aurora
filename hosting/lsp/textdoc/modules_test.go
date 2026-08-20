@@ -98,10 +98,10 @@ func TestCompletionAfterAModuleDot(t *testing.T) {
 	}
 }
 
-// A struct still answers with its fields after a dot, which is the other reader of the same
+// A shape still answers with its fields after a dot, which is the other reader of the same
 // question.
-func TestCompletionAfterAStructDotStillWorks(t *testing.T) {
-	source := "struct Point { x, y };\nident p = Point{1, 2};\nprintd p.\n"
+func TestCompletionAfterAShapeDotStillWorks(t *testing.T) {
+	source := "shape Point { x, y };\nident p = Point{1, 2};\nprintd p.\n"
 	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 2, Character: 9}, false)
 
 	if len(items) != 2 {
@@ -294,11 +294,11 @@ func TestWithoutThePortNothingIsResolved(t *testing.T) {
 	}
 }
 
-// A module's structs are offered after the dot too, now that they can be written: built,
+// A module's shapes are offered after the dot too, now that they can be written: built,
 // claimed with as, or promised with returns.
-func TestTheEditorOffersAModuleStructs(t *testing.T) {
+func TestTheEditorOffersAModuleShapes(t *testing.T) {
 	session := withModuleFiles(map[string]string{
-		"src/geometry.ar": "struct Square { width, height };\nident area = defer { feed(0); };",
+		"src/geometry.ar": "shape Square { width, height };\nident area = defer { feed(0); };",
 	})
 	items := session.CompletionItemsFor(Document{
 		Filename: "src/main.ar",
@@ -311,10 +311,10 @@ func TestTheEditorOffersAModuleStructs(t *testing.T) {
 	}
 	shape, offered := found["Square"]
 	if !offered {
-		t.Fatalf("the struct was not offered: %+v", items)
+		t.Fatalf("the shape was not offered: %+v", items)
 	}
 	if shape.Kind != Struct {
-		t.Errorf("Square is offered as kind %d, want a struct", shape.Kind)
+		t.Errorf("Square is offered as kind %d, want a shape", shape.Kind)
 	}
 	if !strings.Contains(shape.Detail, "width, height") {
 		t.Errorf("Square is described as %q, want its fields", shape.Detail)
@@ -328,7 +328,7 @@ func TestTheEditorOffersAModuleStructs(t *testing.T) {
 // is the whole point of the shape crossing: however the name got it — built here, claimed
 // with as, or promised by the scope that answered.
 func TestCompletionOnAShapeFromAnotherModule(t *testing.T) {
-	const geometry = "struct Square { width, height };\n" +
+	const geometry = "shape Square { width, height };\n" +
 		"ident new_square = defer { Square{feed(0), feed(1)}; } returns Square;\n" +
 		"ident area = defer { feed(0) * feed(1); };"
 
@@ -380,7 +380,7 @@ func TestCompletionOnAShapeFromAnotherModule(t *testing.T) {
 // A name with no shape offers the ordinary list, as it did before any of this: a module is
 // read to answer more, never to answer wrongly.
 func TestCompletionOnANameWithNoShape(t *testing.T) {
-	session := withModuleFiles(map[string]string{"src/geometry.ar": "struct Square { width, height };"})
+	session := withModuleFiles(map[string]string{"src/geometry.ar": "shape Square { width, height };"})
 	items := session.CompletionItemsFor(Document{
 		Filename: "src/main.ar",
 		Source:   "use geometry as g;\nident n = 1;\nprintd n.",
@@ -388,7 +388,7 @@ func TestCompletionOnANameWithNoShape(t *testing.T) {
 
 	for _, item := range items {
 		if item.Label == "width" {
-			t.Fatalf("offered the fields of a struct nothing said this name is: %+v", items)
+			t.Fatalf("offered the fields of a shape nothing said this name is: %+v", items)
 		}
 	}
 }
@@ -396,7 +396,7 @@ func TestCompletionOnANameWithNoShape(t *testing.T) {
 // Hover reads the imported shape too, so a field of it says where it comes from and which
 // tape it reads.
 func TestHoverOnAFieldOfAnImportedShape(t *testing.T) {
-	session := withModuleFiles(map[string]string{"src/geometry.ar": "struct Square { width, height };"})
+	session := withModuleFiles(map[string]string{"src/geometry.ar": "shape Square { width, height };"})
 	got := session.HoverInfo(Document{
 		Filename: "src/main.ar",
 		Source:   "use geometry as g;\nident s = g.Square{4, 5};\nprintd s.height;",
@@ -409,10 +409,10 @@ func TestHoverOnAFieldOfAnImportedShape(t *testing.T) {
 	}
 }
 
-// Away from any dot, a module's struct is offered as a way of building one — under the name
+// Away from any dot, a module's shape is offered as a way of building one — under the name
 // this file has to write it with, since that is the only name that would compile.
-func TestAModuleStructIsOfferedAsASnippet(t *testing.T) {
-	session := withModuleFiles(map[string]string{"src/geometry.ar": "struct Square { width, height };"})
+func TestAModuleShapeIsOfferedAsASnippet(t *testing.T) {
+	session := withModuleFiles(map[string]string{"src/geometry.ar": "shape Square { width, height };"})
 	items := session.CompletionItemsFor(Document{
 		Filename: "src/main.ar",
 		Source:   "use geometry as g;\nident s = ",
@@ -427,5 +427,5 @@ func TestAModuleStructIsOfferedAsASnippet(t *testing.T) {
 		}
 		return
 	}
-	t.Errorf("the struct of the module was not offered: %+v", items)
+	t.Errorf("the shape of the module was not offered: %+v", items)
 }

@@ -74,7 +74,7 @@ not a special case for its own sake: it is what keeps every program that existed
 compiling to the same instructions, the language server and the REPL included, since a file
 compiled on its own is nobody's module.
 
-**A `struct` is left out of all of this.** Its name never reaches an instruction and never
+**A `shape` is left out of all of this.** Its name never reaches an instruction and never
 leaves the file, so it is looked up and reported as it was typed while everything around it is
 renamed.
 
@@ -154,10 +154,10 @@ precedent.
 
 It loses to the premise. **A name bound by `ident` holds a tape**, and a module has no bytes and
 no width. Worse, the form promises what it cannot give: bound that way, `m` should print, pass
-to a `defer` and sit in a struct field, and each of those becomes a surprise rather than an
-ordinary error. The language already separates the two — `ident x = 10;` binds, `struct Point
+to a `defer` and sit in a shape field, and each of those becomes a surprise rather than an
+ordinary error. The language already separates the two — `ident x = 10;` binds, `shape Point
 { x, y };` declares, and `Point` is a name you use and cannot print. **An import is the sibling
-of `struct`, not of `ident`.**
+of `shape`, not of `ident`.**
 
 There is a variant that saves the premise: `m` holding an index into a table of modules, the way
 a `defer` holds one. The storage half works. The access half is new machinery — `m.add` would

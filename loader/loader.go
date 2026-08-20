@@ -20,7 +20,7 @@ import (
 // Exports is what a module offers whoever imports it: the names it binds with ident at the
 // top of the file, in the order it binds them, as they were typed.
 //
-// A struct is not among them, because a struct does not cross a module. Neither is anything
+// A shape is not among them, because a shape does not cross a module. Neither is anything
 // bound inside a block or a deferred body: that lives in an environ which does not exist
 // until the body runs. A defer needs no special case at all — its value is its index, as a
 // tape, so it is already what an ident binds.

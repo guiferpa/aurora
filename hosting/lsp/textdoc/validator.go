@@ -223,14 +223,14 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 		if info := aliases.describe(analysis.Tokens, tk); info != "" {
 			return info + describeExport(analysis, tk)
 		}
-		// A struct name or a field read out of one: the declaration is what says these are
+		// A shape name or a field read out of one: the declaration is what says these are
 		// anything other than a name, so it is what hover has to answer with. The declaration
 		// may be in another file, which is why the imports are read here too.
-		if shape, fields, index := shapesOf(analysis, aliases).structAt(analysis.Tokens, tk); shape != "" {
+		if shape, fields, index := shapesOf(analysis, aliases).shapeAt(analysis.Tokens, tk); shape != "" {
 			if index < 0 {
-				return "struct " + shape + "\nfields: " + strings.Join(fields, ", ")
+				return "shape " + shape + "\nfields: " + strings.Join(fields, ", ")
 			}
-			return "field " + match + " of struct " + shape + "\nreads tape " + strconv.Itoa(index) + " of the run"
+			return "field " + match + " of shape " + shape + "\nreads tape " + strconv.Itoa(index) + " of the run"
 		}
 		if analysis.AST == nil {
 			return "identifier: " + match
@@ -246,7 +246,7 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 
 // CompletionItemsFor offers the language keywords plus the identifiers declared in the
 // document being edited — or, right after a dot on a value with a known shape, the fields
-// of that struct and nothing else.
+// of that shape and nothing else.
 //
 // It takes a position for that last case: what to offer depends on what sits in front of
 // the cursor, and a document being edited usually does not parse.
@@ -263,7 +263,7 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 	}
 
 	// After a dot on a module alias, what can follow is what that module declared, and
-	// nothing else — the same rule as a struct's fields, answered from another file.
+	// nothing else — the same rule as a shape's fields, answered from another file.
 	if specifier, isModule := aliases.moduleBefore(analysis.Tokens, offset); isModule {
 		return exportCompletions(analysis, specifier)
 	}
@@ -272,7 +272,7 @@ func (s *Session) CompletionItemsFor(doc Document, pos lsp.Position, snippets bo
 	for _, tag := range token.GetProcessableTags() {
 		items = append(items, keywordCompletion(tag, snippets))
 	}
-	items = append(items, structCompletions(shapes, snippets)...)
+	items = append(items, shapeCompletions(shapes, snippets)...)
 	items = append(items, moduleCompletions(aliases)...)
 
 	if analysis.AST == nil {

@@ -26,7 +26,7 @@ called, and compared against the evaluator — so whatever is written next is pr
 than believed. What it proves today is arithmetic over arguments, across a dispatcher, at any
 tape width.
 
-A feature still does **not** need bytecode to be finished. `struct` and text-as-a-tape shipped
+A feature still does **not** need bytecode to be finished. `shape` and text-as-a-tape shipped
 without it.
 
 **The print builtins are logs, not contract instructions**, and do not compile to bytecode.

@@ -7,8 +7,8 @@ import (
 	"github.com/guiferpa/aurora/hosting/lsp"
 )
 
-const structSource = `struct Point { x, y };
-struct Named { label, value };
+const shapeSource = `shape Point { x, y };
+shape Named { label, value };
 
 ident p = Point{10, 20};
 ident n = feed(0) as Named;
@@ -25,19 +25,19 @@ func TestCompletionAfterADotOffersTheFields(t *testing.T) {
 	}{
 		{
 			name:   "a name built from a construction",
-			source: structSource + "p.",
+			source: shapeSource + "p.",
 			pos:    lsp.Position{Line: 5, Character: 2},
 			want:   []string{"x", "y"},
 		},
 		{
 			name:   "a name given a shape with as",
-			source: structSource + "n.",
+			source: shapeSource + "n.",
 			pos:    lsp.Position{Line: 5, Character: 2},
 			want:   []string{"label", "value"},
 		},
 		{
 			name:   "halfway through typing the field",
-			source: structSource + "p.x",
+			source: shapeSource + "p.x",
 			pos:    lsp.Position{Line: 5, Character: 3},
 			want:   []string{"x", "y"},
 		},
@@ -64,7 +64,7 @@ func TestCompletionAfterADotOffersTheFields(t *testing.T) {
 // A document being edited hardly ever parses — `p.` on its own does not — and that is
 // exactly when completion is asked for. The fields come from the tokens for that reason.
 func TestCompletionAfterADotWorksWhileBroken(t *testing.T) {
-	source := structSource + "printd p."
+	source := shapeSource + "printd p."
 	if diagnostics := session().ValidateCode(Document{Filename: "main.ar", Source: source}); len(diagnostics) == 0 {
 		t.Fatal("this source is supposed not to parse; the test is about that")
 	}
@@ -77,7 +77,7 @@ func TestCompletionAfterADotWorksWhileBroken(t *testing.T) {
 
 // Anywhere else the ordinary list is what comes back.
 func TestCompletionAwayFromADotIsUnchanged(t *testing.T) {
-	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: structSource}, lsp.Position{Line: 5, Character: 0}, false)
+	items := session().CompletionItemsFor(Document{Filename: "main.ar", Source: shapeSource}, lsp.Position{Line: 5, Character: 0}, false)
 
 	var hasKeyword bool
 	for _, item := range items {
@@ -94,19 +94,19 @@ func TestCompletionAwayFromADotIsUnchanged(t *testing.T) {
 }
 
 // Hover is the other half: what the fields are, and which tape one of them reads.
-func TestHoverDescribesStructsAndFields(t *testing.T) {
+func TestHoverDescribesShapesAndFields(t *testing.T) {
 	cases := []struct {
 		name string
 		pos  lsp.Position
 		want string
 	}{
-		{name: "the struct in its declaration", pos: lsp.Position{Line: 0, Character: 8}, want: "fields: x, y"},
-		{name: "the struct named by as", pos: lsp.Position{Line: 4, Character: 21}, want: "fields: label, value"},
+		{name: "the shape in its declaration", pos: lsp.Position{Line: 0, Character: 8}, want: "fields: x, y"},
+		{name: "the shape named by as", pos: lsp.Position{Line: 4, Character: 21}, want: "fields: label, value"},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := session().HoverInfo(Document{Filename: "main.ar", Source: structSource}, tc.pos); !strings.Contains(got, tc.want) {
+			if got := session().HoverInfo(Document{Filename: "main.ar", Source: shapeSource}, tc.pos); !strings.Contains(got, tc.want) {
 				t.Errorf("hover = %q, want it to contain %q", got, tc.want)
 			}
 		})
@@ -114,23 +114,23 @@ func TestHoverDescribesStructsAndFields(t *testing.T) {
 }
 
 func TestHoverOnAFieldSaysWhichTapeItReads(t *testing.T) {
-	source := structSource + "printd p.y;"
+	source := shapeSource + "printd p.y;"
 	got := session().HoverInfo(Document{Filename: "main.ar", Source: source}, lsp.Position{Line: 5, Character: 9})
 
-	for _, want := range []string{"field y", "struct Point", "tape 1"} {
+	for _, want := range []string{"field y", "shape Point", "tape 1"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("hover = %q, want it to contain %q", got, want)
 		}
 	}
 }
 
-// struct and as colour as keywords, a field as a property, and the struct's own name as a
-// struct — the three places a name is not just a value.
-func TestSemanticTokensForStructs(t *testing.T) {
-	tokens := decode(session().SemanticTokensFor("struct Point { x, y };\nident p = Point{1, 2};\nprintd p.x;\n"))
+// shape and as colour as keywords, a field as a property, and the shape's own name as a
+// shape — the three places a name is not just a value.
+func TestSemanticTokensForShapes(t *testing.T) {
+	tokens := decode(session().SemanticTokensFor("shape Point { x, y };\nident p = Point{1, 2};\nprintd p.x;\n"))
 
-	// struct, then the name it declares, then the two fields it names.
-	want := []uint{SemanticKeyword, SemanticStruct, SemanticProperty, SemanticProperty}
+	// shape, then the name it declares, then the two fields it names.
+	want := []uint{SemanticKeyword, SemanticShape, SemanticProperty, SemanticProperty}
 	for i := range want {
 		if got := tokens[i].tokenType; got != want[i] {
 			t.Errorf("token %d is type %d, want %d", i, got, want[i])
@@ -142,7 +142,7 @@ func TestSemanticTokensForStructs(t *testing.T) {
 // edited does not parse, and the moment somebody types a dot is the moment they want to be
 // told what is there.
 func TestTheEditorReadsAPromise(t *testing.T) {
-	const source = "struct Result { failed, value };\n" +
+	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer {\n" +
 		"  if feed(1) equals 0 { Result{1, 0}; } else { Result{0, 1}; };\n" +
 		"} returns Result;\n" +
@@ -165,7 +165,7 @@ func TestTheEditorReadsAPromise(t *testing.T) {
 // And a scope that promised nothing gives the editor nothing, the same way it gives the
 // compiler nothing.
 func TestTheEditorReadsNoPromiseWhereThereIsNone(t *testing.T) {
-	const source = "struct Result { failed, value };\n" +
+	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer { Result{1, 0}; };\n" +
 		"ident r = divide(10, 2);\n" +
 		"printd r."
@@ -183,7 +183,7 @@ func TestTheEditorReadsNoPromiseWhereThereIsNone(t *testing.T) {
 // The body of a scope is another scope's business: a construction inside it says what that
 // scope answers with, not what the name being bound is.
 func TestABodyDoesNotShapeTheNameItIsBoundTo(t *testing.T) {
-	const source = "struct Result { failed, value };\n" +
+	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer { Result{1, 0}; };\n" +
 		"printd divide."
 
@@ -192,7 +192,7 @@ func TestABodyDoesNotShapeTheNameItIsBoundTo(t *testing.T) {
 
 	for _, item := range items {
 		if item.Label == "failed" || item.Label == "value" {
-			t.Errorf("offered %q: a deferred scope is not the struct its body builds", item.Label)
+			t.Errorf("offered %q: a deferred scope is not the shape its body builds", item.Label)
 		}
 	}
 }

@@ -180,7 +180,7 @@ type failure struct {
 // readAll reads and lexes every file of the module, and collects what they import.
 //
 // Reading and parsing are two steps because what a file imports has to be parsed before the
-// file itself: a shape is resolved while parsing, and a struct's name never leaves the file
+// file itself: a shape is resolved while parsing, and a shape's name never leaves the file
 // that declared it.
 func (s *Session) readAll(files []string) ([][]token.Token, []ast.UseDeclaration, *failure) {
 	chains := make([][]token.Token, 0, len(files))
@@ -218,7 +218,7 @@ func runRanges(ev *evaluator.Evaluator, program loader.Program) error {
 // parseAll parses every file of the module, with what they import in hand.
 //
 // They share one set of declarations, because they are one module written in two files: a
-// struct declared in the source is known in the test, and so is a module it brought in.
+// shape declared in the source is known in the test, and so is a module it brought in.
 func (s *Session) parseAll(files []string, chains [][]token.Token, imports map[string]ast.Offer) ([]ast.AST, *failure) {
 	declarations := parser.NewDeclarations()
 	trees := make([]ast.AST, 0, len(files))
@@ -273,7 +273,7 @@ func (s *Session) runTestFile(path string) FileReport {
 		return report
 	}
 
-	// The two files are one scope, so they are one set of declarations: a struct declared in
+	// The two files are one scope, so they are one set of declarations: a shape declared in
 	// the source is known in the test, and so is a module the source brought in. They are
 	// parsed apart because each keeps its own name — which is what decides that assert
 	// belongs to the test file — and its own line numbers.

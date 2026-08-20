@@ -29,7 +29,7 @@ parsing of anything.
 
 ### Building a value while the program runs
 
-A run of tapes exists only as a literal: a struct or a text. There is no concatenation, so
+A run of tapes exists only as a literal: a shape or a text. There is no concatenation, so
 nothing can be assembled — no joining text, no growing a list, no formatting a message.
 
 **Together these three are one piece of work**, and it is the largest one on this list. An
@@ -57,7 +57,7 @@ Two consequences behave badly enough to be bugs rather than design:
 ### Calling a scope held in a value
 
 `OpCall` resolves a **name** in the environ, not a value, so a deferred scope kept in a
-struct field cannot be called: `o.run()` does not even parse. A field can hold a scope's
+shape field cannot be called: `o.run()` does not even parse. A field can hold a scope's
 index — that works — and there is no way to apply values to it. Anything higher-order needs
 this.
 
@@ -73,14 +73,14 @@ is why it has that shape.
 
 What it does not do yet:
 
-- **There is no `private` for a shape either.** Every struct a module declares is reachable
+- **There is no `private` for a shape either.** Every shape a module declares is reachable
   as `m.Point`, the same way everything it binds is. Marking part of it later breaks nothing.
 - **There is no `private`.** A module offers everything it binds with `ident` at the top. The
   boundary exists now, so marking part of it later breaks nothing.
 - **The language server follows an import, and stops short of two things.** It reads what a
   document imports on every pass, from the editor's buffers before the disk, so a module that
   is not there and a name a module does not have are underlined where they were written, and
-  what a module declared is offered after the dot — its structs included, and the fields of a
+  what a module declared is offered after the dot — its shapes included, and the fields of a
   name whose shape came from another file, because what the imports offer is written down
   before the document is read. What it does not do is go to a definition
   in another file — no `textDocument/definition` exists for anything yet — and it does not
@@ -114,10 +114,10 @@ everything below is not.
 The gap is wider than it looks, and it is silent, which is the dangerous part: a contract
 using any of the following **compiles successfully and does nothing on chain**.
 
-- `if`, `jump`, `call`, `assert`, the tape operations, and the struct instructions (`OpJoin`,
+- `if`, `jump`, `call`, `assert`, the tape operations, and the shape instructions (`OpJoin`,
   `OpField`) produce no bytecode at all. `WriteCode` covers arithmetic, `OpSave`, `OpIdent`,
   `OpLoad`, `OpGetFeed` and `OpReturn`. They are not refusals — a tape is at most 32 bytes and
-  an EVM word is exactly 32, a struct is a run of words in memory, and a call is a jump with a
+  an EVM word is exactly 32, a shape is a run of words in memory, and a call is a jump with a
   return address. They are simply not written yet.
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.

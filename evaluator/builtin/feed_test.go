@@ -56,8 +56,8 @@ func TestFeedFunctionWithNothingApplied(t *testing.T) {
 	}
 }
 
-// A value wider than a tape is a run of them — a reel, or a struct — and feed hands it over
-// whole. It used to narrow every read to a single tape, which cut a struct down to its last
+// A value wider than a tape is a run of them — a reel, or a shape — and feed hands it over
+// whole. It used to narrow every read to a single tape, which cut a shape down to its last
 // field: `defer { (feed(0) as Point).x }` answered with y.
 //
 // The narrowing that command-line arguments need is not gone, it lives where those arguments

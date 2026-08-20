@@ -4,586 +4,227 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// These tests are about the shape of the tree, which nothing else checks. The evaluator
-// suite runs source and compares bytes, so a node built with the wrong field passes there
-// as long as the answer comes out right.
-
-// parse compiles source and returns the top-level nodes.
-func parse(t *testing.T, source string) []ast.Node {
-	t.Helper()
-	tree, err := parseSource(t, source, "main.ar")
-	if err != nil {
-		t.Fatalf("parsing %q: %v", source, err)
-	}
-	return tree.Nodes
-}
-
-func parseSource(t *testing.T, source, filename string) (ast.AST, error) {
-	t.Helper()
-	tokens, err := lexer.New().GetFilledTokens([]byte(source))
-	if err != nil {
-		return ast.AST{}, err
-	}
-	return New().Parse(ParseInput{Filename: filename, Tokens: tokens})
-}
-
-// first returns the single top-level node, asserting the type.
-func first[T ast.Node](t *testing.T, source string) T {
-	t.Helper()
-	nodes := parse(t, source)
-	if len(nodes) != 1 {
-		t.Fatalf("%q produced %d nodes, want 1", source, len(nodes))
-	}
-	node, ok := nodes[0].(T)
-	if !ok {
-		var want T
-		t.Fatalf("%q produced %T, want %T", source, nodes[0], want)
-	}
-	return node
-}
-
-func TestParseIdentShape(t *testing.T) {
-	ident := first[ast.IdentLiteral](t, "ident total = 42;")
-
-	if ident.Id != "total" {
-		t.Errorf("id = %q, want total", ident.Id)
-	}
-	number, ok := ident.Value.(ast.NumberLiteral)
-	if !ok {
-		t.Fatalf("value is %T, want NumberLiteral", ident.Value)
-	}
-	if number.Value != 42 {
-		t.Errorf("value = %d, want 42", number.Value)
-	}
-}
-
-func TestParseNumberShape(t *testing.T) {
+// Reading a field is resolved while parsing: the name becomes the index it was declared at,
+// and the tree carries the index.
+func TestFieldResolvesToItsIndex(t *testing.T) {
 	cases := []struct {
 		source string
 		want   uint64
 	}{
-		{source: "7;", want: 7},
-		{source: "1_000;", want: 1000},
-		{source: "0xFF;", want: 255},
-		{source: "0XFF;", want: 255},
-		{source: "0x1A2B;", want: 6699},
+		{source: "shape Point { x, y };\nident p = Point{1, 2};\np.x;", want: 0},
+		{source: "shape Point { x, y };\nident p = Point{1, 2};\np.y;", want: 1},
+		{source: "shape Row { a, b, c };\nident r = Row{1, 2, 3};\nr.c;", want: 2},
+		// The shape can come from the annotation instead of from a construction.
+		{source: "shape Point { x, y };\nident p = feed(0) as Point;\np.y;", want: 1},
+		// And it does not need a name at all.
+		{source: "shape Point { x, y };\n(feed(0) as Point).y;", want: 1},
 	}
+
 	for _, tc := range cases {
 		t.Run(tc.source, func(t *testing.T) {
-			if got := first[ast.NumberLiteral](t, tc.source); got.Value != tc.want {
-				t.Errorf("value = %d, want %d", got.Value, tc.want)
+			nodes := parse(t, tc.source)
+			field, ok := nodes[len(nodes)-1].(ast.FieldExpression)
+			if !ok {
+				t.Fatalf("last node is %T, want a FieldExpression", nodes[len(nodes)-1])
+			}
+			if field.Index != tc.want {
+				t.Errorf("index = %d, want %d", field.Index, tc.want)
 			}
 		})
 	}
 }
 
-func TestParseBooleanShape(t *testing.T) {
-	truth := first[ast.BooleanLiteral](t, "true;")
-	if want := byteutil.TrueTape(byteutil.DefaultTapeSize); string(truth.Value) != string(want) {
-		t.Errorf("true = %v, want %v", truth.Value, want)
+// Pointing at a mistake where it was written is what the declaration is for, so these are the
+// cases that justify having one at all. Every error carries a position, which is what puts
+// the squiggle under the right word in an editor.
+func TestShapeDeclarationReportsMistakes(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "field that does not exist",
+			source: "shape Point { x, y };\nident p = Point{1, 2};\np.z;",
+			want:   "shape Point has no field named z",
+		},
+		{
+			name:   "value with no shape",
+			source: "shape Point { x, y };\nident p = 1;\np.x;",
+			want:   "nothing says which shape this value is",
+		},
+		{
+			name:   "too few values",
+			source: "shape Point { x, y };\nPoint{1};",
+			want:   "shape Point has 2 fields (x, y) but got 1",
+		},
+		{
+			name:   "too many values",
+			source: "shape Point { x, y };\nPoint{1, 2, 3};",
+			want:   "but got 3",
+		},
+		{
+			name:   "field declared twice",
+			source: "shape Point { x, x };",
+			want:   "already has a field named x",
+		},
+		{
+			name:   "a name that does not start with a capital",
+			source: "shape person { name };",
+			want:   "shape person must start with a capital letter",
+		},
+		{
+			name:   "shape declared twice",
+			source: "shape Point { x, y };\nshape Point { a, b };",
+			want:   "shape Point is already declared",
+		},
+		{
+			name:   "no fields at all",
+			source: "shape Empty { };",
+			want:   "shape Empty has no fields",
+		},
+		{
+			name:   "shape that was never declared",
+			source: "shape Point { x, y };\nident p = 1 as Vector;",
+			want:   "Vector is not a declared shape",
+		},
 	}
 
-	lie := first[ast.BooleanLiteral](t, "false;")
-	if want := byteutil.FalseTape(byteutil.DefaultTapeSize); string(lie.Value) != string(want) {
-		t.Errorf("false = %v, want %v", lie.Value, want)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := parseSource(t, tc.source, "main.ar")
+			if err == nil {
+				t.Fatal("expected a compile error")
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("error = %q, want it to say %q", err, tc.want)
+			}
+			positioned, ok := err.(*token.Error)
+			if !ok {
+				t.Fatalf("error is %T, want a positioned *token.Error", err)
+			}
+			if positioned.Line == 0 || positioned.Column == 0 {
+				t.Errorf("error has no position: line %d, column %d", positioned.Line, positioned.Column)
+			}
+		})
 	}
 }
 
-// Text is one more way of writing a tape: its bytes, right aligned, like every other value.
-func TestParseTextShape(t *testing.T) {
-	text := first[ast.TextLiteral](t, `"hi";`)
+// A field is one tape wide, so it is never a shape itself and reading a field of a field
+// has no shape to work from.
+// The capital belongs to the shape's name and to nothing else: a field is read out of a value
+// and a value is bound to whatever name its author likes, both of them lowercase here.
+func TestOnlyTheShapeNameIsCapitalized(t *testing.T) {
+	nodes := parse(t, "shape Point { x, y };\nident p = Point{1, 2};\np.y;")
 
-	want := byteutil.PaddingTape([]byte("hi"), byteutil.DefaultTapeSize)
-	if string(text.Value) != string(want) {
-		t.Errorf(`"hi" = %v, want %v`, text.Value, want)
+	declaration, ok := nodes[0].(ast.ShapeDeclaration)
+	if !ok {
+		t.Fatalf("first node is %T, want a shape declaration", nodes[0])
 	}
-
-	// Which makes a text of one character the same tape as its number.
-	one := first[ast.TextLiteral](t, `"a";`)
-	if string(one.Value) != string(byteutil.PaddingTape([]byte{97}, byteutil.DefaultTapeSize)) {
-		t.Errorf(`"a" = %v, want the tape holding 97`, one.Value)
-	}
-
-	// An empty text is no bytes, which is the neutral value.
-	empty := first[ast.TextLiteral](t, `"";`)
-	if string(empty.Value) != string(byteutil.FalseTape(byteutil.DefaultTapeSize)) {
-		t.Errorf(`"" = %v, want a tape of zeros`, empty.Value)
+	if declaration.Name != "Point" || declaration.Fields[1] != "y" {
+		t.Errorf("declared %s%v, want Point with x and y", declaration.Name, declaration.Fields)
 	}
 }
 
-// A tape holds tape_size bytes, so text longer than that is rejected where it was written —
-// the same rule a number literal that does not fit follows.
-func TestTextLongerThanATapeIsRejected(t *testing.T) {
-	_, err := parseSource(t, `"123456789";`, "main.ar")
+func TestFieldOfAFieldHasNoShape(t *testing.T) {
+	_, err := parseSource(t, "shape Point { x, y };\nident p = Point{1, 2};\np.x.y;", "main.ar")
 	if err == nil {
 		t.Fatal("expected a compile error")
+	}
+	if !strings.Contains(err.Error(), "nothing says which shape this value is") {
+		t.Errorf("error = %q", err)
+	}
+}
+
+// The declaration says nothing about how a value is built, so a name bound to a shape can be
+// used as an ordinary value everywhere else.
+func TestShapeNameIsOnlyADeclaration(t *testing.T) {
+	for _, source := range []string{
+		"shape Point { x, y };\nident p = Point{1, 2};\nprintd p + 1;",
+		"shape Point { x, y };\nprintd Point{1, 2} equals Point{1, 2};",
+		"shape Point { x, y };\nident p = Point{1, 2};\nident q = p;\nprintd q.y;",
+	} {
+		if _, err := parseSource(t, source, "main.ar"); err != nil {
+			t.Errorf("parsing %q: %v", source, err)
+		}
+	}
+}
+
+// Braces build the value, as in Go. Parentheses could not: `Point(1, 2)` and `greet(1, 2)`
+// are the same shape, so telling them apart needed the declaration; `Point{1, 2}` does not.
+func TestConstructionUsesBraces(t *testing.T) {
+	nodes := parse(t, "shape Point { x, y };\nPoint{1, 2};")
+	if _, ok := nodes[1].(ast.ShapeLiteral); !ok {
+		t.Errorf("Point{1, 2} parsed as %T, want a ShapeLiteral", nodes[1])
+	}
+
+	// A brace after a name is only a construction when a shape declared that name, or
+	// `if flag { ... }` would stop parsing.
+	if _, err := parseSource(t, "ident flag = true;\nif flag { 1; };", "main.ar"); err != nil {
+		t.Errorf("an if on a plain name: %v", err)
+	}
+
+	// Parentheses still apply values to a scope.
+	nodes = parse(t, "ident greet = defer { 1; };\ngreet();")
+	if _, ok := nodes[1].(ast.CalleeLiteral); !ok {
+		t.Errorf("greet() parsed as %T, want a CalleeLiteral", nodes[1])
+	}
+}
+
+// A shape name is a declaration, not a value: there is nothing to load under it. The error
+// says how to build one instead, which is what someone reaching for it wanted.
+func TestShapeNameIsNotAValue(t *testing.T) {
+	_, err := parseSource(t, "shape Point { x, y };\nPoint;", "main.ar")
+	if err == nil {
+		t.Fatal("expected a compile error")
+	}
+	if !strings.Contains(err.Error(), "Point is a shape") || !strings.Contains(err.Error(), "Point{...}") {
+		t.Errorf("error = %q, want it to say Point is a shape and how to build one", err)
+	}
+}
+
+// A field is one tape wide and text is a tape, so text goes in a field like anything else.
+// What limits it is the width of a tape, and that is reported where the text was written.
+func TestTextInAField(t *testing.T) {
+	if _, err := parseSource(t, "shape Person { name, age };\nident p = Person{\"Gui\", 20};", "main.ar"); err != nil {
+		t.Errorf("text that fits a tape: %v", err)
+	}
+
+	_, err := parseSource(t, "shape Person { name, age };\nident p = Person{\"Guilherme\", 20};", "main.ar")
+	if err == nil {
+		t.Fatal("expected a compile error: nine bytes do not fit an eight-byte tape")
 	}
 	if !strings.Contains(err.Error(), "text is 9 bytes but a tape holds 8") {
 		t.Errorf("error = %q", err)
 	}
 }
 
-func TestParseTapeLiteralShape(t *testing.T) {
-	tape := first[ast.TapeBracketExpression](t, "[1, 2, 3];")
-	if len(tape.Items) != 3 {
-		t.Fatalf("got %d items, want 3", len(tape.Items))
-	}
+// The declarations belong to the file, not to one parse. The REPL compiles a line at a time
+// with a fresh parser, so a shape declared on one line has to still be known on the next.
+func TestDeclarationsSurviveSeveralParses(t *testing.T) {
+	declarations := NewDeclarations()
 
-	empty := first[ast.TapeBracketExpression](t, "[];")
-	if len(empty.Items) != 0 {
-		t.Errorf("got %d items, want none", len(empty.Items))
-	}
-}
-
-func TestParseTapeOperationShapes(t *testing.T) {
-	pull := first[ast.PullExpression](t, "pull [1] 2;")
-	if _, ok := pull.Target.(ast.TapeBracketExpression); !ok {
-		t.Errorf("pull target is %T, want a tape", pull.Target)
-	}
-	if _, ok := pull.Item.(ast.NumberLiteral); !ok {
-		t.Errorf("pull item is %T, want a number", pull.Item)
-	}
-
-	push := first[ast.PushExpression](t, "push [1] 2;")
-	if _, ok := push.Target.(ast.TapeBracketExpression); !ok {
-		t.Errorf("push target is %T, want a tape", push.Target)
-	}
-
-	head := first[ast.HeadExpression](t, "head [1, 2, 3] 2;")
-	if head.Length != 2 {
-		t.Errorf("head length = %d, want 2", head.Length)
-	}
-
-	tail := first[ast.TailExpression](t, "tail [1, 2, 3] 2;")
-	if tail.Length != 2 {
-		t.Errorf("tail length = %d, want 2", tail.Length)
-	}
-}
-
-func TestParseDeferShape(t *testing.T) {
-	deferred := first[ast.DeferExpression](t, "defer { 1; 2; };")
-	if len(deferred.Block.Body) != 2 {
-		t.Errorf("body holds %d expressions, want 2", len(deferred.Block.Body))
-	}
-
-	empty := first[ast.DeferExpression](t, "defer {};")
-	if len(empty.Block.Body) != 0 {
-		t.Errorf("an empty defer holds %d expressions, want none", len(empty.Block.Body))
-	}
-}
-
-func TestParseBlockShape(t *testing.T) {
-	block := first[ast.BlockExpression](t, "{ 1; 2; 3; };")
-	if len(block.Body) != 3 {
-		t.Errorf("body holds %d expressions, want 3", len(block.Body))
-	}
-
-	empty := first[ast.BlockExpression](t, "{};")
-	if len(empty.Body) != 0 {
-		t.Errorf("an empty block holds %d expressions, want none", len(empty.Body))
-	}
-}
-
-func TestParseCalleeShape(t *testing.T) {
-	call := first[ast.CalleeLiteral](t, "sum(1, 2);")
-
-	if call.Id.Value != "sum" {
-		t.Errorf("callee = %q, want sum", call.Id.Value)
-	}
-	if len(call.Params) != 2 {
-		t.Fatalf("got %d parameters, want 2", len(call.Params))
-	}
-
-	none := first[ast.CalleeLiteral](t, "go();")
-	if len(none.Params) != 0 {
-		t.Errorf("got %d parameters, want none", len(none.Params))
-	}
-
-	// Without parentheses it is a plain identifier, not a call.
-	if _, ok := parse(t, "sum;")[0].(ast.IdentifierLiteral); !ok {
-		t.Error("a bare name should parse as an identifier")
-	}
-}
-
-func TestParseFeedShape(t *testing.T) {
-	withParens := first[ast.FeedExpression](t, "feed(2);")
-	if withParens.Nth.Value != 2 {
-		t.Errorf("index = %d, want 2", withParens.Nth.Value)
-	}
-
-	// The form without parentheses is also accepted.
-	bare := first[ast.FeedExpression](t, "feed 3;")
-	if bare.Nth.Value != 3 {
-		t.Errorf("index = %d, want 3", bare.Nth.Value)
-	}
-}
-
-func TestParseIfShape(t *testing.T) {
-	withoutElse := first[ast.IfExpression](t, "if true { 1; };")
-	if withoutElse.Else != nil {
-		t.Error("there is no else here")
-	}
-	if len(withoutElse.Body) != 1 {
-		t.Errorf("body holds %d expressions, want 1", len(withoutElse.Body))
-	}
-	if _, ok := withoutElse.Test.(ast.BooleanLiteral); !ok {
-		t.Errorf("test is %T, want a boolean", withoutElse.Test)
-	}
-
-	withElse := first[ast.IfExpression](t, "if 1 bigger 2 { 1; } else { 2; };")
-	if withElse.Else == nil {
-		t.Fatal("the else is missing")
-	}
-	if len(withElse.Else.Body) != 1 {
-		t.Errorf("else holds %d expressions, want 1", len(withElse.Else.Body))
-	}
-	if _, ok := withElse.Test.(ast.RelativeExpression); !ok {
-		t.Errorf("test is %T, want a comparison", withElse.Test)
-	}
-}
-
-// branch is sugar: it desugars into nested ifs, with the fallback as the innermost else.
-func TestParseBranchDesugarsIntoNestedIfs(t *testing.T) {
-	outer := first[ast.IfExpression](t, `branch {
-  1 equals 1: 10,
-  2 equals 2: 20,
-  30;
-};`)
-
-	if outer.Else == nil {
-		t.Fatal("the first branch item needs an else holding the rest")
-	}
-	inner, ok := outer.Else.Body[0].(ast.IfExpression)
-	if !ok {
-		t.Fatalf("the else holds %T, want the next branch item", outer.Else.Body[0])
-	}
-	if inner.Else == nil {
-		t.Fatal("the second item needs an else holding the fallback")
-	}
-	if _, ok := inner.Else.Body[0].(ast.NumberLiteral); !ok {
-		t.Errorf("the fallback is %T, want the number", inner.Else.Body[0])
-	}
-}
-
-// The three print builtins differ only in how the value is read, so they parse into one
-// node carrying which reading was asked for.
-func TestParsePrintShapes(t *testing.T) {
-	cases := []struct {
-		source string
-		want   ast.PrintFormat
-	}{
-		{source: "printb 1;", want: ast.PrintBytes},
-		{source: `printc "hi";`, want: ast.PrintChars},
-		{source: "printd 1;", want: ast.PrintDecimal},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.source, func(t *testing.T) {
-			printed := first[ast.PrintStatement](t, tc.source)
-			if printed.Format != tc.want {
-				t.Errorf("format = %q, want %q", printed.Format, tc.want)
-			}
-			if printed.Param == nil {
-				t.Error("the value to print is missing")
-			}
-		})
-	}
-}
-
-func TestParseAssertShape(t *testing.T) {
-	tree, err := parseSource(t, `assert(1 equals 1, "ok");`, "checks.test.ar")
-	if err != nil {
-		t.Fatalf("assert in a test file: %v", err)
-	}
-	assertion, ok := tree.Nodes[0].(ast.AssertStatement)
-	if !ok {
-		t.Fatalf("got %T, want AssertStatement", tree.Nodes[0])
-	}
-	if _, ok := assertion.Condition.(ast.RelativeExpression); !ok {
-		t.Errorf("condition is %T, want a comparison", assertion.Condition)
-	}
-	if assertion.Message == "" {
-		t.Error("the message is empty, want the text that was written")
-	}
-}
-
-func TestParseUnaryShape(t *testing.T) {
-	unary := first[ast.UnaryExpression](t, "-5;")
-	if unary.Operation.Value != "-" {
-		t.Errorf("operation = %q, want -", unary.Operation.Value)
-	}
-	if _, ok := unary.Expression.(ast.NumberLiteral); !ok {
-		t.Errorf("operand is %T, want a number", unary.Expression)
-	}
-}
-
-func TestParseOperatorShapes(t *testing.T) {
-	arithmetic := []string{"+", "-", "*", "/", "^"}
-	for _, op := range arithmetic {
-		t.Run(op, func(t *testing.T) {
-			expr := first[ast.BinaryExpression](t, "1 "+op+" 2;")
-			if expr.Operation.Value != op {
-				t.Errorf("operation = %q, want %q", expr.Operation.Value, op)
-			}
-		})
-	}
-
-	comparisons := []string{"equals", "different", "bigger", "smaller"}
-	for _, op := range comparisons {
-		t.Run(op, func(t *testing.T) {
-			expr := first[ast.RelativeExpression](t, "1 "+op+" 2;")
-			if expr.Operation.Value != op {
-				t.Errorf("operation = %q, want %q", expr.Operation.Value, op)
-			}
-		})
-	}
-
-	for _, op := range []string{"and", "or"} {
-		t.Run(op, func(t *testing.T) {
-			expr := first[ast.BooleanExpression](t, "true "+op+" false;")
-			if expr.Operation.Value != op {
-				t.Errorf("operation = %q, want %q", expr.Operation.Value, op)
-			}
-		})
-	}
-}
-
-// Precedence and associativity live in the shape of the tree, so this is the only place
-// they can be checked directly.
-func TestPrecedence(t *testing.T) {
-	// 2 + 3 * 4 groups as 2 + (3 * 4)
-	sum := first[ast.BinaryExpression](t, "2 + 3 * 4;")
-	if sum.Operation.Value != "+" {
-		t.Fatalf("the outer operation is %q, want +", sum.Operation.Value)
-	}
-	product, ok := sum.Right.(ast.BinaryExpression)
-	if !ok || product.Operation.Value != "*" {
-		t.Errorf("the right side is %T, want the multiplication", sum.Right)
-	}
-
-	// Parentheses override it: (2 + 3) * 4
-	product = first[ast.BinaryExpression](t, "(2 + 3) * 4;")
-	if product.Operation.Value != "*" {
-		t.Fatalf("the outer operation is %q, want *", product.Operation.Value)
-	}
-	if inner, ok := product.Left.(ast.BinaryExpression); !ok || inner.Operation.Value != "+" {
-		t.Errorf("the left side is %T, want the sum", product.Left)
-	}
-
-	// Comparison binds looser than arithmetic: (1 + 1) equals 2
-	comparison := first[ast.RelativeExpression](t, "1 + 1 equals 2;")
-	if _, ok := comparison.Left.(ast.BinaryExpression); !ok {
-		t.Errorf("the left side is %T, want the sum", comparison.Left)
-	}
-}
-
-// Additive expressions are left-associative, which is why the EVM lowering has to reorder
-// them: 10 - 3 - 2 is (10 - 3) - 2, not 10 - (3 - 2).
-func TestAdditiveIsLeftAssociative(t *testing.T) {
-	expr := first[ast.BinaryExpression](t, "10 - 3 - 2;")
-
-	left, ok := expr.Left.(ast.BinaryExpression)
-	if !ok {
-		t.Fatalf("the left side is %T, want the inner subtraction", expr.Left)
-	}
-	if first, ok := left.Left.(ast.NumberLiteral); !ok || first.Value != 10 {
-		t.Errorf("the innermost operand is %v, want 10", left.Left)
-	}
-	if last, ok := expr.Right.(ast.NumberLiteral); !ok || last.Value != 2 {
-		t.Errorf("the outer right operand is %v, want 2", expr.Right)
-	}
-}
-
-// Multiplicative expressions are left-associative too: 20 / 5 / 2 is (20 / 5) / 2, not
-// 20 / (5 / 2). They used to group to the right, which answered 10 for that.
-func TestMultiplicativeIsLeftAssociative(t *testing.T) {
-	for _, source := range []string{"20 / 5 / 2;", "4 / 2 * 6;", "2 * 3 / 6;"} {
-		expr := first[ast.BinaryExpression](t, source)
-
-		if _, ok := expr.Left.(ast.BinaryExpression); !ok {
-			t.Errorf("%s: the left side is %T, want the inner operation", source, expr.Left)
-		}
-		if _, ok := expr.Right.(ast.NumberLiteral); !ok {
-			t.Errorf("%s: the right side is %T, want the last operand alone", source, expr.Right)
-		}
-	}
-}
-
-// `and` binds tighter than `or`: a and b or c is (a and b) or c. They used to share one
-// precedence level and recurse to the right, which grouped it as a and (b or c).
-func TestAndBindsTighterThanOr(t *testing.T) {
-	expr := first[ast.BooleanExpression](t, "a and b or c;")
-	if expr.Operation.Value != "or" {
-		t.Fatalf("the outer operation is %q, want or", expr.Operation.Value)
-	}
-	inner, ok := expr.Left.(ast.BooleanExpression)
-	if !ok {
-		t.Fatalf("the left side is %T, want the inner conjunction", expr.Left)
-	}
-	if inner.Operation.Value != "and" {
-		t.Errorf("the inner operation is %q, want and", inner.Operation.Value)
-	}
-	if _, ok := expr.Right.(ast.IdentifierLiteral); !ok {
-		t.Errorf("the right side is %T, want the last operand alone", expr.Right)
-	}
-}
-
-// A comparison binds tighter than both, so a range reads as one test.
-func TestComparisonBindsTighterThanAnd(t *testing.T) {
-	expr := first[ast.BooleanExpression](t, "n bigger 18 and n smaller 65;")
-	if _, ok := expr.Left.(ast.RelativeExpression); !ok {
-		t.Errorf("the left side is %T, want the comparison", expr.Left)
-	}
-	if _, ok := expr.Right.(ast.RelativeExpression); !ok {
-		t.Errorf("the right side is %T, want the comparison", expr.Right)
-	}
-}
-
-// Exponentiation recurses to the right: 2 ^ 3 ^ 2 is 2 ^ (3 ^ 2).
-func TestExponentiationIsRightAssociative(t *testing.T) {
-	expr := first[ast.BinaryExpression](t, "2 ^ 3 ^ 2;")
-	if _, ok := expr.Right.(ast.BinaryExpression); !ok {
-		t.Errorf("the right side is %T, want the inner exponentiation", expr.Right)
-	}
-}
-
-func TestParseSeveralTopLevelExpressions(t *testing.T) {
-	nodes := parse(t, "ident a = 1;\nprintb a;\na + 1;\n")
-	if len(nodes) != 3 {
-		t.Fatalf("got %d nodes, want 3", len(nodes))
-	}
-	if _, ok := nodes[0].(ast.IdentLiteral); !ok {
-		t.Errorf("first node is %T", nodes[0])
-	}
-	if _, ok := nodes[1].(ast.PrintStatement); !ok {
-		t.Errorf("second node is %T", nodes[1])
-	}
-	if _, ok := nodes[2].(ast.BinaryExpression); !ok {
-		t.Errorf("third node is %T", nodes[2])
-	}
-}
-
-func TestParseEmptySource(t *testing.T) {
-	if nodes := parse(t, ""); len(nodes) != 0 {
-		t.Errorf("got %d nodes, want none", len(nodes))
-	}
-}
-
-func TestParseErrors(t *testing.T) {
-	cases := []struct {
-		name     string
-		source   string
-		filename string
-		wantErr  string
-	}{
-		{name: "missing semicolon", source: "ident a = 1", wantErr: "unexpected token"},
-		{name: "ident without a name", source: "ident = 1;", wantErr: "unexpected token"},
-		{name: "unclosed block", source: "{ 1;", wantErr: "unexpected token"},
-		{name: "unclosed parentheses", source: "(1 + 2;", wantErr: "unexpected token"},
-		{name: "assert outside a test file", source: `assert(1 equals 1, "x");`, filename: "main.ar", wantErr: ".test.ar"},
-		{name: "tape value over a byte", source: "[300];", wantErr: "between 0 and 255"},
-		{name: "branch without a condition", source: "branch { 1: 2, 3; };", wantErr: "boolean expression"},
-		{name: "pull with an invalid target", source: "pull true 1;", wantErr: "not a valid append target"},
-		{name: "push with an invalid item", source: "push [1] true;", wantErr: "not a valid push item"},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			filename := tc.filename
-			if filename == "" {
-				filename = "main.ar"
-			}
-			_, err := parseSource(t, tc.source, filename)
-			if err == nil {
-				t.Fatalf("%q should not parse", tc.source)
-			}
-			if !strings.Contains(err.Error(), tc.wantErr) {
-				t.Errorf("error = %q, want it to mention %q", err, tc.wantErr)
-			}
-		})
-	}
-}
-
-// Errors carry their position so the language server can underline them.
-func TestParseErrorsArePositioned(t *testing.T) {
-	_, err := parseSource(t, "ident a = 1;\nident = 2;\n", "main.ar")
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-
-	perr, ok := err.(*token.Error)
-	if !ok {
-		t.Fatalf("error is %T, want *token.Error", err)
-	}
-	if perr.Line != 2 {
-		t.Errorf("line = %d, want 2", perr.Line)
-	}
-	if perr.Offset == 0 {
-		t.Error("offset is zero, so the server cannot place it")
-	}
-}
-
-// The logger only runs with logging on, and it walks the tree it was given — a shape it
-// cannot handle would panic in front of whoever turned the flag on.
-func TestParseWithLoggingEnabled(t *testing.T) {
-	source := `ident a = 1;
-ident f = defer { feed(0) + 1; };
-if a bigger 0 { printb f(a); } else { printc "no"; };
-ident t = pull [1, 2] 3;
-`
-	tokens, err := lexer.New().GetFilledTokens([]byte(source))
-	if err != nil {
-		t.Fatalf("lexer: %v", err)
-	}
-
-	tree, err := New().Parse(ParseInput{Filename: "main.ar", Tokens: tokens})
-	if err != nil {
-		t.Fatalf("parsing with logging on: %v", err)
-	}
-	if len(tree.Nodes) != 4 {
-		t.Errorf("got %d nodes, want 4", len(tree.Nodes))
-	}
-}
-
-// ASTEqual is what other packages use to compare trees, so it has to notice a difference
-// wherever it sits.
-func TestEqualAcrossSources(t *testing.T) {
-	build := func(source string) ast.AST {
-		t.Helper()
-		tree, err := parseSource(t, source, "main.ar")
+	parseWith := func(source string) error {
+		tokens, err := lexer.New().GetFilledTokens([]byte(source))
 		if err != nil {
-			t.Fatalf("parsing %q: %v", source, err)
+			return err
 		}
-		return tree
+		_, err = New().Parse(ParseInput{Filename: "main.ar", Tokens: tokens, Declarations: declarations})
+		return err
 	}
 
-	same := "ident a = defer { 1; };"
-	if !ast.Equal(build(same), build(same)) {
-		t.Error("the same source produced trees that do not compare equal")
+	if err := parseWith("shape Point { x, y };"); err != nil {
+		t.Fatalf("declaring: %v", err)
 	}
-
-	cases := []struct {
-		name string
-		a, b string
-	}{
-		{name: "different values", a: "ident a = 1;", b: "ident a = 2;"},
-		{name: "different names", a: "ident a = 1;", b: "ident b = 1;"},
-		{name: "different operators", a: "1 + 2;", b: "1 - 2;"},
-		{name: "different defer bodies", a: "defer { 1; };", b: "defer { 2; };"},
-		{name: "different call arguments", a: "f(1);", b: "f(2);"},
-		{name: "different node counts", a: "1;", b: "1;\n2;"},
+	if err := parseWith("ident p = Point{10, 20};"); err != nil {
+		t.Fatalf("building on a later line: %v", err)
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if ast.Equal(build(tc.a), build(tc.b)) {
-				t.Errorf("%q and %q should not compare equal", tc.a, tc.b)
-			}
-		})
+	if err := parseWith("printd p.y;"); err != nil {
+		t.Fatalf("reading a field on a later line: %v", err)
 	}
 }

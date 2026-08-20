@@ -10,7 +10,7 @@
 #-   [0 0 0 0 0 0 0 20]
 #-   20
 
-struct Box { width, height };
+shape Box { width, height };
 
 ident area = defer {
   ident b = feed(0) as Box;

@@ -31,7 +31,7 @@ For the other way of working — a manifest with named profiles — see [project
 | [text.ar](text.ar) | text as a tape of bytes, and why `"a"` is 97 |
 | [tape_size.ar](tape_size.ar) | the same file compiled at different tape widths |
 | [defer_capacity.ar](defer_capacity.ar) | how many scopes a tape can name, and the warning when they do not fit |
-| [structs.ar](structs.ar) | `struct` and `as`: naming the tapes of a run |
+| [shapes.ar](shapes.ar) | `shape` and `as`: naming the tapes of a run |
 | [printing.ar](printing.ar) | `printb`, `printd`, `printc`: three readings of one tape |
 | [comments.ar](comments.ar) | `#-` |
 | [greeting.ar](greeting.ar) + [greeting.test.ar](greeting.test.ar) | `assert` and `aurora test`: a test belongs to the source of the same name |

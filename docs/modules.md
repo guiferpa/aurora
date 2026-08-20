@@ -127,7 +127,7 @@ which is the same thing since a scope's value is its index. Nothing else:
 
 - a name bound inside a block or a deferred body belongs to the scope that binds it, and is
   gone when that scope is;
-- a `struct`'s **name** stays in the file that declared it, and is written elsewhere as the
+- a `shape`'s **name** stays in the file that declared it, and is written elsewhere as the
   module's: `g.Square` builds one, names one with `as`, and promises one with `returns`;
 - an import is not passed on. If `main` uses `a` and `a` uses `b`, then `main` does not reach
   `b` — it writes its own `use b as ...;`. Every file declares what it needs, and a name used
@@ -160,7 +160,7 @@ fields without naming anything:
 
 ```
 #- src/os.ar
-struct Env { found, value };
+shape Env { found, value };
 
 ident lookup = defer {
   Env{1, 42};
@@ -177,7 +177,7 @@ printd r.value;
 ```
 
 Nothing in `main.ar` mentions `Env`, and nothing has to. What crossed is the promise — the
-struct and the fields it is made of — which is what turns `found` into the first tape of the
+shape and the fields it is made of — which is what turns `found` into the first tape of the
 run.
 
 A scope that promised nothing hands over a run of tapes and no shape, exactly as it did
@@ -185,7 +185,7 @@ before: the file reading it has to name one.
 
 ### And a shape can be named
 
-A struct's name belongs to the file that declared it, so elsewhere it is written as the
+A shape's name belongs to the file that declared it, so elsewhere it is written as the
 module's:
 
 ```
@@ -197,7 +197,7 @@ ident make = defer { g.Square{1, 2}; } returns g.Square;
 ```
 
 A `Square` declared here and a `Square` declared there are **two shapes**, never one: what the
-compiler knows them by carries the module, and nobody can type that. And a struct of another
+compiler knows them by carries the module, and nobody can type that. And a shape of another
 module is not a value there any more than a local one is here — `printd g.Square;` is refused
 the same way `printd Square;` is.
 
@@ -230,7 +230,7 @@ modules go in a circle at line 1 and column 1: one → two → one
 ## Modules and tests
 
 A test and the file it tests are **one module written in two files**. What the source declared
-is in scope for the test — its bindings, its structs, and the modules it brought in:
+is in scope for the test — its bindings, its shapes, and the modules it brought in:
 
 ```
 #- src/main.test.ar
@@ -244,7 +244,7 @@ never mentioned.
 
 ## What is not there yet
 
-- A `struct` cannot be exported.
+- A `shape` cannot be exported.
 - There is no `private`: a module offers everything it binds at the top.
 - The REPL takes `use`, reading from where it was started, and brings a module in once per
   session — a second `use` of the same one is a use of what is already there.

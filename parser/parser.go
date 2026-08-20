@@ -45,17 +45,17 @@ type ParseInput struct {
 	// written as they were typed — which is every file compiled on its own, the language
 	// server and the REPL included.
 	Module string
-	// Imports is what the modules this file names offer, by specifier: the structs they
+	// Imports is what the modules this file names offer, by specifier: the shapes they
 	// declare, and what their scopes said they answer with.
 	//
-	// It arrives because a shape is resolved while parsing and a struct's name never leaves
+	// It arrives because a shape is resolved while parsing and a shape's name never leaves
 	// the file that declared it — so a scope of another module answering with one has to hand
 	// the fields over. Empty is a file that imports nothing, or one whose imports promised
 	// nothing, and it reads exactly as it did before any of this.
 	Imports map[string]ast.Offer
-	// Declarations carries what `struct` and `as` declared across parses of the same file.
+	// Declarations carries what `shape` and `as` declared across parses of the same file.
 	// Nil starts empty, which is what compiling a file in one go wants; the REPL passes the
-	// same value every line so a struct declared earlier is still known.
+	// same value every line so a shape declared earlier is still known.
 	Declarations *Declarations
 }
 
@@ -64,7 +64,7 @@ type pr struct {
 	cursor   int
 	tokens   []token.Token
 	tapeSize int
-	// declarations is what `struct` and `as` leave behind, and nothing more: it turns `p.x`
+	// declarations is what `shape` and `as` leave behind, and nothing more: it turns `p.x`
 	// into an index and never reaches the tree, the IR or the binary. It is held by
 	// reference so a caller compiling one file across several parses — the REPL — keeps
 	// what was declared earlier.
@@ -279,14 +279,14 @@ func (p *pr) parsePrimaryExpr() (ast.Node, error) {
 		return nil, token.NewError(id.Token, "%s is the module %s at line %d and column %d: reach something inside it with %s.name",
 			typed(id), specifier, id.Token.GetLine(), id.Token.GetColumn(), typed(id))
 	}
-	// A struct's name never reaches the instructions and never leaves the file, so it is
+	// A shape's name never reaches the instructions and never leaves the file, so it is
 	// looked up as it was typed rather than as the module writes it.
-	if _, declared := p.declarations.Structs[typed(id)]; declared {
+	if _, declared := p.declarations.Shapes[typed(id)]; declared {
 		if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_CUR_BRK {
-			return p.ParseStructLiteral(id)
+			return p.ParseShapeLiteral(id)
 		}
-		// A struct is a declaration, not a value: there is nothing to load under its name.
-		return nil, token.NewError(id.Token, "%s is a struct at line %d and column %d: build a value with %s{...}",
+		// A shape is a declaration, not a value: there is nothing to load under its name.
+		return nil, token.NewError(id.Token, "%s is a shape at line %d and column %d: build a value with %s{...}",
 			typed(id), id.Token.GetLine(), id.Token.GetColumn(), typed(id))
 	}
 	if p.GetLookahead() != nil && p.GetLookahead().GetTag().Id == token.O_PAREN {
@@ -813,9 +813,9 @@ func (p *pr) ParseIdent() (ast.Node, error) {
 	// `ident p = feed(0) as Point;`.
 	name := p.name(string(id.GetMatch()))
 	if shape := p.shapeOf(expr); shape != "" {
-		p.declarations.Shapes[name] = shape
+		p.declarations.Reads[name] = shape
 	}
-	// A scope that promised is not itself a struct — its value is an index — so what is
+	// A scope that promised is not itself a shape — its value is an index — so what is
 	// written down is what calling it answers with.
 	if scope, ok := expr.(ast.DeferExpression); ok && scope.Block.Returns != "" {
 		p.declarations.Returns[name] = scope.Block.Returns
@@ -837,8 +837,8 @@ func (p *pr) ParseExpr() (ast.Node, error) {
 	if lookahead.GetTag().Id == token.USE {
 		return p.ParseUse()
 	}
-	if lookahead.GetTag().Id == token.STRUCT {
-		return p.ParseStruct()
+	if lookahead.GetTag().Id == token.SHAPE {
+		return p.ParseShape()
 	}
 	if lookahead.GetTag().Id == token.O_CUR_BRK {
 		return p.ParseBlockExpr()

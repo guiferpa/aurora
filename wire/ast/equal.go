@@ -68,12 +68,12 @@ func nodeEqual(a, b Node) bool {
 		return sameKind(b, va, assertEqual)
 	case UnaryExpression:
 		return sameKind(b, va, unaryEqual)
-	case StructDeclaration:
-		return sameKind(b, va, structDeclarationEqual)
+	case ShapeDeclaration:
+		return sameKind(b, va, shapeDeclarationEqual)
 	case UseDeclaration:
 		return sameKind(b, va, useDeclarationEqual)
-	case StructLiteral:
-		return sameKind(b, va, structLiteralEqual)
+	case ShapeLiteral:
+		return sameKind(b, va, shapeLiteralEqual)
 	case FieldExpression:
 		return sameKind(b, va, fieldEqual)
 	case ShapedExpression:
@@ -169,9 +169,9 @@ func assertEqual(a, b AssertStatement) bool {
 	return token.Equal(a.Token, b.Token) && nodeEqual(a.Condition, b.Condition) && a.Message == b.Message
 }
 
-// A struct's fields are positional, so their order is part of the shape and not a detail of
+// A shape's fields are positional, so their order is part of the shape and not a detail of
 // how the declaration was written.
-func structDeclarationEqual(a, b StructDeclaration) bool {
+func shapeDeclarationEqual(a, b ShapeDeclaration) bool {
 	return a.Name == b.Name && slices.Equal(a.Fields, b.Fields)
 }
 
@@ -181,7 +181,7 @@ func useDeclarationEqual(a, b UseDeclaration) bool {
 	return a.Specifier == b.Specifier && a.Alias == b.Alias
 }
 
-func structLiteralEqual(a, b StructLiteral) bool {
+func shapeLiteralEqual(a, b ShapeLiteral) bool {
 	return a.Name == b.Name && nodesEqual(a.Values, b.Values)
 }
 
@@ -190,7 +190,7 @@ func fieldEqual(a, b FieldExpression) bool {
 }
 
 func shapedEqual(a, b ShapedExpression) bool {
-	return a.Struct == b.Struct && nodeEqual(a.Expression, b.Expression)
+	return a.Shape == b.Shape && nodeEqual(a.Expression, b.Expression)
 }
 
 func calleeEqual(a, b CalleeLiteral) bool {

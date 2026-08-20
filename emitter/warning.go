@@ -91,8 +91,8 @@ func childScopesOf(node ast.Node) []ast.Node {
 		return body
 	case ast.PrintStatement:
 		return []ast.Node{n.Param}
-	case ast.StructLiteral:
-		// A field can hold a deferred scope, so the values of a struct are walked like any
+	case ast.ShapeLiteral:
+		// A field can hold a deferred scope, so the values of a shape are walked like any
 		// other place a scope can hide.
 		return n.Values
 	case ast.FieldExpression:
@@ -122,7 +122,7 @@ func countDefers(node ast.Node, count *int, walk func([]ast.Node)) bool {
 		}
 	case ast.PrintStatement:
 		return countDefers(n.Param, count, walk)
-	case ast.StructLiteral:
+	case ast.ShapeLiteral:
 		for _, value := range n.Values {
 			if !countDefers(value, count, walk) {
 				return false

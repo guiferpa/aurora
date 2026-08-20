@@ -99,7 +99,7 @@ func newLineReader(in io.Reader, out io.Writer) (lineReader, *History) {
 // what it leaves behind for the line after it.
 //
 // It is a type rather than a handful of variables inside a loop because everything here
-// outlives the line that filled it — a name, a struct declaration and a defer all have to
+// outlives the line that filled it — a name, a shape declaration and a defer all have to
 // still be there on the next one.
 type Session struct {
 	lexer   *lexer.Lexer
@@ -111,7 +111,7 @@ type Session struct {
 	out      io.Writer
 	tapeSize int
 
-	// A parser is built per line, so the struct declarations are held here: a struct declared
+	// A parser is built per line, so the shape declarations are held here: a shape declared
 	// on one line has to still be known on the next.
 	declarations *parser.Declarations
 	// Every line's instructions go into the same buffer, which is what keeps the range a
@@ -155,7 +155,7 @@ func (s *Session) compile(text string) (ir.Program, error) {
 	tree, err := s.parser.Parse(parser.ParseInput{
 		Tokens:   tokens,
 		TapeSize: s.tapeSize,
-		// A struct declared on one line has to still be known on the next, so what the
+		// A shape declared on one line has to still be known on the next, so what the
 		// session remembers goes in with every line.
 		Declarations: s.declarations,
 	})

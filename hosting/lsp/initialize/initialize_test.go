@@ -139,7 +139,7 @@ func TestSnippetSupportIsRead(t *testing.T) {
 }
 
 // The dot is declared as a trigger so the client asks for completion the moment someone
-// types it — which is when the fields of a struct are what they want.
+// types it — which is when the fields of a shape are what they want.
 func TestDotTriggersCompletion(t *testing.T) {
 	result := NewResponse(1).Result.ServerCapabilities.CompletionProvider
 

@@ -4,7 +4,7 @@
 #- What it multiplies comes from a module: "use geometry as g;" reads src/geometry.ar, and g
 #- is the only way to reach what is inside it. The alias is this file's alone.
 #-
-#- Nothing here names Square, and nothing can: a struct's name stays in the file that declared
+#- Nothing here names Square, and nothing can: a shape's name stays in the file that declared
 #- it. What crossed is the promise — new_square says it answers with a Square, and the fields
 #- of it came along, which is what lets s.width be read as the first tape of the run.
 #-

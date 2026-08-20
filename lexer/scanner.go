@@ -25,7 +25,7 @@ var keywordTags = []token.Tag{
 	token.TagPull,
 	token.TagFeed,
 	token.TagAssert,
-	token.TagStruct,
+	token.TagShape,
 	token.TagAs,
 	token.TagUse,
 	token.TagReturns,

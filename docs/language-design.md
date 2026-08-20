@@ -226,7 +226,7 @@ that grew exactly when the tape got wider.
 
 It also made text the one value that was not a tape, in a language whose premise is that
 everything is. Removing it made `"a"` and `97` the same value rather than a coincidence of
-one-character strings, and made text fit in a struct field, which a reel never could.
+one-character strings, and made text fit in a shape field, which a reel never could.
 
 **Breaking:** `printc` of a number is now its bytes as UTF-8, not the character that number
 names — `printc 44` is still `,`, but a character above ASCII is written as text rather than
@@ -251,7 +251,7 @@ like anything else, and the value it produces is the one it showed — reading a
 change it. A block whose last expression is a print is worth what the print showed, rather
 than nothing at all.
 
-A run of tapes — a struct, say — is read the same way: every byte for `printb`, one number
+A run of tapes — a shape, say — is read the same way: every byte for `printb`, one number
 per tape for `printd`, and for `printc` the bytes of the whole run, with the zeros that pad
 each tape dropped.
 
@@ -294,25 +294,42 @@ ident empty = "";
 printb empty;     #- [0 0 0 0 0 0 0 0]
 ```
 
-## Structs
+## Shapes
 
-A struct names the tapes of a run:
+A shape names the tapes of a run:
 
 ```aurora
-struct Point { x, y };
+shape Point { x, y };
 
 ident p = Point{10, 20};
 printd p.x;   #- 10
 printd p;   #- 10 20 — the whole run
 ```
 
-`Point{10, 20}` is two tapes laid end to end, with nothing in it saying a struct built it:
-no header, no length, no tag. A struct is not a new kind of value, and a field is exactly one
+`Point{10, 20}` is two tapes laid end to end, with nothing in it saying a shape built it:
+no header, no length, no tag. A shape is not a new kind of value, and a field is exactly one
 tape wide, so the field at index *i* sits at `i × tape_size`.
+
+A shape's name **starts with a capital letter**, and the compiler refuses one that does not:
+
+```aurora
+#- fails: shape person must start with a capital letter
+shape person { name };
+```
+
+It is the one name in a file that is not a value. Everything else written down is something
+to load, and the capital says so before the braces do — `Point{1, 2}` builds a run of tapes,
+`point(1, 2)` feeds a scope. Fields keep whatever case their author likes: they are read out
+of a value, not declared as one.
+
+The keyword was `struct` first. The word changed because this page, and every other one, had
+been calling it a shape for as long as it existed — the declaration says what
+a run of tapes is shaped like, and it makes no type, no layout and no object. A word the
+documentation has to translate on every line is the wrong word.
 
 ### What they declare dies at compile time
 
-`struct` and `as` **declare, and do nothing**. They are keywords like any other — a token, a
+`shape` and `as` **declare, and do nothing**. They are keywords like any other — a token, a
 rule, errors of their own — and what sets them apart is that they leave a declaration instead
 of work. It exists for three things, all of them before the program runs:
 
@@ -322,10 +339,10 @@ of work. It exists for three things, all of them before the program runs:
 
 None of it needs to exist in the compiled program: the flow is static, the fields are
 positional and every one is the same width. The compiler reads the declaration, resolves an
-index and drops the rest. Nothing about a struct — not its name, not its fields — reaches
+index and drops the rest. Nothing about a shape — not its name, not its fields — reaches
 the IR or the binary.
 
-Which is why two structs of the same width are the same value, and why nothing is checked
+Which is why two shapes of the same width are the same value, and why nothing is checked
 at runtime.
 
 ### Naming a shape with `as`
@@ -334,7 +351,7 @@ Behaviour lives in `defer`, and a `defer` receives values through `feed`, which 
 bytes and nothing else. The shape does not survive that crossing, so it is named again:
 
 ```aurora
-struct Point { x, y };
+shape Point { x, y };
 
 ident area = defer {
   ident q = feed(0) as Point;
@@ -354,7 +371,7 @@ worked and what it produced — says them as one run of tapes, and whoever calle
 shape to read them back:
 
 ```aurora
-struct Result { failed, value };
+shape Result { failed, value };
 
 ident divide = defer {
   if feed(1) equals 0 {
@@ -376,13 +393,13 @@ on the way in.
 The shape binds tighter than anything else, so a name in between is optional:
 
 ```aurora
-struct Result { failed, value };
+shape Result { failed, value };
 ident make = defer { Result{1, 42}; };
 
 printd make() as Result.value;   #- 42
 ```
 
-A struct's **name** belongs to the file that declared it: another file writes it as the
+A shape's **name** belongs to the file that declared it: another file writes it as the
 module's, `g.Point`, and a promise carries the shape where nothing names it at all. See
 [modules.md](modules.md).
 
@@ -392,7 +409,7 @@ module's, `g.Point`, and a promise carries the shape where nothing names it at a
 the other end: what a block promises about itself, checked where it is written.
 
 ```aurora
-struct Result { failed, value };
+shape Result { failed, value };
 
 ident divide = defer {
   if feed(1) equals 0 {
@@ -417,7 +434,7 @@ A block that does not keep its promise does not compile:
 
 ```aurora
 #- fails: answers with Person and ends with a number
-struct Person { name };
+shape Person { name };
 
 {
   ident p = Person{"Joana"};
@@ -430,7 +447,7 @@ neutral value:
 
 ```aurora
 #- fails: its if has no else
-struct Person { name };
+shape Person { name };
 
 {
   if true { Person{"Joana"}; };
@@ -452,15 +469,15 @@ promising, not a toll for writing a block.
 Because the declaration exists to catch mistakes, these stop the compilation, with the line
 and column where they were written:
 
-- reading a field the struct does not have;
+- reading a field the shape does not have;
 - reading a field of a value whose shape nothing declared;
 - building with the wrong number of values;
-- using a struct name as a value: it declares a shape, it is not something to load.
+- using a shape name as a value: it declares a name, it is not something to load.
 
 Padding a short construction with the neutral value would match how `feed` and `head` never
 fail, and would give up the only thing the declaration does.
 
-See [examples/structs.ar](../examples/structs.ar).
+See [examples/shapes.ar](../examples/shapes.ar).
 
 ## Arithmetic Operations
 

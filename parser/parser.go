@@ -45,6 +45,14 @@ type ParseInput struct {
 	// written as they were typed — which is every file compiled on its own, the language
 	// server and the REPL included.
 	Module string
+	// Imports is what the modules this file names promised, by specifier: for each of their
+	// exported scopes that promised, the struct it answers with and the fields of it.
+	//
+	// It arrives because a shape is resolved while parsing and a struct's name never leaves
+	// the file that declared it — so a scope of another module answering with one has to hand
+	// the fields over. Empty is a file that imports nothing, or one whose imports promised
+	// nothing, and it reads exactly as it did before any of this.
+	Imports map[string][]ast.Promise
 	// Declarations carries what `struct` and `as` declared across parses of the same file.
 	// Nil starts empty, which is what compiling a file in one go wants; the REPL passes the
 	// same value every line so a struct declared earlier is still known.
@@ -65,6 +73,8 @@ type pr struct {
 	// and false from the first node that is not one, and inside every body.
 	useAllowed bool
 	module     string
+	// imports is what the modules this file names promised, by specifier.
+	imports map[string][]ast.Promise
 	// references is every qualified name this parse read. It leaves with the tree because
 	// only whoever holds the other modules can say whether the name is really there.
 	references []ast.Reference
@@ -1010,6 +1020,7 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 	p.cursor = 0
 	p.useAllowed = true
 	p.module = in.Module
+	p.imports = in.Imports
 	p.references = nil
 	p.declarations = in.Declarations
 	if p.declarations == nil {
@@ -1021,7 +1032,12 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 		return ast.AST{}, err
 	}
 
-	return ast.AST{Filename: p.filename, Nodes: nodes, References: p.references}, nil
+	return ast.AST{
+		Filename:   p.filename,
+		Nodes:      nodes,
+		References: p.references,
+		Promises:   p.promises(nodes),
+	}, nil
 }
 
 // New builds a parser. It takes nothing: a parser is the same whatever it is asked to read,

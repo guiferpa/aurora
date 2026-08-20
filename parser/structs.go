@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -45,6 +46,19 @@ func NewDeclarations() *Declarations {
 		Shapes:  make(map[string]string),
 		Modules: make(map[string]string),
 		Returns: make(map[string]string),
+	}
+}
+
+// Import writes down what a module answers with, under names nobody can type.
+//
+// A promise crossing a module is the shape and its fields together, and both are written the
+// way an identifier of that module is: with the module in front. So two modules answering with
+// an Env each are two shapes, and neither can be confused with an Env declared here.
+func (d *Declarations) Import(specifier string, promises []ast.Promise) {
+	for _, promise := range promises {
+		shape := module.Qualify(module.ID(specifier), promise.Struct)
+		d.Structs[shape] = promise.Fields
+		d.Returns[module.Qualify(module.ID(specifier), promise.Scope)] = shape
 	}
 }
 
@@ -277,6 +291,38 @@ func (p *pr) shapeOfLast(body []ast.Node) string {
 // the block says what it answers with, and this refuses the block that does not.
 //
 // The promise is worth what shapeOf can see through, which is why that is the part that grew.
+
+// promises is what the top-level scopes of this file said they answer with, with the fields
+// of each — the only thing about a struct that leaves the file that declared it.
+//
+// It is a join of two tables the parse already filled: which scope promised what, and what
+// each struct is made of. Whoever imports this file needs both halves, since a name is worth
+// nothing without the fields it stands for.
+func (p *pr) promises(nodes []ast.Node) []ast.Promise {
+	found := make([]ast.Promise, 0)
+	for _, node := range nodes {
+		binding, ok := node.(ast.IdentLiteral)
+		if !ok {
+			continue
+		}
+		promised, made := p.declarations.Returns[binding.Id]
+		if !made {
+			continue
+		}
+		found = append(found, ast.Promise{
+			Scope:  p.bare(binding.Id),
+			Struct: promised,
+			Fields: p.declarations.Structs[promised],
+		})
+	}
+	return found
+}
+
+// bare is a name of this file without the module in front of it, which is how the file that
+// wrote it reads it and how whoever imports it asks for it.
+func (p *pr) bare(name string) string {
+	return module.Module{ID: module.ID(p.module)}.Symbol(name)
+}
 
 // parseReturns reads `returns Person` after a block, and checks what the block ends with.
 func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) {

@@ -41,7 +41,7 @@ func newTestResolver(tapeSize int) *resolver.Resolver {
 	return resolver.New(resolver.Options{
 		SourceRoot: manifest.DefaultSourceRoot,
 		Read:       os.ReadFile,
-		Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+		Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
 			tokens, err := lx.GetFilledTokens(source)
 			if err != nil {
 				return ast.AST{}, err
@@ -51,7 +51,15 @@ func newTestResolver(tapeSize int) *resolver.Resolver {
 				Tokens:   tokens,
 				TapeSize: tapeSize,
 				Module:   string(id),
+				Imports:  imports,
 			})
+		},
+		Header: func(source []byte) ([]ast.UseDeclaration, error) {
+			tokens, err := lx.GetFilledTokens(source)
+			if err != nil {
+				return nil, err
+			}
+			return parser.ScanUses(tokens), nil
 		},
 	})
 }

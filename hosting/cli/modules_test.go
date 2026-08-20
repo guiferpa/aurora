@@ -239,3 +239,81 @@ func TestAStructValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 		}
 	})
 }
+
+// A shape crosses a module with the promise that names it.
+//
+// The struct is declared in one file and read in another, and nothing in the reading file
+// names it: what crossed is the promise the scope made, with the fields of the struct it
+// answers with — which is what turns a field name into the index of a tape.
+func TestAPromisedShapeCrossesAModule(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/os.ar": "struct Env { found, value };\n" +
+			"ident lookup = defer {\n" +
+			"  if feed(0) equals 0 { Env{0, 0}; } else { Env{1, 42}; };\n" +
+			"} returns Env;",
+		"src/main.ar": "use os as o;\n" +
+			"ident r = o.lookup(1);\n" +
+			"printd r.found;\nprintd r.value;\n" +
+			"printd o.lookup(0).found;",
+	})
+
+	printed, err := run(t, "src/main.ar")
+	if err != nil {
+		t.Fatalf("running: %v", err)
+	}
+	if got := strings.Fields(printed); len(got) != 3 || got[0] != "1" || got[1] != "42" || got[2] != "0" {
+		t.Errorf("printed %q, want 1 42 0", printed)
+	}
+}
+
+// A field the promised struct does not have is refused where it was written, naming what the
+// struct is made of — the same refusal a local struct gets.
+func TestAFieldThePromiseDoesNotHave(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/os.ar":   "struct Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
+		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.missing;",
+	})
+
+	_, err := run(t, "src/main.ar")
+	if err == nil {
+		t.Fatal("a field nobody declared was read")
+	}
+	if !strings.Contains(err.Error(), "has no field named missing") {
+		t.Errorf("error = %q", err)
+	}
+}
+
+// A scope that promised nothing hands over a run of tapes and no shape, which is what it did
+// before any of this: the reading file has to name one, and there is nothing to name.
+func TestAScopeThatPromisedNothingCrossesNothing(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/os.ar":   "struct Env { found, value };\nident lookup = defer { Env{1, 42}; };",
+		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.found;",
+	})
+
+	_, err := run(t, "src/main.ar")
+	if err == nil {
+		t.Fatal("a field was read off a scope that promised nothing")
+	}
+	if !strings.Contains(err.Error(), "nothing says which struct this value is") {
+		t.Errorf("error = %q", err)
+	}
+}
+
+// A test reads a promised shape too, since the file it belongs to and the file testing it are
+// one module, and what they import is read before either of them is parsed.
+func TestATestReadsAPromisedShape(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/os.ar":        "struct Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
+		"src/main.ar":      "use os as o;\nident r = o.lookup(0);",
+		"src/main.test.ar": "assert(r.value equals 42, \"the field is read through the promise\");",
+	})
+
+	report, err := tested(t, "", sessionOpts{asserts: true})
+	if err != nil {
+		t.Fatalf("testing: %v", err)
+	}
+	if !report.OK() {
+		t.Errorf("the run did not pass: %+v", report.Files)
+	}
+}

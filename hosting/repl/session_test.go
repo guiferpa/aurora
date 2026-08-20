@@ -182,7 +182,7 @@ func typedIn(t *testing.T, dir, lines string, tapeSize int) string {
 		Resolver: resolver.New(resolver.Options{
 			SourceRoot: "src",
 			Read:       os.ReadFile,
-			Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+			Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
 				tokens, err := lx.GetFilledTokens(source)
 				if err != nil {
 					return ast.AST{}, err
@@ -192,7 +192,15 @@ func typedIn(t *testing.T, dir, lines string, tapeSize int) string {
 					Tokens:   tokens,
 					TapeSize: size,
 					Module:   string(id),
+					Imports:  imports,
 				})
+			},
+			Header: func(source []byte) ([]ast.UseDeclaration, error) {
+				tokens, err := lx.GetFilledTokens(source)
+				if err != nil {
+					return nil, err
+				}
+				return parser.ScanUses(tokens), nil
 			},
 		}),
 	}).Start()
@@ -273,5 +281,16 @@ func TestASessionWithoutAResolverRefusesToPretend(t *testing.T) {
 
 	if !strings.Contains(got, "nowhere to read a module from") {
 		t.Errorf("the session said %q, want it to say it cannot import", got)
+	}
+}
+
+// A shape crosses into a session with the promise that names it, so a field is read off an
+// imported scope without anybody naming the struct.
+func TestASessionReadsAPromisedShape(t *testing.T) {
+	dir := withModule(t, "struct Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;")
+	got := typedIn(t, dir, "use geometry as g;\nident r = g.lookup(0);\nprintd r.value;\n", 0)
+
+	if !strings.Contains(got, "42") {
+		t.Errorf("the session said %q, want it to contain 42", got)
 	}
 }

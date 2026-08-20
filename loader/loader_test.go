@@ -30,7 +30,7 @@ func load(t *testing.T, sources map[string]string) ([]module.Module, error) {
 			}
 			return []byte(source), nil
 		},
-		Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+		Parse: func(filename string, id module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
 			tokens, err := lexer.New().GetFilledTokens(source)
 			if err != nil {
 				return ast.AST{}, err
@@ -39,8 +39,10 @@ func load(t *testing.T, sources map[string]string) ([]module.Module, error) {
 				Filename: filename,
 				Tokens:   tokens,
 				Module:   string(id),
+				Imports:  imports,
 			})
 		},
+		Header: header,
 	}).Resolve("src/main.ar")
 }
 
@@ -249,4 +251,14 @@ func TestLoadRefusesBeforeItEmits(t *testing.T) {
 	if emitted != 0 {
 		t.Errorf("emitted %d modules before refusing, want none", emitted)
 	}
+}
+
+// header reads what a source imports without parsing it, which is what lets a module be read
+// before whoever imports it.
+func header(source []byte) ([]ast.UseDeclaration, error) {
+	tokens, err := lexer.New().GetFilledTokens(source)
+	if err != nil {
+		return nil, err
+	}
+	return parser.ScanUses(tokens), nil
 }

@@ -71,6 +71,31 @@ repetida uma vez por chamada.
 
 ---
 
+## `as` e `returns` servem a duas pessoas diferentes
+
+**O compilador não ignora o `as`** — e é justamente por isso que ele importa. Ele lê e age
+sobre a alegação: é o `as` que transforma `p.x` num índice de tape, e sem ele `p.x` nem
+compila. O que ele não faz é **conferir**.
+
+Isso é pior do que ignorar. Se fosse ignorado, um `as` errado seria inofensivo; como ele é
+acreditado, um `as` errado lê a tape errada e o programa continua — o que a documentação já
+diz com todas as letras: *"A wrong claim reads the wrong tapes"*
+([language-design.md](../docs/language-design.md)).
+
+Daí as duas palavras servirem a momentos diferentes:
+
+| | serve a | e o compilador |
+|---|---|---|
+| `as` | **quem escreve**: é como o programador diz, para si e para quem ler depois, o que aqueles bytes são | acredita, e usa |
+| `returns` | **o acordo**: é o que garante que o escopo não respondeu algo diferente do combinado | confere, e recusa |
+
+E `returns` nomeia um **struct** porque struct é a única forma que a linguagem tem hoje de
+dizer o que uma corrida de tapes é. A palavra é sobre o acordo, não sobre struct: se um dia
+houver outra maneira de dar forma a uma corrida, `returns` nomeia essa também, sem mudar de
+sentido.
+
+---
+
 ## O que `shapeOf` precisa aprender
 
 **A conferência vale o que `shapeOf` enxerga**, e hoje ele não enxerga o caso que motiva tudo
@@ -166,5 +191,5 @@ etapa 2 crescer.
    ramo não produz o struct.
 3. **A promessa pode ser exigida?** Hoje um escopo sem `returns` continua legal e quem chama
    escreve `as`. Um dia isso pode virar aviso; não agora.
-4. **O nome.** `returns` diz o que faz. `gives` e `answers` são mais o vocabulário desta
-   linguagem — um escopo *responde* um valor, não retorna dele.
+**Decidido:** o nome é `returns`. `answers` foi considerado e recusado — um escopo está de
+fato **devolvendo** um valor ao escopo de fora, e essa é a palavra para isso.

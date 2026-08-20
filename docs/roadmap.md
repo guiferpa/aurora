@@ -77,16 +77,18 @@ What it does not do yet:
   as `m.Point`, the same way everything it binds is. Marking part of it later breaks nothing.
 - **There is no `private`.** A module offers everything it binds with `ident` at the top. The
   boundary exists now, so marking part of it later breaks nothing.
-- **The language server follows an import, and stops short of two things.** It reads what a
+- **The language server follows an import, and stops short of one thing.** It reads what a
   document imports on every pass, from the editor's buffers before the disk, so a module that
   is not there and a name a module does not have are underlined where they were written, and
   what a module declared is offered after the dot — its shapes included, and the fields of a
   name whose shape came from another file, because what the imports offer is written down
-  before the document is read. What it does not do is go to a definition
-  in another file — no `textDocument/definition` exists for anything yet — and it does not
-  watch a file nobody has open, so editing a module outside the editor updates what depends
-  on it only when that file is touched. Neither needs the resolver; both need a capability
-  the server does not have.
+  before the document is read. A name jumps to where it was declared, here or in the module
+  it came from. What it does not do is watch a file nobody has open, so editing a module
+  outside the editor updates what depends on it only when that file is touched. It does not
+  need the resolver; it needs a capability the server does not have.
+- **A jump lands on a declaration and nothing else.** There is no
+  `textDocument/references` — every place a name is used — and so no rename either, which is
+  the same walk with an edit at the end of it.
 - **Nothing measures what following an import costs.** Every pass reads and parses every
   module the document imports, with no cache, which is the honest place to start: a cache has
   invalidation, and invalidation is a bug that reads as the editor lying. The shape to copy

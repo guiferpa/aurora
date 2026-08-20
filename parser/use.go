@@ -55,6 +55,7 @@ func (p *pr) ParseUse() (ast.Node, error) {
 			alias, declared, name.GetLine(), name.GetColumn())
 	}
 	p.declarations.Modules[alias] = specifier
+	p.declarations.Import(specifier, p.imports[specifier])
 
 	return ast.UseDeclaration{Specifier: specifier, Alias: alias, Token: tok}, nil
 }

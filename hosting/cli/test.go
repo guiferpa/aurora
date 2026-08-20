@@ -14,11 +14,14 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/eval"
 	"github.com/guiferpa/aurora/wire/module"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 // TestExtension marks a test file. A test belongs to the source file of the same name:
@@ -167,23 +170,83 @@ func failedAt(file, source string, err error) error {
 	return fmt.Errorf("%s: %w", filepath.Base(source), err)
 }
 
-// parseFile reads one file and parses it as part of the module somebody asked to run, which
-// is the one with no name of its own.
-func (s *Session) parseFile(file string, declarations *parser.Declarations) (ast.AST, error) {
+// failure is which file went wrong and what went wrong with it, so the report can say the
+// first and the reader the second.
+type failure struct {
+	file string
+	err  error
+}
+
+// readAll reads and lexes every file of the module, and collects what they import.
+//
+// Reading and parsing are two steps because what a file imports has to be parsed before the
+// file itself: a shape is resolved while parsing, and a struct's name never leaves the file
+// that declared it.
+func (s *Session) readAll(files []string) ([][]token.Token, []ast.UseDeclaration, *failure) {
+	chains := make([][]token.Token, 0, len(files))
+	uses := make([]ast.UseDeclaration, 0)
+
+	for _, file := range files {
+		tokens, err := s.tokensOf(file)
+		if err != nil {
+			return nil, nil, &failure{file: file, err: err}
+		}
+		chains = append(chains, tokens)
+		uses = append(uses, parser.ScanUses(tokens)...)
+	}
+	return chains, uses, nil
+}
+
+// runRanges runs every range in order, and the last one is the test.
+//
+// A failure before it is a failure of the code being checked rather than of the check, so it
+// says which file it came from.
+func runRanges(ev *evaluator.Evaluator, program loader.Program) error {
+	for i, each := range program.Ranges {
+		_, err := ev.EvaluateModule(program.Instructions, each.From, each.To, string(each.Module))
+		if err == nil {
+			continue
+		}
+		if i < len(program.Ranges)-1 {
+			return fmt.Errorf("%s: %w", each.Filename, err)
+		}
+		return err
+	}
+	return nil
+}
+
+// parseAll parses every file of the module, with what they import in hand.
+//
+// They share one set of declarations, because they are one module written in two files: a
+// struct declared in the source is known in the test, and so is a module it brought in.
+func (s *Session) parseAll(files []string, chains [][]token.Token, imports map[string][]ast.Promise) ([]ast.AST, *failure) {
+	declarations := parser.NewDeclarations()
+	trees := make([]ast.AST, 0, len(files))
+
+	for i, file := range files {
+		tree, err := s.parser.Parse(parser.ParseInput{
+			Filename:     file,
+			Tokens:       chains[i],
+			Declarations: declarations,
+			TapeSize:     s.tapeSize,
+			Imports:      imports,
+		})
+		if err != nil {
+			return nil, &failure{file: file, err: err}
+		}
+		trees = append(trees, tree)
+	}
+	return trees, nil
+}
+
+// tokensOf reads one file and lexes it. Reading and parsing are two steps here because what
+// a file imports is read from its tokens, before anything is parsed.
+func (s *Session) tokensOf(file string) ([]token.Token, error) {
 	bs, err := os.ReadFile(file)
 	if err != nil {
-		return ast.AST{}, err
+		return nil, err
 	}
-	tokens, err := s.lexer.GetFilledTokens(bs)
-	if err != nil {
-		return ast.AST{}, err
-	}
-	return s.parser.Parse(parser.ParseInput{
-		Filename:     file,
-		Tokens:       tokens,
-		Declarations: declarations,
-		TapeSize:     s.tapeSize,
-	})
+	return s.lexer.GetFilledTokens(bs)
 }
 
 // SourceForTest returns the file a test belongs to: greeting.test.ar -> greeting.ar.
@@ -217,26 +280,27 @@ func (s *Session) runTestFile(path string) FileReport {
 	//
 	// They are also read here rather than by the resolver, which reads the modules: these
 	// two are the file somebody asked for, and there is no name to look them up by.
-	declarations := parser.NewDeclarations()
-	trees := make([]ast.AST, 0, 2)
-	for _, file := range []string{source, path} {
-		tree, err := s.parseFile(file, declarations)
-		if err != nil {
-			report.Err = failedAt(file, source, err)
-			return report
-		}
-		trees = append(trees, tree)
-	}
-
-	// What the two of them import, and then the two of them: one program, with the modules
-	// before what needs them and the test last.
 	if s.resolver == nil {
 		report.Err = errors.New("no resolver was given to this session")
 		return report
 	}
-	modules, err := s.resolver.Dependencies(source, trees...)
-	if err != nil {
-		report.Err = err
+
+	files := []string{source, path}
+	chains, uses, broken := s.readAll(files)
+	if broken != nil {
+		report.Err = failedAt(broken.file, source, broken.err)
+		return report
+	}
+
+	modules, resolveErr := s.resolver.DependenciesOf(source, uses)
+	if resolveErr != nil {
+		report.Err = resolveErr
+		return report
+	}
+
+	trees, broken := s.parseAll(files, chains, resolver.PromisesOf(modules))
+	if broken != nil {
+		report.Err = failedAt(broken.file, source, broken.err)
 		return report
 	}
 	for _, tree := range trees {
@@ -255,18 +319,8 @@ func (s *Session) runTestFile(path string) FileReport {
 		return report
 	}
 
-	// Every range runs, in order, and the last one is the test. A failure before it is a
-	// failure of the code being checked rather than of the check, so it says which file.
-	for i, each := range program.Ranges {
-		_, err := ev.EvaluateModule(program.Instructions, each.From, each.To, string(each.Module))
-		if err == nil {
-			continue
-		}
-		if i < len(program.Ranges)-1 {
-			report.Err = fmt.Errorf("%s: %w", each.Filename, err)
-		} else {
-			report.Err = err
-		}
+	if err := runRanges(ev, program); err != nil {
+		report.Err = err
 		return report
 	}
 

@@ -234,6 +234,23 @@ type AST struct {
 	// somewhere else. Only whoever holds the other modules can answer that, which is why the
 	// parse hands it over instead of deciding.
 	References []Reference `json:"references,omitempty"`
+	// Promises is what this file's top-level scopes said they answer with. It leaves with the
+	// tree for whoever imports this file: see Promise.
+	Promises []Promise `json:"promises,omitempty"`
+}
+
+// A Promise is what one exported scope said it answers with, and what that struct is made
+// of.
+//
+// It is the only thing about a struct that leaves the file that declared it. A struct's name
+// is read while a file is parsed and dropped, so a module that answers with one has to hand
+// over the fields as well — otherwise whoever imports it has a run of tapes and no way to
+// turn a name into an index.
+type Promise struct {
+	// Scope is the name the scope is bound to, as the module's own file typed it.
+	Scope  string   `json:"scope"`
+	Struct string   `json:"struct"`
+	Fields []string `json:"fields"`
 }
 
 // A Reference is one qualified name, and where it was written.

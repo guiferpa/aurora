@@ -382,9 +382,9 @@ ident make = defer { Result{1, 42}; };
 printd make() as Result.value;   #- 42
 ```
 
-A struct does not cross a **module**, though — it is a way of naming the tapes of a run while
-one file is compiled, and it stays in the file that declared it. A scope imported from another
-module can answer with a run of tapes, and the file reading it has no name for their shape.
+A struct's **name** does not cross a module — it is a way of naming the tapes of a run while
+one file is compiled, and it stays in the file that declared it. What crosses is the shape,
+and only where a promise names it: see below.
 
 ### Promising a shape with `returns`
 

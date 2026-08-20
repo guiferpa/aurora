@@ -15,8 +15,12 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
+	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/ir"
+	"github.com/guiferpa/aurora/wire/module"
 )
 
 // render prints the value of the line that was typed — the temp left by its last
@@ -114,6 +118,15 @@ type Session struct {
 	// defer recorded valid when it is called on a later line.
 	insts []ir.Instruction
 
+	// resolver finds the files a line imports. Nil is a session that takes no use line,
+	// which is what a REPL with nowhere to read from is.
+	resolver *resolver.Resolver
+	// loaded is every module this session has run, by name. A module is a program: running
+	// it twice would bind its names twice, and the second time is a conflict — so a use of
+	// something already here is a use of what is already here, the way it is in any REPL
+	// that imports.
+	loaded map[module.ID]module.Module
+
 	hist       *History
 	histWarned bool
 }
@@ -150,12 +163,83 @@ func (s *Session) compile(text string) (ir.Program, error) {
 		return ir.Program{}, err
 	}
 
+	// What the line imports is loaded before the line runs, since the line is about to use
+	// it. A line that imports nothing asks nothing of the world.
+	if err := s.load(tree); err != nil {
+		return ir.Program{}, err
+	}
+
 	program, err := s.emitter.EmitProgram(tree)
 	if err != nil {
 		return ir.Program{}, err
 	}
 
 	return program, nil
+}
+
+// imports reports whether a line names a module at all.
+func imports(tree ast.AST) bool {
+	for _, node := range tree.Nodes {
+		if _, ok := node.(ast.UseDeclaration); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// load brings in what a line imports, and checks the line against everything brought in.
+//
+// A module runs here the way it runs anywhere: its instructions go into the same buffer every
+// line goes into, and it is evaluated as a range of it under its own name, so what it bound
+// is in the environ that belongs to it. Being in the one buffer is what lets a scope from it
+// be called on a later line — a defer records where its body sits, and the buffer is what
+// those positions are into.
+func (s *Session) load(tree ast.AST) error {
+	if s.resolver == nil {
+		if imports(tree) {
+			return errors.New("this session has nowhere to read a module from")
+		}
+		return nil
+	}
+
+	// The entry has no path: a session is not a file. Nothing can import it either, which
+	// is what that would have been for.
+	modules, err := s.resolver.Dependencies("", tree)
+	if err != nil {
+		return err
+	}
+
+	fresh := make([]module.Module, 0, len(modules))
+	for _, each := range modules {
+		if _, done := s.loaded[each.ID]; !done {
+			fresh = append(fresh, each)
+		}
+	}
+
+	// The line is checked against everything this session knows, not only what arrived with
+	// it: a name reached on line ten belongs to a module imported on line one.
+	known := make([]module.Module, 0, len(s.loaded)+len(fresh)+1)
+	for _, each := range s.loaded {
+		known = append(known, each)
+	}
+	known = append(known, fresh...)
+	if err := loader.Check(append(known, module.Module{ID: "", Tree: tree})); err != nil {
+		return err
+	}
+
+	for _, each := range fresh {
+		program, err := s.emitter.EmitProgram(each.Tree)
+		if err != nil {
+			return err
+		}
+		from := uint64(len(s.insts))
+		s.insts = append(s.insts, program.Instructions...)
+		if _, err := s.ev.EvaluateModule(s.insts, from, uint64(len(s.insts)), string(each.ID)); err != nil {
+			return err
+		}
+		s.loaded[each.ID] = each
+	}
+	return nil
 }
 
 // evaluate runs the line's expressions one at a time, so a line holding several of them
@@ -196,6 +280,8 @@ type NewSessionOptions struct {
 	Out io.Writer
 	// TapeSize is the width in bytes of every value, the same one the phases were built with.
 	TapeSize int
+	// Resolver finds the files a use line names. Without one a session takes no imports.
+	Resolver *resolver.Resolver
 }
 
 // NewSession builds a session from what it was handed.
@@ -215,6 +301,8 @@ func NewSession(opts NewSessionOptions) *Session {
 		out:          opts.Out,
 		tapeSize:     tapeSize,
 		declarations: parser.NewDeclarations(),
+		resolver:     opts.Resolver,
+		loaded:       make(map[module.ID]module.Module),
 		hist:         hist,
 	}
 }

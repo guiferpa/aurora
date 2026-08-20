@@ -186,7 +186,8 @@ never mentioned.
 
 - A `struct` cannot be exported.
 - There is no `private`: a module offers everything it binds at the top.
-- The REPL does not take `use`.
+- The REPL takes `use`, reading from where it was started, and brings a module in once per
+  session — a second `use` of the same one is a use of what is already there.
 - The editor follows an import — it underlines a module that is not there and a name a module
   does not have, and offers what a module declared after the dot — but it does not go to a
   definition in another file, and it only notices a change in a file you have open. Editing a

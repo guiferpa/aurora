@@ -1,6 +1,8 @@
 package repl
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -9,7 +11,10 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/resolver"
 	"github.com/guiferpa/aurora/shared/printer"
+	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/module"
 )
 
 // A session is one file typed a line at a time, and nothing could read one back until Start
@@ -147,5 +152,126 @@ func TestSessionSaysNothingForABlankLine(t *testing.T) {
 	}
 	if strings.Count(got, prompt) != 3 {
 		t.Errorf("session wrote %d prompts, want one per line and one for the end", strings.Count(got, prompt))
+	}
+}
+
+// typedIn is typed, in a project on disk: a use line reads a file, and where it reads from is
+// where the session was started.
+func typedIn(t *testing.T, dir, lines string, tapeSize int) string {
+	t.Helper()
+	t.Chdir(dir)
+
+	size := byteutil.TapeSize(tapeSize)
+	out := &strings.Builder{}
+	lx := lexer.New()
+	ps := parser.New()
+
+	NewSession(NewSessionOptions{
+		Lexer:   lx,
+		Parser:  ps,
+		Emitter: emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
+		Evaluator: evaluator.New(evaluator.NewEvaluatorOptions{
+			PrintBytes:   printer.Bytes(out, size),
+			PrintChars:   printer.Chars(out, size),
+			PrintDecimal: printer.Decimal(out, size),
+			TapeSize:     size,
+		}),
+		In:       strings.NewReader(lines),
+		Out:      out,
+		TapeSize: size,
+		Resolver: resolver.New(resolver.Options{
+			SourceRoot: "src",
+			Read:       os.ReadFile,
+			Parse: func(filename string, id module.ID, source []byte) (ast.AST, error) {
+				tokens, err := lx.GetFilledTokens(source)
+				if err != nil {
+					return ast.AST{}, err
+				}
+				return ps.Parse(parser.ParseInput{
+					Filename: filename,
+					Tokens:   tokens,
+					TapeSize: size,
+					Module:   string(id),
+				})
+			},
+		}),
+	}).Start()
+
+	return out.String()
+}
+
+// withModule writes a project with one module in it and answers where it is.
+func withModule(t *testing.T, source string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "src", "geometry.ar"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+const geometry = "ident area = defer { feed(0) * feed(1); };\nident base = 10;"
+
+// A use line brings the module in, and what is inside it answers on the lines after.
+func TestASessionImports(t *testing.T) {
+	got := typedIn(t, withModule(t, geometry), "use geometry as g;\nprintd g.area(3, 4);\nprintd g.base;\n", 0)
+
+	for _, want := range []string{"12", "10"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the session said %q, want it to contain %q", got, want)
+		}
+	}
+}
+
+// A module is a program, so it runs once: importing it again is a use of what is already
+// here, rather than binding its names a second time.
+func TestAModuleIsBroughtInOnce(t *testing.T) {
+	got := typedIn(t, withModule(t, "printd 1;\nident base = 10;"),
+		"use geometry as g;\nuse geometry as h;\nprintd h.base;\n", 0)
+
+	if strings.Count(got, "1\n") != 1 {
+		t.Errorf("the module ran more than once: %q", got)
+	}
+	if strings.Contains(got, "conflict") {
+		t.Errorf("importing twice bound its names twice: %q", got)
+	}
+	if !strings.Contains(got, "10") {
+		t.Errorf("the second alias does not reach it: %q", got)
+	}
+}
+
+// What is wrong is said when the line is read, not when it runs.
+func TestASessionSaysWhatIsWrongWithAnImport(t *testing.T) {
+	for _, tc := range []struct{ name, lines, want string }{
+		{
+			name:  "a module that is not there",
+			lines: "use gone as g;\n",
+			want:  "module gone is not there",
+		},
+		{
+			name:  "a name the module does not have",
+			lines: "use geometry as g;\nprintd g.volume;\n",
+			want:  "module geometry has no volume",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := typedIn(t, withModule(t, geometry), tc.lines, 0)
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("the session said %q, want it to contain %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// A session with nowhere to read from takes no imports, and says so rather than accepting the
+// line and doing nothing with it.
+func TestASessionWithoutAResolverRefusesToPretend(t *testing.T) {
+	got := typed(t, "use geometry as g;\nprintd g.base;\n", 0)
+
+	if !strings.Contains(got, "nowhere to read a module from") {
+		t.Errorf("the session said %q, want it to say it cannot import", got)
 	}
 }

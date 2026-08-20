@@ -74,6 +74,34 @@ colisão e sem regra nova.
 
 ---
 
+## Nós já sabemos. Sabemos tarde
+
+A pergunta certa é: se a árvore de `math` está ali, e o `Exports` já a lê procurando
+`IdentLiteral`, por que ele não saberia do `struct Prime` do mesmo arquivo? Saberia — ler
+`StructDeclaration` do mesmo jeito são duas linhas, e o nó tem nome e campos.
+
+O problema não é **se** sabemos, é **quando**:
+
+| | O que acontece | Onde |
+|---|---|---|
+| 1 | `main.ar` é parseado | `resolver/resolver.go:75` |
+| 2 | as linhas `use` dele são lidas da árvore | `declarationsOf` |
+| 3 | `math.ar` é lido e parseado | `resolveOne` |
+| 4 | o loader confere que `math` tem mesmo um `sum` | `loader.Check` |
+
+`m.sum(1, 2)` funciona porque a pergunta dele é respondida no **passo 4**, com as duas árvores
+na mão. O parser do passo 1 não precisou saber nada: escreveu `math.sum` e anotou a referência
+para depois.
+
+`m.Prime` precisaria da resposta no **passo 1**, e `math.ar` só é lido no 3.
+
+**O parse anda de fora para dentro, e a forma precisa de dentro para fora.** Um módulo é
+parseado antes dos que ele importa — a ordem que o resolver devolve é a inversa da ordem em que
+ele parseia. É esse relógio que esta RFC acerta, e é por isso que a extração do conhecimento
+não aparece na conta: ela é trivial.
+
+---
+
 ## O que muda: o conhecimento chega antes do parse
 
 Aqui está o custo, e é um só. Hoje o resolver **parseia a entrada primeiro** e depois anda

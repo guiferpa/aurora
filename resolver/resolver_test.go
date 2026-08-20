@@ -35,13 +35,14 @@ func resolve(t *testing.T, root, entry string, sources files) ([]module.Module, 
 			}
 			return []byte(source), nil
 		},
-		Parse: func(filename string, _ module.ID, source []byte) (ast.AST, error) {
+		Parse: func(filename string, _ module.ID, source []byte, imports map[string][]ast.Promise) (ast.AST, error) {
 			tokens, err := lexer.New().GetFilledTokens(source)
 			if err != nil {
 				return ast.AST{}, err
 			}
-			return parser.New().Parse(parser.ParseInput{Filename: filename, Tokens: tokens})
+			return parser.New().Parse(parser.ParseInput{Filename: filename, Tokens: tokens, Imports: imports})
 		},
+		Header: header,
 	})
 
 	modules, err := resolver.Resolve(entry)
@@ -255,4 +256,14 @@ func equal(got, want []string) bool {
 		}
 	}
 	return true
+}
+
+// header reads what a source imports without parsing it, which is what lets a module be read
+// before whoever imports it.
+func header(source []byte) ([]ast.UseDeclaration, error) {
+	tokens, err := lexer.New().GetFilledTokens(source)
+	if err != nil {
+		return nil, err
+	}
+	return parser.ScanUses(tokens), nil
 }

@@ -80,30 +80,42 @@ The alias belongs to the file that wrote it. It is not a name the module chose, 
 nothing in any other file — two files may reach the same module under two different names, and
 one file may not use the same name twice.
 
-It is a name in the file's scope like any other, so it cannot also be a value:
+It is a name in the file's scope like any other, so it cannot also be a value. These are
+refused while compiling — shown rather than run, because a module is read before the file that
+imports it, so a block on its own would be refused for the module missing before it got this
+far:
 
-```aurora
-#- fails: x is the module geometry
+```
 use geometry as x;
 
 printd x;
 ```
 
-```aurora
-#- fails: x is already the alias of geometry
+```
+x is the module geometry at line 3 and column 8: reach something inside it with x.name
+```
+
+```
 use geometry as x;
 
 ident x = 1;
 ```
 
+```
+x is already the alias of geometry at line 3 and column 7
+```
+
 And `use` belongs above everything else, so what a file depends on is known before anything
 happens in it:
 
-```aurora
-#- fails: use belongs to the top of the file
+```
 ident n = 1;
 
 use geometry as g;
+```
+
+```
+use belongs to the top of the file at line 3 and column 1: put it above everything else
 ```
 
 ---
@@ -115,8 +127,8 @@ which is the same thing since a scope's value is its index. Nothing else:
 
 - a name bound inside a block or a deferred body belongs to the scope that binds it, and is
   gone when that scope is;
-- a `struct` does not cross a module. It is a way of naming the fields of a run of tapes while
-  a file is compiled, and it stays in the file that declared it;
+- a `struct`'s **name** does not cross a module, and cannot be written in another file. What
+  does cross is the shape of one a scope promised — see below;
 - an import is not passed on. If `main` uses `a` and `a` uses `b`, then `main` does not reach
   `b` — it writes its own `use b as ...;`. Every file declares what it needs, and a name used
   in a file has its origin declared in that file.
@@ -140,6 +152,36 @@ use geometry as g;
 
 printd g.area(1, 2);
 ```
+
+### A shape crosses with the promise that names it
+
+A scope that says what it answers with hands the shape over, so whoever imports it reads the
+fields without naming anything:
+
+```
+#- src/os.ar
+struct Env { found, value };
+
+ident lookup = defer {
+  Env{1, 42};
+} returns Env;
+```
+
+```
+#- src/main.ar
+use os as o;
+
+ident r = o.lookup("HOME");
+printd r.found;
+printd r.value;
+```
+
+Nothing in `main.ar` mentions `Env`, and nothing can: a struct's name stays in the file that
+declared it. What crossed is the promise — the struct and the fields it is made of — which is
+what turns `found` into the first tape of the run.
+
+A scope that promised nothing hands over a run of tapes and no shape, exactly as it did
+before: the file reading it has to name one, and there is nothing to name.
 
 ---
 

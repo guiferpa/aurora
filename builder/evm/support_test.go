@@ -57,7 +57,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 		},
 		{
 			name:    "calling a scope",
-			opcodes: []byte{ir.OpPushFeed, ir.OpCall},
+			opcodes: []byte{ir.OpCall},
 			want:    []string{"calling a scope does not reach the bytecode yet"},
 		},
 		{

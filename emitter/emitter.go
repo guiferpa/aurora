@@ -203,18 +203,22 @@ func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpres
 
 // emitTapeBracketExpression builds a tape byte by byte.
 func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBracketExpression, tapeSize int) ir.Label {
-	// Create the initial tape, all zeros
-	l := GenerateLabel(tc)
-	tape := byteutil.FalseTape(tapeSize)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(tape), ir.Nothing()))
+	// A tape starts as zeros and every item is pulled onto it, entering at the right.
+	//
+	// One instruction over as many items as there are, rather than a chain of two-operand
+	// pulls: the items are one construction, and saying so is what saves whoever reads the
+	// IR from recognising a chain as one thing.
+	lz := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstruction(lz, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize)), ir.Nothing()))
 
-	// For each item, generate instruction and use ir.OpPull to add bytes directly
-	for _, i := range n.Items {
-		la := GenerateLabel(tc)
-		li := EmitInstruction(tc, insts, i, tapeSize)
-		*insts = append(*insts, ir.NewInstruction(la, ir.OpPull, ir.RefTo(l), ir.RefTo(li)).At(originOf(n.Token)))
-		l = la
+	operands := make([]ir.Operand, 0, len(n.Items)+1)
+	operands = append(operands, ir.RefTo(lz))
+	for _, item := range n.Items {
+		operands = append(operands, ir.RefTo(EmitInstruction(tc, insts, item, tapeSize)))
 	}
+
+	l := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstructionOver(l, ir.OpPull, operands...).At(originOf(n.Token)))
 	return l
 
 }
@@ -242,22 +246,26 @@ func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, 
 
 // emitShapeLiteral lays one tape per field, end to end.
 func emitShapeLiteral(tc *int, insts *[]ir.Instruction, n ast.ShapeLiteral, tapeSize int) ir.Label {
-	// One tape per field, laid end to end — the shape a reel of the same length has.
-	// Instructions carry two operands, so the run is built by chaining, the way a tape
-	// literal chains ir.OpPull.
+	// One tape per field, laid end to end — the shape a reel of the same length has. One
+	// instruction over as many fields as there are: a shape is one construction, and it
+	// used to be a chain of joins because an instruction could only hold two operands.
 	//
 	// It starts from an empty run rather than from the first field so that every field
 	// crosses the same join, which is what narrows each one to a single tape. Starting
 	// at the first field left that one whole, and a reel there became several tapes.
-	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(make([]byte, 0)), ir.Nothing()))
+	// Folding the chain into one instruction keeps that: every operand after the first is
+	// narrowed, and the first is the empty run.
+	lz := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstruction(lz, ir.OpSave, ir.ImmOf(make([]byte, 0)), ir.Nothing()))
 
+	operands := make([]ir.Operand, 0, len(n.Values)+1)
+	operands = append(operands, ir.RefTo(lz))
 	for _, value := range n.Values {
-		lv := EmitInstruction(tc, insts, value, tapeSize)
-		lj := GenerateLabel(tc)
-		*insts = append(*insts, ir.NewInstruction(lj, ir.OpJoin, ir.RefTo(l), ir.RefTo(lv)).At(originOf(n.Token)))
-		l = lj
+		operands = append(operands, ir.RefTo(EmitInstruction(tc, insts, value, tapeSize)))
 	}
+
+	l := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstructionOver(l, ir.OpJoin, operands...).At(originOf(n.Token)))
 	return l
 
 }

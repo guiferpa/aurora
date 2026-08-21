@@ -256,6 +256,42 @@ func (e *Evaluator) EvaluatePush(label, left, right []byte) error {
 // EvaluateJoin lays one tape after a run of them, which is how a shape is built. Each part
 // is normalised to a tape first, so a run always holds a whole number of them however wide
 // the value handed over was.
+// EvaluateJoinOver lays one tape per field, end to end, over as many fields as the shape has.
+//
+// Every field crosses the same narrowing, which is what makes each one a single tape: a reel
+// handed to a field would otherwise stay whole and the shape would come out longer than it
+// declared. The first operand is the empty run the fields are laid onto.
+func (e *Evaluator) EvaluateJoinOver(label []byte, operands []ir.Operand) error {
+	joined := append([]byte{}, e.environ.GetTemp(byteutil.ToHex(operands[0].Bytes()))...)
+	for _, operand := range operands[1:] {
+		tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(operand.Bytes())), e.tapeSize)
+		joined = append(joined, tape...)
+	}
+
+	e.environ.SetTemp(byteutil.ToHex(label), joined)
+	e.IncrementCursor()
+	return nil
+}
+
+// EvaluatePullOver shifts a tape left once per item, each entering at the right.
+//
+// The first operand is the tape the items are pulled onto, which for a literal is zeros.
+// Keeping the last bytes after every item is what drops whatever was shifted off the left.
+func (e *Evaluator) EvaluatePullOver(label []byte, operands []ir.Operand) error {
+	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(operands[0].Bytes())), e.tapeSize)
+	for _, operand := range operands[1:] {
+		item := byteutil.ExtractSignificantBytes(e.environ.GetTemp(byteutil.ToHex(operand.Bytes())))
+		shifted := make([]byte, 0, len(tape)+len(item))
+		shifted = append(shifted, tape...)
+		shifted = append(shifted, item...)
+		tape = byteutil.PaddingTape(shifted, e.tapeSize)
+	}
+
+	e.environ.SetTemp(byteutil.ToHex(label), tape)
+	e.IncrementCursor()
+	return nil
+}
+
 func (e *Evaluator) EvaluateJoin(label, left, right []byte) error {
 	run := e.environ.GetTemp(byteutil.ToHex(left))
 	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(right)), e.tapeSize)
@@ -648,6 +684,18 @@ func init() {
 	}
 }
 
+// runOperations are the instructions that take as many operands as they were given, rather
+// than a pair. A construction is the case for it: a shape has as many fields as it has, and a
+// tape literal as many items.
+//
+// They are a map of their own rather than a special case inside the dispatch, because two
+// shapes of instruction are two shapes of operation — the same reason the IR has
+// NewInstruction beside NewInstructionOver.
+var runOperations = map[byte]func(*Evaluator, []byte, []ir.Operand) error{
+	ir.OpJoin: (*Evaluator).EvaluateJoinOver,
+	ir.OpPull: (*Evaluator).EvaluatePullOver,
+}
+
 // ExecuteInstruction runs one instruction: the opcode names the operation, and the operation
 // moves the cursor itself, since where it lands is part of what the instruction does.
 //
@@ -655,6 +703,9 @@ func init() {
 // declared and never emitted, and an instruction the evaluator does not know is exactly what
 // a half-wired new opcode looks like — a running program does not stop for it.
 func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
+	if over, ok := runOperations[inst.GetOpCode()]; ok {
+		return over(e, inst.GetLabel(), inst.GetOperands())
+	}
 	op, ok := operations[inst.GetOpCode()]
 	if !ok {
 		e.IncrementCursor()

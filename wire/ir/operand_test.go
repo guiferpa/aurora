@@ -66,3 +66,31 @@ func TestAnOperandWritesItselfForAPerson(t *testing.T) {
 		})
 	}
 }
+
+// An instruction over a run carries as many operands as it was given. A construction has as
+// many parts as it has, and used to become a chain of two-operand instructions for whoever
+// read the IR to recognise as one thing.
+func TestAnInstructionCarriesAsManyOperandsAsItWasGiven(t *testing.T) {
+	inst := NewInstructionOver([]byte("09"), OpJoin, RefTo([]byte("00")), RefTo([]byte("01")), RefTo([]byte("02")))
+
+	if got := len(inst.GetOperands()); got != 3 {
+		t.Fatalf("carries %d operands, want 3", got)
+	}
+	// The first two still answer as a pair, which is what an instruction taking one reads.
+	if got := string(inst.GetLeft().Bytes()); got != "00" {
+		t.Errorf("left is %q, want the first operand", got)
+	}
+	if got := string(inst.GetRight().Bytes()); got != "01" {
+		t.Errorf("right is %q, want the second operand", got)
+	}
+}
+
+// An operand that is not there answers as Nothing rather than panicking, because a reader
+// asking for a pair should not have to know how many the instruction actually has.
+func TestAnOperandBeyondWhatAnInstructionHasIsNothing(t *testing.T) {
+	inst := NewInstructionOver([]byte("09"), OpSave, ImmOf([]byte{1}))
+
+	if got := inst.GetRight(); got.Kind() != Empty {
+		t.Errorf("the second operand of a one-operand instruction is %v, want nothing", got)
+	}
+}

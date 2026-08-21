@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/emitter"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -123,4 +126,39 @@ func TestWarningsFollowTheProgram(t *testing.T) {
 	if !strings.Contains(warnings[0].Message, "printd") {
 		t.Errorf("said %q first, want the print", warnings[0].Message)
 	}
+}
+
+// A warning that names a feature and not a place leaves the person to search for it. The IR
+// carries where every instruction came from now, so the backend points at the first line that
+// used what it cannot carry.
+func TestWarningsPointAtWhereTheFeatureWasUsed(t *testing.T) {
+	const source = `ident sum = defer { feed(0) + feed(1); };
+printb sum(1, 2);`
+
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
+	if err != nil {
+		t.Fatalf("lexer: %v", err)
+	}
+	tree, err := parser.New().Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
+	if err != nil {
+		t.Fatalf("parser: %v", err)
+	}
+	insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+	if err != nil {
+		t.Fatalf("emitter: %v", err)
+	}
+
+	for _, warning := range Warnings(insts) {
+		if !strings.Contains(warning.Message, "calling a scope") {
+			continue
+		}
+		if !warning.Positioned() {
+			t.Fatal("the warning about calling a scope has no place to point at")
+		}
+		if warning.Line != 2 {
+			t.Errorf("it points at line %d, want the line the call was written on", warning.Line)
+		}
+		return
+	}
+	t.Fatal("nothing warned about calling a scope")
 }

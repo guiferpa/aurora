@@ -134,9 +134,13 @@ using any of the following **compiles successfully and does nothing on chain**.
   bytes and identifiers at about seven memory slots. `PUSH2` lifts it.
 
 `aurora build` now **says what it could not carry**, once per feature, in the order the
-program uses it — so a binary that does less than the source said is at least announced. What
-is missing is a place to point at: the IR carries instructions, not lines, so a warning names
-the feature and not where it was written.
+program uses it, and names the line the program first used it on — so a binary that does less
+than the source said is announced, in the form an editor follows.
+
+What a warning still cannot point at is a feature the emitter had no token for: an `if`, a
+`shape`, and the tape operations are parsed from nodes that do not keep the token they came
+from, so those name the feature and not the place. Giving those nodes a token is a change to
+the parser and would close the gap.
 
 ## Simulating a call off the chain
 

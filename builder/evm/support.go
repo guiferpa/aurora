@@ -73,7 +73,10 @@ var pending = map[byte]string{
 // the program would refuse it for a reason that expires. What must not happen is the binary
 // coming out quietly wrong, which is what happened until now.
 //
-// They arrive in the order the program uses them, once each.
+// They arrive in the order the program uses them, once each, and each one points at the first
+// place the program used it. That place comes from the instruction: the emitter knows where
+// every node was written and now says so, where before this named a feature and left the
+// person to find it.
 func Warnings(insts []ir.Instruction) []diag.Warning {
 	warnings := make([]diag.Warning, 0)
 	said := make(map[string]bool)
@@ -98,7 +101,11 @@ func Warnings(insts []ir.Instruction) []diag.Warning {
 			continue
 		}
 		said[message] = true
-		warnings = append(warnings, diag.Warning{Message: message})
+		warning := diag.Warning{Message: message}
+		if origin := inst.GetOrigin(); origin.Known() {
+			warning.Line, warning.Column = origin.Line, origin.Column
+		}
+		warnings = append(warnings, warning)
 	}
 
 	return warnings

@@ -250,8 +250,11 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 				t.Errorf("%v: %v", tc.name, err)
 				return
 			}
+			// Compared as the IR reads rather than as the struct is: this is about the
+			// order instructions come out in, and an instruction also carries where it was
+			// written, which the expectations below have no business restating.
 			got := ResolveOperandsOrder(insts)
-			if !reflect.DeepEqual(got, tc.want) {
+			if ir.Format(got) != ir.Format(tc.want) {
 				t.Errorf("\ngot =\n%v \nwant =\n%v", ir.Format(got), ir.Format(tc.want))
 			}
 		})

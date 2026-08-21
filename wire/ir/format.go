@@ -18,7 +18,7 @@ import (
 func Format(insts []Instruction) string {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	for _, inst := range insts {
-		fmt.Fprintf(bs, "%s %s %s %s\n", byteutil.ToHexPretty(inst.GetLabel()), ResolveOpCode(inst.GetOpCode()), byteutil.ToHexPretty(inst.GetLeft()), byteutil.ToHexPretty(inst.GetRight()))
+		fmt.Fprintf(bs, "%s %s %s %s\n", byteutil.ToHexPretty(inst.GetLabel()), ResolveOpCode(inst.GetOpCode()), inst.GetLeft(), inst.GetRight())
 	}
 	return bs.String()
 }

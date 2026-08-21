@@ -104,8 +104,8 @@ func TestEmitProgramLabelsScopes(t *testing.T) {
 			if last.GetOpCode() != ir.OpReturn {
 				t.Fatalf("a scope should end in OpReturn, got %s", ir.ResolveOpCode(last.GetOpCode()))
 			}
-			if !bytes.Equal(last.GetLeft(), expr.Label) {
-				t.Errorf("the value lands under %q but the expression reports %q", last.GetLeft(), expr.Label)
+			if !bytes.Equal(last.GetLeft().Bytes(), expr.Label) {
+				t.Errorf("the value lands under %q but the expression reports %q", last.GetLeft().Bytes(), expr.Label)
 			}
 		})
 	}

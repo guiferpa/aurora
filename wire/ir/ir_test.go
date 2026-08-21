@@ -27,12 +27,12 @@ func TestNewInstructionNeverHoldsNil(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			inst := NewInstruction([]byte("00"), OpAdd, tc.left, tc.right)
+			inst := NewInstruction([]byte("00"), OpAdd, RefTo(tc.left), RefTo(tc.right))
 
-			if inst.GetLeft() == nil {
+			if inst.GetLeft().Bytes() == nil {
 				t.Error("the left operand came back as nothing")
 			}
-			if inst.GetRight() == nil {
+			if inst.GetRight().Bytes() == nil {
 				t.Error("the right operand came back as nothing")
 			}
 		})
@@ -41,7 +41,7 @@ func TestNewInstructionNeverHoldsNil(t *testing.T) {
 
 // What was put in is what comes out: the label, the opcode and the operands, unchanged.
 func TestAnInstructionAnswersWithWhatItWasGiven(t *testing.T) {
-	inst := NewInstruction([]byte("07"), OpMultiply, []byte{1, 2}, []byte{3})
+	inst := NewInstruction([]byte("07"), OpMultiply, RefTo([]byte{1, 2}), RefTo([]byte{3}))
 
 	if got := string(inst.GetLabel()); got != "07" {
 		t.Errorf("label is %q, want 07", got)
@@ -49,11 +49,11 @@ func TestAnInstructionAnswersWithWhatItWasGiven(t *testing.T) {
 	if got := inst.GetOpCode(); got != OpMultiply {
 		t.Errorf("opcode is %d, want %d", got, OpMultiply)
 	}
-	if got := inst.GetLeft(); len(got) != 2 || got[0] != 1 || got[1] != 2 {
-		t.Errorf("left is %v, want [1 2]", got)
+	if got := inst.GetLeft(); got.Kind() != Ref || len(got.Bytes()) != 2 || got.Bytes()[0] != 1 {
+		t.Errorf("left is %v, want a ref to [1 2]", got)
 	}
-	if got := inst.GetRight(); len(got) != 1 || got[0] != 3 {
-		t.Errorf("right is %v, want [3]", got)
+	if got := inst.GetRight(); got.Kind() != Ref || len(got.Bytes()) != 1 || got.Bytes()[0] != 3 {
+		t.Errorf("right is %v, want a ref to [3]", got)
 	}
 }
 
@@ -98,8 +98,8 @@ func TestAByteThatIsNotAnOpcode(t *testing.T) {
 // The written form is one instruction per line, in the order they run.
 func TestFormat(t *testing.T) {
 	insts := []Instruction{
-		NewInstruction([]byte("00"), OpSave, []byte{1}, nil),
-		NewInstruction([]byte("01"), OpAdd, []byte("00"), []byte("00")),
+		NewInstruction([]byte("00"), OpSave, ImmOf([]byte{1}), Nothing()),
+		NewInstruction([]byte("01"), OpAdd, RefTo([]byte("00")), RefTo([]byte("00"))),
 	}
 
 	lines := strings.Split(strings.TrimRight(Format(insts), "\n"), "\n")

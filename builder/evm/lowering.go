@@ -73,8 +73,8 @@ func ResolveOperandsOrder(insts []ir.Instruction) []ir.Instruction {
 			continue
 		}
 
-		ll := byteutil.ToHex(inst.GetLeft())
-		lr := byteutil.ToHex(inst.GetRight())
+		ll := byteutil.ToHex(inst.GetLeft().Bytes())
+		lr := byteutil.ToHex(inst.GetRight().Bytes())
 		ld := byteutil.ToHex(inst.GetLabel())
 
 		ol, okl := operands[ll]

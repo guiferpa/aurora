@@ -3,15 +3,15 @@ package ir
 type Instruction interface {
 	GetLabel() []byte
 	GetOpCode() byte
-	GetLeft() []byte
-	GetRight() []byte
+	GetLeft() Operand
+	GetRight() Operand
 }
 
 type inst struct {
 	label  []byte
 	opcode byte
-	left   []byte
-	right  []byte
+	left   Operand
+	right  Operand
 }
 
 func (i inst) GetLabel() []byte {
@@ -22,20 +22,15 @@ func (i inst) GetOpCode() byte {
 	return i.opcode
 }
 
-func (i inst) GetLeft() []byte {
+func (i inst) GetLeft() Operand {
 	return i.left
 }
 
-func (i inst) GetRight() []byte {
+func (i inst) GetRight() Operand {
 	return i.right
 }
 
-func NewInstruction(label []byte, opcode byte, left, right []byte) inst {
-	if left == nil {
-		left = make([]byte, 0)
-	}
-	if right == nil {
-		right = make([]byte, 0)
-	}
+// NewInstruction builds an instruction from operands that say what they are.
+func NewInstruction(label []byte, opcode byte, left, right Operand) inst {
 	return inst{label, opcode, left, right}
 }

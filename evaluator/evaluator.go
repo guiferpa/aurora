@@ -660,7 +660,7 @@ func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 		e.IncrementCursor()
 		return nil
 	}
-	return op(e, inst.GetLabel(), inst.GetLeft(), inst.GetRight())
+	return op(e, inst.GetLabel(), inst.GetLeft().Bytes(), inst.GetRight().Bytes())
 }
 
 func (e *Evaluator) ExecuteInstructions(from, to uint64) (eval.Returns, error) {

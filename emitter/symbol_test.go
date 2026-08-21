@@ -20,7 +20,7 @@ func symbolOf(t *testing.T, insts []ir.Instruction, opcode byte) string {
 	t.Helper()
 	for _, inst := range insts {
 		if inst.GetOpCode() == opcode {
-			return string(inst.GetLeft())
+			return string(inst.GetLeft().Bytes())
 		}
 	}
 	t.Fatalf("no %s was emitted", ir.ResolveOpCode(opcode))

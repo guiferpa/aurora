@@ -266,7 +266,7 @@ func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
 				tc.setup(e)
 			}
 
-			inst := ir.NewInstruction([]byte("02"), tc.opcode, tc.left, tc.right)
+			inst := ir.NewInstruction([]byte("02"), tc.opcode, ir.RefTo(tc.left), ir.RefTo(tc.right))
 			if err := e.ExecuteInstruction(inst); err != nil {
 				t.Fatalf("executing %s: %v", ir.ResolveOpCode(tc.opcode), err)
 			}
@@ -333,7 +333,7 @@ func TestExecuteInstructionDispatchesThePrints(t *testing.T) {
 			})
 			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
 
-			inst := ir.NewInstruction([]byte("02"), tc.opcode, []byte("00"), nil)
+			inst := ir.NewInstruction([]byte("02"), tc.opcode, ir.RefTo([]byte("00")), ir.Nothing())
 			if err := e.ExecuteInstruction(inst); err != nil {
 				t.Fatalf("executing: %v", err)
 			}
@@ -358,7 +358,7 @@ func TestAPrintAnswersWithWhatThePrinterGaveBack(t *testing.T) {
 	e := New(NewEvaluatorOptions{PrintDecimal: printer})
 	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
 
-	inst := ir.NewInstruction([]byte("02"), ir.OpPrintDecimal, []byte("00"), nil)
+	inst := ir.NewInstruction([]byte("02"), ir.OpPrintDecimal, ir.RefTo([]byte("00")), ir.Nothing())
 	if err := e.ExecuteInstruction(inst); err != nil {
 		t.Fatalf("executing: %v", err)
 	}
@@ -375,7 +375,7 @@ func TestAPrintThatFailsStopsTheProgram(t *testing.T) {
 	e := New(NewEvaluatorOptions{PrintChars: &recorder{fails: errors.New("broken pipe")}})
 	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
 
-	inst := ir.NewInstruction([]byte("02"), ir.OpPrintChars, []byte("00"), nil)
+	inst := ir.NewInstruction([]byte("02"), ir.OpPrintChars, ir.RefTo([]byte("00")), ir.Nothing())
 	if err := e.ExecuteInstruction(inst); err == nil {
 		t.Error("a broken pipe was taken for a successful print")
 	}
@@ -387,7 +387,7 @@ func TestAPrintWithNoPrinterIsAnError(t *testing.T) {
 	e := New(NewEvaluatorOptions{})
 	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(65))
 
-	inst := ir.NewInstruction([]byte("02"), ir.OpPrintBytes, []byte("00"), nil)
+	inst := ir.NewInstruction([]byte("02"), ir.OpPrintBytes, ir.RefTo([]byte("00")), ir.Nothing())
 	if err := e.ExecuteInstruction(inst); err == nil {
 		t.Error("printing with no printer was taken for a print")
 	}
@@ -399,7 +399,7 @@ func TestExecuteInstructionDispatchesAnAssert(t *testing.T) {
 	e := New(NewEvaluatorOptions{Asserts: true})
 	e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(tapeSize))
 
-	inst := ir.NewInstruction([]byte("02"), ir.OpAssert, []byte("00"), []byte("one is one"))
+	inst := ir.NewInstruction([]byte("02"), ir.OpAssert, ir.RefTo([]byte("00")), ir.TextOf("one is one"))
 	if err := e.ExecuteInstruction(inst); err != nil {
 		t.Fatalf("executing: %v", err)
 	}
@@ -424,17 +424,17 @@ func TestExecuteInstructionCarriesAnErrorBack(t *testing.T) {
 	}{
 		{
 			name: "load of an identifier that was never set",
-			inst: ir.NewInstruction([]byte("02"), ir.OpLoad, []byte("nope"), nil),
+			inst: ir.NewInstruction([]byte("02"), ir.OpLoad, ir.NameOf("nope"), ir.Nothing()),
 			want: "identifier nope not found",
 		},
 		{
 			name: "call of an identifier that was never set",
-			inst: ir.NewInstruction([]byte("02"), ir.OpCall, []byte("nope"), nil),
+			inst: ir.NewInstruction([]byte("02"), ir.OpCall, ir.NameOf("nope"), ir.Nothing()),
 			want: "call: nope identifier not found",
 		},
 		{
 			name: "divide by zero",
-			inst: ir.NewInstruction([]byte("02"), ir.OpDivide, []byte("00"), []byte("01")),
+			inst: ir.NewInstruction([]byte("02"), ir.OpDivide, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
 			want: "integer divide by zero",
 		},
 	}
@@ -461,7 +461,7 @@ func TestExecuteInstructionCarriesAnErrorBack(t *testing.T) {
 func TestExecuteInstructionStepsOverAnOpcodeItDoesNotKnow(t *testing.T) {
 	e := New(NewEvaluatorOptions{})
 
-	inst := ir.NewInstruction([]byte("02"), ir.OpPreCall, []byte("00"), []byte("01"))
+	inst := ir.NewInstruction([]byte("02"), ir.OpPreCall, ir.Nothing(), ir.Nothing())
 	if err := e.ExecuteInstruction(inst); err != nil {
 		t.Fatalf("executing: %v", err)
 	}

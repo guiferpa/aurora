@@ -12,12 +12,41 @@ import "github.com/guiferpa/aurora/byteutil"
 type Kind byte
 
 const (
-	Empty  Kind = iota // there is nothing here
-	Ref                // the label of a value another instruction left behind
-	Imm                // the bytes themselves: a tape, a width, an index
-	Name               // a name bound in a scope, or a scope to call
-	Target             // where control goes
-	Text               // bytes written for a person to read
+	// Empty is an instruction that points at one thing, or at none. It is not the same as
+	// an operand carrying no bytes: OpSave of an empty run points at something, and the
+	// right of OpSave points at nothing at all.
+	Empty Kind = iota
+
+	// Ref is a value another instruction left behind, named by the label that instruction
+	// carries. It is the whole reason the IR is not a stack machine: a value is named where
+	// it is produced and cited where it is used, and the distance between the two is a
+	// question for whoever consumes this — a register allocator on one target, a stack
+	// scheduler on another.
+	Ref
+
+	// Imm is the bytes themselves. There is nothing to look up: a tape a literal compiled
+	// to, the width of a slice, the index of a field, the position an argument is read
+	// from. What tells Imm from Ref is only this kind — both are runs of bytes, and 0x03 is
+	// the number three under one and the value labelled "03" under the other.
+	Imm
+
+	// Name is a name that outlives the instruction writing it: something a scope bound, or
+	// a scope to call. It is resolved by whoever runs the program rather than by position,
+	// which is why it is not a Ref — a Ref points inside one stretch of instructions, and a
+	// Name reaches across scopes and across modules.
+	Name
+
+	// Target is where control goes. Today it carries a count of instructions, which is what
+	// the evaluator's cursor takes, and that count is why the instruction list cannot be
+	// reordered: a pass that moves or inserts anything makes every count a lie. Naming it a
+	// target is what lets it become the name of a block instead, which is the point at
+	// which moving instructions becomes safe.
+	Target
+
+	// Text is bytes written for a person to read, and never a value. The message of an
+	// assertion is the only one so far. It exists so that nothing tries to do arithmetic on
+	// a sentence, and so that a tape width has no say over how long the sentence may be.
+	Text
 )
 
 // An Operand is one of the two things an instruction points at, and what it is.

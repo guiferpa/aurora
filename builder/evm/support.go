@@ -44,17 +44,16 @@ var offChain = map[byte]string{
 // pending is what the builder does not write yet, named as the user wrote it. Instructions
 // that come from one feature share a name, so an "if" is one warning rather than two.
 var pending = map[byte]string{
-	ir.OpIf:       "if",
-	ir.OpJump:     "if",
-	ir.OpCall:     "calling a scope",
-	ir.OpPushFeed: "calling a scope",
-	ir.OpPreCall:  "calling a scope",
-	ir.OpDiff:     "a comparison",
-	ir.OpEquals:   "a comparison",
-	ir.OpBigger:   "a comparison",
-	ir.OpSmaller:  "a comparison",
-	ir.OpAnd:      "and/or",
-	ir.OpOr:       "and/or",
+	ir.OpIf:      "if",
+	ir.OpJump:    "if",
+	ir.OpCall:    "calling a scope",
+	ir.OpPreCall: "calling a scope",
+	ir.OpDiff:    "a comparison",
+	ir.OpEquals:  "a comparison",
+	ir.OpBigger:  "a comparison",
+	ir.OpSmaller: "a comparison",
+	ir.OpAnd:     "and/or",
+	ir.OpOr:      "and/or",
 
 	ir.OpExponential: "^",
 

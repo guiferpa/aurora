@@ -37,8 +37,7 @@ const (
 
 	// Arguments. Executing is applying a vector of values to a scope, so there is no arity
 	// and no parameter list — a position is written, and a position is read.
-	OpPushFeed // Imm, Ref -> writes the value at that position of the vector for the next call
-	OpGetFeed  // Imm -> the value at that position of the vector applied to this scope, or a
+	OpGetFeed // Imm -> the value at that position of the vector applied to this scope, or a
 	//            tape of zeros where nothing was applied
 
 	// Scopes. A deferred scope is a value: an index into the scopes its environ knows, held

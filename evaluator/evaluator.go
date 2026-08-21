@@ -484,14 +484,6 @@ func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluatePushArg(label, left, right []byte) error {
-	index := byteutil.ToUint64(left)
-	val := e.environ.GetTemp(byteutil.ToHex(right))
-	e.environ.SetArgument(index, val)
-	e.IncrementCursor()
-	return nil
-}
-
 func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 	index := byteutil.ToUint64(left)
 	v := builtin.FeedFunction(e.environ.GetArguments(), index, e.tapeSize)
@@ -518,7 +510,14 @@ func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
+// EvaluateCall runs the scope a name reaches, over the values the call carries.
+//
+// The values arrive as operands, so the environ built for the call holds exactly them. They
+// used to arrive through the environ of whoever was calling, written there by an instruction
+// each — which meant a scope calling another handed over its own arguments as well, wherever
+// the call applied fewer values than the caller had received.
+func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error {
+	left := operands[0].Bytes()
 	val, home := e.resolve(left)
 	if val == nil {
 		return fmt.Errorf("call: %s identifier not found", left)
@@ -532,7 +531,10 @@ func (e *Evaluator) EvaluateCall(label, left, right []byte) error {
 	if !ok {
 		return fmt.Errorf("call: invalid deferred scope data")
 	}
-	args := e.environ.GetArguments()
+	args := make(map[uint64][]byte, len(operands)-1)
+	for at, operand := range operands[1:] {
+		args[uint64(at)] = e.environ.GetTemp(byteutil.ToHex(operand.Bytes()))
+	}
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
 	next.SetArguments(args)
 	e.environ = e.environ.Ahead(next)
@@ -664,12 +666,10 @@ func init() {
 		ir.OpReturn:     (*Evaluator).EvaluateReturn,
 
 		// Arguments
-		ir.OpPushFeed: (*Evaluator).EvaluatePushArg,
-		ir.OpGetFeed:  (*Evaluator).EvaluateGetArg,
+		ir.OpGetFeed: (*Evaluator).EvaluateGetArg,
 
-		// Defer and call
+		// Defer
 		ir.OpDefer: (*Evaluator).EvaluateDefer,
-		ir.OpCall:  (*Evaluator).EvaluateCall,
 
 		// Tape operations
 		ir.OpPull:  (*Evaluator).EvaluatePull,
@@ -691,9 +691,16 @@ func init() {
 // They are a map of their own rather than a special case inside the dispatch, because two
 // shapes of instruction are two shapes of operation — the same reason the IR has
 // NewInstruction beside NewInstructionOver.
-var runOperations = map[byte]func(*Evaluator, []byte, []ir.Operand) error{
-	ir.OpJoin: (*Evaluator).EvaluateJoinOver,
-	ir.OpPull: (*Evaluator).EvaluatePullOver,
+var runOperations map[byte]func(*Evaluator, []byte, []ir.Operand) error
+
+func init() {
+	// Built here rather than declared, for the same reason the pair of them is: a call runs
+	// instructions, and running instructions reads this map.
+	runOperations = map[byte]func(*Evaluator, []byte, []ir.Operand) error{
+		ir.OpJoin: (*Evaluator).EvaluateJoinOver,
+		ir.OpPull: (*Evaluator).EvaluatePullOver,
+		ir.OpCall: (*Evaluator).EvaluateCallOver,
+	}
 }
 
 // ExecuteInstruction runs one instruction: the opcode names the operation, and the operation

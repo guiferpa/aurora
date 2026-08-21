@@ -222,19 +222,6 @@ var dispatchCases = []dispatchCase{
 	},
 
 	{
-		name:   "push feed",
-		opcode: ir.OpPushFeed,
-		setup: func(e *Evaluator) {
-			e.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(42))
-		},
-		left: byteutil.FromUint64(0), right: []byte("01"), cursor: 1,
-		check: func(t *testing.T, e *Evaluator) {
-			if got := e.environ.GetArgument(0); !bytes.Equal(got, byteutil.FromUint64(42)) {
-				t.Errorf("argument 0 holds %v, want 42", got)
-			}
-		},
-	},
-	{
 		name: "begin scope", opcode: ir.OpBeginScope, cursor: 1,
 		check: func(t *testing.T, e *Evaluator) {
 			if e.environ.GetPrevious() == nil {

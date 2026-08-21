@@ -295,23 +295,6 @@ func TestEvaluateGetArg(t *testing.T) {
 	}
 }
 
-func TestEvaluatePushArg(t *testing.T) {
-	ev := New(NewEvaluatorOptions{
-		Args: make([]byte, 0),
-	})
-	label := []byte("00")
-	val := byteutil.FromUint64(99)
-	ev.environ.SetTemp(byteutil.ToHex(label), val)
-	if err := ev.EvaluatePushArg([]byte("01"), byteutil.FromUint64(0), label); err != nil {
-		t.Errorf("Error evaluating push arg: %v", err)
-		return
-	}
-	v := ev.environ.GetArgument(0)
-	if !bytes.Equal(v, val) {
-		t.Errorf("got: %v, expected: %v", v, val)
-	}
-}
-
 func TestEvaluateIf(t *testing.T) {
 	t.Run("True", func(t *testing.T) {
 		ev := New(NewEvaluatorOptions{})
@@ -1320,4 +1303,39 @@ assert(sum(2, 3) equals 5, "sum(2, 3) should be 5");`,
 	}
 
 	runAssertCase(t, cases)
+}
+
+// A call hands over exactly the values it carries, and nothing else.
+//
+// They used to be written into the environ of whoever was calling, one instruction each, and
+// that whole map was handed to the callee uncopied. A scope that had received two values and
+// called something with one passed its second along, sitting at a position the callee never
+// meant to read — and reading it looked like an ordinary read.
+func TestACallHandsOverOnlyWhatItCarries(t *testing.T) {
+	cases := []EvaluateCase{
+		{
+			Name: "a scope calling with fewer values than it received",
+			// inner adds one to what it reads, so the number it produces cannot be
+			// written anywhere in the source: 100 exists only if 99 reached it.
+			SourceCode: `ident inner = defer { feed(1) + 1; };
+ident outer = defer { inner(feed(0)); };
+ident answer = outer(7, 99);`,
+			TestFn: func(t *testing.T, returns eval.Returns, err error) {
+				if err != nil {
+					t.Fatalf("evaluating: %v", err)
+				}
+				// inner reads position 1 and one value was applied to it, so it reads past
+				// the end and answers with zeros: one, after the addition. It used to read
+				// 99 — the second value applied to outer, which inner never saw applied to
+				// itself — and answer 100.
+				for _, value := range returns {
+					if bytes.Equal(value, byteutil.PaddingTape(byteutil.FromUint64(100), 8)) {
+						t.Fatal("the caller's second value reached the scope it called")
+					}
+				}
+			},
+		},
+	}
+
+	runEvaluateCase(t, cases, RunEvaluateCaseOptions{Filename: "main.ar"})
 }

@@ -364,13 +364,25 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 
 // emitCalleeLiteral applies values to a scope.
 func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, tapeSize int) ir.Label {
-	for i, p := range n.Params {
-		ll := EmitInstruction(tc, insts, p.Expression, tapeSize)
-		l := GenerateLabel(tc)
-		*insts = append(*insts, ir.NewInstruction(l, ir.OpPushFeed, ir.ImmNum(uint64(i)), ir.RefTo(ll)).At(originOf(n.Id.Token)))
+	// The call carries the values applied to it, in the order they were written.
+	//
+	// They used to be written into the environ of whoever was calling, one instruction each,
+	// and read back from there — which worked because both sides agreed on a place that the
+	// IR never mentioned. Nothing said the call depended on those values, so a pass moving
+	// instructions had nothing telling it not to, and a backend had no such place at all.
+	//
+	// Where the values sit while a call happens is a calling convention, and a calling
+	// convention belongs to a target: an environ here, memory or a stack on a chain, locals
+	// in WASM, registers in an ABI. The IR says what is passed, and each of them decides
+	// where it goes.
+	operands := make([]ir.Operand, 0, len(n.Params)+1)
+	operands = append(operands, ir.NameOf(n.Id.Value))
+	for _, param := range n.Params {
+		operands = append(operands, ir.RefTo(EmitInstruction(tc, insts, param.Expression, tapeSize)))
 	}
+
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpCall, ir.NameOf(n.Id.Value), ir.Nothing()).At(originOf(n.Id.Token)))
+	*insts = append(*insts, ir.NewInstructionOver(l, ir.OpCall, operands...).At(originOf(n.Id.Token)))
 	return l
 
 }

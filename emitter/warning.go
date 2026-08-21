@@ -74,6 +74,13 @@ func checkAsserts(nodes []ast.Node) []diag.Warning {
 }
 
 // childScopesOf returns the expressions a node holds, so a walk reaches what is nested.
+//
+// Every node that holds an expression belongs here. One that is missing does not make a check
+// fail — it makes it go quiet, which is the worse way for a check to be wrong: the answer
+// looks the same as having nothing to say.
+//
+// The test of an if, the operands of an operator and the argument of a call are all places an
+// expression is written, and each one left out is a warning nobody gets.
 func childScopesOf(node ast.Node) []ast.Node {
 	switch n := node.(type) {
 	case ast.IdentLiteral:
@@ -83,7 +90,10 @@ func childScopesOf(node ast.Node) []ast.Node {
 	case ast.DeferExpression:
 		return n.Block.Body
 	case ast.IfExpression:
-		body := make([]ast.Node, 0, len(n.Body)+1)
+		// The test is walked with the body: it is an expression like the ones inside, and
+		// leaving it out hid whatever was written there.
+		body := make([]ast.Node, 0, len(n.Body)+2)
+		body = append(body, n.Test)
 		body = append(body, n.Body...)
 		if n.Else != nil {
 			body = append(body, n.Else.Body...)
@@ -91,6 +101,8 @@ func childScopesOf(node ast.Node) []ast.Node {
 		return body
 	case ast.PrintStatement:
 		return []ast.Node{n.Param}
+	case ast.AssertStatement:
+		return []ast.Node{n.Condition}
 	case ast.ShapeLiteral:
 		// A field can hold a deferred scope, so the values of a shape are walked like any
 		// other place a scope can hide.
@@ -98,6 +110,32 @@ func childScopesOf(node ast.Node) []ast.Node {
 	case ast.FieldExpression:
 		return []ast.Node{n.Expression}
 	case ast.ShapedExpression:
+		return []ast.Node{n.Expression}
+	case ast.CalleeLiteral:
+		params := make([]ast.Node, 0, len(n.Params))
+		for _, param := range n.Params {
+			params = append(params, param.Expression)
+		}
+		return params
+	case ast.BinaryExpression:
+		return []ast.Node{n.Left, n.Right}
+	case ast.RelativeExpression:
+		return []ast.Node{n.Left, n.Right}
+	case ast.BooleanExpression:
+		return []ast.Node{n.Left, n.Right}
+	case ast.UnaryExpression:
+		return []ast.Node{n.Expression}
+	case ast.PrimaryExpression:
+		return []ast.Node{n.Expression}
+	case ast.TapeBracketExpression:
+		return n.Items
+	case ast.PullExpression:
+		return []ast.Node{n.Target, n.Item}
+	case ast.PushExpression:
+		return []ast.Node{n.Target, n.Item}
+	case ast.HeadExpression:
+		return []ast.Node{n.Expression}
+	case ast.TailExpression:
 		return []ast.Node{n.Expression}
 	default:
 		return nil

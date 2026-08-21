@@ -62,7 +62,7 @@ printd Point{1, 2} equals Pair{1, 2};
 printd Pair{"ab", 98};
 
 #- Reading past the end gives the neutral value instead of stopping the program,
-#- the way head saturates and feed wraps. A claim can be wrong.
+#- the way feed does past the end of what was applied. A claim can be wrong.
 ident single = 7 as Point;
 printd single.y;
 

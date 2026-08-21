@@ -212,7 +212,7 @@ load under it.
 Because the declaration exists to catch mistakes, these are compile errors: a field the shape
 does not have, a value whose shape nothing declared, a construction that miscounts the
 and a shape name used as a value. Reading a field past the end of a value is not one — it gives the neutral value, the
-way `head` saturates and `feed` wraps.
+way `feed` does past the end of what was applied, and the way `head` saturates.
 
 Reading a field binds tighter than any operator, so `p.x * p.y` multiplies two fields.
 
@@ -287,8 +287,8 @@ _feed -> FEED O_PAREN _num C_PAREN
        | FEED _num
 ```
 
-Reads the nth value applied to the running scope. The index is normalized modulo the
-length of the vector, so it never fails.
+Reads the nth value applied to the running scope. A position nothing was applied to gives a
+tape of zeros, so it never fails.
 
 #### Examples
 `feed(0)`, `feed(1)`

@@ -162,3 +162,52 @@ printb sum(1, 2);`
 	}
 	t.Fatal("nothing warned about calling a scope")
 }
+
+// Every feature the backend cannot carry names the line it was written on. A warning that
+// names only the feature leaves the person to search, which is what this used to do.
+func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		says   string
+		line   int
+	}{
+		{name: "an if", source: "printb 1;\nprintb if true { 1; };", says: "if", line: 2},
+		{name: "a call", source: "ident f = defer { 1; };\nprintb f();", says: "calling a scope", line: 2},
+		{name: "a comparison", source: "printb 1;\nprintb 2 bigger 1;", says: "a comparison", line: 2},
+		{name: "and or or", source: "printb 1;\nprintb true and false;", says: "and/or", line: 2},
+		{name: "an exponent", source: "printb 1;\nprintb 2 ^ 3;", says: "^", line: 2},
+		// A tape literal is itself a tape operation — it builds the run byte by byte — so
+		// the first place the program uses one is the literal, not the pull below it.
+		{name: "a tape operation", source: "printb 1;\nident t = [1];\nprintb pull t 2;", says: "a tape operation", line: 2},
+		{name: "a shape", source: "shape Point { x, y };\nprintb Point{1, 2}.x;", says: "shape", line: 2},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tokens, err := lexer.New().GetFilledTokens([]byte(tc.source))
+			if err != nil {
+				t.Fatalf("lexer: %v", err)
+			}
+			tree, err := parser.New().Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
+			if err != nil {
+				t.Fatalf("parser: %v", err)
+			}
+			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+			if err != nil {
+				t.Fatalf("emitter: %v", err)
+			}
+
+			for _, warning := range Warnings(insts) {
+				if !strings.Contains(warning.Message, tc.says) {
+					continue
+				}
+				if warning.Line != tc.line {
+					t.Errorf("%q points at line %d, want %d", warning.Message, warning.Line, tc.line)
+				}
+				return
+			}
+			t.Fatalf("nothing warned about %q", tc.says)
+		})
+	}
+}

@@ -107,31 +107,36 @@ type TapeExpression struct {
 
 type TapeBracketExpression struct {
 	mark
-	Items []Node `json:"items"`
+	Items []Node      `json:"items"`
+	Token token.Token `json:"-"`
 }
 
 type PullExpression struct {
 	mark
-	Target Node `json:"target"`
-	Item   Node `json:"item"`
+	Target Node        `json:"target"`
+	Item   Node        `json:"item"`
+	Token  token.Token `json:"-"`
 }
 
 type HeadExpression struct {
 	mark
-	Expression Node   `json:"expression"`
-	Length     uint64 `json:"length"`
+	Expression Node        `json:"expression"`
+	Length     uint64      `json:"length"`
+	Token      token.Token `json:"-"`
 }
 
 type TailExpression struct {
 	mark
-	Expression Node   `json:"expression"`
-	Length     uint64 `json:"length"`
+	Expression Node        `json:"expression"`
+	Length     uint64      `json:"length"`
+	Token      token.Token `json:"-"`
 }
 
 type PushExpression struct {
 	mark
-	Target Node `json:"target"`
-	Item   Node `json:"item"`
+	Target Node        `json:"target"`
+	Item   Node        `json:"item"`
+	Token  token.Token `json:"-"`
 }
 
 type RelativeExpression struct {
@@ -168,9 +173,10 @@ type DeferExpression struct {
 
 type IfExpression struct {
 	mark
-	Test Node            `json:"test"`
-	Body []Node          `json:"body"`
-	Else *ElseExpression `json:"else"`
+	Test  Node            `json:"test"`
+	Body  []Node          `json:"body"`
+	Else  *ElseExpression `json:"else"`
+	Token token.Token     `json:"-"`
 }
 
 type ElseExpression struct {

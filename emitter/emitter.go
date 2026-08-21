@@ -212,7 +212,7 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 	for _, i := range n.Items {
 		la := GenerateLabel(tc)
 		li := EmitInstruction(tc, insts, i, tapeSize)
-		*insts = append(*insts, ir.NewInstruction(la, ir.OpPull, ir.RefTo(l), ir.RefTo(li)))
+		*insts = append(*insts, ir.NewInstruction(la, ir.OpPull, ir.RefTo(l), ir.RefTo(li)).At(originOf(n.Token)))
 		l = la
 	}
 	return l
@@ -255,7 +255,7 @@ func emitShapeLiteral(tc *int, insts *[]ir.Instruction, n ast.ShapeLiteral, tape
 	for _, value := range n.Values {
 		lv := EmitInstruction(tc, insts, value, tapeSize)
 		lj := GenerateLabel(tc)
-		*insts = append(*insts, ir.NewInstruction(lj, ir.OpJoin, ir.RefTo(l), ir.RefTo(lv)))
+		*insts = append(*insts, ir.NewInstruction(lj, ir.OpJoin, ir.RefTo(l), ir.RefTo(lv)).At(originOf(n.Token)))
 		l = lj
 	}
 	return l
@@ -268,7 +268,7 @@ func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression
 	// shape head and tail use. Nothing here knows the field had a name.
 	lv := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, ir.RefTo(lv), ir.ImmNum(n.Index)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, ir.RefTo(lv), ir.ImmNum(n.Index)).At(originOf(n.Token)))
 	return l
 
 }
@@ -286,7 +286,7 @@ func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, 
 	lt := EmitInstruction(tc, insts, n.Target, tapeSize)
 	li := EmitInstruction(tc, insts, n.Item, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpPull, ir.RefTo(lt), ir.RefTo(li)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpPull, ir.RefTo(lt), ir.RefTo(li)).At(originOf(n.Token)))
 	return l
 
 }
@@ -295,7 +295,7 @@ func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, 
 func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, tapeSize int) ir.Label {
 	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpHead, ir.RefTo(e), ir.ImmNum(n.Length)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpHead, ir.RefTo(e), ir.ImmNum(n.Length)).At(originOf(n.Token)))
 	return l
 
 }
@@ -304,7 +304,7 @@ func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, 
 func emitTailExpression(tc *int, insts *[]ir.Instruction, n ast.TailExpression, tapeSize int) ir.Label {
 	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpTail, ir.RefTo(e), ir.ImmNum(n.Length)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpTail, ir.RefTo(e), ir.ImmNum(n.Length)).At(originOf(n.Token)))
 	return l
 
 }
@@ -314,7 +314,7 @@ func emitPushExpression(tc *int, insts *[]ir.Instruction, n ast.PushExpression, 
 	lt := EmitInstruction(tc, insts, n.Target, tapeSize)
 	li := EmitInstruction(tc, insts, n.Item, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpPush, ir.RefTo(lt), ir.RefTo(li)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpPush, ir.RefTo(lt), ir.RefTo(li)).At(originOf(n.Token)))
 	return l
 
 }
@@ -341,10 +341,10 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 
 	lt := EmitInstruction(tc, insts, n.Test, tapeSize)
 	inl := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(inl, ir.OpIf, ir.RefTo(lt), bodylen))
+	*insts = append(*insts, ir.NewInstruction(inl, ir.OpIf, ir.RefTo(lt), bodylen).At(originOf(n.Token)))
 
 	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpReturn, ir.RefTo(inl), ir.RefTo(bl)))
-	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpJump, euzelen, ir.Nothing()))
+	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpJump, euzelen, ir.Nothing()).At(originOf(n.Token)))
 	*insts = append(*insts, body...)
 
 	euze = append(euze, ir.NewInstruction(GenerateLabel(tc), ir.OpReturn, ir.RefTo(inl), ir.RefTo(eul)))

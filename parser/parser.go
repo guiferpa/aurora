@@ -296,7 +296,8 @@ func (p *pr) parsePrimaryExpr() (ast.Node, error) {
 }
 
 func (p *pr) ParseTapeBrk() (ast.Node, error) {
-	if _, err := p.EatToken(token.O_BRK); err != nil {
+	at, err := p.EatToken(token.O_BRK)
+	if err != nil {
 		return nil, err
 	}
 	items := make([]ast.Node, 0)
@@ -329,11 +330,12 @@ func (p *pr) ParseTapeBrk() (ast.Node, error) {
 	if len(items) > p.tapeSize {
 		return nil, token.NewError(closing, "tape literal has %d values but a tape holds %d bytes", len(items), p.tapeSize)
 	}
-	return ast.TapeBracketExpression{Items: items}, nil
+	return ast.TapeBracketExpression{Items: items, Token: at}, nil
 }
 
 func (p *pr) ParsePull() (ast.Node, error) {
-	if _, err := p.EatToken(token.PULL); err != nil {
+	at, err := p.EatToken(token.PULL)
+	if err != nil {
 		return nil, err
 	}
 
@@ -352,11 +354,12 @@ func (p *pr) ParsePull() (ast.Node, error) {
 	if !isValidTapeItem(expr) {
 		return nil, errors.New("it is not a valid append item")
 	}
-	return ast.PullExpression{Target: target, Item: expr}, nil
+	return ast.PullExpression{Target: target, Item: expr, Token: at}, nil
 }
 
 func (p *pr) ParseHead() (ast.Node, error) {
-	if _, err := p.EatToken(token.HEAD); err != nil {
+	at, err := p.EatToken(token.HEAD)
+	if err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
@@ -371,11 +374,12 @@ func (p *pr) ParseHead() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ast.HeadExpression{Expression: expr, Length: length.Value}, nil
+	return ast.HeadExpression{Expression: expr, Length: length.Value, Token: at}, nil
 }
 
 func (p *pr) ParseTail() (ast.Node, error) {
-	if _, err := p.EatToken(token.TAIL); err != nil {
+	at, err := p.EatToken(token.TAIL)
+	if err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
@@ -390,11 +394,12 @@ func (p *pr) ParseTail() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ast.TailExpression{Expression: expr, Length: length.Value}, nil
+	return ast.TailExpression{Expression: expr, Length: length.Value, Token: at}, nil
 }
 
 func (p *pr) ParsePush() (ast.Node, error) {
-	if _, err := p.EatToken(token.PUSH); err != nil {
+	at, err := p.EatToken(token.PUSH)
+	if err != nil {
 		return nil, err
 	}
 
@@ -413,7 +418,7 @@ func (p *pr) ParsePush() (ast.Node, error) {
 	if !isValidTapeItem(expr) {
 		return nil, errors.New("it is not a valid push item")
 	}
-	return ast.PushExpression{Target: target, Item: expr}, nil
+	return ast.PushExpression{Target: target, Item: expr, Token: at}, nil
 }
 
 func (p *pr) ParseUnaExpr() (ast.Node, error) {
@@ -743,7 +748,8 @@ func (p *pr) ParseDefer() (ast.Node, error) {
 }
 
 func (p *pr) ParseIf() (ast.Node, error) {
-	if _, err := p.EatToken(token.IF); err != nil {
+	at, err := p.EatToken(token.IF)
+	if err != nil {
 		return nil, err
 	}
 	test, err := p.ParseBoolExpr()
@@ -762,9 +768,9 @@ func (p *pr) ParseIf() (ast.Node, error) {
 	}
 	if p.GetLookahead().GetTag().Id == token.ELSE {
 		euze, err := p.ParseElse()
-		return ast.IfExpression{Test: test, Body: body, Else: euze}, err
+		return ast.IfExpression{Test: test, Body: body, Else: euze, Token: at}, err
 	}
-	return ast.IfExpression{Test: test, Body: body, Else: nil}, nil
+	return ast.IfExpression{Test: test, Body: body, Else: nil, Token: at}, nil
 }
 
 func (p *pr) ParseElse() (*ast.ElseExpression, error) {

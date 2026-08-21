@@ -160,3 +160,129 @@ func TestTheWalkReachesEveryExpression(t *testing.T) {
 		})
 	}
 }
+
+// A scope has no arity, but a body says how many positions it can address: the highest index
+// it feeds, plus one. Applying fewer is not an error — what was not applied answers with a
+// tape of zeros, which is a defined answer — but that answer is silent, so it is said here.
+func TestApplyingFewerValuesThanTheScopeReads(t *testing.T) {
+	source := "ident sum = defer { feed(0) + feed(1); };\nprintb sum(5);\n"
+
+	warnings := warningsFor(t, source, 0)
+	if len(warnings) != 1 {
+		t.Fatalf("expected one warning, got %v", warnings)
+	}
+	message := warnings[0].Message
+	for _, want := range []string{"sum", "2 positions", "1 were applied", "feed(1)"} {
+		if !strings.Contains(message, want) {
+			t.Errorf("warning = %q, want it to mention %q", message, want)
+		}
+	}
+	// It points at the call, not at the scope: the scope is fine, and the call is what has
+	// to change.
+	if warnings[0].Line != 2 {
+		t.Errorf("warning points at line %d, want the line of the call", warnings[0].Line)
+	}
+}
+
+// The highest index is what counts, not how many are read: a body that only reads feed(3)
+// still needs four positions for that read to reach anything.
+func TestTheHighestPositionIsWhatCounts(t *testing.T) {
+	source := "ident third = defer { feed(3); };\nprintb third(1, 2, 3);\n"
+
+	warnings := warningsFor(t, source, 0)
+	if len(warnings) != 1 {
+		t.Fatalf("expected one warning, got %v", warnings)
+	}
+	if !strings.Contains(warnings[0].Message, "4 positions") {
+		t.Errorf("warning = %q, want it to count four positions", warnings[0].Message)
+	}
+}
+
+func TestNoWarningWhenEnoughWasApplied(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "exactly what it reads",
+			source: "ident sum = defer { feed(0) + feed(1); };\nprintb sum(1, 2);",
+		},
+		{
+			// Extra values are unread, and that is the language: a scope is blind to how
+			// many arrive.
+			name:   "more than it reads",
+			source: "ident double = defer { feed(0) * 2; };\nprintb double(5, 99, 100);",
+		},
+		{
+			name:   "a scope that reads nothing",
+			source: "ident two = defer { 2; };\nprintb two();",
+		},
+		{
+			// The feeds of a nested scope read the vector applied to it, not the one
+			// applied here.
+			name:   "a nested scope reading further",
+			source: "ident outer = defer { ident inner = defer { feed(3); }; feed(0); };\nprintb outer(1);",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if warnings := warningsFor(t, tc.source, 0); len(warnings) != 0 {
+				t.Errorf("expected no warning, got %v", warnings)
+			}
+		})
+	}
+}
+
+// It stays quiet unless it is sure. Which body a call reaches is a runtime question whenever
+// the name does not answer it on its own, and a warning that guesses is worse than none.
+func TestItSaysNothingWhenTheScopeIsNotKnown(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "an alias, which is a name bound to a name",
+			source: "ident sum = defer { feed(0) + feed(1); };\nident f = sum;\nprintb f(5);",
+		},
+		{
+			name:   "a name bound twice, to scopes reading different amounts",
+			source: "ident f = defer { feed(0) + feed(1); };\nident f = defer { feed(0); };\nprintb f(5);",
+		},
+		{
+			name:   "a name answered by a branch",
+			source: "ident a = defer { feed(0) + feed(1); };\nident b = defer { feed(0); };\nident g = if true { a; } else { b; };\nprintb g(5);",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if warnings := warningsFor(t, tc.source, 0); len(warnings) != 0 {
+				t.Errorf("expected no warning, got %v", warnings)
+			}
+		})
+	}
+}
+
+// A call written inside an operand, inside the test of an if or as another call's argument is
+// still a call. This is what the walk is for, and what it used to miss.
+func TestACallIsFoundWhereverItIsWritten(t *testing.T) {
+	const scope = "ident sum = defer { feed(0) + feed(1); };\n"
+
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{name: "in an operand", source: scope + "printb 1 + sum(5);"},
+		{name: "in the test of an if", source: scope + "printb if sum(5) bigger 1 { 1; };"},
+		{name: "as an argument", source: scope + "printb sum(sum(5), 2);"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if warnings := warningsFor(t, tc.source, 0); len(warnings) != 1 {
+				t.Errorf("expected one warning, got %v", warnings)
+			}
+		})
+	}
+}

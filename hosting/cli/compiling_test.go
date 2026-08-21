@@ -105,3 +105,27 @@ func TestAssertBelongsToATestFile(t *testing.T) {
 		t.Error("assert should be rejected outside .test.ar")
 	}
 }
+
+// A short call is told about where it was written, in the form an editor follows.
+//
+// The whole point of the warning is that the answer is silent: reading past what was applied
+// gives a tape of zeros, so nothing at runtime says the value never arrived. It has to reach
+// the person, with a place to look — which is the part no test of the emitter alone can show,
+// since it crosses the loader, the session and the writer to get there.
+func TestAShortCallIsReportedWithWhereToLook(t *testing.T) {
+	dir := t.TempDir()
+	source := writeFile(t, dir, "main.ar", "ident sum = defer { feed(0) + feed(1); };\nprintb sum(5);\n")
+	warnings := &strings.Builder{}
+
+	if _, err := newSession(t, sessionOpts{warnings: warnings}).
+		Build(t.Context(), source, filepath.Join(dir, "bin", "main")); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+
+	got := warnings.String()
+	for _, want := range []string{"main.ar:2:8:", "sum reads 2 positions", "feed(1)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the compiler said %q, want it to mention %q", got, want)
+		}
+	}
+}

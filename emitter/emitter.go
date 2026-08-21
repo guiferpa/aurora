@@ -467,10 +467,14 @@ func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 		exprs = append(exprs, ir.Expression{From: from, To: len(insts), Label: label})
 	}
 
+	warnings := checkDeferCapacity(tree.Nodes, e.tapeSize)
+	warnings = append(warnings, checkAsserts(tree.Nodes)...)
+	warnings = append(warnings, checkAppliedValues(tree.Nodes)...)
+
 	return ir.Program{
 		Instructions: insts,
 		Expressions:  exprs,
-		Warnings:     append(checkDeferCapacity(tree.Nodes, e.tapeSize), checkAsserts(tree.Nodes)...),
+		Warnings:     warnings,
 	}, nil
 }
 

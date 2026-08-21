@@ -73,7 +73,115 @@ func checkAsserts(nodes []ast.Node) []diag.Warning {
 	return warnings
 }
 
+// checkAppliedValues reports a call that applies fewer values than the scope it reaches reads.
+//
+// A scope has no arity: applying is handing a vector to a block, and feed(n) reads a position
+// of it. But a body says how many positions it can address — the highest index it feeds, plus
+// one — and that number is known where the body is written.
+//
+// Applying fewer is not an error and will not become one. A position nobody wrote answers with
+// a tape of zeros, which is a defined answer and a reasonable thing to want. It is also almost
+// always a mistake, and since that answer is silent, this is the only place it can be said out
+// loud.
+//
+// It stays quiet unless it is sure. A name is checked only when it is bound to a deferred
+// scope exactly once in the file. Bound twice, or bound to anything else — an alias, an if
+// answering with one of two scopes — and which body a call reaches is a runtime question,
+// which is not one this can answer.
+func checkAppliedValues(nodes []ast.Node) []diag.Warning {
+	reads := scopeReads(nodes)
+
+	warnings := make([]diag.Warning, 0)
+	var walk func(scope []ast.Node)
+	walk = func(scope []ast.Node) {
+		for _, node := range scope {
+			if call, ok := node.(ast.CalleeLiteral); ok {
+				if positions, known := reads[call.Id.Value]; known && len(call.Params) < positions {
+					warnings = append(warnings, appliedValuesWarning(call, positions))
+				}
+			}
+			walk(childScopesOf(node))
+		}
+	}
+	walk(nodes)
+
+	return warnings
+}
+
+// appliedValuesWarning names the first position that will answer with zeros, which is the one
+// whoever wrote the call is least expecting. It points at the call rather than at the scope:
+// the scope is fine, and the call is what has to change.
+func appliedValuesWarning(call ast.CalleeLiteral, positions int) diag.Warning {
+	applied := len(call.Params)
+	warning := diag.Warning{Message: fmt.Sprintf(
+		"%s reads %d positions and %d were applied: feed(%d) answers with a tape of zeros",
+		call.Id.Value, positions, applied, applied)}
+	if call.Id.Token != nil {
+		warning.Line = call.Id.Token.GetLine()
+		warning.Column = call.Id.Token.GetColumn()
+	}
+	return warning
+}
+
+// scopeReads answers how many positions each name reads, for the names that answer that
+// unambiguously. A name bound more than once is dropped rather than guessed at.
+func scopeReads(nodes []ast.Node) map[string]int {
+	reads := make(map[string]int)
+	bound := make(map[string]bool)
+
+	var walk func(scope []ast.Node)
+	walk = func(scope []ast.Node) {
+		for _, node := range scope {
+			if binding, ok := node.(ast.IdentLiteral); ok {
+				deferred, deferring := binding.Value.(ast.DeferExpression)
+				switch {
+				case bound[binding.Id]:
+					delete(reads, binding.Id)
+				case deferring:
+					reads[binding.Id] = positionsRead(deferred.Block.Body)
+				}
+				bound[binding.Id] = true
+			}
+			walk(childScopesOf(node))
+		}
+	}
+	walk(nodes)
+
+	return reads
+}
+
+// positionsRead answers the highest position a body feeds, plus one.
+//
+// A nested deferred scope is not walked: its feeds read the vector applied to it, not the one
+// applied here. A body that feeds nothing reads nothing, and no call to it is ever short.
+func positionsRead(body []ast.Node) int {
+	highest := -1
+
+	var walk func(scope []ast.Node)
+	walk = func(scope []ast.Node) {
+		for _, node := range scope {
+			if _, nested := node.(ast.DeferExpression); nested {
+				continue
+			}
+			if feed, ok := node.(ast.FeedExpression); ok && int(feed.Nth.Value) > highest {
+				highest = int(feed.Nth.Value)
+			}
+			walk(childScopesOf(node))
+		}
+	}
+	walk(body)
+
+	return highest + 1
+}
+
 // childScopesOf returns the expressions a node holds, so a walk reaches what is nested.
+//
+// Every node that holds an expression belongs here. One that is missing does not make a check
+// fail — it makes it go quiet, which is the worse way for a check to be wrong: the answer
+// looks the same as having nothing to say.
+//
+// The test of an if, the operands of an operator and the argument of a call are all places an
+// expression is written, and each one left out is a warning nobody gets.
 func childScopesOf(node ast.Node) []ast.Node {
 	switch n := node.(type) {
 	case ast.IdentLiteral:
@@ -83,7 +191,10 @@ func childScopesOf(node ast.Node) []ast.Node {
 	case ast.DeferExpression:
 		return n.Block.Body
 	case ast.IfExpression:
-		body := make([]ast.Node, 0, len(n.Body)+1)
+		// The test is walked with the body: it is an expression like the ones inside, and
+		// leaving it out hid whatever was written there.
+		body := make([]ast.Node, 0, len(n.Body)+2)
+		body = append(body, n.Test)
 		body = append(body, n.Body...)
 		if n.Else != nil {
 			body = append(body, n.Else.Body...)
@@ -91,6 +202,8 @@ func childScopesOf(node ast.Node) []ast.Node {
 		return body
 	case ast.PrintStatement:
 		return []ast.Node{n.Param}
+	case ast.AssertStatement:
+		return []ast.Node{n.Condition}
 	case ast.ShapeLiteral:
 		// A field can hold a deferred scope, so the values of a shape are walked like any
 		// other place a scope can hide.
@@ -98,6 +211,32 @@ func childScopesOf(node ast.Node) []ast.Node {
 	case ast.FieldExpression:
 		return []ast.Node{n.Expression}
 	case ast.ShapedExpression:
+		return []ast.Node{n.Expression}
+	case ast.CalleeLiteral:
+		params := make([]ast.Node, 0, len(n.Params))
+		for _, param := range n.Params {
+			params = append(params, param.Expression)
+		}
+		return params
+	case ast.BinaryExpression:
+		return []ast.Node{n.Left, n.Right}
+	case ast.RelativeExpression:
+		return []ast.Node{n.Left, n.Right}
+	case ast.BooleanExpression:
+		return []ast.Node{n.Left, n.Right}
+	case ast.UnaryExpression:
+		return []ast.Node{n.Expression}
+	case ast.PrimaryExpression:
+		return []ast.Node{n.Expression}
+	case ast.TapeBracketExpression:
+		return n.Items
+	case ast.PullExpression:
+		return []ast.Node{n.Target, n.Item}
+	case ast.PushExpression:
+		return []ast.Node{n.Target, n.Item}
+	case ast.HeadExpression:
+		return []ast.Node{n.Expression}
+	case ast.TailExpression:
 		return []ast.Node{n.Expression}
 	default:
 		return nil

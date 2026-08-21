@@ -18,7 +18,14 @@ import (
 func Format(insts []Instruction) string {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	for _, inst := range insts {
-		fmt.Fprintf(bs, "%s %s %s %s\n", byteutil.ToHexPretty(inst.GetLabel()), ResolveOpCode(inst.GetOpCode()), inst.GetLeft(), inst.GetRight())
+		fmt.Fprintf(bs, "%s %s", byteutil.ToHexPretty(inst.GetLabel()), ResolveOpCode(inst.GetOpCode()))
+		// Every operand, not the first two: an instruction over a run has as many as the
+		// construction it came from, and printing a pair of them would be a line that reads
+		// as complete and is not.
+		for _, operand := range inst.GetOperands() {
+			fmt.Fprintf(bs, " %s", operand)
+		}
+		fmt.Fprintln(bs)
 	}
 	return bs.String()
 }

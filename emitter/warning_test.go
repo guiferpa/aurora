@@ -9,6 +9,7 @@ import (
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/diag"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 func warningsFor(t *testing.T, source string, tapeSize int) []diag.Warning {
@@ -282,6 +283,41 @@ func TestACallIsFoundWhereverItIsWritten(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if warnings := warningsFor(t, tc.source, 0); len(warnings) != 1 {
 				t.Errorf("expected one warning, got %v", warnings)
+			}
+		})
+	}
+}
+
+// A construction is one instruction, however many parts it has. Both used to be a chain of
+// two-operand instructions, which left whoever read the IR to recognise that the chain was
+// one thing — and recognising shapes is what a consumer of an IR should never have to do.
+func TestAConstructionIsOneInstruction(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		opcode byte
+		want   int
+	}{
+		{name: "a tape of four items", source: "printb [1, 2, 3, 4];", opcode: ir.OpPull, want: 5},
+		{name: "a shape of three fields", source: "shape P { x, y, z };\nprintb P{1, 2, 3}.x;", opcode: ir.OpJoin, want: 4},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			insts := compileWith(t, tc.source, 0).Instructions
+
+			found := 0
+			for _, inst := range insts {
+				if inst.GetOpCode() != tc.opcode {
+					continue
+				}
+				found++
+				if got := len(inst.GetOperands()); got != tc.want {
+					t.Errorf("carries %d operands, want %d — the run it was built from, plus what it starts on", got, tc.want)
+				}
+			}
+			if found != 1 {
+				t.Errorf("found %d of them, want one instruction for the whole construction", found)
 			}
 		})
 	}

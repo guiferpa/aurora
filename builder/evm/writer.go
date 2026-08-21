@@ -262,25 +262,25 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize 
 		}
 
 		if op == ir.OpSave {
-			if _, err := WriteSave(bs, inst.GetLeft(), tapeSize); err != nil {
+			if _, err := WriteSave(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
 				return 0, err
 			}
 		}
 
 		if op == ir.OpIdent {
-			if _, err := WriteIdent(bs, im, inst.GetLeft()); err != nil {
+			if _, err := WriteIdent(bs, im, inst.GetLeft().Bytes()); err != nil {
 				return 0, err
 			}
 		}
 
 		if op == ir.OpLoad {
-			if _, err := WriteLoad(bs, im, inst.GetLeft()); err != nil {
+			if _, err := WriteLoad(bs, im, inst.GetLeft().Bytes()); err != nil {
 				return 0, err
 			}
 		}
 
 		if op == ir.OpGetFeed {
-			if _, err := WriteGetArg(bs, inst.GetLeft(), tapeSize); err != nil {
+			if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
 				return 0, err
 			}
 		}

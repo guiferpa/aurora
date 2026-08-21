@@ -1,6 +1,7 @@
 package emitter
 
 import (
+	"flag"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,6 +19,11 @@ import (
 // The file was produced before EmitInstruction was split into one function per node, so it
 // is what proves that refactor changed nothing. Any diff after that is a real change to the
 // compiled program, and updating this file is how you say you meant it.
+//
+// "go test ./emitter -update" rewrites it. Saying you meant it should not mean retyping it:
+// what the golden is for is that the diff shows up in review, and it shows up either way.
+var update = flag.Bool("update", false, "rewrite the golden with what the emitter answers now")
+
 func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 	dir := "testdata"
 
@@ -43,7 +49,14 @@ func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	if got := ir.Format(insts); got != string(want) {
+	got := ir.Format(insts)
+	if *update {
+		if err := os.WriteFile(filepath.Join(dir, "wide.ir"), []byte(got), 0o644); err != nil {
+			t.Fatalf("rewriting the golden: %v", err)
+		}
+		return
+	}
+	if got != string(want) {
 		t.Errorf("the emitted program no longer matches testdata/wide.ir.\n\ngot:\n%s\nwant:\n%s", got, want)
 	}
 }

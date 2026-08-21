@@ -403,8 +403,8 @@ func TestEvaluatePrintHandsOverTheWholeValue(t *testing.T) {
 func TestCanReadInstructions(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructions([]ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpSave, nil, nil),
-		ir.NewInstruction([]byte("01"), ir.OpAdd, nil, nil),
+		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Nothing(), ir.Nothing()),
+		ir.NewInstruction([]byte("01"), ir.OpAdd, ir.RefTo(nil), ir.RefTo(nil)),
 	})
 	ev.SetInstructionsOffset(0, 2)
 
@@ -423,8 +423,8 @@ func TestCanReadInstructions(t *testing.T) {
 
 func TestGetInstruction(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	inst0 := ir.NewInstruction([]byte("00"), ir.OpSave, []byte{1}, nil)
-	inst1 := ir.NewInstruction([]byte("01"), ir.OpAdd, []byte("00"), []byte("01"))
+	inst0 := ir.NewInstruction([]byte("00"), ir.OpSave, ir.ImmOf([]byte{1}), ir.Nothing())
+	inst1 := ir.NewInstruction([]byte("01"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01")))
 	ev.SetInstructions([]ir.Instruction{inst0, inst1})
 	ev.SetInstructionsOffset(0, 2)
 
@@ -442,7 +442,7 @@ func TestGetInstruction(t *testing.T) {
 func TestSetInstructions(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	insts := []ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpSave, nil, nil),
+		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Nothing(), ir.Nothing()),
 	}
 	ev.SetInstructions(insts)
 	ev.SetInstructionsOffset(0, uint64(len(insts)))
@@ -456,9 +456,9 @@ func TestSetInstructions(t *testing.T) {
 func TestSetInstructionsOffset(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.SetInstructions([]ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpSave, nil, nil),
-		ir.NewInstruction([]byte("01"), ir.OpSave, nil, nil),
-		ir.NewInstruction([]byte("02"), ir.OpAdd, nil, nil),
+		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Nothing(), ir.Nothing()),
+		ir.NewInstruction([]byte("01"), ir.OpSave, ir.Nothing(), ir.Nothing()),
+		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo(nil), ir.RefTo(nil)),
 	})
 	ev.SetInstructionsOffset(1, 3)
 

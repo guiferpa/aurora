@@ -62,7 +62,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	}
 
 	// OpDefer layout: [OpDefer] [body of length N] [OpIdent]. Right operand = N (body length in instructions).
-	bodylength := byteutil.ToUint64(inst.GetRight())
+	bodylength := byteutil.ToUint64(inst.GetRight().Bytes())
 	end := cursor + 1 + int(bodylength)
 	if end > len(b.insts) {
 		return nil, cursor, false
@@ -84,7 +84,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	if selectorInst.GetOpCode() != ir.OpIdent {
 		return nil, cursor, false
 	}
-	selector := selectorInst.GetLeft()
+	selector := selectorInst.GetLeft().Bytes()
 
 	// Prepend OpJumpDestiny so the EVM can jump to this block when the selector matches.
 	d = &Dispatcher{

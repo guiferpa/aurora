@@ -190,10 +190,10 @@ func TestPickDeferAtCursor(t *testing.T) {
 		{
 			Name: "valid_defer",
 			Insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpDefer, []byte("ret"), byteutil.FromUint64(2)),
-				ir.NewInstruction([]byte("1"), ir.OpBeginScope, nil, nil),
-				ir.NewInstruction([]byte("2"), ir.OpReturn, nil, nil),
-				ir.NewInstruction([]byte("3"), ir.OpIdent, []byte("f"), []byte("0")),
+				ir.NewInstruction([]byte("0"), ir.OpDefer, ir.RefTo([]byte("ret")), ir.TargetAt(2)),
+				ir.NewInstruction([]byte("1"), ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
+				ir.NewInstruction([]byte("2"), ir.OpReturn, ir.RefTo(nil), ir.RefTo(nil)),
+				ir.NewInstruction([]byte("3"), ir.OpIdent, ir.NameOf("f"), ir.RefTo([]byte("0"))),
 			},
 			Cursor:               0,
 			Offset:               0,
@@ -206,7 +206,7 @@ func TestPickDeferAtCursor(t *testing.T) {
 		{
 			Name: "not_op_defer",
 			Insts: []ir.Instruction{
-				ir.NewInstruction(nil, ir.OpBeginScope, nil, nil),
+				ir.NewInstruction(nil, ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
 			},
 			Cursor:         0,
 			Offset:         0,
@@ -216,10 +216,10 @@ func TestPickDeferAtCursor(t *testing.T) {
 		{
 			Name: "defer_without_op_ident_after",
 			Insts: []ir.Instruction{
-				ir.NewInstruction(nil, ir.OpDefer, nil, byteutil.FromUint64(2)),
-				ir.NewInstruction(nil, ir.OpBeginScope, nil, nil),
-				ir.NewInstruction(nil, ir.OpReturn, nil, nil),
-				ir.NewInstruction(nil, ir.OpAdd, nil, nil),
+				ir.NewInstruction(nil, ir.OpDefer, ir.RefTo(nil), ir.TargetAt(2)),
+				ir.NewInstruction(nil, ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
+				ir.NewInstruction(nil, ir.OpReturn, ir.RefTo(nil), ir.RefTo(nil)),
+				ir.NewInstruction(nil, ir.OpAdd, ir.RefTo(nil), ir.RefTo(nil)),
 			},
 			Cursor:         0,
 			Offset:         0,

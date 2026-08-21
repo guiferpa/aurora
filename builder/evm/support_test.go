@@ -12,7 +12,7 @@ import (
 func instructionsOf(opcodes ...byte) []ir.Instruction {
 	insts := make([]ir.Instruction, 0, len(opcodes))
 	for i, op := range opcodes {
-		insts = append(insts, ir.NewInstruction(byteutil.FromUint64(uint64(i)), op, nil, nil))
+		insts = append(insts, ir.NewInstruction(byteutil.FromUint64(uint64(i)), op, ir.Nothing(), ir.Nothing()))
 	}
 	return insts
 }

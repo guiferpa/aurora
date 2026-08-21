@@ -134,15 +134,27 @@ recursão**, não a falta de um `JUMP`.
 ## A convenção
 
 **Um frame por ativação.** Um slot fixo de memória guarda o **ponteiro de frame**; cada escopo
-sabe, em tempo de compilação, quantos slots ele quer (argumentos mais locais). Entrar é somar,
-sair é subtrair.
+sabe, em tempo de compilação, quantos slots ele quer. Entrar é somar, sair é subtrair.
+
+O tamanho do frame **não pode sair da quantidade de argumentos**, e é fácil escrever isso
+errado: um escopo da Aurora não tem aridade, então quantos valores chegam é propriedade de quem
+chamou e muda de sítio para sítio. Se um local morasse depois do último argumento, ele trocaria
+de endereço conforme a chamada, e o corpo tem um endereço só, compilado uma vez.
+
+O que o corpo **sabe** de si mesmo é quantas posições ele lê: o maior índice de `feed` que
+aparece nele, mais um. É desse número que sai o layout, e ele é constante de compilação.
 
 | | onde |
 |---|---|
 | ponteiro de frame | um slot de memória fixo, escolhido uma vez |
-| argumento `n` | `frame + n` |
-| local | `frame + (quantidade de argumentos) + índice` |
+| argumento `n` | `frame + n`, para `n` abaixo do que o corpo lê |
+| local | `frame + (quantas posições o corpo lê) + índice` |
 | endereço de retorno | na pilha da EVM |
+
+**Uma posição que ninguém escreveu tem que ler zero.** É a regra da linguagem desde a #92:
+ler além do que foi aplicado responde o tape neutro. Na calldata isso é de graça, porque a EVM
+já devolve zeros além do fim. No frame não é: o ponteiro sobe e desce, então a memória de uma
+ativação já serviu a outra, e um argumento que não foi enviado leria o que sobrou lá.
 
 **Chamar:**
 
@@ -221,6 +233,13 @@ passa a escrever nele.
    segunda é mais honesta e mexe no IR.
 4. **`OpPreCall` existe e não é usado por ninguém.** Ou ele é o lugar onde os argumentos são
    escritos no frame, ou ele sai da lista.
+5. **Quem zera as posições que ninguém escreveu.** Quem chama sabe quantos valores está
+   mandando — é constante de compilação, está escrito no fonte — mas não sabe quantas posições
+   o corpo lê, porque um `defer` é valor de primeira classe e pode ser chamado através de
+   qualquer nome. Quem é chamado sabe quantas lê e não sabe quantas chegaram. Então ou a
+   contagem viaja num slot do frame e o corpo zera da contagem até o que ele lê, ou quem chama
+   zera um teto global e ninguém precisa da contagem. A primeira é exata e custa um slot; a
+   segunda é grosseira e custa memória em toda chamada.
 5. **Recusar em vez de truncar.** Com `PUSH2`, um contrato acima de 64KB não é representável —
    mas ele também não é publicável. Vale um erro de compilação dizendo isso, em vez de bytes
    errados.

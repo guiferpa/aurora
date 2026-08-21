@@ -16,8 +16,8 @@ que o evaluator precisava executar, e o segundo consumidor chegou depois e se vi
 São duas doenças, e vale separá-las desde já porque as curas são diferentes. O IR **não
 descreve a estrutura** do programa, então o backend a reconstrói contando e casando padrão. E o
 IR **nomeia operações que não define**, então cada consumidor implementa a sua leitura do nome —
-e os dois já respondem coisas diferentes para o mesmo programa, que é a única promessa que este
-projeto fez.
+e os dois já responderam coisas diferentes para o mesmo programa, que é a única promessa que
+este projeto fez. Duas vezes, e as duas foram descobertas depois do fato.
 
 A EVM aparece aqui como exemplo, nunca como motivo. O teste de cada decisão é se um backend
 WASM, ARM ou x86 quereria a mesma coisa.
@@ -64,7 +64,8 @@ off-by-one esperando acontecer, e **nenhum significa coisa alguma para um backen
 5. **Não poder recusar nada.** Não há como verificar um IR que não afirma nada, então o único
    desfecho de um erro é o binário sair quieto.
 6. **Não poder concordar.** O IR nomeia operações sem defini-las, então cada consumidor
-   implementa a sua leitura do nome — e dois já respondem diferente para o mesmo programa.
+   implementa a sua leitura do nome, e as duas vezes em que isso divergiu foram descobertas
+   depois do fato.
 
 ---
 
@@ -135,32 +136,29 @@ existe. E `feed` continua sendo uma operação e não vira leitura de parâmetro
 Esta é a segunda doença, e é mais séria que a primeira: a primeira faz o backend adivinhar
 **estrutura**, esta faz ele adivinhar **significado**.
 
-`OpGetFeed` carrega um índice e mais nada. O que ele faz quando o índice passa do fim do vetor
-está escrito num lugar só — `evaluator/builtin/functions.go`, num `%` — e em nenhum outro. O
-`builder/evm` escreveu um `CALLDATALOAD` num offset fixo, que é a leitura óbvia de um opcode
-chamado "pegue o argumento n".
+Já custou duas vezes, e as duas do mesmo jeito: alguém descobriu depois do fato, e remendou à
+mão no lado que estava com a razão sobre a própria regra.
 
-O resultado é que **os dois consumidores respondem coisas diferentes para o mesmo programa**.
-Um escopo que lê `feed(0) + feed(1)`, chamado com um valor:
-
-| | responde |
-|---|---|
-| evaluator | `5 + 5` = 10 — o índice dá a volta |
-| na cadeia | `5 + 0` = 5 — `CALLDATALOAD` além do fim devolve zeros |
-
-Isso é exatamente a promessa pela qual o projeto existe, quebrada: *"the same program answers
-the same thing on a chain and off it"*.
-
-E não é um deslize — é estrutural, e **já aconteceu antes**. O `WriteMask` do backend existe por
-causa do mesmo problema, e o comentário dele conta a história:
+**A largura do tape.** O comentário do `WriteMask` conta a primeira:
 
 > *"without this the same program answers two different things: at one byte, 255 + 1 is 0 in
 > the evaluator and 256 on chain."*
 
-Mesma doença, encontrada duas vezes, remendada à mão nas duas. As outras operações de tape —
-`head`, `tail`, `pull`, `push`, `join`, `field` — não divergem ainda **só porque o backend não
-as implementou**; estão todas em `pending`. No dia em que forem implementadas, cada uma é uma
-chance nova de o segundo consumidor adivinhar diferente.
+**Ler além do que foi aplicado.** `OpGetFeed` carrega um índice e mais nada. O que ele fazia
+quando o índice passava do fim do vetor estava escrito num lugar só — `evaluator/builtin/functions.go`,
+num `%` — e em nenhum outro. O `builder/evm` escreveu um `CALLDATALOAD` num offset fixo, que é a
+leitura óbvia de um opcode chamado "pegue o argumento n". Um escopo que lê `feed(0) + feed(1)`,
+chamado com um valor, respondia `10` fora da cadeia e `5` nela.
+
+Isso é exatamente a promessa pela qual o projeto existe, quebrada: *"the same program answers
+the same thing on a chain and off it"*. As duas foram corrigidas — a segunda em #92, que
+também trouxe o caso de harness que a prova. Nenhuma das duas foi **prevenida**, e é isso que
+esta seção trata.
+
+Porque não é deslize, é estrutural. As outras operações de tape — `head`, `tail`, `pull`,
+`push`, `join`, `field` — não divergem ainda **só porque o backend não as implementou**; estão
+todas em `pending`. No dia em que forem implementadas, cada uma é uma chance nova de o segundo
+consumidor ler o nome do seu jeito.
 
 A regra que fecha isso:
 
@@ -178,10 +176,10 @@ hoje mora na implementação de um dos leitores.
 **O harness diferencial ganha um caso por operação definida.** É o único mecanismo que prova
 que os dois consumidores concordam, e hoje ele cobre aritmética sobre argumentos e mais nada.
 
-Esta RFC **não decide** qual é a semântica de `feed` fora do alcance — se dá a volta ou se
-responde zero. Isso muda o que um programa existente responde e é conversa de linguagem, num
-PR próprio. O que ela decide é que, seja qual for, **ela fica escrita no IR** e os dois
-consumidores a implementam a partir dali.
+Qual é a semântica de cada operação não é assunto desta RFC — muda o que um programa existente
+responde, e é conversa de linguagem em PR próprio, como foi a de `feed` na #92. O que ela
+decide é que, seja qual for, **ela fica escrita no IR** e os dois consumidores a implementam a
+partir dali.
 
 ## O que deixa de ser instrução
 
@@ -427,7 +425,8 @@ mesmas respostas, caminho novo.
 6. **Origem e efeito.** Solta — a origem paga sozinha e imediatamente (o aviso de backend passa
    a ter linha, e o LSP passa a ter o que sublinhar).
 7. **A definição de cada opcode**, escrita em `wire/ir`, e um caso no harness diferencial por
-   operação definida. Também solta, e é a que fecha a divergência que já existe.
+   operação definida. Também solta, e é a única que impede a terceira divergência em vez de
+   remendá-la depois.
 8. **`Verify`.** Depois de todas.
 
 A [if_and_call.md](if_and_call.md) entra depois de 4, e a ambiguidade do `OpReturn` que ela

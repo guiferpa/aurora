@@ -6,7 +6,8 @@
 #-
 #- There is no signature, no arity and no parameter list: executing is applying
 #- a vector of values to a scope. The scope never learns how many it received —
-#- feed(n) normalizes the index, so it always answers.
+#- feed(n) reads a position, and one that nothing was applied to gives a tape of
+#- zeros, so it always answers.
 #-
 #- Run: aurora run examples/callables.ar
 #-

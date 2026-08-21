@@ -18,13 +18,19 @@ import (
 //
 // Execution in Aurora is the application of a vector of values to a scope, not a function
 // call — there is no signature, no arity and no parameter, so this only reads a position.
-// The scope never learns how many values it got: the index wraps around the length of the
-// vector, so the read always answers with a tape and never fails.
+// The scope never learns how many values it got, and a position nothing was applied to
+// answers with the neutral tape: the read always answers, and never fails.
+//
+// It used to take the index modulo the length of the vector, which turned a value that was
+// never sent into a repeat of one that was: "sum(5)" on a scope reading feed(0) and feed(1)
+// answered 10. That also made the answer depend on how many values the caller sent — a fact
+// no backend can know without carrying the count, and the EVM one never carried it. The same
+// program answered 10 off chain and 5 on it.
+//
+// Reading past the end now gives the neutral value, which is what reading a field past the
+// end of a shape already gave.
 func FeedFunction(feed map[uint64][]byte, index uint64, tapeSize int) []byte {
-	if len(feed) == 0 {
-		return byteutil.FalseTape(tapeSize)
-	}
-	value, ok := feed[index%uint64(len(feed))]
+	value, ok := feed[index]
 	if !ok {
 		return byteutil.FalseTape(tapeSize)
 	}

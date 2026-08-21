@@ -204,3 +204,17 @@ func TestArithmeticWrapsAtTheTapeWidthOnBothSides(t *testing.T) {
 		})
 	}
 }
+
+// Reading past the values applied to a scope is not an error — the read always answers with a
+// tape. What it answers with is the question, and today the two backends answer differently:
+// the evaluator takes the index modulo the length of the vector, so a missing argument comes
+// back as the first one; the chain reads past the end of the calldata, which the EVM gives as
+// zeros.
+//
+// Nothing in the IR says which of the two is right. OpGetFeed carries an index and nothing
+// else, so the meaning lives in whichever consumer implemented it first.
+func TestReadingPastTheValuesAppliedAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `ident sum = defer { feed(0) + feed(1); };`
+
+	agree(t, source, "sum", []string{"5"}, 0)
+}

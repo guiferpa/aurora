@@ -89,8 +89,9 @@ Internally, `feed` reads the **vector of values applied to the current execution
 ## Feed access semantics
 
 * Fed values are stored as a sequential structure
-* Access is **always normalized using modulo with the vector length**
-* Negative indices are normalized by absolute value before modulo
+* Reading a position nothing was applied to gives **a tape of zeros**
+* There is no negative index: a tape is a run of bytes and carries no sign, so the parser
+  refuses one
 * Access never fails and never throws
 
 Example:
@@ -98,10 +99,10 @@ Example:
 ```lang
 feed(0)
 feed(10)
-feed(-1)
 ```
 
-All expressions return a valid value according to the normalization rules.
+Both answer: the first with what was applied at that position, the second with a tape of
+zeros when nothing was.
 
 ---
 

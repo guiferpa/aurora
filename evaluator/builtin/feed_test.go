@@ -12,10 +12,12 @@ func tape(size int, value uint64) []byte {
 	return byteutil.PaddingTape(byteutil.FromUint64(value), size)
 }
 
-// feed(n) reads the vector of values applied to a scope. The scope never learns how many
-// it received, so the index wraps around the length: the read always answers with a tape
-// and never fails. It used to return nil for anything out of range, which is not a value
-// at all — "printb feed(0)" with nothing applied printed an empty array.
+// feed(n) reads the vector of values applied to a scope. The scope never learns how many it
+// received, so a position nothing was applied to answers with a tape of zeros: the read
+// always answers with a tape and never fails.
+//
+// It used to wrap the index around the length instead, which answered with a value that was
+// sent rather than with the absence of one.
 func TestFeedFunction(t *testing.T) {
 	feed := map[uint64][]byte{
 		0: tape(8, 10),
@@ -29,9 +31,8 @@ func TestFeedFunction(t *testing.T) {
 	}{
 		{name: "first", index: 0, want: 10},
 		{name: "second", index: 1, want: 20},
-		{name: "one past the end wraps to the first", index: 2, want: 10},
-		{name: "and keeps wrapping", index: 3, want: 20},
-		{name: "far past the end", index: 100, want: 10},
+		{name: "one past the end", index: 2, want: 0},
+		{name: "far past the end", index: 100, want: 0},
 	}
 
 	for _, tc := range cases {

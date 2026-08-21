@@ -272,8 +272,9 @@ func (e *Evaluator) EvaluateJoin(label, left, right []byte) error {
 // EvaluateField takes one tape out of a run, by index. The index is a literal operand
 // written inline by the emitter, resolved from a shape declaration that no longer exists.
 //
-// Reading past the end gives the neutral value rather than failing, the way head saturates
-// and feed wraps: an operation on tapes does not stop a running program.
+// Reading past the end gives the neutral value rather than failing, the same answer feed
+// gives past the end of what was applied: an operation on tapes does not stop a running
+// program.
 func (e *Evaluator) EvaluateField(label, left, right []byte) error {
 	run := e.environ.GetTemp(byteutil.ToHex(left))
 	start := int(byteutil.ToUint64(right)) * e.tapeSize

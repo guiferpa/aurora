@@ -1,37 +1,78 @@
 package ir
 
+// What each instruction does, beside the name it does it under.
+//
+// A value in Aurora is a tape: a run of bytes, tape_size wide, between one and thirty-two.
+// Arithmetic wraps at that width, which is why nothing here talks about 64 bits — it used
+// to, from before the width was something a program chose.
+//
+// Each line says what the instruction takes and what it leaves. What it takes is written in
+// its two operands, and the kind of each says how to read it: Ref is a value another
+// instruction left behind, Imm is the bytes themselves, Name is something a scope bound,
+// Target is where control goes, Text is written for a person. Every instruction leaves
+// exactly one value, because everything in Aurora is an expression.
 const (
-	OpMultiply     byte = iota + 0b1 // Multiply two numbers with max of 64 bits (uint64)
-	OpAdd                            // Sum two numbers with max of 64 bits (uint64)
-	OpSubtract                       // Subtract two numbers with max of 64 bits (uint64)
-	OpDivide                         // Divide two numbers with max of 64 bits (uint64)
-	OpExponential                    // Exponential numbers with max of 64 bits (uint64)
-	OpIdent                          // Identify a definition from scope where evaluate step
-	OpSave                           // Save value with max of 64 bits (uint64) to temporary storage in instructions
-	OpLoad                           // Load value with max of 64 bits (uint64) from temporary storage in instructions
-	OpDiff                           // Operation to compare if two numbers with max of 64 bits (uint64) are different between themself
-	OpEquals                         // Operation to compare if two numbers with max of 64 bits (uint64) are equals between themself
-	OpBigger                         // Operation to decide between two numbers with 64 bits (uint64) which one is bigger than other
-	OpSmaller                        // Operation to decide between two numbers with 64 bits (uint64) which one is smaller than other
-	OpAnd                            // Operation to decide the AND behavior logically between two boolean values (1 bit)
-	OpOr                             // Operation to decide the OR behavior logically between two boolean values (1 bit)
-	OpPushFeed                       // Operation to push arguments to next scope
-	OpGetFeed                        // Operation to get arguments from higher scopes
-	OpBeginScope                     // Starts a new scope in stack evaluate time
-	OpDefer                          // Defer: store scope range in temp, skip body (value = pointer to scope)
-	OpPreCall                        // It's a pre call operation, main goal is push all scope arguments
-	OpCall                           // Call a scope with parameters, it'll works like function
-	OpIf                             // Operation logical to decide an condition
-	OpJump                           // Operation just for jump to another instruction
-	OpReturn                         // Operation to save an value with max of 64 bits (uint64) to work thought by different scopes
-	OpPrintBytes                     // Print the bytes of a value
-	OpPrintChars                     // Print a value as text
-	OpPrintDecimal                   // Print a value as a decimal number
-	OpPull                           // Operation to pull value in slice of byte
-	OpHead                           // Operation to head values in slice of byte
-	OpTail                           // Operation to tail values in slice of byte
-	OpPush                           // Operation to push values in slice of byte
-	OpAssert                         // Operation to assert a condition in tests
-	OpJoin                           // Concatenate a run of tapes with one more tape
-	OpField                          // Take the tape at an immediate index out of a run
+	// Arithmetic. Two values, and the result wrapped to the tape width: at one byte,
+	// 255 + 1 is 0.
+	OpMultiply    byte = iota + 0b1 // Ref, Ref -> their product
+	OpAdd                           // Ref, Ref -> their sum
+	OpSubtract                      // Ref, Ref -> the second taken from the first
+	OpDivide                        // Ref, Ref -> the first divided by the second
+	OpExponential                   // Ref, Ref -> the first raised to the second
+
+	// Names and values.
+	OpIdent // Name, Ref -> binds the name to the value, and leaves the neutral tape
+	OpSave  // Imm -> the bytes themselves, which is how a literal reaches the program
+	OpLoad  // Name -> what the name is bound to, looked up where the program is running
+
+	// Comparison. The answer is a tape like any other: false is all zeros.
+	OpDiff    // Ref, Ref -> whether the two differ
+	OpEquals  // Ref, Ref -> whether the two are the same
+	OpBigger  // Ref, Ref -> whether the first is greater
+	OpSmaller // Ref, Ref -> whether the first is smaller
+
+	// Logic. Neither short-circuits: both operands are evaluated before the operation runs.
+	OpAnd // Ref, Ref -> both hold
+	OpOr  // Ref, Ref -> either holds
+
+	// Arguments. Executing is applying a vector of values to a scope, so there is no arity
+	// and no parameter list — a position is written, and a position is read.
+	OpPushFeed // Imm, Ref -> writes the value at that position of the vector for the next call
+	OpGetFeed  // Imm -> the value at that position of the vector applied to this scope, or a
+	//            tape of zeros where nothing was applied
+
+	// Scopes. A deferred scope is a value: an index into the scopes its environ knows, held
+	// in an ordinary tape.
+	OpBeginScope // opens a scope, and leaves the value its body ends with
+	OpDefer      // Ref, Target -> stores the scope that follows, and leaves its index
+	OpPreCall    // declared and never emitted; either it becomes where arguments are written,
+	//              or it goes
+	OpCall // Name -> runs the scope that name reaches, and leaves what it answered
+
+	// Control. Both operands are counted in instructions, which is what the evaluator's
+	// cursor takes and what stops any pass from reordering the list.
+	OpIf     // Ref, Target -> skips ahead when the test is false
+	OpJump   // Target -> skips ahead, always
+	OpReturn // Ref, Ref -> the value of the scope, or of the arm of an if
+
+	// Printing. Three readings of one tape, and the whole difference between them is which
+	// opcode it is. They are logs, and they produce no bytecode, by decision.
+	OpPrintBytes   // Ref -> writes the bytes, and leaves the value
+	OpPrintChars   // Ref -> writes those bytes as UTF-8 text, and leaves the value
+	OpPrintDecimal // Ref -> writes the number they spell, and leaves the value
+
+	// Tapes, which behave as shift registers. head and tail take their index modulo the
+	// width, so it is never out of bounds.
+	OpPull // Ref, Ref -> the tape shifted left, the value entering at the right
+	OpHead // Ref, Imm -> the first n significant bytes of the tape
+	OpTail // Ref, Imm -> the tape with its first n significant bytes dropped
+	OpPush // Ref, Ref -> the tape shifted right, the value entering at the left
+
+	// Assertions belong to "aurora test", and are consumed elsewhere.
+	OpAssert // Ref, Text -> checks the condition, carrying the message for whoever reads
+
+	// Shapes. A shape is a run of tapes laid end to end, and both of these came with it.
+	// Reading past the end gives the neutral value rather than failing.
+	OpJoin  // Ref, Ref -> the run with one more tape at its end
+	OpField // Ref, Imm -> the tape at that index of the run
 )

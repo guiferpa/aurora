@@ -6,6 +6,7 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/ir"
+	"github.com/guiferpa/aurora/wire/token"
 )
 
 type Emitter interface {
@@ -21,6 +22,15 @@ func GenerateLabel(tc *int) []byte {
 	t := []byte(fmt.Sprintf("0%d", *tc))
 	*tc++
 	return t
+}
+
+// originOf answers where a token was written, so an instruction can point at it. A nil token
+// answers with nothing, which is what a phase after this one reads as "no place to point at".
+func originOf(t token.Token) ir.Origin {
+	if t == nil {
+		return ir.Origin{}
+	}
+	return ir.Origin{Line: t.GetLine(), Column: t.GetColumn()}
 }
 
 // printOpCodes maps each reading of a value to the instruction that writes it.
@@ -94,7 +104,7 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 func emitIdentLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentLiteral, tapeSize int) ir.Label {
 	lr := EmitInstruction(tc, insts, n.Value, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpIdent, ir.NameOf(n.Id), ir.RefTo(lr)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpIdent, ir.NameOf(n.Id), ir.RefTo(lr)).At(originOf(n.Token)))
 	// A binding has a value like every other expression — the neutral one — and the
 	// label has to come back, or a scope ending in a binding returns the fallback of
 	// a node the emitter did not recognise.
@@ -147,7 +157,7 @@ func emitUnaryExpression(tc *int, insts *[]ir.Instruction, n ast.UnaryExpression
 	*insts = append(*insts, ir.NewInstruction(lz, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize)), ir.Nothing()))
 
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSubtract, ir.RefTo(lz), ir.RefTo(lo)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSubtract, ir.RefTo(lz), ir.RefTo(lo)).At(originOf(n.Operation.Token)))
 	return l
 
 }
@@ -168,7 +178,7 @@ func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpr
 		op = ir.OpSmaller
 	}
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)))
+	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)).At(originOf(n.Operation.Token)))
 
 	return l
 
@@ -186,7 +196,7 @@ func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpres
 		op = ir.OpAnd
 	}
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)))
+	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)).At(originOf(n.Operation.Token)))
 	return l
 
 }
@@ -349,10 +359,10 @@ func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, ta
 	for i, p := range n.Params {
 		ll := EmitInstruction(tc, insts, p.Expression, tapeSize)
 		l := GenerateLabel(tc)
-		*insts = append(*insts, ir.NewInstruction(l, ir.OpPushFeed, ir.ImmNum(uint64(i)), ir.RefTo(ll)))
+		*insts = append(*insts, ir.NewInstruction(l, ir.OpPushFeed, ir.ImmNum(uint64(i)), ir.RefTo(ll)).At(originOf(n.Id.Token)))
 	}
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpCall, ir.NameOf(n.Id.Value), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpCall, ir.NameOf(n.Id.Value), ir.Nothing()).At(originOf(n.Id.Token)))
 	return l
 
 }
@@ -372,7 +382,7 @@ func emitAssertStatement(tc *int, insts *[]ir.Instruction, n ast.AssertStatement
 	// written for whoever reads the result, and a value would have to fit in a tape.
 	cond := EmitInstruction(tc, insts, n.Condition, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpAssert, ir.RefTo(cond), ir.TextOf(n.Message)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpAssert, ir.RefTo(cond), ir.TextOf(n.Message)).At(originOf(n.Token)))
 	return l
 
 }
@@ -404,7 +414,7 @@ func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpressi
 	}
 
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)))
+	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)).At(originOf(n.Operation.Token)))
 
 	return l
 
@@ -413,7 +423,7 @@ func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpressi
 // emitNumberLiteral saves a number as a tape.
 func emitNumberLiteral(tc *int, insts *[]ir.Instruction, n ast.NumberLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(byteutil.PaddingTape(byteutil.FromUint64(n.Value), tapeSize)), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(byteutil.PaddingTape(byteutil.FromUint64(n.Value), tapeSize)), ir.Nothing()).At(originOf(n.Token)))
 	return l
 
 }
@@ -422,7 +432,7 @@ func emitNumberLiteral(tc *int, insts *[]ir.Instruction, n ast.NumberLiteral, ta
 func emitTextLiteral(tc *int, insts *[]ir.Instruction, n ast.TextLiteral, tapeSize int) ir.Label {
 	// Text is a tape holding its bytes, so it saves like any other value.
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(n.Value), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(n.Value), ir.Nothing()).At(originOf(n.Token)))
 	return l
 
 }
@@ -430,7 +440,7 @@ func emitTextLiteral(tc *int, insts *[]ir.Instruction, n ast.TextLiteral, tapeSi
 // emitBooleanLiteral saves true or false, which are tapes like any other.
 func emitBooleanLiteral(tc *int, insts *[]ir.Instruction, n ast.BooleanLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(n.Value), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(n.Value), ir.Nothing()).At(originOf(n.Token)))
 	return l
 
 }
@@ -438,7 +448,7 @@ func emitBooleanLiteral(tc *int, insts *[]ir.Instruction, n ast.BooleanLiteral, 
 // emitIdentifierLiteral loads what a name is bound to.
 func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpLoad, ir.NameOf(n.Value), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpLoad, ir.NameOf(n.Value), ir.Nothing()).At(originOf(n.Token)))
 	return l
 
 }

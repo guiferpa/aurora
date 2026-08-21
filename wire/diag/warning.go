@@ -10,8 +10,9 @@ package diag
 // Compilation carries on and the program runs.
 //
 // Line and Column are 1-based and zero when the warning is about the program as a whole
-// rather than a place in it — which is what a backend answers with, since the IR carries
-// instructions and not lines.
+// rather than a place in it. That used to be every warning a backend produced, because the IR
+// carried instructions and no trace of where they came from; instructions carry an origin now,
+// so a backend points at a place whenever the emitter had one to give it.
 type Warning struct {
 	Message string
 	Line    int

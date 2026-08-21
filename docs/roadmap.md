@@ -137,11 +137,6 @@ using any of the following **compiles successfully and does nothing on chain**.
 program uses it, and names the line the program first used it on — so a binary that does less
 than the source said is announced, in the form an editor follows.
 
-What a warning still cannot point at is a feature the emitter had no token for: an `if`, a
-`shape`, and the tape operations are parsed from nodes that do not keep the token they came
-from, so those name the feature and not the place. Giving those nodes a token is a change to
-the parser and would close the gap.
-
 ## Simulating a call off the chain
 
 `aurora call` speaks to a network and nothing else, so there is no way to ask for one scope by

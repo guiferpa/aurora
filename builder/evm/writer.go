@@ -218,9 +218,45 @@ func WriteBodyCode(bs io.Writer, ds []Dispatcher, root *bytes.Buffer) (int, erro
 	return 0, nil
 }
 
+// WriteImmediates puts on the stack the values an instruction carries inside itself.
+//
+// A Ref was already put there by whoever produced it, and the lowering saw to it that it
+// landed in the right place. An Imm has no producer — the program wrote the value down — so
+// the instruction that takes it is where it reaches the stack.
+//
+// Which is why there is a SWAP1 here. When an immediate has to sit *under* a value that is
+// already on top, pushing it puts it on the wrong side, and the two have to change places. It
+// is the one case, and it is written out rather than inferred: for a subtraction the EVM
+// computes top minus next, so "t - 2" needs the two underneath and "2 - t" does not.
+func WriteImmediates(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	values := valueOperands(inst)
+	for at, operand := range values {
+		if operand.Kind() != ir.KindImm {
+			continue
+		}
+		if _, err := WritePush(w, operand.Bytes(), tapeSize); err != nil {
+			return err
+		}
+		// It is the first of two and the other is already on the stack, so it landed on
+		// top of what it belongs under.
+		if at == 0 && len(values) == 2 && values[1].Kind() == ir.KindRef {
+			if _, err := w.Write([]byte{OpSwap1}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int) (int, error) {
 	for _, inst := range insts {
 		op := inst.GetOpCode()
+
+		if handled[op] && op != ir.OpSave {
+			if err := WriteImmediates(bs, inst, tapeSize); err != nil {
+				return 0, err
+			}
+		}
 
 		if op == ir.OpAdd {
 			if _, err := WriteAdd(bs); err != nil {

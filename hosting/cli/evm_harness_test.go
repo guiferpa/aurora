@@ -239,3 +239,31 @@ func TestALocalInsideAScopeAnswersTheSameOnChainAndOff(t *testing.T) {
 		})
 	}
 }
+
+// A value written down reaches the stack from the instruction that takes it, and where it
+// lands depends on which side it is on. The EVM computes top minus next, so "feed(0) - 2"
+// needs the two underneath a value that is already on top — which is the one place the writer
+// has to make two things change places.
+//
+// Addition would not tell them apart, so the cases that prove it are the ones that do.
+func TestAValueWrittenDownAnswersTheSameOnChainAndOff(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		args   []string
+	}{
+		{name: "written down on the right of a subtraction", source: `ident f = defer { feed(0) - 2; };`, args: []string{"9"}},
+		{name: "written down on the left of a subtraction", source: `ident f = defer { 10 - feed(0); };`, args: []string{"4"}},
+		{name: "written down on the right of a division", source: `ident f = defer { feed(0) / 2; };`, args: []string{"9"}},
+		{name: "written down on the left of a division", source: `ident f = defer { 100 / feed(0); };`, args: []string{"4"}},
+		{name: "both written down", source: `ident f = defer { 7 - 3; };`, args: []string{"0"}},
+		{name: "written down in a sum", source: `ident f = defer { feed(0) + 5; };`, args: []string{"6"}},
+		{name: "bound to a name", source: `ident f = defer { ident x = 3; feed(0) - x; };`, args: []string{"10"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "f", tc.args, 0)
+		})
+	}
+}

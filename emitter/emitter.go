@@ -33,6 +33,27 @@ func originOf(t token.Token) ir.Origin {
 	return ir.Origin{Line: t.GetLine(), Column: t.GetColumn()}
 }
 
+// operandFor answers the operand a node is worth, emitting for it only when there is
+// something to emit.
+//
+// A literal is a value the program wrote down: there is nothing to work out, so it goes into
+// the instruction that uses it. Everything else is computed, so it is emitted and referenced.
+//
+// The saves this removes were a third of what the emitter produced, and nearly all of them
+// were read exactly once — an instruction whose whole job was to give a name to a number that
+// was already known.
+func operandFor(tc *int, insts *[]ir.Instruction, node ast.Node, tapeSize int) ir.Operand {
+	switch n := node.(type) {
+	case ast.NumberLiteral:
+		return ir.Imm(n.Value, tapeSize)
+	case ast.TextLiteral:
+		return ir.ImmOf(n.Value, tapeSize)
+	case ast.BooleanLiteral:
+		return ir.ImmOf(n.Value, tapeSize)
+	}
+	return ir.RefTo(EmitInstruction(tc, insts, node, tapeSize))
+}
+
 // printOpCodes maps each reading of a value to the instruction that writes it.
 var printOpCodes = map[ast.PrintFormat]byte{
 	ast.PrintBytes:   ir.OpPrintBytes,
@@ -102,9 +123,9 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 
 // emitIdentLiteral binds a name to a value.
 func emitIdentLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentLiteral, tapeSize int) ir.Label {
-	lr := EmitInstruction(tc, insts, n.Value, tapeSize)
+	lr := operandFor(tc, insts, n.Value, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpIdent, ir.NameOf(n.Id), ir.RefTo(lr)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpIdent, ir.NameOf(n.Id), lr).At(originOf(n.Token)))
 	// A binding has a value like every other expression — the neutral one — and the
 	// label has to come back, or a scope ending in a binding returns the fallback of
 	// a node the emitter did not recognise.
@@ -151,21 +172,18 @@ func emitUnaryExpression(tc *int, insts *[]ir.Instruction, n ast.UnaryExpression
 	//
 	// The operator used to be dropped here and only the operand emitted, so `-5` was
 	// 5 and `10 + -5` was 15.
-	lo := EmitInstruction(tc, insts, n.Expression, tapeSize)
-
-	lz := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(lz, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
+	lo := operandFor(tc, insts, n.Expression, tapeSize)
 
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSubtract, ir.RefTo(lz), ir.RefTo(lo)).At(originOf(n.Operation.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSubtract, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), lo).At(originOf(n.Operation.Token)))
 	return l
 
 }
 
 // emitRelativeExpression compares two values.
 func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpression, tapeSize int) ir.Label {
-	ll := EmitInstruction(tc, insts, n.Left, tapeSize)
-	lr := EmitInstruction(tc, insts, n.Right, tapeSize)
+	ll := operandFor(tc, insts, n.Left, tapeSize)
+	lr := operandFor(tc, insts, n.Right, tapeSize)
 	var op byte
 	switch string(n.Operation.Token.GetMatch()) {
 	case "equals":
@@ -178,7 +196,7 @@ func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpr
 		op = ir.OpSmaller
 	}
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)).At(originOf(n.Operation.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, op, ll, lr).At(originOf(n.Operation.Token)))
 
 	return l
 
@@ -186,8 +204,8 @@ func emitRelativeExpression(tc *int, insts *[]ir.Instruction, n ast.RelativeExpr
 
 // emitBooleanExpression combines two truth values.
 func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpression, tapeSize int) ir.Label {
-	ll := EmitInstruction(tc, insts, n.Left, tapeSize)
-	lr := EmitInstruction(tc, insts, n.Right, tapeSize)
+	ll := operandFor(tc, insts, n.Left, tapeSize)
+	lr := operandFor(tc, insts, n.Right, tapeSize)
 	var op byte
 	switch string(n.Operation.Token.GetMatch()) {
 	case "or":
@@ -196,7 +214,7 @@ func emitBooleanExpression(tc *int, insts *[]ir.Instruction, n ast.BooleanExpres
 		op = ir.OpAnd
 	}
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)).At(originOf(n.Operation.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, op, ll, lr).At(originOf(n.Operation.Token)))
 	return l
 
 }
@@ -214,7 +232,7 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 	operands := make([]ir.Operand, 0, len(n.Items)+1)
 	operands = append(operands, ir.RefTo(lz))
 	for _, item := range n.Items {
-		operands = append(operands, ir.RefTo(EmitInstruction(tc, insts, item, tapeSize)))
+		operands = append(operands, operandFor(tc, insts, item, tapeSize))
 	}
 
 	l := GenerateLabel(tc)
@@ -259,7 +277,7 @@ func emitShapeLiteral(tc *int, insts *[]ir.Instruction, n ast.ShapeLiteral, tape
 	// which it had to be, since it was the one operand here that was not a tape.
 	operands := make([]ir.Operand, 0, len(n.Values))
 	for _, value := range n.Values {
-		operands = append(operands, ir.RefTo(EmitInstruction(tc, insts, value, tapeSize)))
+		operands = append(operands, operandFor(tc, insts, value, tapeSize))
 	}
 
 	l := GenerateLabel(tc)
@@ -272,9 +290,9 @@ func emitShapeLiteral(tc *int, insts *[]ir.Instruction, n ast.ShapeLiteral, tape
 func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression, tapeSize int) ir.Label {
 	// The index was resolved while parsing, so it goes in as an immediate — the same
 	// shape head and tail use. Nothing here knows the field had a name.
-	lv := EmitInstruction(tc, insts, n.Expression, tapeSize)
+	lv := operandFor(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, ir.RefTo(lv), ir.Const(n.Index, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, lv, ir.Const(n.Index, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }
@@ -289,38 +307,38 @@ func emitShapedExpression(tc *int, insts *[]ir.Instruction, n ast.ShapedExpressi
 
 // emitPullExpression shifts a tape left, the value entering at the right.
 func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, tapeSize int) ir.Label {
-	lt := EmitInstruction(tc, insts, n.Target, tapeSize)
-	li := EmitInstruction(tc, insts, n.Item, tapeSize)
+	lt := operandFor(tc, insts, n.Target, tapeSize)
+	li := operandFor(tc, insts, n.Item, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpPull, ir.RefTo(lt), ir.RefTo(li)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpPull, lt, li).At(originOf(n.Token)))
 	return l
 
 }
 
 // emitHeadExpression keeps the first bytes of a tape.
 func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, tapeSize int) ir.Label {
-	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
+	e := operandFor(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpHead, ir.RefTo(e), ir.Const(n.Length, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpHead, e, ir.Const(n.Length, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }
 
 // emitTailExpression drops the first bytes of a tape.
 func emitTailExpression(tc *int, insts *[]ir.Instruction, n ast.TailExpression, tapeSize int) ir.Label {
-	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
+	e := operandFor(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpTail, ir.RefTo(e), ir.Const(n.Length, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpTail, e, ir.Const(n.Length, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }
 
 // emitPushExpression shifts a tape right, the value entering at the left.
 func emitPushExpression(tc *int, insts *[]ir.Instruction, n ast.PushExpression, tapeSize int) ir.Label {
-	lt := EmitInstruction(tc, insts, n.Target, tapeSize)
-	li := EmitInstruction(tc, insts, n.Item, tapeSize)
+	lt := operandFor(tc, insts, n.Target, tapeSize)
+	li := operandFor(tc, insts, n.Item, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpPush, ir.RefTo(lt), ir.RefTo(li)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpPush, lt, li).At(originOf(n.Token)))
 	return l
 
 }
@@ -345,9 +363,9 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 	}
 	bodylen := ir.TargetAt(uint64(len(body)) + 2)
 
-	lt := EmitInstruction(tc, insts, n.Test, tapeSize)
+	lt := operandFor(tc, insts, n.Test, tapeSize)
 	inl := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(inl, ir.OpIf, ir.RefTo(lt), bodylen).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(inl, ir.OpIf, lt, bodylen).At(originOf(n.Token)))
 
 	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpReturn, ir.RefTo(inl), ir.RefTo(bl)))
 	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpJump, euzelen, ir.Nothing()).At(originOf(n.Token)))
@@ -376,7 +394,7 @@ func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, ta
 	operands := make([]ir.Operand, 0, len(n.Params)+1)
 	operands = append(operands, ir.NameOf(n.Id.Value))
 	for _, param := range n.Params {
-		operands = append(operands, ir.RefTo(EmitInstruction(tc, insts, param.Expression, tapeSize)))
+		operands = append(operands, operandFor(tc, insts, param.Expression, tapeSize))
 	}
 
 	l := GenerateLabel(tc)
@@ -387,9 +405,9 @@ func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, ta
 
 // emitPrintStatement writes a value in one of the three readings.
 func emitPrintStatement(tc *int, insts *[]ir.Instruction, n ast.PrintStatement, tapeSize int) ir.Label {
-	ll := EmitInstruction(tc, insts, n.Param, tapeSize)
+	ll := operandFor(tc, insts, n.Param, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, printOpCodes[n.Format], ir.RefTo(ll), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, printOpCodes[n.Format], ll, ir.Nothing()))
 	return l
 
 }
@@ -398,9 +416,9 @@ func emitPrintStatement(tc *int, insts *[]ir.Instruction, n ast.PrintStatement, 
 func emitAssertStatement(tc *int, insts *[]ir.Instruction, n ast.AssertStatement, tapeSize int) ir.Label {
 	// The message rides in the instruction as the bytes it is, not as a value: it is
 	// written for whoever reads the result, and a value would have to fit in a tape.
-	cond := EmitInstruction(tc, insts, n.Condition, tapeSize)
+	cond := operandFor(tc, insts, n.Condition, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpAssert, ir.RefTo(cond), ir.TextOf(n.Message)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpAssert, cond, ir.TextOf(n.Message)).At(originOf(n.Token)))
 	return l
 
 }
@@ -415,8 +433,8 @@ func emitFeedExpression(tc *int, insts *[]ir.Instruction, n ast.FeedExpression, 
 
 // emitBinaryExpression does arithmetic on two values.
 func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpression, tapeSize int) ir.Label {
-	ll := EmitInstruction(tc, insts, n.Left, tapeSize)
-	lr := EmitInstruction(tc, insts, n.Right, tapeSize)
+	ll := operandFor(tc, insts, n.Left, tapeSize)
+	lr := operandFor(tc, insts, n.Right, tapeSize)
 	var op byte
 	switch string(n.Operation.Token.GetMatch()) {
 	case "*":
@@ -432,7 +450,7 @@ func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpressi
 	}
 
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, op, ir.RefTo(ll), ir.RefTo(lr)).At(originOf(n.Operation.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, op, ll, lr).At(originOf(n.Operation.Token)))
 
 	return l
 

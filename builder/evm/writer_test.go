@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // The constructor copies the runtime out of the code being deployed and hands it to the chain.
@@ -319,5 +320,39 @@ func TestWriteMask(t *testing.T) {
 				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// Measuring is writing to something that only counts, so what it says and what comes out
+// cannot disagree. That is the whole reason it is done this way rather than with a table of
+// sizes: a table is a second description, and two descriptions of one thing drift.
+func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
+	insts := []ir.Instruction{
+		ir.NewInstruction([]byte("00"), ir.OpGetFeed, ir.Const(0, 8), ir.Nothing()),
+		ir.NewInstruction([]byte("01"), ir.OpSave, ir.Imm(10, 8), ir.Nothing()),
+		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
+		ir.NewInstruction([]byte("03"), ir.OpIdent, ir.NameOf("x"), ir.RefTo([]byte("02"))),
+		ir.NewInstruction([]byte("04"), ir.OpLoad, ir.NameOf("x"), ir.Nothing()),
+	}
+
+	positions, err := PositionsOf(insts, 8, nil, nil)
+	if err != nil {
+		t.Fatalf("measuring: %v", err)
+	}
+	if len(positions) != len(insts)+1 {
+		t.Fatalf("measured %d positions for %d instructions", len(positions), len(insts))
+	}
+
+	bs := bytes.NewBuffer(make([]byte, 0))
+	im := NewIdentManager()
+	for at, inst := range insts {
+		before := bs.Len()
+		if err := WriteInstruction(bs, im, inst, 8, 0, nil); err != nil {
+			t.Fatalf("writing: %v", err)
+		}
+		if want := positions[at+1] - positions[at]; bs.Len()-before != want {
+			t.Errorf("%s measured %d bytes and wrote %d",
+				ir.ResolveOpCode(inst.GetOpCode()), want, bs.Len()-before)
+		}
 	}
 }

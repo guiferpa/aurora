@@ -277,77 +277,230 @@ func WriteImmediates(w io.Writer, inst ir.Instruction, tapeSize int) error {
 	return nil
 }
 
-func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int) (int, error) {
+// counter is a writer that keeps how much was written to it and nothing else.
+type counter int
+
+func (c *counter) Write(p []byte) (int, error) {
+	*c += counter(len(p))
+	return len(p), nil
+}
+
+// PositionsOf answers the byte each instruction of a scope starts at, and where the scope ends.
+//
+// It measures by writing — to something that only counts — rather than by adding up a table of
+// sizes beside the writer. A table would be a second description of the same thing, and two
+// descriptions of one thing drift: this backend has been wrong that way more than once, and
+// the drift is silent because the bytes still come out, just at the wrong addresses.
+//
+// The names are registered into a manager of its own and thrown away, since what is measured
+// is how many bytes an instruction takes and every push is a fixed size now.
+func PositionsOf(insts []ir.Instruction, tapeSize int, landings map[int]bool, arms map[string]bool) ([]int, error) {
+	positions := make([]int, len(insts)+1)
+	im := NewIdentManager()
+	for at, inst := range insts {
+		var measured counter
+		if landings[at] {
+			measured++
+		}
+		if err := WriteInstruction(&measured, im, inst, tapeSize, 0, arms); err != nil {
+			return nil, err
+		}
+		positions[at+1] = positions[at] + int(measured)
+	}
+	return positions, nil
+}
+
+// landingsOf answers the instructions a jump arrives at.
+//
+// The IR counts its jumps in instructions, which is what the evaluator's cursor takes; the EVM
+// takes a byte, and it refuses one that is not a JUMPDEST. So the places that are arrived at
+// are worked out first, from the counts alone, and each of them opens with one.
+//
+// A landing one past the last instruction is the way out of an "if" that ends a scope, and it
+// gets a JUMPDEST of its own after everything.
+func landingsOf(insts []ir.Instruction) map[int]bool {
+	landings := make(map[int]bool)
+	for at, inst := range insts {
+		switch inst.GetOpCode() {
+		case ir.OpIf:
+			landings[at+1+int(byteutil.ToUint64(inst.GetRight().Bytes()))] = true
+		case ir.OpJump:
+			landings[at+1+int(byteutil.ToUint64(inst.GetLeft().Bytes()))] = true
+		}
+	}
+	return landings
+}
+
+// armsOf answers the labels an "if" answers under, so an OpReturn naming one is known to end a
+// branch rather than a scope.
+func armsOf(insts []ir.Instruction) map[string]bool {
+	arms := make(map[string]bool)
 	for _, inst := range insts {
-		op := inst.GetOpCode()
-
-		if handled[op] && op != ir.OpSave {
-			if err := WriteImmediates(bs, inst, tapeSize); err != nil {
-				return 0, err
-			}
+		if inst.GetOpCode() == ir.OpIf {
+			arms[byteutil.ToHex(inst.GetLabel())] = true
 		}
+	}
+	return arms
+}
 
-		if op == ir.OpAdd {
-			if _, err := WriteAdd(bs); err != nil {
-				return 0, err
-			}
-			if _, err := WriteMask(bs, tapeSize); err != nil {
-				return 0, err
-			}
+// targetOf answers the byte an instruction jumps to, or zero for one that does not jump.
+func targetOf(inst ir.Instruction, at int, positions []int) int {
+	var ahead int
+	switch inst.GetOpCode() {
+	case ir.OpIf:
+		ahead = int(byteutil.ToUint64(inst.GetRight().Bytes()))
+	case ir.OpJump:
+		ahead = int(byteutil.ToUint64(inst.GetLeft().Bytes()))
+	default:
+		return 0
+	}
+	return positions[at+1+ahead]
+}
+
+// WriteInstruction emits one instruction.
+//
+// The target is the byte a jump goes to, for the two instructions that jump. It is zero while
+// measuring, and measures the same either way, since every push is a fixed size.
+//
+// Arms answers whether an OpReturn ends a branch rather than a scope. The two are the same
+// opcode: one says "the value of this scope" and the other "the value of this arm", and which
+// it is can be read — an arm names the OpIf it belongs to, and a scope names the OpBeginScope.
+func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeSize int, target int, arms map[string]bool) error {
+	op := inst.GetOpCode()
+
+	if handled[op] && op != ir.OpSave {
+		if err := WriteImmediates(bs, inst, tapeSize); err != nil {
+			return err
 		}
+	}
 
-		if op == ir.OpMultiply {
-			if _, err := WriteMultiply(bs); err != nil {
-				return 0, err
-			}
-			if _, err := WriteMask(bs, tapeSize); err != nil {
-				return 0, err
-			}
+	if op == ir.OpAdd {
+		if _, err := WriteAdd(bs); err != nil {
+			return err
 		}
-
-		if op == ir.OpSubtract {
-			if _, err := WriteSubtract(bs); err != nil {
-				return 0, err
-			}
-			if _, err := WriteMask(bs, tapeSize); err != nil {
-				return 0, err
-			}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
+			return err
 		}
+	}
 
-		if op == ir.OpDivide {
-			if _, err := WriteDivide(bs); err != nil {
-				return 0, err
-			}
+	if op == ir.OpMultiply {
+		if _, err := WriteMultiply(bs); err != nil {
+			return err
 		}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
+			return err
+		}
+	}
 
-		if op == ir.OpReturn {
+	if op == ir.OpSubtract {
+		if _, err := WriteSubtract(bs); err != nil {
+			return err
+		}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpDivide {
+		if _, err := WriteDivide(bs); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpReturn {
+		// The value of an arm is already on the stack, which is where whoever is under the
+		// branch finds it: there is nothing to write. Only a scope answers to the chain.
+		if !arms[byteutil.ToHex(inst.GetLeft().Bytes())] {
 			if _, err := WriteReturn(bs); err != nil {
+				return err
+			}
+		}
+	}
+
+	if op == ir.OpSave {
+		if _, err := WriteSave(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpIdent {
+		if _, err := WriteIdent(bs, im, inst.GetLeft().Bytes()); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpLoad {
+		if _, err := WriteLoad(bs, im, inst.GetLeft().Bytes()); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpGetFeed {
+		if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpIf {
+		// The IR skips ahead when the test is false and the EVM jumps when what it pops is
+		// not zero, so the test is turned over first.
+		if _, err := bs.Write([]byte{OpIsZero}); err != nil {
+			return err
+		}
+		if _, err := WritePush2(bs, target); err != nil {
+			return err
+		}
+		if _, err := bs.Write([]byte{OpJumpIf}); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpJump {
+		if _, err := WritePush2(bs, target); err != nil {
+			return err
+		}
+		if _, err := bs.Write([]byte{OpJump}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// WriteCode emits a scope: measure, resolve, write.
+//
+// A jump forward needs the address of code that has not been written, so the bytes are
+// measured first and the addresses fall out of the measurement. Every push is a fixed size, so
+// one pass is enough — nothing here has to be measured again because an address turned out
+// longer than it was guessed.
+//
+// The base is where this scope lands in the runtime, since a jump carries an address in the
+// contract and not an offset into a scope. It is zero while a scope is being measured, and the
+// measurement does not depend on it.
+func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int, base int) (int, error) {
+	landings := landingsOf(insts)
+	arms := armsOf(insts)
+
+	positions, err := PositionsOf(insts, tapeSize, landings, arms)
+	if err != nil {
+		return 0, err
+	}
+
+	for at, inst := range insts {
+		if landings[at] {
+			if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
 				return 0, err
 			}
 		}
-
-		if op == ir.OpSave {
-			if _, err := WriteSave(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
-				return 0, err
-			}
+		if err := WriteInstruction(bs, im, inst, tapeSize, base+targetOf(inst, at, positions), arms); err != nil {
+			return 0, err
 		}
+	}
 
-		if op == ir.OpIdent {
-			if _, err := WriteIdent(bs, im, inst.GetLeft().Bytes()); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpLoad {
-			if _, err := WriteLoad(bs, im, inst.GetLeft().Bytes()); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpGetFeed {
-			if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
-				return 0, err
-			}
+	// The way out of an "if" that ends a scope lands past the last instruction.
+	if landings[len(insts)] {
+		if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
+			return 0, err
 		}
 	}
 

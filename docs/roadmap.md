@@ -120,11 +120,12 @@ everything below is not.
 The gap is wider than it looks, and it is silent, which is the dangerous part: a contract
 using any of the following **compiles successfully and does nothing on chain**.
 
-- `if`, `jump`, `call`, `assert`, the tape operations, and the shape instructions (`OpJoin`,
-  `OpField`) produce no bytecode at all. `WriteCode` covers arithmetic, `OpSave`, `OpIdent`,
-  `OpLoad`, `OpGetFeed` and `OpReturn`. They are not refusals — a tape is at most 32 bytes and
-  an EVM word is exactly 32, a shape is a run of words in memory, and a call is a jump with a
-  return address. They are simply not written yet.
+- `call`, `assert`, the comparisons, `and`/`or`, `^`, the tape operations and the shape
+  instructions (`OpJoin`, `OpField`) produce no bytecode at all. `WriteCode` covers arithmetic,
+  `OpSave`, `OpIdent`, `OpLoad`, `OpGetFeed`, `OpReturn` and now the branch — `OpIf` and
+  `OpJump`. They are not refusals — a tape is at most 32 bytes and an EVM word is exactly 32, a
+  shape is a run of words in memory, and a call is a jump with a return address. They are
+  simply not written yet.
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.
 - **Events are missing entirely.** `LOG0`–`LOG4` (`0xA0`–`0xA4`) are not in the opcode table.

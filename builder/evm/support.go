@@ -30,6 +30,8 @@ var handled = map[byte]bool{
 	ir.OpReturn:     true,
 	ir.OpDefer:      true,
 	ir.OpBeginScope: true,
+	ir.OpIf:         true,
+	ir.OpJump:       true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a

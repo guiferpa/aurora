@@ -93,10 +93,57 @@ func Lowering(insts []ir.Instruction, tapeSize int) []ir.Instruction {
 //
 // A value nobody takes has nowhere to be moved to, so it stays where it was written. That is
 // the last expression of a scope, which is the scope's answer.
+// divides answers whether control can leave an instruction for somewhere other than the next
+// one, or arrive at it from somewhere other than the one before.
+//
+// Nothing is moved across one. A value held back is emitted right before whoever takes it,
+// which is sound while both sit on the same straight run of instructions — past a branch it is
+// not: the value would be produced only when that side runs, and whoever takes it may be
+// reached the other way. It is the rule every compiler keeps, and it is why a scheduler works
+// inside a block and never through one.
+func divides(op byte) bool {
+	switch op {
+	case ir.OpIf, ir.OpJump, ir.OpReturn, ir.OpBeginScope, ir.OpDefer, ir.OpCall:
+		return true
+	default:
+		return false
+	}
+}
+
+// ResolveOperandsOrder emits every value right before whoever takes it.
+//
+// An instruction that leaves a value is held back under its label rather than emitted where it
+// was written: the code that produces it belongs next to the code that eats it. Holding it
+// back is safe because everything held back is pure — a constant, an argument, a read of
+// memory, or arithmetic over those — so moving it moves nothing observable.
+//
+// It is held back only as far as the next place control can go. Anything still waiting when
+// one of those is reached is emitted first, in the order it was written, because past that
+// point there is no telling whether it would have run.
+//
+// A value nobody takes has nowhere to be moved to, so it stays where it was written. That is
+// the last expression of a scope, which is the scope's answer.
 func ResolveOperandsOrder(insts []ir.Instruction, tapeSize int) []ir.Instruction {
 	taken := labelsTaken(insts)
 	pending := make(map[string][]ir.Instruction)
+	// The order they were held back in, so flushing them keeps it.
+	waiting := make([]string, 0, len(insts))
 	out := make([]ir.Instruction, 0, len(insts))
+
+	flush := func() {
+		for _, label := range waiting {
+			if held, ok := pending[label]; ok {
+				out = append(out, held...)
+				delete(pending, label)
+			}
+		}
+		waiting = waiting[:0]
+	}
+
+	hold := func(label string, sequence []ir.Instruction) {
+		pending[label] = sequence
+		waiting = append(waiting, label)
+	}
 
 	for _, inst := range insts {
 		op := inst.GetOpCode()
@@ -113,10 +160,20 @@ func ResolveOperandsOrder(insts []ir.Instruction, tapeSize int) []ir.Instruction
 		}
 		sequence = append(sequence, inst)
 
+		if divides(op) {
+			// What this takes was just put in front of it, so it goes out whole — and
+			// everything else waiting goes out ahead of it, where it is still on the
+			// straight run it was written on.
+			held := sequence
+			flush()
+			out = append(out, held...)
+			continue
+		}
+
 		label := byteutil.ToHex(inst.GetLabel())
 		switch {
 		case produces(op) && taken[label] > 0:
-			pending[label] = sequence
+			hold(label, sequence)
 		case produces(op):
 			// Nobody takes it, so there is nowhere to move it to: it is the answer of the
 			// scope it was written in, and it stays where it was written.
@@ -126,7 +183,7 @@ func ResolveOperandsOrder(insts []ir.Instruction, tapeSize int) []ir.Instruction
 			// which is what the evaluator answers. On the stack that has to be pushed: the
 			// binding itself left nothing there.
 			sequence = append(sequence, ir.NewInstruction(inst.GetLabel(), ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
-			pending[label] = sequence
+			hold(label, sequence)
 		default:
 			out = append(out, sequence...)
 		}

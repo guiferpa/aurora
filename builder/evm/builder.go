@@ -46,6 +46,9 @@ type Dispatcher struct {
 	Offset   int
 	Length   int
 	Code     *bytes.Buffer
+	// Body is what the code was written from, kept so it can be written again once where it
+	// lands is known.
+	Body []ir.Instruction
 }
 
 type RuntimeCode struct {
@@ -88,9 +91,11 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	body := b.insts[cursor+1 : end]
 	body = Lowering(body, b.tapeSize)
 
-	// Emit EVM bytecode for the defer body (OpBeginScope, ...exprs..., OpReturn).
+	// Written once to find out how long it is, and once more when where it lands is known —
+	// a jump inside it carries an address in the contract, and that address depends on how
+	// many scopes come before it, which is not known until they have all been found.
 	code := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteCode(code, b.identManager, body, b.tapeSize); err != nil {
+	if _, err := WriteCode(code, NewIdentManager(), body, b.tapeSize, 0); err != nil {
 		return nil, cursor, false
 	}
 
@@ -110,6 +115,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 		Code:     bytes.NewBuffer(append([]byte{OpJumpDestiny}, code.Bytes()...)),
 		Offset:   offset,
 		Length:   code.Len(),
+		Body:     body,
 	}
 	return d, end, true
 }
@@ -132,10 +138,28 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 		b.cursor++
 	}
 
+	// Where each scope lands is known only now, since it depends on how many there are: the
+	// dispatcher block comes first and every entry of it is the same size. So they are
+	// written again, this time with the address they will have.
+	referenced := DISPATCHER_BYTES_SIZE*len(dispatchers) + NO_MATCH_DISPATCHER_SIZE
+	if len(dispatchers) == 0 {
+		referenced = 0
+	}
+	for at := range dispatchers {
+		d := &dispatchers[at]
+		code := bytes.NewBuffer(make([]byte, 0))
+		// One past the offset, because a scope opens with the JUMPDEST its dispatcher
+		// jumps to.
+		if _, err := WriteCode(code, b.identManager, d.Body, b.tapeSize, referenced+d.Offset+1); err != nil {
+			return nil, err
+		}
+		d.Code = bytes.NewBuffer(append([]byte{OpJumpDestiny}, code.Bytes()...))
+	}
+
 	if len(rootinsts) > 0 {
 		rootinsts = Lowering(rootinsts, b.tapeSize)
 		root := bytes.NewBuffer(make([]byte, 0))
-		if _, err := WriteCode(root, b.identManager, rootinsts, b.tapeSize); err != nil {
+		if _, err := WriteCode(root, b.identManager, rootinsts, b.tapeSize, referenced+offset); err != nil {
 			return nil, err
 		}
 		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil

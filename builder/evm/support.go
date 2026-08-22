@@ -39,6 +39,7 @@ var handled = map[byte]bool{
 	ir.OpAnd:         true,
 	ir.OpOr:          true,
 	ir.OpExponential: true,
+	ir.OpCall:        true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
@@ -55,7 +56,6 @@ var offChain = map[byte]string{
 var pending = map[byte]string{
 	ir.OpIf:      "if",
 	ir.OpJump:    "if",
-	ir.OpCall:    "calling a scope",
 	ir.OpPreCall: "calling a scope",
 	ir.OpDiff:    "a comparison",
 	ir.OpEquals:  "a comparison",

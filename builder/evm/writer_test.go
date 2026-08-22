@@ -2,6 +2,8 @@ package evm
 
 import (
 	"bytes"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -364,7 +366,7 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 		ir.NewInstruction([]byte("04"), ir.OpLoad, ir.NameOf("x"), ir.Nothing()),
 	}
 
-	positions, err := PositionsOf(insts, nil, ScopeOf(insts, 8, true))
+	positions, err := PositionsOf(insts, nil, ScopeOf(insts, 8, nil, true))
 	if err != nil {
 		t.Fatalf("measuring: %v", err)
 	}
@@ -376,12 +378,53 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 	im := NewIdentManager()
 	for at, inst := range insts {
 		before := bs.Len()
-		if err := WriteInstruction(bs, im, inst, 0, ScopeOf(insts, 8, true)); err != nil {
+		if err := WriteInstruction(bs, im, inst, 0, ScopeOf(insts, 8, nil, true)); err != nil {
 			t.Fatalf("writing: %v", err)
 		}
 		if want := positions[at+1] - positions[at]; bs.Len()-before != want {
 			t.Errorf("%s measured %d bytes and wrote %d",
 				ir.ResolveOpCode(inst.GetOpCode()), want, bs.Len()-before)
 		}
+	}
+}
+
+// A call carries its own landing rather than jumping to the instruction after it: the address
+// it pushes to come back to is a JUMPDEST inside its own bytes. It is worked out by measuring
+// what it is about to write, which is why it stays right when what a call writes changes.
+func TestACallComesBackToItsOwnJumpDestiny(t *testing.T) {
+	const at = 100
+
+	bs := bytes.NewBuffer(make([]byte, 0))
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("f"), ir.Imm(1, 8))
+	if err := WriteCall(bs, inst, ScopeOf(nil, 8, map[string]int{"f": 0x1234}, false), at); err != nil {
+		t.Fatalf("writing the call: %v", err)
+	}
+
+	code := bs.Bytes()
+	landing := bytes.IndexByte(code, OpJumpDestiny)
+	if landing < 0 {
+		t.Fatal("a call went somewhere and left nowhere to come back to")
+	}
+	back := at + landing
+	if want := []byte{OpPush2, byte(back >> 8), byte(back)}; !bytes.Contains(code, want) {
+		t.Errorf("it comes back to %#x, and never pushes that address: %v", back, byteutil.ToUpperHex(code))
+	}
+	if want := []byte{OpPush2, 0x12, 0x34, OpJump}; !bytes.Contains(code, want) {
+		t.Errorf("it does not go to the scope it names: %v", byteutil.ToUpperHex(code))
+	}
+}
+
+// Only a scope bound at the top of a program is something a call can jump to. A call to
+// anything else is refused rather than written: what would be written is a jump to an address
+// no scope has, and that contract deploys and reverts when the call is reached.
+func TestACallToSomethingThatIsNotAScopeIsRefused(t *testing.T) {
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("nowhere"), ir.Imm(1, 8))
+
+	err := WriteCall(io.Discard, inst, ScopeOf(nil, 8, map[string]int{"elsewhere": 0x40}, false), 0)
+	if err == nil {
+		t.Fatal("it wrote a call to a scope that does not exist")
+	}
+	if !strings.Contains(err.Error(), "nowhere") {
+		t.Errorf("it says %q, and never names what was called", err)
 	}
 }

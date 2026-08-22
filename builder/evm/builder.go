@@ -143,12 +143,12 @@ func (b *Builder) pickScopes() (dispatchers []Dispatcher, root []ir.Instruction)
 // It measures by writing to something that only counts, rather than by writing the whole scope
 // into a buffer that is then thrown away — which is what this did, since where a scope lands
 // is not known until every scope has been found and the scope has to be written again anyway.
-func (b *Builder) measureScopes(dispatchers []Dispatcher) (int, error) {
+func (b *Builder) measureScopes(dispatchers []Dispatcher, entries map[string]int) (int, error) {
 	offset := 0
 	for at := range dispatchers {
 		d := &dispatchers[at]
 		var measured counter
-		if err := WriteScope(&measured, d.Body, b.tapeSize, 0); err != nil {
+		if err := WriteScope(&measured, d.Body, b.tapeSize, 0, entries); err != nil {
 			return 0, err
 		}
 		d.Offset, d.Length = offset, int(measured)
@@ -163,7 +163,16 @@ func (b *Builder) measureScopes(dispatchers []Dispatcher) (int, error) {
 func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	dispatchers, rootinsts := b.pickScopes()
 
-	offset, err := b.measureScopes(dispatchers)
+	// The names come before any address of one does: a call inside a scope has to be written
+	// while the scopes are still being measured, and what it needs then is only that the name
+	// it calls is a scope of this contract. The addresses are filled in below, into this same
+	// map, once there are addresses to fill in.
+	entries := make(map[string]int, len(dispatchers))
+	for at := range dispatchers {
+		entries[string(dispatchers[at].Selector)] = 0
+	}
+
+	offset, err := b.measureScopes(dispatchers, entries)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +186,17 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 
 	for at := range dispatchers {
 		d := &dispatchers[at]
+		internal, err := ScopeInternalAt(referenced+d.Offset, d.Body, b.tapeSize)
+		if err != nil {
+			return nil, err
+		}
+		entries[string(d.Selector)] = internal
+	}
+
+	for at := range dispatchers {
+		d := &dispatchers[at]
 		code := bytes.NewBuffer(make([]byte, 0))
-		if err := WriteScope(code, d.Body, b.tapeSize, referenced+d.Offset); err != nil {
+		if err := WriteScope(code, d.Body, b.tapeSize, referenced+d.Offset, entries); err != nil {
 			return nil, err
 		}
 		d.Code = code
@@ -188,7 +206,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 		rootinsts = Lowering(rootinsts, b.tapeSize)
 		root := bytes.NewBuffer(make([]byte, 0))
 		// Code no scope holds: nobody called it, so its return ends the call.
-		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, referenced+offset, ScopeOf(rootinsts, b.tapeSize, true)); err != nil {
+		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, referenced+offset, ScopeOf(rootinsts, b.tapeSize, entries, true)); err != nil {
 			return nil, err
 		}
 		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil

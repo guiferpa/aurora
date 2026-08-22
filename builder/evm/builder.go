@@ -173,7 +173,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 		rootinsts = Lowering(rootinsts, b.tapeSize)
 		root := bytes.NewBuffer(make([]byte, 0))
 		// Code no scope holds: nobody called it, so its return ends the call.
-		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, b.tapeSize, referenced+offset, true); err != nil {
+		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, referenced+offset, ScopeOf(rootinsts, b.tapeSize, true)); err != nil {
 			return nil, err
 		}
 		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil

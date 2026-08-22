@@ -251,7 +251,7 @@ func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int) error {
 		return err
 	}
 
-	_, err := WriteCode(bs, NewIdentManagerAt(FrameNamesAt(body)), body, tapeSize, internal+1, false)
+	_, err := WriteCode(bs, NewIdentManagerAt(FrameNamesAt(body)), body, internal+1, ScopeOf(body, tapeSize, false))
 	return err
 }
 
@@ -492,6 +492,35 @@ func (c *counter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// A Scope is what writing an instruction needs to know beyond the instruction itself: the
+// facts that belong to the scope it is written inside rather than to the instruction written.
+//
+// They used to be threaded one at a time, so every fact the backend learned about a scope
+// widened four signatures at once and every call site had to be visited to say the same thing
+// again. They travel together because they are read together — each of them is a fact about
+// the same scope, and no instruction is written without one.
+type Scope struct {
+	// TapeSize is how wide a value is, which is what every result is cut back to. It is the
+	// program's, not the machine's: the EVM works in words of thirty-two bytes whatever the
+	// tape says.
+	TapeSize int
+	// Arms holds the labels an "if" answers under, so a return naming one is known to end a
+	// branch rather than a scope. The two are the same opcode and which it is can be read.
+	Arms map[string]bool
+	// Answers says whether a return ends the call rather than handing its value back. Code no
+	// scope holds — the top of a program, run when a contract has no scope to dispatch to —
+	// has nobody to go back to.
+	Answers bool
+}
+
+// ScopeOf answers what the writer needs to know about a body of instructions.
+//
+// What it derives is derived once, here, rather than at each of the places that reads it:
+// working the arms out twice is how the writing pass and the measuring pass come to disagree.
+func ScopeOf(insts []ir.Instruction, tapeSize int, answers bool) Scope {
+	return Scope{TapeSize: tapeSize, Arms: armsOf(insts), Answers: answers}
+}
+
 // PositionsOf answers the byte each instruction of a scope starts at, and where the scope ends.
 //
 // It measures by writing — to something that only counts — rather than by adding up a table of
@@ -501,7 +530,7 @@ func (c *counter) Write(p []byte) (int, error) {
 //
 // The names are registered into a manager of its own and thrown away, since what is measured
 // is how many bytes an instruction takes and every push is a fixed size now.
-func PositionsOf(insts []ir.Instruction, tapeSize int, landings map[int]bool, arms map[string]bool, answers bool) ([]int, error) {
+func PositionsOf(insts []ir.Instruction, landings map[int]bool, scope Scope) ([]int, error) {
 	positions := make([]int, len(insts)+1)
 	im := NewIdentManager()
 	for at, inst := range insts {
@@ -509,7 +538,7 @@ func PositionsOf(insts []ir.Instruction, tapeSize int, landings map[int]bool, ar
 		if landings[at] {
 			measured++
 		}
-		if err := WriteInstruction(&measured, im, inst, tapeSize, 0, arms, answers); err != nil {
+		if err := WriteInstruction(&measured, im, inst, 0, scope); err != nil {
 			return nil, err
 		}
 		positions[at+1] = positions[at] + int(measured)
@@ -576,11 +605,11 @@ func targetOf(inst ir.Instruction, at int, positions []int) int {
 // Answers says what the third kind does. Code that no scope holds — the top of a program, run
 // when a contract has no scope to dispatch to — has nobody to go back to, so its return ends
 // the call rather than handing a value over.
-func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeSize int, target int, arms map[string]bool, answers bool) error {
+func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, target int, scope Scope) error {
 	op := inst.GetOpCode()
 
 	if handled[op] && op != ir.OpSave {
-		if err := WriteImmediates(bs, inst, tapeSize); err != nil {
+		if err := WriteImmediates(bs, inst, scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -589,7 +618,7 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 		if _, err := WriteAdd(bs); err != nil {
 			return err
 		}
-		if _, err := WriteMask(bs, tapeSize); err != nil {
+		if _, err := WriteMask(bs, scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -598,7 +627,7 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 		if _, err := WriteMultiply(bs); err != nil {
 			return err
 		}
-		if _, err := WriteMask(bs, tapeSize); err != nil {
+		if _, err := WriteMask(bs, scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -607,7 +636,7 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 		if _, err := WriteSubtract(bs); err != nil {
 			return err
 		}
-		if _, err := WriteMask(bs, tapeSize); err != nil {
+		if _, err := WriteMask(bs, scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -621,9 +650,9 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 	if op == ir.OpReturn {
 		// The value of an arm is already on the stack, which is where whoever is under the
 		// branch finds it: there is nothing to write. Only a scope answers to the chain.
-		if !arms[byteutil.ToHex(inst.GetLeft().Bytes())] {
+		if !scope.Arms[byteutil.ToHex(inst.GetLeft().Bytes())] {
 			write := WriteReturn
-			if answers {
+			if scope.Answers {
 				write = WriteAnswer
 			}
 			if _, err := write(bs); err != nil {
@@ -633,7 +662,7 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 	}
 
 	if op == ir.OpSave {
-		if _, err := WriteSave(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+		if _, err := WriteSave(bs, inst.GetLeft().Bytes(), scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -651,7 +680,7 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 	}
 
 	if op == ir.OpGetFeed {
-		if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+		if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -668,7 +697,7 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 		if _, err := bs.Write([]byte{OpExp}); err != nil {
 			return err
 		}
-		if _, err := WriteMask(bs, tapeSize); err != nil {
+		if _, err := WriteMask(bs, scope.TapeSize); err != nil {
 			return err
 		}
 	}
@@ -709,11 +738,10 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 // The base is where this scope lands in the runtime, since a jump carries an address in the
 // contract and not an offset into a scope. It is zero while a scope is being measured, and the
 // measurement does not depend on it.
-func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int, base int, answers bool) (int, error) {
+func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, base int, scope Scope) (int, error) {
 	landings := landingsOf(insts)
-	arms := armsOf(insts)
 
-	positions, err := PositionsOf(insts, tapeSize, landings, arms, answers)
+	positions, err := PositionsOf(insts, landings, scope)
 	if err != nil {
 		return 0, err
 	}
@@ -724,7 +752,7 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize 
 				return 0, err
 			}
 		}
-		if err := WriteInstruction(bs, im, inst, tapeSize, base+targetOf(inst, at, positions), arms, answers); err != nil {
+		if err := WriteInstruction(bs, im, inst, base+targetOf(inst, at, positions), scope); err != nil {
 			return 0, err
 		}
 	}

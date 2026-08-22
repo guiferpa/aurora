@@ -364,7 +364,7 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 		ir.NewInstruction([]byte("04"), ir.OpLoad, ir.NameOf("x"), ir.Nothing()),
 	}
 
-	positions, err := PositionsOf(insts, 8, nil, nil, true)
+	positions, err := PositionsOf(insts, nil, ScopeOf(insts, 8, true))
 	if err != nil {
 		t.Fatalf("measuring: %v", err)
 	}
@@ -376,7 +376,7 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 	im := NewIdentManager()
 	for at, inst := range insts {
 		before := bs.Len()
-		if err := WriteInstruction(bs, im, inst, 8, 0, nil, true); err != nil {
+		if err := WriteInstruction(bs, im, inst, 0, ScopeOf(insts, 8, true)); err != nil {
 			t.Fatalf("writing: %v", err)
 		}
 		if want := positions[at+1] - positions[at]; bs.Len()-before != want {

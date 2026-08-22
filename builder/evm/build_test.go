@@ -330,7 +330,7 @@ func TestBuildIsDeterministic(t *testing.T) {
 
 func TestWriteCodeEndsInStop(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	if _, err := WriteCode(buf, NewIdentManager(), nil, byteutil.DefaultTapeSize, 0, true); err != nil {
+	if _, err := WriteCode(buf, NewIdentManager(), nil, 0, ScopeOf(nil, byteutil.DefaultTapeSize, true)); err != nil {
 		t.Fatalf("WriteCode: %v", err)
 	}
 	got := buf.Bytes()

@@ -188,7 +188,7 @@ a binary that does less than the source said is announced rather than silent.
 | a name bound inside a scope | **yes** |
 | a value written down, wherever it is used | **yes** |
 | a branch, and the value it answers with | **yes** |
-| calling a scope from another | not yet |
+| calling a scope from another | **yes**, nested as deep as it goes |
 | comparisons, `and`/`or`, `^` | **yes** |
 | tape operations, `shape` | not yet |
 | `printb` / `printd` / `printc` | **by decision** — a log has nowhere to go on a chain |

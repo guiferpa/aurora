@@ -96,7 +96,8 @@ func TestPickRuntimeCode(t *testing.T) {
 				WritePush(want, byteutil.FromUint64(4294967295), byteutil.DefaultTapeSize)
 				WriteAdd(want)
 				WriteMask(want, byteutil.DefaultTapeSize)
-				WriteReturn(want)
+				WriteAnswer(want)
+				// The scope reads no position, so its names begin at the frame.
 				WriteIdent(want, NewIdentManager(), []byte("a"))
 				WriteStop(want)
 				if !bytes.Equal(got, want.Bytes()) {
@@ -112,7 +113,8 @@ func TestPickRuntimeCode(t *testing.T) {
 			func(got []byte) error {
 				want := bytes.NewBuffer(make([]byte, 0))
 				WritePush(want, byteutil.TrueTape(byteutil.DefaultTapeSize), byteutil.DefaultTapeSize)
-				WriteReturn(want)
+				WriteAnswer(want)
+				// The scope reads no position, so its names begin at the frame.
 				WriteIdent(want, NewIdentManager(), []byte("a"))
 				WriteStop(want)
 				if !bytes.Equal(got, want.Bytes()) {
@@ -131,8 +133,9 @@ func TestPickRuntimeCode(t *testing.T) {
 				WriteGetArg(want, byteutil.FromUint64(0), byteutil.DefaultTapeSize)
 				WriteSubtract(want)
 				WriteMask(want, byteutil.DefaultTapeSize)
-				WriteReturn(want)
-				WriteIdent(want, NewIdentManager(), []byte("a"))
+				WriteAnswer(want)
+				// The scope reads two positions, so its names begin past them.
+				WriteIdent(want, NewIdentManagerAt(2*MEMORY_SLOT_SIZE), []byte("a"))
 				WriteStop(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
@@ -177,15 +180,13 @@ func TestPickRuntimeCode(t *testing.T) {
 
 func TestPickDeferAtCursor(t *testing.T) {
 	cases := []struct {
-		Name                 string
-		Insts                []ir.Instruction
-		Cursor               int
-		Offset               int
-		WantOK               bool
-		WantNextCursor       int
-		WantSelector         string // only checked when WantOK
-		WantDispatcherOffset int    // only checked when WantOK
-		WantCodeNonEmpty     bool   // only checked when WantOK
+		Name           string
+		Insts          []ir.Instruction
+		Cursor         int
+		WantOK         bool
+		WantNextCursor int
+		WantSelector   string // only checked when WantOK
+		WantBodyLength int    // only checked when WantOK
 	}{
 		{
 			Name: "valid_defer",
@@ -195,13 +196,11 @@ func TestPickDeferAtCursor(t *testing.T) {
 				ir.NewInstruction([]byte("2"), ir.OpReturn, ir.RefTo(nil), ir.RefTo(nil)),
 				ir.NewInstruction([]byte("3"), ir.OpIdent, ir.NameOf("f"), ir.RefTo([]byte("0"))),
 			},
-			Cursor:               0,
-			Offset:               0,
-			WantOK:               true,
-			WantNextCursor:       3,
-			WantSelector:         "f",
-			WantDispatcherOffset: 0,
-			WantCodeNonEmpty:     true,
+			Cursor:         0,
+			WantOK:         true,
+			WantNextCursor: 3,
+			WantSelector:   "f",
+			WantBodyLength: 2,
 		},
 		{
 			Name: "not_op_defer",
@@ -209,7 +208,6 @@ func TestPickDeferAtCursor(t *testing.T) {
 				ir.NewInstruction(nil, ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
 			},
 			Cursor:         0,
-			Offset:         0,
 			WantOK:         false,
 			WantNextCursor: 0,
 		},
@@ -222,7 +220,6 @@ func TestPickDeferAtCursor(t *testing.T) {
 				ir.NewInstruction(nil, ir.OpAdd, ir.RefTo(nil), ir.RefTo(nil)),
 			},
 			Cursor:         0,
-			Offset:         0,
 			WantOK:         false,
 			WantNextCursor: 0,
 		},
@@ -231,7 +228,7 @@ func TestPickDeferAtCursor(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
 			b := NewBuilder(c.Insts, NewBuilderOptions{})
-			d, nextCursor, ok := b.PickDeferAtCursor(c.Cursor, c.Offset)
+			d, nextCursor, ok := b.PickDeferAtCursor(c.Cursor)
 			if ok != c.WantOK {
 				t.Errorf("ok = %v, want %v", ok, c.WantOK)
 			}
@@ -247,11 +244,12 @@ func TestPickDeferAtCursor(t *testing.T) {
 			if c.WantSelector != "" && string(d.Selector) != c.WantSelector {
 				t.Errorf("selector = %q, want %q", d.Selector, c.WantSelector)
 			}
-			if d.Offset != c.WantDispatcherOffset {
-				t.Errorf("Offset = %d, want %d", d.Offset, c.WantDispatcherOffset)
+			if len(d.Body) != c.WantBodyLength {
+				t.Errorf("body is %d instructions, want %d", len(d.Body), c.WantBodyLength)
 			}
-			if c.WantCodeNonEmpty && (d.Code == nil || d.Code.Len() == 0) {
-				t.Error("expected dispatcher code to be non-empty")
+			// Finding a scope does not write it: where it lands is not known yet.
+			if d.Code != nil {
+				t.Error("a scope was written while it was being found")
 			}
 		})
 	}

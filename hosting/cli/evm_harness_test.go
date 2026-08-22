@@ -398,3 +398,54 @@ func TestComparisonsFollowTheTapeWidth(t *testing.T) {
 		})
 	}
 }
+
+// A name lives in the frame of the scope that bound it, not at an address of its own in the
+// contract. Two scopes each binding a name used to be given the same place, since the offsets
+// were counted once for the whole binary — which is also what kept a scope from calling
+// itself, and is what the frame is for.
+func TestTwoScopesKeepTheirOwnNames(t *testing.T) {
+	const source = `ident first = defer { ident x = feed(0); x + 1; };
+ident second = defer { ident x = feed(0); x + 100; };`
+
+	for _, name := range []string{"first", "second"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source, name, []string{"5"}, 0)
+		})
+	}
+}
+
+// A scope calls another and comes back with what it answered.
+//
+// It is a jump inside one contract, not a message call to itself, and what makes that possible
+// is the frame: the callee keeps the values applied to it right after the caller's own, so
+// "feed(0)" inside the callee means the callee's first value and not the caller's — which is
+// what a plain jump would have got wrong, since the calldata belongs to whoever the
+// transaction named and every scope would have read the same one.
+func TestAScopeCallsAnotherOnChainToo(t *testing.T) {
+	const source = `ident b = defer { feed(0) + 1; };
+ident a = defer { b(10) + feed(0); };`
+
+	agree(t, source, "a", []string{"5"}, 0)
+}
+
+// What the caller was holding survives the call.
+//
+// The callee runs on the same stack, so a value the caller had already worked out sits under
+// the call while it happens. And the caller's own applied values have to still be there
+// afterwards: the frame pointer moves onto the callee's frame and has to come back off it.
+func TestACallLeavesTheCallerWhereItWas(t *testing.T) {
+	const source = `ident twice = defer { feed(0) * 2; };
+ident sum = defer { ident kept = feed(0) + 100; twice(feed(1)) + kept + feed(0); };`
+
+	agree(t, source, "sum", []string{"7", "3"}, 0)
+}
+
+// A call inside a call. Each activation takes the frame that follows the one it was entered
+// from, so three of them are three runs of memory and none of them writes over another.
+func TestCallsNestOnChainToo(t *testing.T) {
+	const source = `ident inner = defer { feed(0) + 1; };
+ident middle = defer { inner(feed(0)) * 2; };
+ident outer = defer { middle(feed(0)) + middle(1); };`
+
+	agree(t, source, "outer", []string{"4"}, 0)
+}

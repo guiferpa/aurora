@@ -113,26 +113,27 @@ considered and refused, with the reasoning in the design document.
 The point of the backend is that **the same program answers the same thing on a chain and off
 it**. Since the differential harness exists (`hosting/cli/evm_harness_test.go`) that is no
 longer a hope: an EVM is built in memory, the contract is deployed and called, and the answer
-is compared against the evaluator. Arithmetic across a dispatcher is proved, at any tape width
-— a result that leaves the width is cut back to it, the way the evaluator does — and
-everything below is not.
+is compared against the evaluator. What it proves is arithmetic across a dispatcher at any
+tape width — a result that leaves the width is cut back to it, the way the evaluator does —
+names bound inside a scope, branches, the comparisons and `and`/`or`, and a scope calling
+another as deep as it nests.
 
-The gap is wider than it looks, and it is silent, which is the dangerous part: a contract
-using any of the following **compiles successfully and does nothing on chain**.
+What is left is narrower than it was, but it is still silent, which is the dangerous part: a
+contract using any of the following **compiles and does nothing on chain**. `aurora build`
+says so, once per feature, at the line that used it.
 
-- `call`, `assert`, the tape operations and the shape instructions (`OpJoin`, `OpField`)
-  produce no bytecode at all. `WriteCode` covers arithmetic, the comparisons, `and`/`or`, `^`,
-  `OpSave`, `OpIdent`, `OpLoad`, `OpGetFeed`, `OpReturn` and the branch — `OpIf` and
-  `OpJump`. They are not refusals — a tape is at most 32 bytes and an EVM word is exactly 32, a
-  shape is a run of words in memory, and a call is a jump with a return address. They are
-  simply not written yet.
+- The tape operations and the shape instructions (`OpJoin`, `OpField`) produce no bytecode.
+  They are not refusals — a tape is at most 32 bytes and an EVM word is exactly 32, and a
+  shape is a run of words in memory, which is what a frame already gives them. They are simply
+  not written yet.
+- **Only a scope bound at the top of a program can be called.** A scope bound inside another,
+  or reached through an alias, is refused by the builder rather than written: what would be
+  written is a jump to an address no scope has.
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.
 - **Events are missing entirely.** `LOG0`–`LOG4` (`0xA0`–`0xA4`) are not in the opcode table.
   On chain they are the only way a contract says anything, and they are the honest target for
   whatever Aurora ends up calling logging.
-- Jump targets and memory offsets are written with `PUSH1`, which caps a runtime at 256
-  bytes and identifiers at about seven memory slots. `PUSH2` lifts it.
 
 `aurora build` now **says what it could not carry**, once per feature, in the order the
 program uses it, and names the line the program first used it on — so a binary that does less

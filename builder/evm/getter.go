@@ -1,7 +1,8 @@
 package evm
 
 func GetRuntimeCodeLength(rc *RuntimeCode) int {
-	l := 0
+	// Every call opens by saying where its frame begins.
+	l := FRAME_START_SIZE
 	// Dispatcher block (selector checks + no-match STOP) is written before body code.
 	if len(rc.Dispatchers) > 0 {
 		l += DISPATCHER_BYTES_SIZE*len(rc.Dispatchers) + NO_MATCH_DISPATCHER_SIZE

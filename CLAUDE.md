@@ -30,15 +30,26 @@ forward has an address; nothing is moved across a branch, so what an arm leaves 
 arm computed; and both arms leave one value, which is what makes an `if` an expression on a
 chain the way it is off one.
 
-What is left of that line is `call`, which needs a frame — the convention is in
-[rfcs/if_and_call.md](rfcs/if_and_call.md). **Anything else in `builder/evm` still waits its
-turn**, and the turn is discussed first.
+A call is written too, and that line of work is finished. It is a jump inside one contract,
+not a message call to itself, and what makes it a call rather than a jump is the frame: each
+scope keeps its own run of memory, so the callee's `feed(0)` means the callee's first value
+and not the caller's, and a scope can be entered while it is already running. A scope is
+written once and entered twice — a prologue for the way in from a transaction, which copies
+the calldata into the frame, and an entry past it for the way in from another scope, which
+finds the frame written. The convention is in [rfcs/if_and_call.md](rfcs/if_and_call.md).
+One limit is worth knowing: only a scope bound at the top of a program can be called, and
+anything else is refused rather than written.
+
+**Anything else in `builder/evm` still waits its turn**, and the turn is discussed first. What
+`shape` needs is what the frame already gives it: a run of memory where `base + i * tape_size`
+works.
 
 What the backend gained before stopping is the differential harness
 (`hosting/cli/evm_harness_test.go`) — the same source compiled, deployed to an EVM in memory,
 called, and compared against the evaluator — so whatever is written next is provable rather
-than believed. What it proves today is arithmetic over arguments, across a dispatcher, at any
-tape width.
+than believed. What it proves today is arithmetic over arguments at any tape width, names
+bound inside a scope, branches, the comparisons and `and`/`or`, and a scope calling another as
+deep as it nests.
 
 A feature still does **not** need bytecode to be finished. `shape` and text-as-a-tape shipped
 without it.

@@ -2,6 +2,8 @@ package evm
 
 import (
 	"bytes"
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -126,9 +128,9 @@ func TestWriteIdent(t *testing.T) {
 		names int
 		want  []byte
 	}{
-		{name: "the first name", names: 0, want: []byte{OpPush2, 0x00, 0x00}},
-		{name: "the second", names: 1, want: []byte{OpPush2, 0x00, 0x20}},
-		{name: "the ninth, which used to land on the first", names: 8, want: []byte{OpPush2, 0x01, 0x00}},
+		{name: "the first name", names: 0, want: []byte{OpPush2, 0x00, 0x00, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}},
+		{name: "the second", names: 1, want: []byte{OpPush2, 0x00, 0x20, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}},
+		{name: "the ninth, which used to land on the first", names: 8, want: []byte{OpPush2, 0x01, 0x00, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}},
 	}
 
 	for _, tc := range cases {
@@ -160,7 +162,7 @@ func TestWriteLoad(t *testing.T) {
 		t.Fatalf("writing the read: %v", err)
 	}
 
-	expected := []byte{OpPush2, 0x01, 0x20, OpMemoryLoad}
+	expected := []byte{OpPush2, 0x01, 0x20, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd, OpMemoryLoad}
 	if got := bs.Bytes(); !bytes.Equal(got, expected) {
 		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -168,33 +170,62 @@ func TestWriteLoad(t *testing.T) {
 
 // An argument arrives as a whole 32-byte word and is cut to the tape on the way in, the same
 // as the evaluator does when it narrows the arguments it was handed.
+// Reading one of the values applied to the scope reads the frame, and never the calldata.
+// Whoever entered the scope put them there — the way in from a transaction copies them out of
+// the calldata, and a scope calling another writes what it worked out — which is the whole of
+// what the frame buys: a body that does not know how it was entered.
 func TestWriteGetArg(t *testing.T) {
-	bs := bytes.NewBuffer(make([]byte, 0))
-	index := byteutil.FromUint64(0)
-	if _, err := WriteGetArg(bs, index, byteutil.DefaultTapeSize); err != nil {
-		t.Errorf("Error writing get arg: %v", err)
-		return
+	cases := []struct {
+		name string
+		at   uint64
+		want []byte
+	}{
+		{name: "the first position", at: 0, want: []byte{OpPush2, 0x00, 0x00}},
+		{name: "the third", at: 2, want: []byte{OpPush2, 0x00, 0x40}},
 	}
-	got := bs.Bytes()
-	expected := []byte{OpPush1, 0x20, OpCallDataLoad, OpPush8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, OpAnd}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("GetArg: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bytes.NewBuffer(make([]byte, 0))
+			if _, err := WriteGetArg(bs, byteutil.FromUint64(tc.at), byteutil.DefaultTapeSize); err != nil {
+				t.Fatalf("writing the read: %v", err)
+			}
+
+			expected := append(append([]byte{}, tc.want...), OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd, OpMemoryLoad)
+			if got := bs.Bytes(); !bytes.Equal(got, expected) {
+				t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+			}
+		})
 	}
 }
 
+// Ending a scope goes back to whoever called it: the value is on the stack and the address to
+// go back to is under it. It never answers the chain — that is the epilogue's, and keeping it
+// there is what lets one body serve a transaction and a scope alike.
 func TestWriteReturn(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	if _, err := WriteReturn(bs); err != nil {
-		t.Errorf("Error writing return: %v", err)
-		return
+		t.Fatalf("writing the return: %v", err)
 	}
-	got := bs.Bytes()
-	expected := []byte{
-		OpPush1, 0x00, OpMemoryStore, // store stack top at mem[0]
-		OpPush1, 0x20, OpPush1, 0x00, OpReturn,
+	if got, want := bs.Bytes(), []byte{OpSwap1, OpJump}; !bytes.Equal(got, want) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(want))
 	}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Return: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+}
+
+// Answering the chain goes through a slot of its own, not the first one: that holds where the
+// running scope's frame begins, and writing the answer there would lose the frame in the act
+// of answering.
+func TestWriteAnswer(t *testing.T) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if _, err := WriteAnswer(bs); err != nil {
+		t.Fatalf("writing the answer: %v", err)
+	}
+	expected := []byte{OpPush1, RETURN_SCRATCH, OpMemoryStore, OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn}
+	if got := bs.Bytes(); !bytes.Equal(got, expected) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+	}
+	if bs.Len() != ANSWER_SIZE {
+		t.Errorf("it measures %d and says it measures %d", bs.Len(), ANSWER_SIZE)
 	}
 }
 
@@ -335,7 +366,7 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 		ir.NewInstruction([]byte("04"), ir.OpLoad, ir.NameOf("x"), ir.Nothing()),
 	}
 
-	positions, err := PositionsOf(insts, 8, nil, nil)
+	positions, err := PositionsOf(insts, nil, ScopeOf(insts, 8, nil, true))
 	if err != nil {
 		t.Fatalf("measuring: %v", err)
 	}
@@ -347,12 +378,53 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 	im := NewIdentManager()
 	for at, inst := range insts {
 		before := bs.Len()
-		if err := WriteInstruction(bs, im, inst, 8, 0, nil); err != nil {
+		if err := WriteInstruction(bs, im, inst, 0, ScopeOf(insts, 8, nil, true)); err != nil {
 			t.Fatalf("writing: %v", err)
 		}
 		if want := positions[at+1] - positions[at]; bs.Len()-before != want {
 			t.Errorf("%s measured %d bytes and wrote %d",
 				ir.ResolveOpCode(inst.GetOpCode()), want, bs.Len()-before)
 		}
+	}
+}
+
+// A call carries its own landing rather than jumping to the instruction after it: the address
+// it pushes to come back to is a JUMPDEST inside its own bytes. It is worked out by measuring
+// what it is about to write, which is why it stays right when what a call writes changes.
+func TestACallComesBackToItsOwnJumpDestiny(t *testing.T) {
+	const at = 100
+
+	bs := bytes.NewBuffer(make([]byte, 0))
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("f"), ir.Imm(1, 8))
+	if err := WriteCall(bs, inst, ScopeOf(nil, 8, map[string]int{"f": 0x1234}, false), at); err != nil {
+		t.Fatalf("writing the call: %v", err)
+	}
+
+	code := bs.Bytes()
+	landing := bytes.IndexByte(code, OpJumpDestiny)
+	if landing < 0 {
+		t.Fatal("a call went somewhere and left nowhere to come back to")
+	}
+	back := at + landing
+	if want := []byte{OpPush2, byte(back >> 8), byte(back)}; !bytes.Contains(code, want) {
+		t.Errorf("it comes back to %#x, and never pushes that address: %v", back, byteutil.ToUpperHex(code))
+	}
+	if want := []byte{OpPush2, 0x12, 0x34, OpJump}; !bytes.Contains(code, want) {
+		t.Errorf("it does not go to the scope it names: %v", byteutil.ToUpperHex(code))
+	}
+}
+
+// Only a scope bound at the top of a program is something a call can jump to. A call to
+// anything else is refused rather than written: what would be written is a jump to an address
+// no scope has, and that contract deploys and reverts when the call is reached.
+func TestACallToSomethingThatIsNotAScopeIsRefused(t *testing.T) {
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("nowhere"), ir.Imm(1, 8))
+
+	err := WriteCall(io.Discard, inst, ScopeOf(nil, 8, map[string]int{"elsewhere": 0x40}, false), 0)
+	if err == nil {
+		t.Fatal("it wrote a call to a scope that does not exist")
+	}
+	if !strings.Contains(err.Error(), "nowhere") {
+		t.Errorf("it says %q, and never names what was called", err)
 	}
 }

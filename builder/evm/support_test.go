@@ -55,9 +55,9 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			want:    []string{"shape does not reach the bytecode yet"},
 		},
 		{
-			name:    "calling a scope",
-			opcodes: []byte{ir.OpCall},
-			want:    []string{"calling a scope does not reach the bytecode yet"},
+			name:     "calling a scope, which reaches the bytecode now",
+			opcodes:  []byte{ir.OpCall},
+			wantNone: true,
 		},
 		{
 			// A log is not a gap: it is absent on purpose, and the wording says so.
@@ -131,8 +131,8 @@ func TestWarningsFollowTheProgram(t *testing.T) {
 // carries where every instruction came from now, so the backend points at the first line that
 // used what it cannot carry.
 func TestWarningsPointAtWhereTheFeatureWasUsed(t *testing.T) {
-	const source = `ident sum = defer { feed(0) + feed(1); };
-printb sum(1, 2);`
+	const source = `printb 1;
+ident t = [1, 2];`
 
 	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
@@ -148,18 +148,18 @@ printb sum(1, 2);`
 	}
 
 	for _, warning := range Warnings(insts) {
-		if !strings.Contains(warning.Message, "calling a scope") {
+		if !strings.Contains(warning.Message, "a tape operation") {
 			continue
 		}
 		if !warning.Positioned() {
-			t.Fatal("the warning about calling a scope has no place to point at")
+			t.Fatal("the warning about a tape operation has no place to point at")
 		}
 		if warning.Line != 2 {
-			t.Errorf("it points at line %d, want the line the call was written on", warning.Line)
+			t.Errorf("it points at line %d, want the line the tape was written on", warning.Line)
 		}
 		return
 	}
-	t.Fatal("nothing warned about calling a scope")
+	t.Fatal("nothing warned about a tape operation")
 }
 
 // Every feature the backend cannot carry names the line it was written on. A warning that
@@ -171,7 +171,6 @@ func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
 		says   string
 		line   int
 	}{
-		{name: "a call", source: "ident f = defer { 1; };\nprintb f();", says: "calling a scope", line: 2},
 		// A tape literal is itself a tape operation — it builds the run byte by byte — so
 		// the first place the program uses one is the literal, not the pull below it.
 		{name: "a tape operation", source: "printb 1;\nident t = [1];\nprintb pull t 2;", says: "a tape operation", line: 2},

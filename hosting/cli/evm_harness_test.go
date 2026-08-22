@@ -398,3 +398,18 @@ func TestComparisonsFollowTheTapeWidth(t *testing.T) {
 		})
 	}
 }
+
+// A name lives in the frame of the scope that bound it, not at an address of its own in the
+// contract. Two scopes each binding a name used to be given the same place, since the offsets
+// were counted once for the whole binary — which is also what kept a scope from calling
+// itself, and is what the frame is for.
+func TestTwoScopesKeepTheirOwnNames(t *testing.T) {
+	const source = `ident first = defer { ident x = feed(0); x + 1; };
+ident second = defer { ident x = feed(0); x + 100; };`
+
+	for _, name := range []string{"first", "second"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source, name, []string{"5"}, 0)
+		})
+	}
+}

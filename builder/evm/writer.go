@@ -71,6 +71,9 @@ type IdentOffsetMapper interface {
 	GetOffset(ident []byte) int
 	SetOffset(ident string, offset int)
 	GetLength() uint
+	// Base is how far into the frame the names of this scope begin, past the places the
+	// values applied to it are kept.
+	Base() int
 }
 
 // WriteIdent stores a value under a name, in a slot of memory of its own.
@@ -79,8 +82,8 @@ type IdentOffsetMapper interface {
 // ninth name in a contract was given the address of the first — 8 * 32 is 256, and one byte
 // holds none of it. Two names became one piece of memory, and each wrote over the other.
 func WriteIdent(w io.Writer, m IdentOffsetMapper, ident []byte) (int, error) {
-	offset := int(m.GetLength()) * MEMORY_SLOT_SIZE
-	if _, err := WritePush2(w, offset); err != nil {
+	offset := m.Base() + int(m.GetLength())*MEMORY_SLOT_SIZE
+	if err := WriteFrameAddress(w, offset); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpMemoryStore}); err != nil {
@@ -91,7 +94,7 @@ func WriteIdent(w io.Writer, m IdentOffsetMapper, ident []byte) (int, error) {
 }
 
 func WriteLoad(w io.Writer, m IdentOffsetMapper, left []byte) (int, error) {
-	if _, err := WritePush2(w, m.GetOffset(left)); err != nil {
+	if err := WriteFrameAddress(w, m.GetOffset(left)); err != nil {
 		return 0, err
 	}
 	return w.Write([]byte{OpMemoryLoad})
@@ -99,14 +102,64 @@ func WriteLoad(w io.Writer, m IdentOffsetMapper, left []byte) (int, error) {
 
 // WriteReturn assumes the return value is on the stack (e.g. after ADD). It stores it at
 // mem[0] with MSTORE then returns 32 bytes from 0 so RETURN works without prior memory use.
+// WriteReturn hands the value on the stack to the chain.
+//
+// It goes through a slot of its own rather than through the first one, which now holds where
+// the running scope's frame starts: writing the answer there would lose the frame in the act
+// of answering.
 func WriteReturn(w io.Writer) (int, error) {
-	if _, err := w.Write([]byte{OpPush1, 0x00}); err != nil {
+	if _, err := w.Write([]byte{OpPush1, RETURN_SCRATCH}); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpMemoryStore}); err != nil {
 		return 0, err
 	}
-	return w.Write([]byte{OpPush1, 0x20, OpPush1, 0x00, OpReturn})
+	return w.Write([]byte{OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn})
+}
+
+// WriteFrameAddress puts on the stack where something at this offset of the frame lives.
+//
+// A scope names its places by how far into its frame they are, and where the frame starts is
+// read at the moment it is used — which is what makes two activations of one scope keep their
+// own, and what a call will move.
+func WriteFrameAddress(w io.Writer, offset int) error {
+	if _, err := WritePush2(w, offset); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte{OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}); err != nil {
+		return err
+	}
+	return nil
+}
+
+// FrameNamesAt answers how far into a frame the names of a scope begin.
+//
+// Before them sit the values applied to the scope, one slot each, and how many of those there
+// are is what the body says it reads: the highest position it feeds, plus one. It is the same
+// number the compiler warns a short call about, and it is known where the body is written.
+func FrameNamesAt(insts []ir.Instruction) int {
+	highest := -1
+	for _, inst := range insts {
+		if inst.GetOpCode() != ir.OpGetFeed {
+			continue
+		}
+		if at := int(byteutil.ToUint64(inst.GetLeft().Bytes())); at > highest {
+			highest = at
+		}
+	}
+	return (highest + 1) * MEMORY_SLOT_SIZE
+}
+
+// WriteFrameStart writes where the first frame begins, which every scope reads from until a
+// call moves it.
+func WriteFrameStart(w io.Writer) error {
+	if _, err := WritePush2(w, FRAME_BASE); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte{OpPush1, FRAME_POINTER, OpMemoryStore}); err != nil {
+		return err
+	}
+	return nil
 }
 
 // WriteGetArg reads an argument out of the calldata and cuts it to the tape width.
@@ -210,10 +263,21 @@ func WriteDispatcher(bs io.Writer, id string, jumpTo int) (int, error) {
 	return bs.Write([]byte{OpJumpIf})
 }
 
+// WriteDispatchers emits what every call arrives at: where the first frame begins, and then
+// one entry per scope.
+//
+// The frame is set here rather than in the constructor because the constructor does not run
+// with the contract — it runs once, to deploy it, and what it writes to memory then is gone.
+// Every call starts from nothing and says where its frame is.
 func WriteDispatchers(bs io.Writer, ds []Dispatcher) (int, error) {
+	if err := WriteFrameStart(bs); err != nil {
+		return 0, err
+	}
+
 	dispatcherLen := DISPATCHER_BYTES_SIZE * len(ds)
-	// After dispatchers we have the no-match dispatcher (STOP); referenced code starts after it.
-	referencedStart := dispatcherLen + NO_MATCH_DISPATCHER_SIZE
+	// After dispatchers we have the no-match dispatcher (STOP); referenced code starts after
+	// it — and all of it after the frame.
+	referencedStart := FRAME_START_SIZE + dispatcherLen + NO_MATCH_DISPATCHER_SIZE
 
 	for _, d := range ds {
 		jumpTo := referencedStart + d.Offset
@@ -227,10 +291,10 @@ func WriteDispatchers(bs io.Writer, ds []Dispatcher) (int, error) {
 		if _, err := WriteNoMatchDispatcher(bs); err != nil {
 			return 0, err
 		}
-		return dispatcherLen + NO_MATCH_DISPATCHER_SIZE, nil
+		return FRAME_START_SIZE + dispatcherLen + NO_MATCH_DISPATCHER_SIZE, nil
 	}
 
-	return dispatcherLen, nil
+	return FRAME_START_SIZE + dispatcherLen, nil
 }
 
 func WriteBodyCode(bs io.Writer, ds []Dispatcher, root *bytes.Buffer) (int, error) {

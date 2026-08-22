@@ -39,6 +39,18 @@ const (
 	// it is refused rather than written, because writing it produces a binary that deploys
 	// and is not the program.
 	MAX_CONTRACT_SIZE = 24576
+	// FRAME_POINTER is the slot of memory holding where the running scope's frame starts.
+	// Everything a scope keeps — the values applied to it, and the names it binds — lives at
+	// an offset from there, so two activations of one scope do not share a place.
+	FRAME_POINTER = 0x00
+	// RETURN_SCRATCH is where a value is put to be handed to the chain. It is not part of a
+	// frame: it is written and returned in the same breath, and nothing reads it after.
+	RETURN_SCRATCH = 0x20
+	// FRAME_BASE is where the first frame starts, past the two slots above.
+	FRAME_BASE = 0x40
+	// FRAME_START_SIZE is what writing where the first frame begins measures: a push of the
+	// address, a push of the slot, and the store.
+	FRAME_START_SIZE = PUSH_TWO_SIZE + PUSH_ONE_SIZE + 1
 )
 
 type Dispatcher struct {
@@ -57,11 +69,10 @@ type RuntimeCode struct {
 }
 
 type Builder struct {
-	tapeSize     int
-	cursor       int
-	insts        []ir.Instruction
-	operands     [][]byte
-	identManager *IdentManager
+	tapeSize int
+	cursor   int
+	insts    []ir.Instruction
+	operands [][]byte
 }
 
 func (b *Builder) GetInstruction() ir.Instruction {
@@ -95,7 +106,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	// a jump inside it carries an address in the contract, and that address depends on how
 	// many scopes come before it, which is not known until they have all been found.
 	code := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteCode(code, NewIdentManager(), body, b.tapeSize, 0); err != nil {
+	if _, err := WriteCode(code, NewIdentManagerAt(FrameNamesAt(body)), body, b.tapeSize, 0); err != nil {
 		return nil, cursor, false
 	}
 
@@ -141,16 +152,18 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	// Where each scope lands is known only now, since it depends on how many there are: the
 	// dispatcher block comes first and every entry of it is the same size. So they are
 	// written again, this time with the address they will have.
-	referenced := DISPATCHER_BYTES_SIZE*len(dispatchers) + NO_MATCH_DISPATCHER_SIZE
-	if len(dispatchers) == 0 {
-		referenced = 0
+	// The runtime opens by saying where the first frame begins, and the scopes come after
+	// the dispatcher, so both are ahead of every body.
+	referenced := FRAME_START_SIZE
+	if len(dispatchers) > 0 {
+		referenced += DISPATCHER_BYTES_SIZE*len(dispatchers) + NO_MATCH_DISPATCHER_SIZE
 	}
 	for at := range dispatchers {
 		d := &dispatchers[at]
 		code := bytes.NewBuffer(make([]byte, 0))
 		// One past the offset, because a scope opens with the JUMPDEST its dispatcher
 		// jumps to.
-		if _, err := WriteCode(code, b.identManager, d.Body, b.tapeSize, referenced+d.Offset+1); err != nil {
+		if _, err := WriteCode(code, NewIdentManagerAt(FrameNamesAt(d.Body)), d.Body, b.tapeSize, referenced+d.Offset+1); err != nil {
 			return nil, err
 		}
 		d.Code = bytes.NewBuffer(append([]byte{OpJumpDestiny}, code.Bytes()...))
@@ -159,7 +172,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	if len(rootinsts) > 0 {
 		rootinsts = Lowering(rootinsts, b.tapeSize)
 		root := bytes.NewBuffer(make([]byte, 0))
-		if _, err := WriteCode(root, b.identManager, rootinsts, b.tapeSize, referenced+offset); err != nil {
+		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, b.tapeSize, referenced+offset); err != nil {
 			return nil, err
 		}
 		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil
@@ -212,10 +225,9 @@ type NewBuilderOptions struct {
 
 func NewBuilder(insts []ir.Instruction, options NewBuilderOptions) *Builder {
 	return &Builder{
-		tapeSize:     byteutil.TapeSize(options.TapeSize),
-		operands:     make([][]byte, 0),
-		identManager: NewIdentManager(),
-		cursor:       0,
-		insts:        insts,
+		tapeSize: byteutil.TapeSize(options.TapeSize),
+		operands: make([][]byte, 0),
+		cursor:   0,
+		insts:    insts,
 	}
 }

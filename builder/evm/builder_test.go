@@ -97,6 +97,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				WriteAdd(want)
 				WriteMask(want, byteutil.DefaultTapeSize)
 				WriteReturn(want)
+				// The scope reads no position, so its names begin at the frame.
 				WriteIdent(want, NewIdentManager(), []byte("a"))
 				WriteStop(want)
 				if !bytes.Equal(got, want.Bytes()) {
@@ -113,6 +114,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				want := bytes.NewBuffer(make([]byte, 0))
 				WritePush(want, byteutil.TrueTape(byteutil.DefaultTapeSize), byteutil.DefaultTapeSize)
 				WriteReturn(want)
+				// The scope reads no position, so its names begin at the frame.
 				WriteIdent(want, NewIdentManager(), []byte("a"))
 				WriteStop(want)
 				if !bytes.Equal(got, want.Bytes()) {
@@ -132,7 +134,8 @@ func TestPickRuntimeCode(t *testing.T) {
 				WriteSubtract(want)
 				WriteMask(want, byteutil.DefaultTapeSize)
 				WriteReturn(want)
-				WriteIdent(want, NewIdentManager(), []byte("a"))
+				// The scope reads two positions, so its names begin past them.
+				WriteIdent(want, NewIdentManagerAt(2*MEMORY_SLOT_SIZE), []byte("a"))
 				WriteStop(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))

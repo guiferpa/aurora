@@ -126,9 +126,9 @@ func TestWriteIdent(t *testing.T) {
 		names int
 		want  []byte
 	}{
-		{name: "the first name", names: 0, want: []byte{OpPush2, 0x00, 0x00}},
-		{name: "the second", names: 1, want: []byte{OpPush2, 0x00, 0x20}},
-		{name: "the ninth, which used to land on the first", names: 8, want: []byte{OpPush2, 0x01, 0x00}},
+		{name: "the first name", names: 0, want: []byte{OpPush2, 0x00, 0x00, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}},
+		{name: "the second", names: 1, want: []byte{OpPush2, 0x00, 0x20, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}},
+		{name: "the ninth, which used to land on the first", names: 8, want: []byte{OpPush2, 0x01, 0x00, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd}},
 	}
 
 	for _, tc := range cases {
@@ -160,7 +160,7 @@ func TestWriteLoad(t *testing.T) {
 		t.Fatalf("writing the read: %v", err)
 	}
 
-	expected := []byte{OpPush2, 0x01, 0x20, OpMemoryLoad}
+	expected := []byte{OpPush2, 0x01, 0x20, OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd, OpMemoryLoad}
 	if got := bs.Bytes(); !bytes.Equal(got, expected) {
 		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
@@ -189,9 +189,12 @@ func TestWriteReturn(t *testing.T) {
 		return
 	}
 	got := bs.Bytes()
+	// Through a slot of its own, not the first one: that holds where the running scope's
+	// frame begins, and writing the answer there would lose the frame in the act of
+	// answering.
 	expected := []byte{
-		OpPush1, 0x00, OpMemoryStore, // store stack top at mem[0]
-		OpPush1, 0x20, OpPush1, 0x00, OpReturn,
+		OpPush1, RETURN_SCRATCH, OpMemoryStore,
+		OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn,
 	}
 	if !bytes.Equal(got, expected) {
 		t.Errorf("Return: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))

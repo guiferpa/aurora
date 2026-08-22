@@ -83,7 +83,8 @@ func TestBuildAnnouncesTheRuntimeSize(t *testing.T) {
 // four bytes of calldata against the keccak of the name and jumps to its code.
 func TestBuildEmitsADispatcherPerCallable(t *testing.T) {
 	code := build(t, "ident add = defer { feed(0) + feed(1); };\n", byteutil.DefaultTapeSize)
-	runtime := code[INSTANTIATE_BLOCK_SIZE:]
+	// Past the constructor, and past the six bytes that say where the first frame begins.
+	runtime := code[INSTANTIATE_BLOCK_SIZE+FRAME_START_SIZE:]
 
 	if runtime[0] != OpPush1 || runtime[1] != 0x00 || runtime[2] != OpCallDataLoad {
 		t.Errorf("a dispatcher should start by loading calldata, got %s", byteutil.ToUpperHex(runtime[:3]))
@@ -105,7 +106,8 @@ func TestBuildEmitsOneDispatcherPerName(t *testing.T) {
 	code := build(t, `ident add = defer { feed(0) + feed(1); };
 ident sub = defer { feed(0) - feed(1); };
 `, byteutil.DefaultTapeSize)
-	runtime := code[INSTANTIATE_BLOCK_SIZE:]
+	// Past the constructor, and past the six bytes that say where the first frame begins.
+	runtime := code[INSTANTIATE_BLOCK_SIZE+FRAME_START_SIZE:]
 
 	for i := 0; i < 2; i++ {
 		at := i * DISPATCHER_BYTES_SIZE
@@ -121,7 +123,8 @@ ident sub = defer { feed(0) - feed(1); };
 // Without a callable there is nothing to dispatch on, so the runtime is the root code.
 func TestBuildWithoutCallables(t *testing.T) {
 	code := build(t, "ident a = 1 + 2;\n", byteutil.DefaultTapeSize)
-	runtime := code[INSTANTIATE_BLOCK_SIZE:]
+	// Past the constructor, and past the six bytes that say where the first frame begins.
+	runtime := code[INSTANTIATE_BLOCK_SIZE+FRAME_START_SIZE:]
 
 	if runtime[0] == OpPush1 && len(runtime) > 2 && runtime[2] == OpCallDataLoad {
 		t.Error("no dispatcher should be emitted when there is no callable")
@@ -155,22 +158,24 @@ func TestBuildFollowsTheTapeSize(t *testing.T) {
 	}
 }
 
+// Every runtime opens by saying where the first frame begins, whatever else it holds, so that
+// is in every count here.
 func TestGetRuntimeCodeLength(t *testing.T) {
 	cases := []struct {
 		name string
 		code *RuntimeCode
 		want int
 	}{
-		{name: "empty", code: &RuntimeCode{}, want: 0},
+		{name: "empty", code: &RuntimeCode{}, want: FRAME_START_SIZE},
 		{
 			name: "root only",
 			code: &RuntimeCode{Root: bytes.NewBuffer([]byte{1, 2, 3})},
-			want: 3,
+			want: FRAME_START_SIZE + 3,
 		},
 		{
 			name: "one dispatcher",
 			code: &RuntimeCode{Dispatchers: []Dispatcher{{Code: bytes.NewBuffer([]byte{1, 2})}}},
-			want: DISPATCHER_BYTES_SIZE + NO_MATCH_DISPATCHER_SIZE + 2,
+			want: FRAME_START_SIZE + DISPATCHER_BYTES_SIZE + NO_MATCH_DISPATCHER_SIZE + 2,
 		},
 		{
 			name: "dispatchers and root",
@@ -181,7 +186,7 @@ func TestGetRuntimeCodeLength(t *testing.T) {
 				},
 				Root: bytes.NewBuffer([]byte{4, 5, 6, 7}),
 			},
-			want: 2*DISPATCHER_BYTES_SIZE + NO_MATCH_DISPATCHER_SIZE + 3 + 4,
+			want: FRAME_START_SIZE + 2*DISPATCHER_BYTES_SIZE + NO_MATCH_DISPATCHER_SIZE + 3 + 4,
 		},
 	}
 
@@ -260,15 +265,16 @@ func TestWriteNoMatchDispatcher(t *testing.T) {
 	}
 }
 
-// Nothing to dispatch on means no dispatcher block and no no-match stop.
+// Nothing to dispatch on means no dispatcher block and no no-match stop — but every call
+// still opens by saying where its frame begins, whatever it goes on to do.
 func TestWriteDispatchersWithNone(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	written, err := WriteDispatchers(buf, nil)
 	if err != nil {
 		t.Fatalf("WriteDispatchers: %v", err)
 	}
-	if written != 0 || buf.Len() != 0 {
-		t.Errorf("wrote %d bytes, want none", buf.Len())
+	if written != FRAME_START_SIZE || buf.Len() != FRAME_START_SIZE {
+		t.Errorf("wrote %d bytes, want the %d that say where the frame begins", buf.Len(), FRAME_START_SIZE)
 	}
 }
 
@@ -284,7 +290,7 @@ func TestWriteDispatchersReportsItsSize(t *testing.T) {
 		t.Fatalf("WriteDispatchers: %v", err)
 	}
 
-	want := 2*DISPATCHER_BYTES_SIZE + NO_MATCH_DISPATCHER_SIZE
+	want := FRAME_START_SIZE + 2*DISPATCHER_BYTES_SIZE + NO_MATCH_DISPATCHER_SIZE
 	if written != want {
 		t.Errorf("reported %d bytes, want %d", written, want)
 	}
@@ -298,7 +304,8 @@ func TestDispatcherSelectorsDiffer(t *testing.T) {
 	code := build(t, `ident add = defer { feed(0); };
 ident sub = defer { feed(0); };
 `, byteutil.DefaultTapeSize)
-	runtime := code[INSTANTIATE_BLOCK_SIZE:]
+	// Past the constructor, and past the six bytes that say where the first frame begins.
+	runtime := code[INSTANTIATE_BLOCK_SIZE+FRAME_START_SIZE:]
 
 	// The selector sits after PUSH1 00 CALLDATALOAD PUSH1 e0 SHR PUSH4.
 	const selectorAt = 8

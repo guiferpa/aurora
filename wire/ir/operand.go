@@ -24,11 +24,28 @@ const (
 	// scheduler on another.
 	Ref
 
-	// Imm is the bytes themselves. There is nothing to look up: a tape a literal compiled
-	// to, the width of a slice, the index of a field, the position an argument is read
-	// from. What tells Imm from Ref is only this kind — both are runs of bytes, and 0x03 is
-	// the number three under one and the value labelled "03" under the other.
+	// Imm is a value of the program, written where it is used instead of computed. A literal
+	// is the case for it — the ten in "a + 10" is not something the program works out.
+	//
+	// The name is the one assembly uses: an immediate is the value carried inside the
+	// instruction, as against one fetched from somewhere.
+	//
+	// It is a tape, of the width the program chose, and the constructor is what makes that
+	// true rather than a rule somebody remembers. A value in Aurora is a run of bytes
+	// tape_size wide; something narrower is not a smaller value, it is not a value. Nothing
+	// wider reaches here: the parser refuses a literal that does not fit, where it was
+	// written.
 	Imm
+
+	// Const is a number the operation takes about itself: the width of a slice, the index of
+	// a field, the position an argument is read from. It is not a value of the program, and
+	// that is the whole of what tells it from Imm.
+	//
+	// Both are constant, and both are a tape. Which is which says whether the bytes belong
+	// to the program or to the instruction — an OpHead reads its as a length, and an OpAdd
+	// would read the same bytes as a number, and a consumer knowing which by opcode is the
+	// table this kind set out to remove.
+	Const
 
 	// Name is a name that outlives the instruction writing it: something a scope bound, or
 	// a scope to call. It is resolved by whoever runs the program rather than by position,
@@ -72,11 +89,27 @@ func (o Operand) Bytes() []byte {
 // RefTo points at a value another instruction left behind, under its label.
 func RefTo(label []byte) Operand { return Operand{Ref, label} }
 
-// ImmOf carries the bytes themselves — a tape, or anything already in the shape it is used in.
-func ImmOf(value []byte) Operand { return Operand{Imm, value} }
+// ImmOf carries a value the program did not compute, as the tape it is.
+//
+// The width goes in rather than being assumed, because a tape is as wide as the program said
+// and a value narrower than one is not a value. Padding here is what keeps that from being
+// something each caller has to remember.
+func ImmOf(value []byte, tapeSize int) Operand {
+	return Operand{Imm, byteutil.PaddingTape(value, tapeSize)}
+}
 
-// ImmNum carries a number: a width, an index, a count.
-func ImmNum(n uint64) Operand { return Operand{Imm, byteutil.FromUint64(n)} }
+// ImmNum carries a number the program wrote down, as a tape.
+func ImmNum(n uint64, tapeSize int) Operand {
+	return ImmOf(byteutil.FromUint64(n), tapeSize)
+}
+
+// ConstNum carries a number the operation takes about itself, as a tape.
+//
+// A width, an index, a position: none of them is a value of the program, and all of them are
+// as wide as everything else here.
+func ConstNum(n uint64, tapeSize int) Operand {
+	return Operand{Const, byteutil.PaddingTape(byteutil.FromUint64(n), tapeSize)}
+}
 
 // NameOf carries a name, which outlives the instruction that writes it.
 func NameOf(name string) Operand { return Operand{Name, []byte(name)} }
@@ -100,6 +133,8 @@ func (k Kind) String() string {
 		return "ref"
 	case Imm:
 		return "imm"
+	case Const:
+		return "const"
 	case Name:
 		return "name"
 	case Target:

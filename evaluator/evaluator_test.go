@@ -406,7 +406,7 @@ func TestCanReadInstructions(t *testing.T) {
 
 func TestGetInstruction(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
-	inst0 := ir.NewInstruction([]byte("00"), ir.OpSave, ir.ImmOf([]byte{1}), ir.Nothing())
+	inst0 := ir.NewInstruction([]byte("00"), ir.OpSave, ir.ImmOf([]byte{1}, 0), ir.Nothing())
 	inst1 := ir.NewInstruction([]byte("01"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01")))
 	ev.SetInstructions([]ir.Instruction{inst0, inst1})
 	ev.SetInstructionsOffset(0, 2)

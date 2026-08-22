@@ -298,8 +298,11 @@ func TestAConstructionIsOneInstruction(t *testing.T) {
 		opcode byte
 		want   int
 	}{
+		// A tape starts as zeros and the items are pulled onto it, so it carries one
+		// operand more than it has items. A shape carries exactly its fields: they are laid
+		// end to end, onto nothing.
 		{name: "a tape of four items", source: "printb [1, 2, 3, 4];", opcode: ir.OpPull, want: 5},
-		{name: "a shape of three fields", source: "shape P { x, y, z };\nprintb P{1, 2, 3}.x;", opcode: ir.OpJoin, want: 4},
+		{name: "a shape of three fields", source: "shape P { x, y, z };\nprintb P{1, 2, 3}.x;", opcode: ir.OpJoin, want: 3},
 	}
 
 	for _, tc := range cases {
@@ -313,7 +316,7 @@ func TestAConstructionIsOneInstruction(t *testing.T) {
 				}
 				found++
 				if got := len(inst.GetOperands()); got != tc.want {
-					t.Errorf("carries %d operands, want %d — the run it was built from, plus what it starts on", got, tc.want)
+					t.Errorf("carries %d operands, want %d", got, tc.want)
 				}
 			}
 			if found != 1 {

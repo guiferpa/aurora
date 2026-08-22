@@ -98,7 +98,7 @@ func TestAByteThatIsNotAnOpcode(t *testing.T) {
 // The written form is one instruction per line, in the order they run.
 func TestFormat(t *testing.T) {
 	insts := []Instruction{
-		NewInstruction([]byte("00"), OpSave, ImmOf([]byte{1}), Nothing()),
+		NewInstruction([]byte("00"), OpSave, ImmOf([]byte{1}, 0), Nothing()),
 		NewInstruction([]byte("01"), OpAdd, RefTo([]byte("00")), RefTo([]byte("00"))),
 	}
 

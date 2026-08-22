@@ -15,8 +15,9 @@ func TestAnOperandSaysWhatItIs(t *testing.T) {
 		bytes   []byte
 	}{
 		{name: "a reference", operand: RefTo([]byte("07")), kind: Ref, bytes: []byte("07")},
-		{name: "an immediate", operand: ImmOf([]byte{1, 2}), kind: Imm, bytes: []byte{1, 2}},
-		{name: "a number", operand: ImmNum(3), kind: Imm, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
+		{name: "a value written down", operand: ImmOf([]byte{1, 2}, 8), kind: Imm, bytes: []byte{0, 0, 0, 0, 0, 0, 1, 2}},
+		{name: "a number the program wrote", operand: ImmNum(3, 8), kind: Imm, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
+		{name: "a number the operation takes", operand: ConstNum(2, 8), kind: Const, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 2}},
 		{name: "a name", operand: NameOf("x"), kind: Name, bytes: []byte("x")},
 		{name: "a target", operand: TargetAt(3), kind: Target, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
 		{name: "some text", operand: TextOf("hi"), kind: Text, bytes: []byte("hi")},
@@ -38,7 +39,7 @@ func TestAnOperandSaysWhatItIs(t *testing.T) {
 // An operand that is not there answers with an empty slice, never nil: that is what every
 // reader of the IR has always been handed, and none of them checks.
 func TestAnOperandThatIsNotThereStillAnswersWithBytes(t *testing.T) {
-	for _, operand := range []Operand{Nothing(), RefTo(nil), ImmOf(nil)} {
+	for _, operand := range []Operand{Nothing(), RefTo(nil), ImmOf(nil, 8)} {
 		if got := operand.Bytes(); got == nil {
 			t.Errorf("%v answered with nil", operand)
 		}
@@ -53,7 +54,8 @@ func TestAnOperandWritesItselfForAPerson(t *testing.T) {
 		want    string
 	}{
 		{operand: RefTo([]byte{7}), want: "ref 0x07"},
-		{operand: ImmNum(1), want: "imm 0x0000000000000001"},
+		{operand: ImmNum(1, 8), want: "imm 0x0000000000000001"},
+		{operand: ConstNum(2, 8), want: "const 0x0000000000000002"},
 		{operand: NameOf("x"), want: "name 0x78"},
 		{operand: Nothing(), want: "-"},
 	}
@@ -88,7 +90,7 @@ func TestAnInstructionCarriesAsManyOperandsAsItWasGiven(t *testing.T) {
 // An operand that is not there answers as Nothing rather than panicking, because a reader
 // asking for a pair should not have to know how many the instruction actually has.
 func TestAnOperandBeyondWhatAnInstructionHasIsNothing(t *testing.T) {
-	inst := NewInstructionOver([]byte("09"), OpSave, ImmOf([]byte{1}))
+	inst := NewInstructionOver([]byte("09"), OpSave, ImmOf([]byte{1}, 8))
 
 	if got := inst.GetRight(); got.Kind() != Empty {
 		t.Errorf("the second operand of a one-operand instruction is %v, want nothing", got)

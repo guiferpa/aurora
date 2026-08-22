@@ -260,10 +260,10 @@ func (e *Evaluator) EvaluatePush(label, left, right []byte) error {
 //
 // Every field crosses the same narrowing, which is what makes each one a single tape: a reel
 // handed to a field would otherwise stay whole and the shape would come out longer than it
-// declared. The first operand is the empty run the fields are laid onto.
+// declared.
 func (e *Evaluator) EvaluateJoinOver(label []byte, operands []ir.Operand) error {
-	joined := append([]byte{}, e.environ.GetTemp(byteutil.ToHex(operands[0].Bytes()))...)
-	for _, operand := range operands[1:] {
+	joined := make([]byte, 0, len(operands)*e.tapeSize)
+	for _, operand := range operands {
 		tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(operand.Bytes())), e.tapeSize)
 		joined = append(joined, tape...)
 	}

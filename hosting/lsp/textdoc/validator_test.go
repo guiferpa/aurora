@@ -5,7 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 )
 
 func TestValidateCodeAcceptsValidSource(t *testing.T) {
@@ -164,4 +167,71 @@ func TestPathFromURI(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A document that parses can still be worth a word, and the editor is where it is cheapest to
+// hear. Until this the analysis stopped at the parser, so everything the compiler had to say
+// short of refusing was said only to whoever ran "aurora build".
+func TestADocumentThatParsesCanStillBeWarnedAbout(t *testing.T) {
+	session := NewSession(NewSessionOptions{
+		Lexer:  lexer.New(),
+		Parser: parser.New(),
+		Emit:   emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+	})
+
+	source := "ident fn = defer {\n  printd feed(2);\n};\n\nfn();\n"
+	diagnostics := session.ValidateCode(Document{Filename: "main.ar", Source: source})
+
+	if len(diagnostics) != 1 {
+		t.Fatalf("expected one diagnostic, got %v", diagnostics)
+	}
+	if got := diagnostics[0].Severity; got != SeverityWarning {
+		t.Errorf("severity is %d, want a warning: a short call is legal, and what was not applied answers zeros", got)
+	}
+	if !strings.Contains(diagnostics[0].Message, "3 positions") {
+		t.Errorf("message is %q, want it to say the scope reads three positions", diagnostics[0].Message)
+	}
+	// Line 5 in the source, which the editor counts from zero.
+	if got := diagnostics[0].Range.Start.Line; got != 4 {
+		t.Errorf("it underlines line %d, want the line the call is on", got)
+	}
+}
+
+// Without the port a document is checked as far as it parses, which is what the playground
+// does and what this was before.
+func TestWithoutTheEmitterOnlyTheParseIsChecked(t *testing.T) {
+	session := NewSession(NewSessionOptions{Lexer: lexer.New(), Parser: parser.New()})
+
+	source := "ident fn = defer {\n  printd feed(2);\n};\n\nfn();\n"
+	if diagnostics := session.ValidateCode(Document{Filename: "main.ar", Source: source}); len(diagnostics) != 0 {
+		t.Errorf("expected nothing to say, got %v", diagnostics)
+	}
+}
+
+// An editor validates on every keystroke, so what one pass costs is worth knowing rather than
+// assuming. The two benchmarks are the same document through the same session, with and
+// without the emitter, and the difference between them is what asking the compiler costs.
+func benchmarkValidate(b *testing.B, emit Emit) {
+	var source strings.Builder
+	source.WriteString("ident base = 10;\n")
+	for i := 0; i < 200; i++ {
+		source.WriteString("ident scope = defer { feed(0) + feed(1) * 2; };\n")
+		source.WriteString("printd scope(1, 2);\n")
+	}
+
+	session := NewSession(NewSessionOptions{Lexer: lexer.New(), Parser: parser.New(), Emit: emit})
+	doc := Document{Filename: "main.ar", Source: source.String()}
+
+	b.ReportAllocs()
+	for b.Loop() {
+		session.ValidateCode(doc)
+	}
+}
+
+func BenchmarkValidateCodeParseOnly(b *testing.B) {
+	benchmarkValidate(b, nil)
+}
+
+func BenchmarkValidateCodeWithTheEmitter(b *testing.B) {
+	benchmarkValidate(b, emitter.New(emitter.NewEmitterOptions{}).EmitProgram)
 }

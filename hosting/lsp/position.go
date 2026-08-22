@@ -45,6 +45,21 @@ func (m *Mapper) Range(offset, length int) Range {
 	return Range{Start: m.Position(offset), End: m.Position(offset + length)}
 }
 
+// RangeAt converts a place written the way a compiler names one — a 1-based line and a
+// 1-based column counted in bytes — into a range covering the rest of that line.
+//
+// The rest of the line rather than one character, because what a diagnostic carries is where
+// something starts and not how long it is, and a zero-width marker is drawn by most clients as
+// nothing at all. Underlining to the end of the line says "here" without claiming a length
+// nobody measured.
+func (m *Mapper) RangeAt(line, column int) Range {
+	if line < 1 || line > len(m.lines) {
+		return Range{}
+	}
+	offset := m.clamp(m.lines[line-1] + max(column-1, 0))
+	return Range{Start: m.Position(offset), End: m.Position(m.LineEndOffset(offset))}
+}
+
 // Offset converts an LSP position back into a byte offset, clamped to the document.
 // Used to find which token sits under the cursor for hover.
 func (m *Mapper) Offset(pos Position) int {

@@ -267,3 +267,19 @@ func TestAValueWrittenDownAnswersTheSameOnChainAndOff(t *testing.T) {
 		})
 	}
 }
+
+// A contract whose runtime is longer than a byte can count used to be published cut short.
+// The constructor pushed the size with PUSH1, so 352 bytes became 96 by conversion: it copied
+// 96 and the chain kept 96, of a contract that ended in the middle of an instruction. Three
+// deferred scopes with ordinary bodies reach that.
+//
+// What this proves is the constructor. It calls the first scope on purpose, because a
+// dispatcher still pushes its jump target with PUSH1 — the second of the three ceilings, and
+// not this one.
+func TestARuntimeLongerThanAByteIsPublishedWhole(t *testing.T) {
+	const source = `ident one = defer { feed(0) + feed(1) * 3 - feed(0) / 2; };
+ident two = defer { feed(0) + feed(1) * 5 - feed(0) / 2; };
+ident three = defer { feed(0) + feed(1) * 7 - feed(0) / 2; };`
+
+	agree(t, source, "one", []string{"6", "7"}, 0)
+}

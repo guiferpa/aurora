@@ -8,6 +8,7 @@ package evm
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/guiferpa/aurora/byteutil"
@@ -20,7 +21,18 @@ const (
 	NO_MATCH_DISPATCHER_SIZE = 1
 	CALLDATA_SLOT_READABLE   = 32
 	MEMORY_SLOT_SIZE         = 32
-	INSTANTIATE_BLOCK_SIZE   = 12
+	// PUSH_ONE_SIZE and PUSH_TWO_SIZE are the opcode and what it carries.
+	PUSH_ONE_SIZE = 2
+	PUSH_TWO_SIZE = 3
+	// INSTANTIATE_BLOCK_SIZE is what the constructor measures, and the runtime begins right
+	// after it — so the block carries this number inside itself, as the offset it copies
+	// from. It is added up here rather than written as a literal, because it was the same
+	// number in two places and a push changing size meant remembering both.
+	INSTANTIATE_BLOCK_SIZE = PUSH_TWO_SIZE + PUSH_ONE_SIZE + PUSH_ONE_SIZE + 1 + PUSH_TWO_SIZE + PUSH_ONE_SIZE + 1
+	// MAX_CONTRACT_SIZE is what a chain will keep: 24,576 bytes, by EIP-170. A runtime past
+	// it is refused rather than written, because writing it produces a binary that deploys
+	// and is not the program.
+	MAX_CONTRACT_SIZE = 24576
 )
 
 type Dispatcher struct {
@@ -147,7 +159,12 @@ func (b *Builder) Build() ([]byte, error) {
 
 	out := bytes.NewBuffer(make([]byte, 0))
 
-	if _, err := WriteInstantiateBlock(out, byte(GetRuntimeCodeLength(rc))); err != nil {
+	runtimeSize := GetRuntimeCodeLength(rc)
+	if runtimeSize > MAX_CONTRACT_SIZE {
+		return nil, fmt.Errorf("the runtime is %d bytes and a chain keeps at most %d: this program cannot be deployed", runtimeSize, MAX_CONTRACT_SIZE)
+	}
+
+	if _, err := WriteInstantiateBlock(out, runtimeSize); err != nil {
 		return nil, err
 	}
 

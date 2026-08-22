@@ -277,77 +277,120 @@ func WriteImmediates(w io.Writer, inst ir.Instruction, tapeSize int) error {
 	return nil
 }
 
+// counter is a writer that keeps how much was written to it and nothing else.
+type counter int
+
+func (c *counter) Write(p []byte) (int, error) {
+	*c += counter(len(p))
+	return len(p), nil
+}
+
+// PositionsOf answers the byte each instruction of a scope starts at, and where the scope ends.
+//
+// It measures by writing — to something that only counts — rather than by adding up a table of
+// sizes beside the writer. A table would be a second description of the same thing, and two
+// descriptions of one thing drift: this backend has been wrong that way more than once, and
+// the drift is silent because the bytes still come out, just at the wrong addresses.
+//
+// The names are registered into a manager of its own and thrown away, since what is measured
+// is how many bytes an instruction takes and every push is a fixed size now.
+func PositionsOf(insts []ir.Instruction, tapeSize int) ([]int, error) {
+	positions := make([]int, len(insts)+1)
+	im := NewIdentManager()
+	for at, inst := range insts {
+		var measured counter
+		if err := WriteInstruction(&measured, im, inst, tapeSize, nil); err != nil {
+			return nil, err
+		}
+		positions[at+1] = positions[at] + int(measured)
+	}
+	return positions, nil
+}
+
+// WriteInstruction emits one instruction.
+//
+// Addresses answers where a label lives in the bytecode, for the instructions that jump. It is
+// nil while measuring, and a jump written then carries zeros — which measures the same, since
+// every push is a fixed size.
+func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeSize int, addresses map[string]int) error {
+	op := inst.GetOpCode()
+
+	if handled[op] && op != ir.OpSave {
+		if err := WriteImmediates(bs, inst, tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpAdd {
+		if _, err := WriteAdd(bs); err != nil {
+			return err
+		}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpMultiply {
+		if _, err := WriteMultiply(bs); err != nil {
+			return err
+		}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpSubtract {
+		if _, err := WriteSubtract(bs); err != nil {
+			return err
+		}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpDivide {
+		if _, err := WriteDivide(bs); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpReturn {
+		if _, err := WriteReturn(bs); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpSave {
+		if _, err := WriteSave(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpIdent {
+		if _, err := WriteIdent(bs, im, inst.GetLeft().Bytes()); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpLoad {
+		if _, err := WriteLoad(bs, im, inst.GetLeft().Bytes()); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpGetFeed {
+		if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int) (int, error) {
 	for _, inst := range insts {
-		op := inst.GetOpCode()
-
-		if handled[op] && op != ir.OpSave {
-			if err := WriteImmediates(bs, inst, tapeSize); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpAdd {
-			if _, err := WriteAdd(bs); err != nil {
-				return 0, err
-			}
-			if _, err := WriteMask(bs, tapeSize); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpMultiply {
-			if _, err := WriteMultiply(bs); err != nil {
-				return 0, err
-			}
-			if _, err := WriteMask(bs, tapeSize); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpSubtract {
-			if _, err := WriteSubtract(bs); err != nil {
-				return 0, err
-			}
-			if _, err := WriteMask(bs, tapeSize); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpDivide {
-			if _, err := WriteDivide(bs); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpReturn {
-			if _, err := WriteReturn(bs); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpSave {
-			if _, err := WriteSave(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpIdent {
-			if _, err := WriteIdent(bs, im, inst.GetLeft().Bytes()); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpLoad {
-			if _, err := WriteLoad(bs, im, inst.GetLeft().Bytes()); err != nil {
-				return 0, err
-			}
-		}
-
-		if op == ir.OpGetFeed {
-			if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
-				return 0, err
-			}
+		if err := WriteInstruction(bs, im, inst, tapeSize, nil); err != nil {
+			return 0, err
 		}
 	}
 

@@ -133,6 +133,12 @@ using any of the following **compiles successfully and does nothing on chain**.
 - Jump targets and memory offsets are written with `PUSH1`, which caps a runtime at 256
   bytes and identifiers at about seven memory slots. `PUSH2` lifts it.
 
+A name bound inside a scope is the one the compiler now names too. It compiles to an `MSTORE`
+with nothing under it, so the contract answers a different number than the program does — and
+until this it said nothing, because the list of what the builder handles is keyed by opcode and
+the binding that names a deferred scope is handled. Which one an `OpIdent` is depends on where
+it sits, and a map cannot see that.
+
 `aurora build` now **says what it could not carry**, once per feature, in the order the
 program uses it, and names the line the program first used it on — so a binary that does less
 than the source said is announced, in the form an editor follows.

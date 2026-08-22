@@ -3,6 +3,7 @@ package evm
 import (
 	"fmt"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/wire/diag"
 	"github.com/guiferpa/aurora/wire/ir"
 )
@@ -18,6 +19,11 @@ import (
 //
 // OpDefer and OpBeginScope write nothing of their own and are not gaps: the first becomes an
 // entry in the dispatcher, and the second opens a scope the builder lays out flat.
+//
+// OpIdent is here for the one it does carry — the binding that names a deferred scope, which
+// the dispatcher reads as a selector. The one inside a scope it does not, and that is what
+// bindingsInsideScopes answers for: a per-opcode list cannot tell the two apart, because
+// which one it is depends on where the instruction sits.
 var handled = map[byte]bool{
 	ir.OpAdd:        true,
 	ir.OpSubtract:   true,
@@ -66,6 +72,45 @@ var pending = map[byte]string{
 	ir.OpField: "shape",
 }
 
+// bindingInsideAScope reports the first name bound inside a deferred scope, if there is one.
+//
+// It is its own walk because the list of handled opcodes cannot answer it. An OpIdent at the
+// top of a program names a deferred scope and becomes a selector the dispatcher reads; the
+// same opcode inside a scope stores a value, and the lowering hands that value to nothing, so
+// the MSTORE writing it finds an empty stack. Which one an instruction is depends on where it
+// sits, and a map keyed by opcode has no way to see that.
+//
+// Until now the map said OpIdent was handled and nothing was said at all: a scope binding a
+// name compiled, deployed, and answered a different number than the same program answers off
+// the chain. That is the worst outcome this file exists to prevent, and it was the one case
+// getting past it.
+func bindingInsideAScope(insts []ir.Instruction) (diag.Warning, bool) {
+	// A defer says how many instructions its body is, so its range is what has to be looked
+	// inside. Bodies nest, and the deepest end is what closes the outermost — a body that
+	// holds a defer holds that defer's body too.
+	end := 0
+	for at, inst := range insts {
+		switch inst.GetOpCode() {
+		case ir.OpDefer:
+			body := at + 1 + int(byteutil.ToUint64(inst.GetRight().Bytes()))
+			if body > end {
+				end = body
+			}
+		case ir.OpIdent:
+			if at >= end {
+				continue
+			}
+			warning := diag.Warning{Message: "a name bound inside a scope does not reach the bytecode: " +
+				"the value it stores is dropped, and the contract answers something else than the program does"}
+			if origin := inst.GetOrigin(); origin.Known() {
+				warning.Line, warning.Column = origin.Line, origin.Column
+			}
+			return warning, true
+		}
+	}
+	return diag.Warning{}, false
+}
+
 // Warnings reports what a program uses that does not reach the bytecode.
 //
 // They are warnings and not errors because the backend is being written in slices: refusing
@@ -79,6 +124,10 @@ var pending = map[byte]string{
 func Warnings(insts []ir.Instruction) []diag.Warning {
 	warnings := make([]diag.Warning, 0)
 	said := make(map[string]bool)
+
+	if warning, found := bindingInsideAScope(insts); found {
+		warnings = append(warnings, warning)
+	}
 
 	for _, inst := range insts {
 		op := inst.GetOpCode()

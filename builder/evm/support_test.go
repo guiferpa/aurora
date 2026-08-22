@@ -211,3 +211,55 @@ func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
 		})
 	}
 }
+
+// A name bound inside a scope compiles to an MSTORE with nothing under it: the lowering hands
+// the value to arithmetic and to a return and to nothing else, so the one the binding meant to
+// store is dropped. The contract answers a different number than the program does — "ident x =
+// feed(0); x + feed(1);" applied to 3 and 4 answers 7 off the chain and 4 on it.
+//
+// That is known and it is not this file's to fix. What is this file's is that it used to say
+// nothing: the map of handled opcodes claimed OpIdent, because the binding that names a
+// deferred scope is handled, and a map keyed by opcode cannot tell that one from this one.
+func TestABindingInsideAScopeIsAnnounced(t *testing.T) {
+	const source = "ident sum = defer {\n  ident x = feed(0);\n  x + feed(1);\n};"
+
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
+	if err != nil {
+		t.Fatalf("lexer: %v", err)
+	}
+	tree, err := parser.New().Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
+	if err != nil {
+		t.Fatalf("parser: %v", err)
+	}
+	insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+	if err != nil {
+		t.Fatalf("emitter: %v", err)
+	}
+
+	for _, warning := range Warnings(insts) {
+		if !strings.Contains(warning.Message, "bound inside a scope") {
+			continue
+		}
+		if warning.Line != 2 {
+			t.Errorf("it points at line %d, want the line the name was bound on", warning.Line)
+		}
+		return
+	}
+	t.Fatal("nothing warned about the binding")
+}
+
+// The binding that names a deferred scope is handled — the dispatcher reads it as a selector —
+// so a program doing only that hears nothing about it.
+func TestABindingThatNamesAScopeIsNotAnnounced(t *testing.T) {
+	const source = "ident sum = defer { feed(0) + feed(1); };"
+
+	tokens, _ := lexer.New().GetFilledTokens([]byte(source))
+	tree, _ := parser.New().Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
+	insts, _ := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+
+	for _, warning := range Warnings(insts) {
+		if strings.Contains(warning.Message, "bound inside a scope") {
+			t.Errorf("it warned about a binding that is handled: %q", warning.Message)
+		}
+	}
+}

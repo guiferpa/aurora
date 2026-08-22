@@ -173,32 +173,38 @@ func WriteNoMatchDispatcher(w io.Writer) (int, error) {
 	return w.Write([]byte{OpStop})
 }
 
+// WriteDispatcher emits the entry for one scope: it reads the selector out of the calldata,
+// compares it with the one this scope answers to, and jumps to the body when they match.
+//
+// The address goes in two bytes. It used to go in one, so a body living past byte 255 of the
+// runtime was jumped to at an address that had been truncated — a contract with twelve scopes
+// answered for the first and refused the third with "invalid jump destination". The body was
+// there; the dispatcher could not name it.
 func WriteDispatcher(bs io.Writer, id string, jumpTo int) (int, error) {
-	if _, err := bs.Write([]byte{OpPush1, 0x00}); err != nil { // 2 bytes
+	if _, err := bs.Write([]byte{OpPush1, 0x00}); err != nil {
 		return 0, err
 	}
-	if _, err := bs.Write([]byte{OpCallDataLoad}); err != nil { // 1 byte
+	if _, err := bs.Write([]byte{OpCallDataLoad}); err != nil {
 		return 0, err
 	}
 	// Isolate the first 4 bytes of the keccak256 hash of the id
-	if _, err := bs.Write([]byte{OpPush1, byte((CALLDATA_SLOT_READABLE - 4) * BYTE_SIZE)}); err != nil { // 2 bytes
+	if _, err := bs.Write([]byte{OpPush1, byte((CALLDATA_SLOT_READABLE - 4) * BYTE_SIZE)}); err != nil {
 		return 0, err
 	}
-	if _, err := bs.Write([]byte{OpShiftRight}); err != nil { // 1 byte
+	if _, err := bs.Write([]byte{OpShiftRight}); err != nil {
 		return 0, err
 	}
 	selector := crypto.Keccak256([]byte(id))[:4]
-	if _, err := bs.Write(append([]byte{OpPush4}, selector...)); err != nil { // 5 bytes
+	if _, err := bs.Write(append([]byte{OpPush4}, selector...)); err != nil {
 		return 0, err
 	}
-	if _, err := bs.Write([]byte{OpEqual}); err != nil { // 1 byte
+	if _, err := bs.Write([]byte{OpEqual}); err != nil {
 		return 0, err
 	}
-	// PUSH1 limits jumpTo to 0–255; larger runtimes would need PUSH2.
-	if _, err := bs.Write([]byte{OpPush1, byte(jumpTo)}); err != nil { // 2 bytes
+	if _, err := WritePush2(bs, jumpTo); err != nil {
 		return 0, err
 	}
-	return bs.Write([]byte{OpJumpIf}) // 1 byte
+	return bs.Write([]byte{OpJumpIf})
 }
 
 func WriteDispatchers(bs io.Writer, ds []Dispatcher) (int, error) {

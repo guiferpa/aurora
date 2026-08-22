@@ -283,3 +283,22 @@ ident three = defer { feed(0) + feed(1) * 7 - feed(0) / 2; };`
 
 	agree(t, source, "one", []string{"6", "7"}, 0)
 }
+
+// A dispatcher pushed the address of its body in one byte, so a scope living past byte 255 of
+// the runtime was jumped to at an address that had been truncated: a contract with twelve
+// scopes answered for the first and refused the third with "invalid jump destination". The
+// body was there; the dispatcher could not name it.
+func TestAScopePastAByteIsReachedOnChainToo(t *testing.T) {
+	var source strings.Builder
+	for i := 0; i < 12; i++ {
+		fmt.Fprintf(&source, "ident scope%d = defer { feed(0) + feed(1) * %d - feed(0) / 2; };\n", i, i+1)
+	}
+
+	// The first is reachable whatever the size of the push, so the ones that say anything
+	// are the ones further in.
+	for _, name := range []string{"scope0", "scope2", "scope11"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source.String(), name, []string{"6", "7"}, 0)
+		})
+	}
+}

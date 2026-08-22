@@ -18,12 +18,14 @@ empty one. `ident x = feed(0); x + feed(1);` answered 4 on the chain where the p
 each operand is now, so the lowering reads instead of guessing, and the harness covers the
 case.
 
-The second is still standing: memory offsets, jump targets and the runtime size are written
-with `PUSH1` and truncate past 255. It is next, and `PUSH2` closes it for good — a deployed
-contract cannot pass 24,576 bytes, so two bytes cover every legal one and there is no third
-size after it.
+The second is done too. Memory offsets, jump targets and the runtime size were written with
+`PUSH1` and truncated past 255, each in its own way: a contract was published cut short, a
+scope past byte 255 was jumped to at the wrong address, and the ninth name in a contract was
+given the address of the first. They go in two bytes now, and there is no third size after it —
+a deployed contract cannot pass 24,576 bytes, so two bytes cover every legal one. Past that the
+builder refuses rather than writing.
 
-After it come `if` and then `call`, in that order, and both need what the lowering now keeps: a
+What is left is `if` and then `call`, in that order, and both need what the lowering keeps: a
 jump is only writable when the stack is known where the code splits. **Anything else in
 `builder/evm` still waits its turn**, and the turn is discussed first.
 

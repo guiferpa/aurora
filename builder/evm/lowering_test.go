@@ -267,3 +267,38 @@ func TestLowering(t *testing.T) {
 		})
 	}
 }
+
+// A value is held back until whoever takes it, and no further: past a branch there is no
+// telling whether it would have run. A push moved into an arm happens only when that arm is
+// taken, and whoever eats it may be reached the other way — so it goes out before the branch,
+// where it is still on the straight run it was written on.
+func TestNothingIsMovedAcrossABranch(t *testing.T) {
+	insts := []ir.Instruction{
+		// A value written before the branch, and read inside it.
+		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Imm(1, 0), ir.Nothing()),
+		ir.NewInstruction([]byte("01"), ir.OpSave, ir.Imm(2, 0), ir.Nothing()),
+		ir.NewInstruction([]byte("02"), ir.OpIf, ir.RefTo([]byte("01")), ir.TargetAt(2)),
+		ir.NewInstruction([]byte("03"), ir.OpSave, ir.Imm(3, 0), ir.Nothing()),
+		ir.NewInstruction([]byte("04"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("03"))),
+	}
+
+	lowered := ResolveOperandsOrder(insts, 0)
+
+	at := func(label string) int {
+		for i, inst := range lowered {
+			if string(inst.GetLabel()) == label {
+				return i
+			}
+		}
+		t.Fatalf("%s is not in the lowered scope:\n%s", label, ir.Format(lowered))
+		return -1
+	}
+
+	if at("00") > at("02") {
+		t.Errorf("the value written before the branch was moved past it:\n%s", ir.Format(lowered))
+	}
+	// And the test of the branch is still put right in front of it.
+	if at("01") != at("02")-1 {
+		t.Errorf("what the branch tests is not in front of it:\n%s", ir.Format(lowered))
+	}
+}

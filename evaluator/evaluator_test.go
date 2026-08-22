@@ -502,6 +502,12 @@ type EvaluateCase struct {
 	TestFn     func(t *testing.T, returns eval.Returns, err error)
 }
 
+// answered holds the label each top-level expression of the case being run landed under, in
+// source order, so a TestFn can ask for what an expression answered instead of guessing at a
+// number. A test pinning a number is pinning how the emitter counts them, which is not what it
+// means to check.
+var answered [][]byte
+
 type RunEvaluateCaseOptions struct {
 	Filename      string
 	EnableLogging bool
@@ -524,14 +530,23 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 				return
 			}
 
-			insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+			program, err := emitter.New(emitter.NewEmitterOptions{}).EmitProgram(tree)
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
 
+			// What the program answers with is the value of its last expression, and the
+			// emitter says which label that landed under. A test asking for a label it
+			// guessed is pinning how the emitter numbers them, which is not what it means
+			// to check.
+			answered = make([][]byte, 0, len(program.Expressions))
+			for _, expression := range program.Expressions {
+				answered = append(answered, expression.Label)
+			}
+
 			ev := New(NewEvaluatorOptions{})
-			m, err := ev.Evaluate(insts)
+			m, err := ev.Evaluate(program.Instructions)
 
 			if c.TestFn != nil {
 				c.TestFn(t, m, err)
@@ -553,7 +568,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 different 2" the emitter generates Save(00), Save(01), Different(02). The Different stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -573,7 +588,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 equals 2" the emitter generates Save(00), Save(01), Equals(02). The Equals stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -593,7 +608,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 smaller 2" the emitter generates Save(00), Save(01), Smaller(02). The Smaller stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -613,7 +628,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 bigger 2" the emitter generates Save(00), Save(01), Bigger(02). The Bigger stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -633,7 +648,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 equals 1" the emitter generates Save(00), Save(01), Equals(02). The Equals stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -653,7 +668,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 different 1" the emitter generates Save(00), Save(01), Different(02). The Different stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -673,7 +688,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 smaller 1" the emitter generates Save(00), Save(01), Smaller(02). The Smaller stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -697,7 +712,7 @@ func TestRelative(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 bigger 1" the emitter generates Save(00), Save(01), Bigger(02). The Bigger stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -723,7 +738,7 @@ func TestArithmetic(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 + 1" the emitter generates Save(00), Save(01), Add(02). The Add stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 2}
 				if !bytes.Equal(got, expected) {
@@ -740,7 +755,7 @@ func TestArithmetic(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 - 1" the emitter generates Save(00), Save(01), Sub(02). The Sub stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 0}
 				if !bytes.Equal(got, expected) {
@@ -757,7 +772,7 @@ func TestArithmetic(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 * 1" the emitter generates Save(00), Save(01), Mul(02). The Mul stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 1}
 				if !bytes.Equal(got, expected) {
@@ -774,7 +789,7 @@ func TestArithmetic(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 / 1" the emitter generates Save(00), Save(01), Div(02). The Div stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 1}
 				if !bytes.Equal(got, expected) {
@@ -791,7 +806,7 @@ func TestArithmetic(t *testing.T) {
 					return
 				}
 				// Label 02: for "1 ^ 1" the emitter generates Save(00), Save(01), Exp(02). The Exp stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 1}
 				if !bytes.Equal(got, expected) {
@@ -815,7 +830,7 @@ func TestBoolean(t *testing.T) {
 					return
 				}
 				// Label 02: for "true or false" the emitter generates Save(00), Save(01), Or(02). The Or stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -836,7 +851,7 @@ func TestBoolean(t *testing.T) {
 					return
 				}
 				// Label 02: for "false or false" the emitter generates Save(00), Save(01), Or(02). The Or stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label := byteutil.ToHex([]byte("02"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -847,7 +862,7 @@ func TestBoolean(t *testing.T) {
 				}
 
 				// Label 05: for "true and true" the emitter generates Save(03), Save(04), And(05). The And stores its result in its own label (no OpResult), so the result 2 lives at temp "02".
-				label = byteutil.ToHex([]byte("05"))
+				label = byteutil.ToHex(answered[1])
 				got = returns[label]
 				if len(got) != byteutil.DefaultTapeSize {
 					t.Errorf("a condition is a tape like any other value, got %d bytes: %v", len(got), got)
@@ -923,7 +938,7 @@ if 11 bigger 10 { 20; };`,
 					t.Errorf("expected no error, got: %v", err)
 					return
 				}
-				label := byteutil.ToHex([]byte("05"))
+				label := byteutil.ToHex(answered[0])
 				got := returns[label]
 				expected := []byte{0, 0, 0, 0, 0, 0, 0, 20}
 				if !bytes.Equal(got, expected) {

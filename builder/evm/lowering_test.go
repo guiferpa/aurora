@@ -173,29 +173,24 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 			},
 		},
 		{
+			// Literals are written into the instructions that use them, so what is left is
+			// the shape of the arithmetic and nothing else. Division is left-associative and
+			// binds tighter, so "1 - 2 / 2 - 1" is "(1 - (2 / 2)) - 1".
 			name:   "div_and_sub_reorder",
 			source: "1 - 2 / 2 - 1;",
 			want: []ir.Instruction{
-				ir.NewInstruction([]byte("05"), ir.OpSave, ir.Imm(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("02"), ir.OpSave, ir.Imm(2, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("01"), ir.OpSave, ir.Imm(2, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("03"), ir.OpDivide, ir.RefTo([]byte("01")), ir.RefTo([]byte("02"))),
-				ir.NewInstruction([]byte("00"), ir.OpSave, ir.Imm(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("04"), ir.OpSubtract, ir.RefTo([]byte("00")), ir.RefTo([]byte("03"))),
-				ir.NewInstruction([]byte("06"), ir.OpSubtract, ir.RefTo([]byte("04")), ir.RefTo([]byte("05"))),
+				ir.NewInstruction([]byte("00"), ir.OpDivide, ir.Imm(2, 0), ir.Imm(2, 0)),
+				ir.NewInstruction([]byte("01"), ir.OpSubtract, ir.Imm(1, 0), ir.RefTo([]byte("00"))),
+				ir.NewInstruction([]byte("02"), ir.OpSubtract, ir.RefTo([]byte("01")), ir.Imm(1, 0)),
 			},
 		},
 		{
 			name:   "sub_and_mult_reorder",
 			source: "6 - 2 * 2 - 1;",
 			want: []ir.Instruction{
-				ir.NewInstruction([]byte("05"), ir.OpSave, ir.Imm(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("01"), ir.OpSave, ir.Imm(2, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("02"), ir.OpSave, ir.Imm(2, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("03"), ir.OpMultiply, ir.RefTo([]byte("01")), ir.RefTo([]byte("02"))),
-				ir.NewInstruction([]byte("00"), ir.OpSave, ir.Imm(6, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("04"), ir.OpSubtract, ir.RefTo([]byte("00")), ir.RefTo([]byte("03"))),
-				ir.NewInstruction([]byte("06"), ir.OpSubtract, ir.RefTo([]byte("04")), ir.RefTo([]byte("05"))),
+				ir.NewInstruction([]byte("00"), ir.OpMultiply, ir.Imm(2, 0), ir.Imm(2, 0)),
+				ir.NewInstruction([]byte("01"), ir.OpSubtract, ir.Imm(6, 0), ir.RefTo([]byte("00"))),
+				ir.NewInstruction([]byte("02"), ir.OpSubtract, ir.RefTo([]byte("01")), ir.Imm(1, 0)),
 			},
 		},
 	}

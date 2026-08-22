@@ -19,24 +19,40 @@ import (
 // each operand is now, so this reads instead of remembering, and an opcode nobody thought of
 // here is handled by the same rule as the rest.
 
-// consumes answers the operands that name values, in the order those values have to reach the
+// valueOperands answers the operands that are values, in the order they have to reach the
 // stack.
 //
-// A Ref names a value another instruction left behind; nothing else does. An Imm is the value
-// itself and a Const belongs to the operation, and neither is waiting on the stack.
+// A Ref names a value another instruction left behind and an Imm is the value itself, written
+// where it is used. Both end up on the stack; what differs is who puts them there — a Ref is
+// put there by the instruction that produced it, and an Imm by the instruction that takes it.
+//
+// A Const is not here: it belongs to the operation rather than to the program, and the writer
+// reads it out of the instruction without the stack being involved.
 //
 // Subtraction and division read theirs the other way round: the EVM computes `top - next`, so
-// the right one is pushed first. That is the machine's, not the IR's, which is why it is the
-// only thing here still keyed by opcode.
+// the right one reaches the stack first. That is the machine's, not the IR's, which is why it
+// is the only thing here still keyed by opcode.
+func valueOperands(inst ir.Instruction) []ir.Operand {
+	values := make([]ir.Operand, 0, 2)
+	for _, operand := range inst.GetOperands() {
+		if kind := operand.Kind(); kind == ir.KindRef || kind == ir.KindImm {
+			values = append(values, operand)
+		}
+	}
+	if flipped(inst.GetOpCode()) && len(values) == 2 {
+		values[0], values[1] = values[1], values[0]
+	}
+	return values
+}
+
+// consumes answers the values this instruction waits for on the stack: the ones another
+// instruction has to leave there. An Imm is not waited for — it is written down.
 func consumes(inst ir.Instruction) []ir.Operand {
 	taken := make([]ir.Operand, 0, 2)
-	for _, operand := range inst.GetOperands() {
+	for _, operand := range valueOperands(inst) {
 		if operand.Kind() == ir.KindRef {
 			taken = append(taken, operand)
 		}
-	}
-	if flipped(inst.GetOpCode()) && len(taken) == 2 {
-		taken[0], taken[1] = taken[1], taken[0]
 	}
 	return taken
 }

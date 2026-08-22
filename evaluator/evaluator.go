@@ -276,8 +276,7 @@ func (e *Evaluator) EvaluatePush(label []byte, left, right ir.Operand) error {
 func (e *Evaluator) EvaluateJoinOver(label []byte, operands []ir.Operand) error {
 	joined := make([]byte, 0, len(operands)*e.tapeSize)
 	for _, operand := range operands {
-		tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(operand.Bytes())), e.tapeSize)
-		joined = append(joined, tape...)
+		joined = append(joined, byteutil.PaddingTape(e.value(operand), e.tapeSize)...)
 	}
 
 	e.environ.SetTemp(byteutil.ToHex(label), joined)
@@ -290,9 +289,9 @@ func (e *Evaluator) EvaluateJoinOver(label []byte, operands []ir.Operand) error 
 // The first operand is the tape the items are pulled onto, which for a literal is zeros.
 // Keeping the last bytes after every item is what drops whatever was shifted off the left.
 func (e *Evaluator) EvaluatePullOver(label []byte, operands []ir.Operand) error {
-	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(operands[0].Bytes())), e.tapeSize)
+	tape := byteutil.PaddingTape(e.value(operands[0]), e.tapeSize)
 	for _, operand := range operands[1:] {
-		item := byteutil.ExtractSignificantBytes(e.environ.GetTemp(byteutil.ToHex(operand.Bytes())))
+		item := byteutil.ExtractSignificantBytes(e.value(operand))
 		shifted := make([]byte, 0, len(tape)+len(item))
 		shifted = append(shifted, tape...)
 		shifted = append(shifted, item...)
@@ -545,7 +544,7 @@ func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error 
 	}
 	args := make(map[uint64][]byte, len(operands)-1)
 	for at, operand := range operands[1:] {
-		args[uint64(at)] = e.environ.GetTemp(byteutil.ToHex(operand.Bytes()))
+		args[uint64(at)] = e.value(operand)
 	}
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
 	next.SetArguments(args)

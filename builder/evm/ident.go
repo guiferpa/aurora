@@ -1,14 +1,14 @@
 package evm
 
 type IdentManager struct {
-	offsetIdents map[string]byte
+	offsetIdents map[string]int
 }
 
-func (m *IdentManager) GetOffset(ident []byte) byte {
+func (m *IdentManager) GetOffset(ident []byte) int {
 	return m.offsetIdents[string(ident)]
 }
 
-func (m *IdentManager) SetOffset(ident string, offset byte) {
+func (m *IdentManager) SetOffset(ident string, offset int) {
 	m.offsetIdents[ident] = offset
 }
 
@@ -17,5 +17,5 @@ func (m *IdentManager) GetLength() uint {
 }
 
 func NewIdentManager() *IdentManager {
-	return &IdentManager{offsetIdents: make(map[string]byte)}
+	return &IdentManager{offsetIdents: make(map[string]int)}
 }

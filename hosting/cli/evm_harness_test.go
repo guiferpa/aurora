@@ -302,3 +302,18 @@ func TestAScopePastAByteIsReachedOnChainToo(t *testing.T) {
 		})
 	}
 }
+
+// A name is kept in a slot of memory of its own, thirty-two bytes wide, and the address used
+// to go in one byte — so the ninth name in a contract was given the address of the first and
+// the two wrote over each other. Nine names is an ordinary scope.
+func TestManyNamesInAScopeAnswerTheSameOnChainAndOff(t *testing.T) {
+	var body strings.Builder
+	for i := 0; i < 9; i++ {
+		fmt.Fprintf(&body, "  ident n%d = feed(0) + %d;\n", i, i)
+	}
+	body.WriteString("  n0 + n8;\n")
+
+	source := "ident scope = defer {\n" + body.String() + "};"
+
+	agree(t, source, "scope", []string{"5"}, 0)
+}

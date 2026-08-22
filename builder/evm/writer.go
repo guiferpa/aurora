@@ -68,15 +68,19 @@ func WriteSave(w io.Writer, left []byte, size int) (int, error) {
 }
 
 type IdentOffsetMapper interface {
-	GetOffset(ident []byte) byte
-	SetOffset(ident string, offset byte)
+	GetOffset(ident []byte) int
+	SetOffset(ident string, offset int)
 	GetLength() uint
 }
 
+// WriteIdent stores a value under a name, in a slot of memory of its own.
+//
+// The address goes in two bytes. It used to go in one, and a slot is thirty-two wide, so the
+// ninth name in a contract was given the address of the first — 8 * 32 is 256, and one byte
+// holds none of it. Two names became one piece of memory, and each wrote over the other.
 func WriteIdent(w io.Writer, m IdentOffsetMapper, ident []byte) (int, error) {
-	// offset fits in byte only if idents count * MEMORY_SLOT_SIZE < 256 (e.g. up to 7 slots of 32).
-	offset := byte(m.GetLength() * MEMORY_SLOT_SIZE)
-	if _, err := w.Write([]byte{OpPush1, offset}); err != nil {
+	offset := int(m.GetLength()) * MEMORY_SLOT_SIZE
+	if _, err := WritePush2(w, offset); err != nil {
 		return 0, err
 	}
 	if _, err := w.Write([]byte{OpMemoryStore}); err != nil {
@@ -87,8 +91,7 @@ func WriteIdent(w io.Writer, m IdentOffsetMapper, ident []byte) (int, error) {
 }
 
 func WriteLoad(w io.Writer, m IdentOffsetMapper, left []byte) (int, error) {
-	offset := m.GetOffset(left)
-	if _, err := w.Write([]byte{OpPush1, offset}); err != nil {
+	if _, err := WritePush2(w, m.GetOffset(left)); err != nil {
 		return 0, err
 	}
 	return w.Write([]byte{OpMemoryLoad})

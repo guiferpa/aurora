@@ -4,6 +4,69 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.7.0-alpha — 2026-08-22
+
+### The language
+
+- **Reading past what was applied answers with zeros.** A scope still has no signature — applying is handing a vector of values to a block, and `feed(n)` reads a position of it — but a position nothing was applied to now answers with a tape of zeros instead of wrapping around to one that was.
+
+  ```
+  ident sum = defer { feed(0) + feed(1); };
+  printd sum(5);     # 5, not 10
+  ```
+
+  Wrapping turned a value that was never sent into a repeat of one that was, so a forgotten argument came back as a plausible number. Zeros is the answer the language already gave for the same shape of question — reading a field past the end of a shape gives the neutral value — so `feed` stops being the exception.
+
+  It also made the answer depend on how many values the caller sent, which no backend can know without carrying the count, and the EVM one never did: the same program answered 10 off the chain and 5 on it. There is a differential case pinning it now.
+
+  **Breaking:** a scope reading further than the call applies answers differently.
+
+- **A block can promise the shape it answers with.** `as` is a claim the compiler believes and cannot check; `returns` is the other end, and a block that does not keep the promise does not compile.
+
+  ```
+  shape Result { failed, value };
+
+  ident divide = defer {
+    if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; };
+  } returns Result;
+  ```
+
+  What it buys is the other end: a call to a scope that promised has a shape, so `as` disappears from the place it was repeated once per call. The promise is never required, and never will be.
+
+- **A shape's name starts with a capital letter.** `shape person { name };` is refused where it is written.
+
+  A shape's name is the one name in a file that is not a value, and the two forms sit one character apart: `Point{1, 2}` builds a run of tapes, `point(1, 2)` feeds a scope. The braces already said which; the capital says it first, at the declaration. Fields keep whatever case their author likes.
+
+  **Breaking:** a shape declared in lower case no longer compiles.
+
+### The compiler says more
+
+- **A call that applies fewer values than the scope reads is told about it**, at the line the call was written on.
+
+  ```
+  main.ar:2:8: warning: sum reads 2 positions and 1 were applied: feed(1) answers with a tape of zeros
+  ```
+
+  A body says how many positions it can address — the highest index it feeds, plus one — and that is known where it is written. Applying fewer is not an error and will not become one; it is said out loud because the answer is silent. It stays quiet when it is not sure: a name bound twice, an alias, a name answered by an `if`.
+
+- **Every warning names the line it came from.** `aurora build` said which feature it could not carry and left the person to find where. Instructions carry an origin now, so the warning points at the first line that used it, in the form an editor follows.
+
+- **A name bound inside a scope answers the same on a chain and off it.** It compiled to an `MSTORE` with nothing under it, so the contract answered a different number than the program did — `ident x = feed(0); x + feed(1);` applied to 3 and 4 answered 7 off the chain and 4 on it. The lowering decided which operands named values from the opcode, and a binding was not on that list.
+
+### The editor
+
+- **Go to definition**, including across a module boundary, and **rename** a name everywhere it is written in a file.
+- **Completion** offers a module's shapes, and the fields of an imported shape after the dot.
+- **The editor hears what the compiler says**, not only whether the document parses: a short call, a scope holding more deferred scopes than a tape can name, an `assert` outside `aurora test`.
+
+### Inside
+
+The IR was reshaped so that it describes the program rather than one way of running it, which is what lets a backend read it as commands instead of guessing. An operand says what it is; a construction of n values is one instruction rather than a chain; a call carries the values applied to it; a value written down goes into the instruction that uses it. The reasoning is in [rfcs/ir.md](rfcs/ir.md).
+
+Nothing there changes what a program answers, except where it fixed something that was answering wrong.
+
+---
+
 ## v0.6.0-alpha — 2026-08-20
 
 ### Modules

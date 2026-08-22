@@ -15,65 +15,41 @@
   </a>
 </p>
 
-> ⚠ **Alpha** — don't use in production. Stuff can change. See [CHANGELOG.md](CHANGELOG.md) for known limitations and what's in/out.
+> ⚠ **Alpha.** The language moves. What is in and what is out: [CHANGELOG.md](CHANGELOG.md).
 
-## What's Aurora?
+## What Aurora is
 
-Aurora is a **study-focused** language that compiles to the Ethereum Virtual Machine (EVM). It already does basic compilation and runs code via an evaluator, but it's still in the oven: syntax and behavior may shift, and some EVM goodies aren't fully there yet. Perfect for tinkering and learning.
+An **untyped, expression-only** language. Every value is a **tape**: a fixed run of bytes,
+eight wide by default. Numbers, booleans, text and arrays are all the same kind of thing —
+there is nothing else.
 
-> **Where the name comes from.** Aurora is the author's daughter, and the language is a tribute to her. That is also why a new project says `Abidu abide` — it is what she was saying at one year old, and it seemed like the right first thing for the language to say.
+It runs on its own evaluator, and it assembles to EVM bytecode. The point of having both is
+one sentence:
 
-## Summary
+> **The same program answers the same thing on a chain and off it.**
 
-- [Get started](#get-started)
-  - [Install CLI](#install-cli) → full guide: [docs/install.md](docs/install.md)
-  - [Try in 30 seconds](#try-in-30-seconds-no-project-needed) (REPL, no project)
-  - [Project manifest](#project-manifest) → [Manifest reference (aurora.toml)](docs/manifest.md)
-  - [Run from file](#run-from-file)
-  - [Compile to EVM bytecode](#compile-to-evm-bytecode)
-  - [Writing some code](#writing-some-code)
-- [Language Design](docs/language-design.md) (Expressions only, Untyped, Tapes, Text, Arithmetic)
-- [Testing](docs/testing.md) — `assert` and `aurora test`
-- [Editor support](docs/lsp.md) — `aurorals` language server: coloring, diagnostics, hover, completion
-- [Try it out](#try-it-out) — [Playground](#playground)
-- [Extra options](#extra-options) — [Debug flag](#debug-flag)
-- [Roadmap](docs/roadmap.md) — what the language does not do yet, and what each thing would take
-- [Development](docs/development.md) (build, tests, coverage, lint, CI) — for contributors
-- [Publishing releases](docs/releasing.md) (maintainers)
+That is what Aurora is for — an on-chain call you can simulate off-chain, with the same
+source. A differential harness compiles a program, deploys it to an EVM in memory, calls it,
+and compares the answer against the evaluator, so the sentence is checked rather than claimed.
 
-## Get started
+> **Where the name comes from.** Aurora is the author's daughter, and the language is a
+> tribute to her. It is also why a new project says `Abidu abide` — it is what she was saying
+> at one year old, and it seemed like the right first thing for the language to say.
 
-### Install CLI
+## Install
 
-Full install options (including macOS workaround): **[docs/install.md](docs/install.md)**
+Full options, including the macOS Gatekeeper workaround: **[docs/install.md](docs/install.md)**
 
 | Platform | Command |
-|----------|---------|
-| **macOS (Homebrew)** | `brew tap guiferpa/tap && brew install guiferpa/tap/aurora` |
-| **Linux (.deb)** | Download from [Releases](https://github.com/guiferpa/aurora/releases) → `sudo dpkg -i aurora_*_linux_*.deb` |
-| **Other** | [Releases](https://github.com/guiferpa/aurora/releases) — unpack archive for your OS/arch |
-| **From source** | `go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD` (requires [Go](https://go.dev/)) |
+|---|---|
+| **macOS** | `brew tap guiferpa/tap && brew install guiferpa/tap/aurora` |
+| **Linux** | Download from [Releases](https://github.com/guiferpa/aurora/releases) → `sudo dpkg -i aurora_*_linux_*.deb` |
+| **Other** | [Releases](https://github.com/guiferpa/aurora/releases) — unpack the archive for your OS and arch |
+| **From source** | `go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD` |
 
-<details>
-<summary><strong>macOS: “Apple could not verify …” (unverified developer)</strong></summary>
+## Thirty seconds
 
-If Gatekeeper blocks the binary, use one of these:
-
-**Terminal (recommended)** — in the folder where the `aurora` binary is:
-
-```sh
-xattr -cr aurora
-./aurora
-```
-
-**Finder:** Right-click the binary → **Open** → **Open** (one-time approval).
-
-The Homebrew cask applies the workaround automatically. More detail: [docs/install.md#macos-apple-could-not-verify--unverified-developer](docs/install.md#macos-apple-could-not-verify--unverified-developer).
-</details>
-
-### Try in 30 seconds (no project needed)
-
-Jump straight into the REPL, no project setup:
+No project, no files:
 
 ```sh
 aurora repl
@@ -88,23 +64,90 @@ aurora repl
 [0 0 0 0 0 0 0 1]
 ```
 
-`Ctrl+D` exits; `Ctrl+C` clears the line you're typing. No `aurora.toml` needed for `repl`, `version`, or `help`.
+`Ctrl+D` exits, `Ctrl+C` clears the line. `↑`/`↓` walk the history, which is shared by every
+project in `~/.aurora/history`.
 
-**Line editing and history:** `↑`/`↓` browse previous commands, `←`/`→` move the cursor inside the line (also `Home`/`End` and `Ctrl+A`/`Ctrl+E`), and `Backspace`/`Delete` edit in place.
+Or in the browser, with nothing installed: **[playground](https://guiferpa.github.io/aurora)**.
 
-History is shared by every project in **`~/.aurora/history`** (last 1000 commands, written as you type them, `0600`). Point `AURORA_HISTORY` somewhere else to change the file. When stdin is not a terminal — e.g. `printf '1 + 1;\n' | aurora repl` — the REPL reads plain lines, with no history and no key handling.
+<img width="942" alt="Playground demo" src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/playground_demo.gif" />
 
-### Project manifest
+## The language, in one page
 
-A manifest lets you name profiles instead of repeating paths — that's the `aurora.toml` file at your project root (or in a parent folder). **build** and **run** use it when you give them a profile name or nothing at all; **deploy** and **call** always need one, since they read `rpc` and `privkey` from a profile.
+Every block below runs. They are executed by the test suite, so they cannot say what the
+language used to do.
 
-If it is missing, the CLI will gently remind you:
+**A value is a tape, and printing is three readings of one.**
 
+```aurora
+ident a = 10;
+printb a;        #- the bytes:  [0 0 0 0 0 0 0 10]
+printd a;        #- the number: 10
+printc 44;       #- those bytes as text: ,
 ```
-aurora.toml not found in current directory or any parent (run 'aurora init' to create a project manifest)
+
+**Everything is an expression**, including `if`, so it answers with a value.
+
+```aurora
+ident answer = if 10 bigger 9 { 42; } else { 0; };
+printd answer;
 ```
 
-**Create a new project:**
+**A scope is delayed with `defer` and applied to a vector of values.** There is no signature
+and no arity: `feed(n)` reads the nth value applied, and a position nothing was applied to
+answers with zeros.
+
+```aurora
+ident double = defer { feed(0) * 2; };
+printd double(21);
+```
+
+**Tapes are shift registers.** `pull` shifts left with the value entering at the right, `push`
+shifts right, and `head`/`tail` slice the significant bytes.
+
+```aurora
+ident t = [1, 2, 3];
+printb pull t 4;
+printb head t 2;
+```
+
+**Text is one more way of writing a tape.** `"hi"` is the tape holding its bytes, so comparing
+text is comparing bytes and how much fits is how wide a tape is.
+
+```aurora
+printc "hi";
+```
+
+**Shapes name the tapes of a run.** The names are a compile-time directive: nothing about the
+declaration reaches the binary.
+
+```aurora
+shape Point { x, y };
+ident p = Point{10, 20};
+printd p.x + p.y;
+```
+
+**A file is a module**, and `use` brings one in under a name you choose.
+
+```aurora
+#- geometry.ar
+ident area = defer { feed(0) * feed(1); };
+```
+
+```aurora
+#- main.ar
+use geometry as g;
+printd g.area(30, 20);
+```
+
+**There are no negative numbers.** A byte runs from 0 to 255 and no bit marks a value
+negative, so `-x` is x taken away from zero and wrapped. Signed arithmetic is a convention you
+write yourself, and the language treats it as what it is: a reading of bytes.
+
+Full reference: **[docs/language-design.md](docs/language-design.md)** ·
+grammar: **[docs/grammar.md](docs/grammar.md)** · more to paste:
+**[examples/](examples/)**
+
+## A project
 
 ```sh
 mkdir my-project && cd my-project
@@ -120,151 +163,66 @@ src/main.test.ar   its tests
 ```
 
 ```sh
-aurora run    # Abidu abide
-aurora test   # 1 passed, 0 failed in 1 file
+aurora run     # Abidu abide
+aurora test    # 1 passed, 0 failed in 1 file
+aurora build   # src/main.ar → bin/main
 ```
 
-The manifest holds `[project]` and `[profiles.main]` (defaults: `source` = `src/main.ar`, `binary` = `bin/main`). From there `aurora run` and `aurora build` work with no arguments, and a name picks another profile: `aurora run dev`.
+`aurora.toml` names profiles so you stop repeating paths. `run` and `build` take a profile
+name, or a path ending in `.ar`, or nothing at all — a path never needs a manifest. `deploy`
+and `call` always need one, since they read `rpc` and `privkey` from a profile.
 
-A manifest is only needed when you name a profile — running a file by path never needs one.
+Manifest reference: **[docs/manifest.md](docs/manifest.md)** · tests and `assert`:
+**[docs/testing.md](docs/testing.md)** · editor support:
+**[docs/lsp.md](docs/lsp.md)**
 
-Full manifest reference (including optional on-chain bits): [docs/manifest.md](docs/manifest.md).
+## What reaches the chain today
 
-### Run from file
+The evaluator runs the whole language. The EVM backend is being written in slices, and
+`aurora build` **says what it could not carry**, once per feature, at the line that used it —
+a binary that does less than the source said is announced rather than silent.
 
-1. **With a project:** Put your code in `src/main.ar` (or whatever path you set in `aurora.toml`), then from the project root:
+| | on a chain |
+|---|---|
+| arithmetic, and a scope called from a transaction | **yes**, at any tape width |
+| a name bound inside a scope | **yes** |
+| a value written down, wherever it is used | **yes** |
+| `if`, calling a scope from another | not yet |
+| comparisons, `and`/`or`, `^` | not yet |
+| tape operations, `shape` | not yet |
+| `printb` / `printd` / `printc` | **by decision** — a log has nowhere to go on a chain |
+| `assert` | **by decision** — it belongs to `aurora test` |
 
-   ```sh
-   aurora run
-   ```
-
-2. **Run any file:** From anywhere, with no project at all:
-
-   ```sh
-   aurora run path/to/your/file.ar
-   ```
-
-Example — save as `src/main.ar`:
-
-```java
-ident result = 10 * 20;
-printb result + 1;
-```
-
-Run `aurora run`. `printb` writes the bytes of a value, which is what a value is (here 201, 8 bytes wide): `[0 0 0 0 0 0 0 201]`. Read it as a number with `printd` or as text with `printc`.
-
-### Compile to EVM bytecode
-
-Want bytecode instead of running in the evaluator?
-
-```sh
-aurora build                            # the "main" profile: source -> binary
-aurora build dev                        # another profile
-aurora build src/main.ar -o bin/main    # any file, with an explicit output
-```
-
-It reports where the binary went and what is in it:
-
-```
-✨ src/main.ar → bin/main
-   17 instructions, 52 bytes, 8-byte tapes
-```
-
-You get a raw bytecode file — deploy it or feed it to your favorite EVM client. For deploy/call (rpc, privkey, etc.) check the [Manifest reference](docs/manifest.md).
-
-### Writing some code
-
-A few snippets to paste in the REPL or in a file:
-
-```java
-ident x = 10;
-ident y = 20;
-printb x + y;          // 30, as the bytes it is
-printd x + y;          // 30, as a number
-printc 44;             // , — the byte 44, read as text
-
-ident flag = true;
-if flag bigger 0 then 1 else 0;   // if is an expression, returns a value
-
-ident b = true;        // a tape holding 1, same bytes as the number 1
-printb b + 1;          // 2
-
-ident t = [1, 2, 3];   // a tape holding three bytes
-printb pull t 4;       // shifts left, 4 enters at the right
-printb head t 2;       // the first two significant bytes
-```
-
-For more — tapes, text, branches, EVM-style callables — dig into the [examples folder](https://github.com/guiferpa/aurora/tree/main/examples) (e.g. `examples/evm/ident.ar`, `examples/simple_math.ar`). What's in and what's not yet: [CHANGELOG.md](CHANGELOG.md).
-
-## Language Design
-
-Aurora is **untyped** — everything is bytes; numbers, booleans, tapes (arrays) and text are all the same kind of value. Full reference:
-
-**[→ Language Design (Untyped, Tapes, Text, Arithmetic)](docs/language-design.md)**
-
-<details>
-<summary>Quick reference</summary>
-
-- **Values** = tapes: a fixed run of bytes, 8 by default (`ident a = 3` → `[0,0,0,0,0,0,0,3]`). Booleans are tapes too: `true` is the same bytes as `1`.
-- **Tape size** is a compiler parameter: `tape_size` under `[project]` in `aurora.toml`, or `--tape-size` (1 to 32, flag wins). It is the dialect the whole project is written in, so it is the project's and not a profile's. A literal that does not fit is a compile-time error.
-- **Tapes** are shift registers: `pull` shifts left (value in at the right), `push` shifts right (value in at the left), `head`/`tail` slice the significant bytes; index `n` is modulo the tape size.
-- **Text** is one more way of writing a tape, next to `1`, `[1, 2]` and `true`: `"hi"` is the tape holding its bytes. So `"a"` is 97, comparing text is comparing bytes, and how much text fits is how wide a tape is.
-- **Printing** is three readings of the same tape: `printb` the bytes, `printd` the number they spell, `printc` the character that number names, as UTF-8.
-- **Arithmetic**: a tape read as an unsigned big-endian integer, wrapping at the tape width.
-- **Shapes** group values by naming the tapes of a run: `shape Point { x, y };` then `Point{10, 20}`. The names are a compile-time directive — a shape value is a run of tapes with nothing in it saying a shape built it, and nothing about the declaration reaches the binary.
-- **Modules**: a module is a file, and `use a/b/c as x;` reads `a/b/c.ar` from the source root (`src` by default, `source_root` under `[project]` to change it). The alias is mandatory and belongs to the file that wrote it, so `x.add(1, 2)` says where `add` lives without scrolling anywhere. A module runs once, before whoever imports it, and a name that is not there is refused while compiling.
-- **No signs**: a byte runs from 0 to 255 and no bit marks a value negative, so the language has no negative numbers. `-x` is x taken away from zero and wrapped — `-5 + 5` is 0, but `-5 bigger 5` is true.
-</details>
-
-## Try it out
-
-### Playground
-> 🚀 Try Aurora in the browser: [playground](https://guiferpa.github.io/aurora) — WebAssembly + Go, runs Aurora source right there.
-<img width="942" alt="Playground demo" src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/playground_demo.gif" />
+What each of those would take: **[docs/roadmap.md](docs/roadmap.md)**. What is being decided
+now: **[rfcs/](rfcs/)**.
 
 ## Commands
 
-Quick reference: `run` and `build` take one argument — a profile name, or a path ending in `.ar`. A path needs no manifest; a profile name needs an `aurora.toml` in the current dir or a parent, which `aurora init` creates.
-
-```sh
-aurora help
-
-Usage:
-  aurora [command]
-
-Available Commands:
-  build       Build binary from source code
-  call        Call program on a blockchain
-  completion  Generate the autocompletion script for the specified shell
-  deploy      Deploy program to a blockchain
-  help        Help about any command
-  init        Create an aurora.toml manifest in the current directory
-  repl        Enter in Read-Eval-Print Loop mode
-  run         Run program directly from source code
-  version     Show toolbox version
-
-Flags:
-  -h, --help   help for aurora
-
-Use "aurora [command] --help" for more information about a command.
 ```
+build       Build binary from source code
+call        Call program on a blockchain
+completion  Generate the autocompletion script for the specified shell
+deploy      Deploy program to a blockchain
+help        Help about any command
+init        Start an Aurora project in the current directory
+repl        Enter in Read-Eval-Print Loop mode
+run         Run program directly from source code
+test        Run the test files of a project
+version     Show toolbox version
+```
+
+`aurora <command> --help` for the flags of one. `--tape-size` (1 to 32) sets how wide a value
+is, and overrides `tape_size` from the manifest.
 
 ## Contributing
 
-Building the binary, running the suite, coverage expectations, lint and CI are all in **[docs/development.md](docs/development.md)**.
-
-Quick start:
+Build, tests, coverage, lint and CI: **[docs/development.md](docs/development.md)**. How the
+compiler is put together: **[docs/contributing/architecture.md](docs/contributing/architecture.md)**.
 
 ```sh
-go run ./cmd/aurora repl     # fast loop, no build needed
-go test ./... -race          # tests
-make lint                    # golangci-lint, same version and args CI uses
+go run ./cmd/aurora repl   # fast loop, no build needed
+make check                 # build, wasm, test, lint — what CI runs
 ```
 
-<details>
-<summary><strong>Publishing releases (maintainers)</strong></summary>
-
-Releases are built with [GoReleaser](https://goreleaser.com/) on tag push. Full steps (Homebrew tap, secrets, apt repo options):
-
-**[→ docs/releasing.md](docs/releasing.md)**
-</details>
+Releases are built with [GoReleaser](https://goreleaser.com/) on tag push:
+**[docs/releasing.md](docs/releasing.md)**.

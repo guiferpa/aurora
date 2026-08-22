@@ -39,7 +39,7 @@ func TestEvaluateAdd(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(1))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(2))
-	if err := ev.EvaluateAdd([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateAdd([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating add: %v", err)
 		return
 	}
@@ -54,7 +54,7 @@ func TestEvaluateSubtract(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateSubtract([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateSubtract([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating subtract: %v", err)
 		return
 	}
@@ -69,7 +69,7 @@ func TestEvaluateMultiply(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateMultiply([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateMultiply([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating multiply: %v", err)
 		return
 	}
@@ -84,7 +84,7 @@ func TestEvaluateDivide(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateDivide([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateDivide([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating divide: %v", err)
 		return
 	}
@@ -99,7 +99,7 @@ func TestEvaluateExponential(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(3))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(3))
-	if err := ev.EvaluateExponential([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateExponential([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating exponential: %v", err)
 		return
 	}
@@ -114,7 +114,7 @@ func TestEvaluateDiff(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateDiff([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateDiff([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating diff: %v", err)
 		return
 	}
@@ -129,7 +129,7 @@ func TestEvaluateEquals(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateEquals([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateEquals([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating equals: %v", err)
 		return
 	}
@@ -144,7 +144,7 @@ func TestEvaluateBigger(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateBigger([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateBigger([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating bigger: %v", err)
 		return
 	}
@@ -159,7 +159,7 @@ func TestEvaluateSmaller(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FromUint64(2))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(1))
-	if err := ev.EvaluateSmaller([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateSmaller([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating smaller: %v", err)
 		return
 	}
@@ -174,7 +174,7 @@ func TestEvaluateAnd(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.TrueTape(byteutil.DefaultTapeSize))
-	if err := ev.EvaluateAnd([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateAnd([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating and: %v", err)
 		return
 	}
@@ -189,7 +189,7 @@ func TestEvaluateAnd_False(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FalseTape(byteutil.DefaultTapeSize))
-	if err := ev.EvaluateAnd([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateAnd([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating and: %v", err)
 		return
 	}
@@ -204,7 +204,7 @@ func TestEvaluateOr(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.TrueTape(byteutil.DefaultTapeSize))
-	if err := ev.EvaluateOr([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateOr([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating or: %v", err)
 		return
 	}
@@ -219,7 +219,7 @@ func TestEvaluateOr_False(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 	ev.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FalseTape(byteutil.DefaultTapeSize))
-	if err := ev.EvaluateOr([]byte("02"), []byte("00"), []byte("01")); err != nil {
+	if err := ev.EvaluateOr([]byte("02"), ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))); err != nil {
 		t.Errorf("Error evaluating or: %v", err)
 		return
 	}
@@ -233,7 +233,7 @@ func TestEvaluateOr_False(t *testing.T) {
 func TestEvaluateSave(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	val := byteutil.FromUint64(42)
-	if err := ev.EvaluateSave([]byte("00"), val, nil); err != nil {
+	if err := ev.EvaluateSave([]byte("00"), ir.RefTo(val), ir.Nothing()); err != nil {
 		t.Errorf("Error evaluating save: %v", err)
 		return
 	}
@@ -247,7 +247,7 @@ func TestEvaluateLoad(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	expected := byteutil.FromUint64(13)
 	ev.environ.SetIdent(byteutil.ToHex([]byte("00")), expected)
-	if err := ev.EvaluateLoad([]byte("01"), []byte("00"), nil); err != nil {
+	if err := ev.EvaluateLoad([]byte("01"), ir.RefTo([]byte("00")), ir.Nothing()); err != nil {
 		t.Errorf("Error evaluating load: %v", err)
 		return
 	}
@@ -264,7 +264,7 @@ func TestEvaluateReturn(t *testing.T) {
 
 	expected := byteutil.FromUint64(100)
 	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), expected)
-	if err := ev.EvaluateReturn([]byte("01"), []byte("02"), []byte("00")); err != nil {
+	if err := ev.EvaluateReturn([]byte("01"), ir.RefTo([]byte("02")), ir.RefTo([]byte("00"))); err != nil {
 		t.Errorf("Error evaluating return: %v", err)
 		return
 	}
@@ -282,7 +282,7 @@ func TestEvaluateGetArg(t *testing.T) {
 	ev := New(NewEvaluatorOptions{
 		Args: args,
 	})
-	if err := ev.EvaluateGetArg([]byte("00"), byteutil.FromUint64(0), nil); err != nil {
+	if err := ev.EvaluateGetArg([]byte("00"), ir.RefTo(byteutil.FromUint64(0)), ir.Nothing()); err != nil {
 		t.Errorf("Error evaluating get arg: %v", err)
 		return
 	}
@@ -300,7 +300,7 @@ func TestEvaluateIf(t *testing.T) {
 		ev := New(NewEvaluatorOptions{})
 		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
 		ev.cursor = 0
-		if err := ev.EvaluateIf([]byte("01"), []byte("00"), byteutil.FromUint64(10)); err != nil {
+		if err := ev.EvaluateIf([]byte("01"), ir.RefTo([]byte("00")), ir.RefTo(byteutil.FromUint64(10))); err != nil {
 			t.Errorf("Error evaluating if: %v", err)
 			return
 		}
@@ -313,7 +313,7 @@ func TestEvaluateIf(t *testing.T) {
 		ev := New(NewEvaluatorOptions{})
 		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
 		ev.cursor = 0
-		if err := ev.EvaluateIf([]byte("01"), []byte("00"), byteutil.FromUint64(3)); err != nil {
+		if err := ev.EvaluateIf([]byte("01"), ir.RefTo([]byte("00")), ir.RefTo(byteutil.FromUint64(3))); err != nil {
 			t.Errorf("Error evaluating if: %v", err)
 			return
 		}
@@ -326,7 +326,7 @@ func TestEvaluateIf(t *testing.T) {
 func TestEvaluateJump(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	ev.cursor = 0
-	if err := ev.EvaluateJump([]byte("00"), byteutil.FromUint64(2), nil); err != nil {
+	if err := ev.EvaluateJump([]byte("00"), ir.RefTo(byteutil.FromUint64(2)), ir.Nothing()); err != nil {
 		t.Errorf("Error evaluating jump: %v", err)
 		return
 	}
@@ -342,7 +342,7 @@ func TestEvaluateJump(t *testing.T) {
 func TestEvaluatePrintHandsOverTheWholeValue(t *testing.T) {
 	cases := []struct {
 		name  string
-		print func(ev *Evaluator, label, left []byte) error
+		print func(ev *Evaluator, label []byte, left ir.Operand) error
 		port  func(p *recorder) NewEvaluatorOptions
 	}{
 		{
@@ -370,7 +370,7 @@ func TestEvaluatePrintHandsOverTheWholeValue(t *testing.T) {
 			ev := New(tc.port(printer))
 			ev.environ.SetTemp(byteutil.ToHex([]byte("00")), reel)
 
-			if err := tc.print(ev, []byte("01"), []byte("00")); err != nil {
+			if err := tc.print(ev, []byte("01"), ir.RefTo([]byte("00"))); err != nil {
 				t.Fatalf("%s: %v", tc.name, err)
 			}
 			if !bytes.Equal(printer.seen, reel) {

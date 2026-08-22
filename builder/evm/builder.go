@@ -81,12 +81,18 @@ func (b *Builder) GetInstruction() ir.Instruction {
 	return b.insts[b.cursor]
 }
 
-// PickDeferAtCursor tries to parse a deferred scope at the given cursor.
-// If insts[cursor] is OpDefer with a valid body and the next instruction is OpIdent,
-// it returns the Dispatcher (with Offset and Length set), the cursor position after
-// the defer body (pointing at the OpIdent), and true. Otherwise returns (nil, cursor, false).
-// Does not mutate b.cursor.
-func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, nextCursor int, ok bool) {
+// PickDeferAtCursor answers the scope written at this cursor, if one is: the instructions of
+// its body and the name it was bound to.
+//
+// It finds the scope and does not write it. Where a scope lands depends on how many come
+// before it, and none of that is known while they are still being found — so writing here
+// meant writing every scope twice, throwing the first away, and reporting a failure to write
+// as "there is no scope here", which is a different thing and hid the reason.
+//
+// A scope reaches the chain as an entry in the dispatcher, and what the dispatcher matches on
+// is the name it was bound to. So the binding that follows the body is part of finding one: a
+// scope nothing was bound to is nothing a transaction can reach.
+func (b *Builder) PickDeferAtCursor(cursor int) (d *Dispatcher, nextCursor int, ok bool) {
 	if cursor >= len(b.insts) {
 		return nil, cursor, false
 	}
@@ -98,68 +104,77 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	// OpDefer layout: [OpDefer] [body of length N] [OpIdent]. Right operand = N (body length in instructions).
 	bodylength := byteutil.ToUint64(inst.GetRight().Bytes())
 	end := cursor + 1 + int(bodylength)
-	if end > len(b.insts) {
-		return nil, cursor, false
-	}
-	body := b.insts[cursor+1 : end]
-	body = Lowering(body, b.tapeSize)
-
-	// Written once to find out how long it is, and once more when where it lands is known —
-	// a jump inside it carries an address in the contract, and that address depends on how
-	// many scopes come before it, which is not known until they have all been found.
-	code := bytes.NewBuffer(make([]byte, 0))
-	if err := WriteScope(code, body, b.tapeSize, 0); err != nil {
-		return nil, cursor, false
-	}
-
-	// Defer must be assigned to an ident (e.g. "ident f = defer { ... }"); that OpIdent is the selector.
 	if end >= len(b.insts) {
 		return nil, cursor, false
 	}
+
 	selectorInst := b.insts[end]
 	if selectorInst.GetOpCode() != ir.OpIdent {
 		return nil, cursor, false
 	}
-	selector := selectorInst.GetLeft().Bytes()
 
-	// Prepend OpJumpDestiny so the EVM can jump to this block when the selector matches.
-	d = &Dispatcher{
-		Selector: selector,
-		Code:     code,
-		Offset:   offset,
-		Length:   code.Len(),
-		Body:     body,
-	}
-	return d, end, true
+	body := Lowering(b.insts[cursor+1:end], b.tapeSize)
+	return &Dispatcher{Selector: selectorInst.GetLeft().Bytes(), Body: body}, end, true
 }
 
-func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
-	dispatchers := make([]Dispatcher, 0)
-	rootinsts := make([]ir.Instruction, 0)
-	offset := 0
+// pickScopes separates the scopes a transaction can reach from the code that is not held by
+// one, which is the top of the program.
+func (b *Builder) pickScopes() (dispatchers []Dispatcher, root []ir.Instruction) {
+	dispatchers = make([]Dispatcher, 0)
+	root = make([]ir.Instruction, 0)
 
 	for b.cursor < len(b.insts) {
-		inst := b.GetInstruction()
-		if d, nextCursor, ok := b.PickDeferAtCursor(b.cursor, offset); ok {
+		if d, nextCursor, ok := b.PickDeferAtCursor(b.cursor); ok {
 			dispatchers = append(dispatchers, *d)
-			offset += d.Length
-			// Skip the OpIdent that assigns the defer to a variable; it has no EVM meaning (selector is already in the dispatcher).
+			// Skip the binding that named the scope: it is the dispatcher's selector and
+			// has no meaning of its own on chain.
 			b.cursor = nextCursor + 1
 			continue
 		}
-		rootinsts = append(rootinsts, inst)
+		root = append(root, b.GetInstruction())
 		b.cursor++
 	}
 
-	// Where each scope lands is known only now, since it depends on how many there are: the
-	// dispatcher block comes first and every entry of it is the same size. So they are
-	// written again, this time with the address they will have.
-	// The runtime opens by saying where the first frame begins, and the scopes come after
-	// the dispatcher, so both are ahead of every body.
+	return dispatchers, root
+}
+
+// measureScopes answers how long each scope is and where it falls among them.
+//
+// It measures by writing to something that only counts, rather than by writing the whole scope
+// into a buffer that is then thrown away — which is what this did, since where a scope lands
+// is not known until every scope has been found and the scope has to be written again anyway.
+func (b *Builder) measureScopes(dispatchers []Dispatcher) (int, error) {
+	offset := 0
+	for at := range dispatchers {
+		d := &dispatchers[at]
+		var measured counter
+		if err := WriteScope(&measured, d.Body, b.tapeSize, 0); err != nil {
+			return 0, err
+		}
+		d.Offset, d.Length = offset, int(measured)
+		offset += d.Length
+	}
+	return offset, nil
+}
+
+// PickRuntimeCode assembles the runtime in passes, each of which needs the one before it:
+// the scopes are found, then measured, and only then written — a jump inside a scope carries
+// an address in the contract, and that address depends on how many scopes come before it.
+func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
+	dispatchers, rootinsts := b.pickScopes()
+
+	offset, err := b.measureScopes(dispatchers)
+	if err != nil {
+		return nil, err
+	}
+
+	// The runtime opens by saying where the first frame begins, and the scopes come after the
+	// dispatcher, so both are ahead of every body.
 	referenced := FRAME_START_SIZE
 	if len(dispatchers) > 0 {
 		referenced += DISPATCHER_BYTES_SIZE*len(dispatchers) + NO_MATCH_DISPATCHER_SIZE
 	}
+
 	for at := range dispatchers {
 		d := &dispatchers[at]
 		code := bytes.NewBuffer(make([]byte, 0))

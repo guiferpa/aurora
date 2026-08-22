@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"syscall/js"
 
+	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
 	"github.com/guiferpa/aurora/lexer"
@@ -76,6 +77,7 @@ func analyses() []js.Func {
 	session := textdoc.NewSession(textdoc.NewSessionOptions{
 		Lexer:  lexer.New(),
 		Parser: parser.New(),
+		Emit:   emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
 	})
 
 	diagnostics := js.FuncOf(func(this js.Value, args []js.Value) any {

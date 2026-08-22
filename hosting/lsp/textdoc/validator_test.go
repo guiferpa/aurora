@@ -5,7 +5,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 )
 
 func TestValidateCodeAcceptsValidSource(t *testing.T) {
@@ -163,5 +166,44 @@ func TestPathFromURI(t *testing.T) {
 				t.Errorf("PathFromURI(%q) = %q, want %q", tc.uri, got, tc.want)
 			}
 		})
+	}
+}
+
+// A document that parses can still be worth a word, and the editor is where it is cheapest to
+// hear. Until this the analysis stopped at the parser, so everything the compiler had to say
+// short of refusing was said only to whoever ran "aurora build".
+func TestADocumentThatParsesCanStillBeWarnedAbout(t *testing.T) {
+	session := NewSession(NewSessionOptions{
+		Lexer:  lexer.New(),
+		Parser: parser.New(),
+		Emit:   emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+	})
+
+	source := "ident fn = defer {\n  printd feed(2);\n};\n\nfn();\n"
+	diagnostics := session.ValidateCode(Document{Filename: "main.ar", Source: source})
+
+	if len(diagnostics) != 1 {
+		t.Fatalf("expected one diagnostic, got %v", diagnostics)
+	}
+	if got := diagnostics[0].Severity; got != SeverityWarning {
+		t.Errorf("severity is %d, want a warning: a short call is legal, and what was not applied answers zeros", got)
+	}
+	if !strings.Contains(diagnostics[0].Message, "3 positions") {
+		t.Errorf("message is %q, want it to say the scope reads three positions", diagnostics[0].Message)
+	}
+	// Line 5 in the source, which the editor counts from zero.
+	if got := diagnostics[0].Range.Start.Line; got != 4 {
+		t.Errorf("it underlines line %d, want the line the call is on", got)
+	}
+}
+
+// Without the port a document is checked as far as it parses, which is what the playground
+// does and what this was before.
+func TestWithoutTheEmitterOnlyTheParseIsChecked(t *testing.T) {
+	session := NewSession(NewSessionOptions{Lexer: lexer.New(), Parser: parser.New()})
+
+	source := "ident fn = defer {\n  printd feed(2);\n};\n\nfn();\n"
+	if diagnostics := session.ValidateCode(Document{Filename: "main.ar", Source: source}); len(diagnostics) != 0 {
+		t.Errorf("expected nothing to say, got %v", diagnostics)
 	}
 }

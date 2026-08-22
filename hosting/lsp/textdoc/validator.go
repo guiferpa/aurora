@@ -12,6 +12,7 @@ import (
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/resolver"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/diag"
 	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
@@ -42,6 +43,10 @@ type Analysis struct {
 	// name a module does not have. It is kept apart from Err because it is found after the
 	// parse and only when the parse worked.
 	ModuleErr error
+	// Warnings is what compiling the document had to say without refusing it: things worth
+	// a word that a parse cannot see, because they are about the whole of a tree rather
+	// than about a token.
+	Warnings []diag.Warning
 }
 
 // module answers the module of a specifier among the ones this document imports.
@@ -110,6 +115,15 @@ func (s *Session) Analyze(doc Document) *Analysis {
 		analysis.ModuleErr = loader.Check(append(analysis.Modules, module.Module{ID: "", Tree: tree}))
 	}
 
+	// And what compiling it has to say. The emitter answers with warnings rather than
+	// refusing, so a document that parses can still be worth a word — and the editor is
+	// where that word is cheapest to hear.
+	if s.emit != nil {
+		if program, err := s.emit(tree); err == nil {
+			analysis.Warnings = program.Warnings
+		}
+	}
+
 	return analysis
 }
 
@@ -128,7 +142,9 @@ func (a *Analysis) Diagnostics() Diagnostics {
 		failure = a.ModuleErr
 	}
 	if failure == nil {
-		return diagnostics
+		// Nothing is wrong enough to stop it, which is when what the compiler merely
+		// wanted to say is worth saying.
+		return append(diagnostics, a.warnings()...)
 	}
 
 	source := "aurora"
@@ -147,6 +163,31 @@ func (a *Analysis) Diagnostics() Diagnostics {
 		Source:   source,
 		Message:  failure.Error(),
 	})
+}
+
+// warnings answers what compiling the document had to say, as things an editor underlines.
+//
+// They are warnings and not errors because none of them stops a program: a call applying
+// fewer values than a scope reads is legal, and what was not applied answers with zeros. That
+// answer is silent, which is the whole reason the compiler says anything at all — and an
+// editor is where it is heard soonest.
+//
+// One that has no place to point at is dropped rather than pinned to the top of the file: a
+// marker on line one about something written on line thirty is worse than no marker.
+func (a *Analysis) warnings() Diagnostics {
+	diagnostics := Diagnostics{}
+	for _, warning := range a.Warnings {
+		if !warning.Positioned() {
+			continue
+		}
+		diagnostics = append(diagnostics, Diagnostic{
+			Range:    a.Mapper.RangeAt(warning.Line, warning.Column),
+			Severity: SeverityWarning,
+			Source:   "aurora",
+			Message:  warning.Message,
+		})
+	}
+	return diagnostics
 }
 
 // rangeFor converts a byte span into a range, backing up to the last meaningful character

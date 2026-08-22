@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/hosting/lsp/state"
 	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
@@ -53,6 +54,7 @@ func main() {
 	sv := server{textdoc: textdoc.NewSession(textdoc.NewSessionOptions{
 		Lexer:   lexer.New(),
 		Parser:  parser.New(),
+		Emit:    emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
 		Resolve: resolveModules(documents),
 	})}
 

@@ -4,6 +4,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/ir"
 	"github.com/guiferpa/aurora/wire/module"
 )
 
@@ -18,7 +19,19 @@ type Session struct {
 	lexer   *lexer.Lexer
 	parser  parser.Parser
 	resolve Resolve
+	emit    Emit
 }
+
+// Emit compiles a tree, which is how the editor hears what the compiler has to say about a
+// document beyond whether it parses.
+//
+// A tree that parses can still be worth a word — a call applying fewer values than the scope
+// it reaches reads, a scope holding more deferred scopes than a tape can name — and until
+// this the editor heard none of it: analysis stopped at the parser, and everything the
+// emitter says was said only to whoever ran "aurora build".
+//
+// It is a port for the same reason Resolve is: a host does not put the compiler together.
+type Emit func(ast.AST) (ir.Program, error)
 
 // Resolve answers with the modules a document imports, given the use lines it opens with.
 //
@@ -38,8 +51,10 @@ type NewSessionOptions struct {
 	// Resolve is optional. Without it a document is analysed on its own, which is what it
 	// was before modules existed.
 	Resolve Resolve
+	// Emit is optional. Without it a document is only checked as far as it parses.
+	Emit Emit
 }
 
 func NewSession(opts NewSessionOptions) *Session {
-	return &Session{lexer: opts.Lexer, parser: opts.Parser, resolve: opts.Resolve}
+	return &Session{lexer: opts.Lexer, parser: opts.Parser, resolve: opts.Resolve, emit: opts.Emit}
 }

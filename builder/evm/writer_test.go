@@ -168,36 +168,62 @@ func TestWriteLoad(t *testing.T) {
 
 // An argument arrives as a whole 32-byte word and is cut to the tape on the way in, the same
 // as the evaluator does when it narrows the arguments it was handed.
+// Reading one of the values applied to the scope reads the frame, and never the calldata.
+// Whoever entered the scope put them there — the way in from a transaction copies them out of
+// the calldata, and a scope calling another writes what it worked out — which is the whole of
+// what the frame buys: a body that does not know how it was entered.
 func TestWriteGetArg(t *testing.T) {
-	bs := bytes.NewBuffer(make([]byte, 0))
-	index := byteutil.FromUint64(0)
-	if _, err := WriteGetArg(bs, index, byteutil.DefaultTapeSize); err != nil {
-		t.Errorf("Error writing get arg: %v", err)
-		return
+	cases := []struct {
+		name string
+		at   uint64
+		want []byte
+	}{
+		{name: "the first position", at: 0, want: []byte{OpPush2, 0x00, 0x00}},
+		{name: "the third", at: 2, want: []byte{OpPush2, 0x00, 0x40}},
 	}
-	got := bs.Bytes()
-	expected := []byte{OpPush1, 0x20, OpCallDataLoad, OpPush8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, OpAnd}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("GetArg: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bytes.NewBuffer(make([]byte, 0))
+			if _, err := WriteGetArg(bs, byteutil.FromUint64(tc.at), byteutil.DefaultTapeSize); err != nil {
+				t.Fatalf("writing the read: %v", err)
+			}
+
+			expected := append(append([]byte{}, tc.want...), OpPush1, FRAME_POINTER, OpMemoryLoad, OpAdd, OpMemoryLoad)
+			if got := bs.Bytes(); !bytes.Equal(got, expected) {
+				t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+			}
+		})
 	}
 }
 
+// Ending a scope goes back to whoever called it: the value is on the stack and the address to
+// go back to is under it. It never answers the chain — that is the epilogue's, and keeping it
+// there is what lets one body serve a transaction and a scope alike.
 func TestWriteReturn(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
 	if _, err := WriteReturn(bs); err != nil {
-		t.Errorf("Error writing return: %v", err)
-		return
+		t.Fatalf("writing the return: %v", err)
 	}
-	got := bs.Bytes()
-	// Through a slot of its own, not the first one: that holds where the running scope's
-	// frame begins, and writing the answer there would lose the frame in the act of
-	// answering.
-	expected := []byte{
-		OpPush1, RETURN_SCRATCH, OpMemoryStore,
-		OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn,
+	if got, want := bs.Bytes(), []byte{OpSwap1, OpJump}; !bytes.Equal(got, want) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(want))
 	}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Return: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+}
+
+// Answering the chain goes through a slot of its own, not the first one: that holds where the
+// running scope's frame begins, and writing the answer there would lose the frame in the act
+// of answering.
+func TestWriteAnswer(t *testing.T) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if _, err := WriteAnswer(bs); err != nil {
+		t.Fatalf("writing the answer: %v", err)
+	}
+	expected := []byte{OpPush1, RETURN_SCRATCH, OpMemoryStore, OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn}
+	if got := bs.Bytes(); !bytes.Equal(got, expected) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+	}
+	if bs.Len() != ANSWER_SIZE {
+		t.Errorf("it measures %d and says it measures %d", bs.Len(), ANSWER_SIZE)
 	}
 }
 
@@ -338,7 +364,7 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 		ir.NewInstruction([]byte("04"), ir.OpLoad, ir.NameOf("x"), ir.Nothing()),
 	}
 
-	positions, err := PositionsOf(insts, 8, nil, nil)
+	positions, err := PositionsOf(insts, 8, nil, nil, true)
 	if err != nil {
 		t.Fatalf("measuring: %v", err)
 	}
@@ -350,7 +376,7 @@ func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
 	im := NewIdentManager()
 	for at, inst := range insts {
 		before := bs.Len()
-		if err := WriteInstruction(bs, im, inst, 8, 0, nil); err != nil {
+		if err := WriteInstruction(bs, im, inst, 8, 0, nil, true); err != nil {
 			t.Fatalf("writing: %v", err)
 		}
 		if want := positions[at+1] - positions[at]; bs.Len()-before != want {

@@ -51,6 +51,8 @@ const (
 	// FRAME_START_SIZE is what writing where the first frame begins measures: a push of the
 	// address, a push of the slot, and the store.
 	FRAME_START_SIZE = PUSH_TWO_SIZE + PUSH_ONE_SIZE + 1
+	// ANSWER_SIZE is what handing a value to the chain measures.
+	ANSWER_SIZE = PUSH_ONE_SIZE + 1 + PUSH_ONE_SIZE + PUSH_ONE_SIZE + 1
 )
 
 type Dispatcher struct {
@@ -106,7 +108,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	// a jump inside it carries an address in the contract, and that address depends on how
 	// many scopes come before it, which is not known until they have all been found.
 	code := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteCode(code, NewIdentManagerAt(FrameNamesAt(body)), body, b.tapeSize, 0); err != nil {
+	if err := WriteScope(code, body, b.tapeSize, 0); err != nil {
 		return nil, cursor, false
 	}
 
@@ -123,7 +125,7 @@ func (b *Builder) PickDeferAtCursor(cursor int, offset int) (d *Dispatcher, next
 	// Prepend OpJumpDestiny so the EVM can jump to this block when the selector matches.
 	d = &Dispatcher{
 		Selector: selector,
-		Code:     bytes.NewBuffer(append([]byte{OpJumpDestiny}, code.Bytes()...)),
+		Code:     code,
 		Offset:   offset,
 		Length:   code.Len(),
 		Body:     body,
@@ -140,7 +142,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 		inst := b.GetInstruction()
 		if d, nextCursor, ok := b.PickDeferAtCursor(b.cursor, offset); ok {
 			dispatchers = append(dispatchers, *d)
-			offset += 1 + d.Length
+			offset += d.Length
 			// Skip the OpIdent that assigns the defer to a variable; it has no EVM meaning (selector is already in the dispatcher).
 			b.cursor = nextCursor + 1
 			continue
@@ -161,18 +163,17 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	for at := range dispatchers {
 		d := &dispatchers[at]
 		code := bytes.NewBuffer(make([]byte, 0))
-		// One past the offset, because a scope opens with the JUMPDEST its dispatcher
-		// jumps to.
-		if _, err := WriteCode(code, NewIdentManagerAt(FrameNamesAt(d.Body)), d.Body, b.tapeSize, referenced+d.Offset+1); err != nil {
+		if err := WriteScope(code, d.Body, b.tapeSize, referenced+d.Offset); err != nil {
 			return nil, err
 		}
-		d.Code = bytes.NewBuffer(append([]byte{OpJumpDestiny}, code.Bytes()...))
+		d.Code = code
 	}
 
 	if len(rootinsts) > 0 {
 		rootinsts = Lowering(rootinsts, b.tapeSize)
 		root := bytes.NewBuffer(make([]byte, 0))
-		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, b.tapeSize, referenced+offset); err != nil {
+		// Code no scope holds: nobody called it, so its return ends the call.
+		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, b.tapeSize, referenced+offset, true); err != nil {
 			return nil, err
 		}
 		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil

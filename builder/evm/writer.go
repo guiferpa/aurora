@@ -100,14 +100,12 @@ func WriteLoad(w io.Writer, m IdentOffsetMapper, left []byte) (int, error) {
 	return w.Write([]byte{OpMemoryLoad})
 }
 
-// WriteReturn assumes the return value is on the stack (e.g. after ADD). It stores it at
-// mem[0] with MSTORE then returns 32 bytes from 0 so RETURN works without prior memory use.
-// WriteReturn hands the value on the stack to the chain.
+// WriteAnswer hands the value on the stack to the chain.
 //
-// It goes through a slot of its own rather than through the first one, which now holds where
-// the running scope's frame starts: writing the answer there would lose the frame in the act
-// of answering.
-func WriteReturn(w io.Writer) (int, error) {
+// It goes through a slot of its own rather than through the first one, which holds where the
+// running scope's frame starts: writing the answer there would lose the frame in the act of
+// answering.
+func WriteAnswer(w io.Writer) (int, error) {
 	if _, err := w.Write([]byte{OpPush1, RETURN_SCRATCH}); err != nil {
 		return 0, err
 	}
@@ -115,6 +113,17 @@ func WriteReturn(w io.Writer) (int, error) {
 		return 0, err
 	}
 	return w.Write([]byte{OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn})
+}
+
+// WriteReturn ends a scope: the value it answers with is on the stack, and the address to go
+// back to is under it.
+//
+// It goes back to whoever called and never to the chain, even when the caller is the way in
+// from a transaction. That is what lets one body serve both: a scope called by another has to
+// hand its value over and let that one carry on, and only the way in from a transaction ends
+// the call — which it does in the epilogue, where it belongs.
+func WriteReturn(w io.Writer) (int, error) {
+	return w.Write([]byte{OpSwap1, OpJump})
 }
 
 // WriteFrameAddress puts on the stack where something at this offset of the frame lives.
@@ -130,6 +139,120 @@ func WriteFrameAddress(w io.Writer, offset int) error {
 		return err
 	}
 	return nil
+}
+
+// WriteScopePrologue emits the way in from a transaction.
+//
+// A scope can be entered two ways, and they differ in exactly one thing: where the values
+// applied to it come from. A transaction brings them in the calldata; another scope has them
+// as values it just worked out. Everything after that is the same scope doing the same thing,
+// so it is written once and entered twice:
+//
+//	external:  JUMPDEST          <- the dispatcher jumps here
+//	           <prologue>        copies the calldata into the frame
+//	           PUSH2 <epilogue>  the address to come back to
+//	           PUSH2 <internal>
+//	           JUMP
+//	epilogue:  JUMPDEST          <- the body comes back here, value on the stack
+//	           <answer the chain>
+//	internal:  JUMPDEST          <- another scope jumps here, having written the frame
+//	           <body>            feed(n) reads the frame, whoever filled it
+//	           SWAP1; JUMP       back to whoever called
+//
+// The prologue is what makes the body have one shape. Without it the body would have to know
+// how it was entered — reading the calldata one way and the frame the other — and every
+// instruction that touches an applied value would carry that question. With it, the body
+// reads the frame and nothing else, and the two ways in differ only in who filled it.
+//
+// It copies as many positions as the body addresses, which is the highest it feeds plus one.
+// A position the calldata does not reach reads zero, which is what the language answers for
+// reading past what was applied: CALLDATALOAD past the end gives zeros, so the rule costs
+// nothing to keep.
+//
+// Each value is cut to the tape width on the way in rather than on every read. An argument
+// arrives as a thirty-two byte word whatever the tape is, and letting it through whole would
+// hand a contract a value its own language cannot hold.
+//
+// The body answers to whoever called it and never to the chain, even when the caller is the
+// prologue: answering the chain is what the epilogue does, and keeping it there is what lets
+// the same body serve a transaction and a scope.
+func WriteScopePrologue(w io.Writer, reads int, tapeSize int, epilogue, internal int) error {
+	for at := 0; at < reads; at++ {
+		if _, err := w.Write([]byte{OpPush1, GetCalldataArgsOffset(uint64(at))}); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
+			return err
+		}
+		if _, err := WriteMask(w, tapeSize); err != nil {
+			return err
+		}
+		if err := WriteFrameAddress(w, at*MEMORY_SLOT_SIZE); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte{OpMemoryStore}); err != nil {
+			return err
+		}
+	}
+
+	if _, err := WritePush2(w, epilogue); err != nil {
+		return err
+	}
+	if _, err := WritePush2(w, internal); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte{OpJump})
+	return err
+}
+
+// WriteScopeEpilogue emits what a transaction's way in comes back to: the value the scope
+// answered with is on the stack, and it goes to the chain.
+//
+// It is here and not at the end of the body because the body does not know who called it. A
+// scope called by another has to hand its value back and let that one carry on; only the way
+// in from a transaction ends the call.
+func WriteScopeEpilogue(w io.Writer) error {
+	_, err := WriteAnswer(w)
+	return err
+}
+
+// WriteScope emits a scope whole: the way in from a transaction, what that way comes back to,
+// and the body both ways share.
+//
+// The addresses inside it are worked out by measuring the prologue, which is the only part
+// whose length depends on the scope — one copy per position the body addresses. Every push is
+// a fixed size, so measuring once is enough.
+func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int) error {
+	reads := FrameNamesAt(body) / MEMORY_SLOT_SIZE
+
+	var measured counter
+	if err := WriteScopePrologue(&measured, reads, tapeSize, 0, 0); err != nil {
+		return err
+	}
+
+	// The way in opens with a JUMPDEST the dispatcher lands on; the prologue follows; what it
+	// comes back to and the way in from another scope each open with one of their own.
+	epilogue := base + 1 + int(measured)
+	internal := epilogue + 1 + ANSWER_SIZE
+
+	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
+		return err
+	}
+	if err := WriteScopePrologue(bs, reads, tapeSize, epilogue, internal); err != nil {
+		return err
+	}
+	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
+		return err
+	}
+	if err := WriteScopeEpilogue(bs); err != nil {
+		return err
+	}
+	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
+		return err
+	}
+
+	_, err := WriteCode(bs, NewIdentManagerAt(FrameNamesAt(body)), body, tapeSize, internal+1, false)
+	return err
 }
 
 // FrameNamesAt answers how far into a frame the names of a scope begin.
@@ -162,21 +285,20 @@ func WriteFrameStart(w io.Writer) error {
 	return nil
 }
 
-// WriteGetArg reads an argument out of the calldata and cuts it to the tape width.
+// WriteGetArg reads one of the values applied to the running scope.
 //
-// An argument arrives as a 32-byte word whatever the tape is, and the evaluator narrows it to
-// a tape on the way in (environ.NewEnviron). Reading the whole word here would let a caller
-// hand a contract a value its own language cannot hold.
+// It reads the frame, and never the calldata. Whoever entered the scope put them there: the
+// way in from a transaction copies them out of the calldata, and a scope calling another
+// writes the values it worked out. That is the whole of what the frame buys — a body that does
+// not know how it was entered.
+//
+// The narrowing to the tape width happened where the value came in, so there is none here.
 func WriteGetArg(w io.Writer, left []byte, size int) (int, error) {
-	index := byteutil.ToUint64(left)
-	offset := GetCalldataArgsOffset(index)
-	if _, err := w.Write([]byte{OpPush1, offset}); err != nil {
+	at := int(byteutil.ToUint64(left))
+	if err := WriteFrameAddress(w, at*MEMORY_SLOT_SIZE); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {
-		return 0, err
-	}
-	return WriteMask(w, size)
+	return w.Write([]byte{OpMemoryLoad})
 }
 
 func WriteStop(w io.Writer) (int, error) {
@@ -379,7 +501,7 @@ func (c *counter) Write(p []byte) (int, error) {
 //
 // The names are registered into a manager of its own and thrown away, since what is measured
 // is how many bytes an instruction takes and every push is a fixed size now.
-func PositionsOf(insts []ir.Instruction, tapeSize int, landings map[int]bool, arms map[string]bool) ([]int, error) {
+func PositionsOf(insts []ir.Instruction, tapeSize int, landings map[int]bool, arms map[string]bool, answers bool) ([]int, error) {
 	positions := make([]int, len(insts)+1)
 	im := NewIdentManager()
 	for at, inst := range insts {
@@ -387,7 +509,7 @@ func PositionsOf(insts []ir.Instruction, tapeSize int, landings map[int]bool, ar
 		if landings[at] {
 			measured++
 		}
-		if err := WriteInstruction(&measured, im, inst, tapeSize, 0, arms); err != nil {
+		if err := WriteInstruction(&measured, im, inst, tapeSize, 0, arms, answers); err != nil {
 			return nil, err
 		}
 		positions[at+1] = positions[at] + int(measured)
@@ -450,7 +572,11 @@ func targetOf(inst ir.Instruction, at int, positions []int) int {
 // Arms answers whether an OpReturn ends a branch rather than a scope. The two are the same
 // opcode: one says "the value of this scope" and the other "the value of this arm", and which
 // it is can be read — an arm names the OpIf it belongs to, and a scope names the OpBeginScope.
-func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeSize int, target int, arms map[string]bool) error {
+//
+// Answers says what the third kind does. Code that no scope holds — the top of a program, run
+// when a contract has no scope to dispatch to — has nobody to go back to, so its return ends
+// the call rather than handing a value over.
+func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeSize int, target int, arms map[string]bool, answers bool) error {
 	op := inst.GetOpCode()
 
 	if handled[op] && op != ir.OpSave {
@@ -496,7 +622,11 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 		// The value of an arm is already on the stack, which is where whoever is under the
 		// branch finds it: there is nothing to write. Only a scope answers to the chain.
 		if !arms[byteutil.ToHex(inst.GetLeft().Bytes())] {
-			if _, err := WriteReturn(bs); err != nil {
+			write := WriteReturn
+			if answers {
+				write = WriteAnswer
+			}
+			if _, err := write(bs); err != nil {
 				return err
 			}
 		}
@@ -579,11 +709,11 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 // The base is where this scope lands in the runtime, since a jump carries an address in the
 // contract and not an offset into a scope. It is zero while a scope is being measured, and the
 // measurement does not depend on it.
-func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int, base int) (int, error) {
+func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize int, base int, answers bool) (int, error) {
 	landings := landingsOf(insts)
 	arms := armsOf(insts)
 
-	positions, err := PositionsOf(insts, tapeSize, landings, arms)
+	positions, err := PositionsOf(insts, tapeSize, landings, arms, answers)
 	if err != nil {
 		return 0, err
 	}
@@ -594,7 +724,7 @@ func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, tapeSize 
 				return 0, err
 			}
 		}
-		if err := WriteInstruction(bs, im, inst, tapeSize, base+targetOf(inst, at, positions), arms); err != nil {
+		if err := WriteInstruction(bs, im, inst, tapeSize, base+targetOf(inst, at, positions), arms, answers); err != nil {
 			return 0, err
 		}
 	}

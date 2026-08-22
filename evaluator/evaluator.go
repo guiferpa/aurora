@@ -108,10 +108,22 @@ func (e *Evaluator) GetAssertErrors() []error {
 	return errs
 }
 
-// operands reads the two temps an operation consumes, as tapes of the configured size.
-func (e *Evaluator) operands(left, right []byte) (*uint256.Int, *uint256.Int) {
-	x := byteutil.ToUint256(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
-	y := byteutil.ToUint256(e.environ.GetTemp(byteutil.ToHex(right)), e.tapeSize)
+// value answers what an operand is worth.
+//
+// A Ref names a value another instruction left behind, so it is looked up. An Imm is the
+// value: the program wrote it down and there is nothing to look up. Everything a position
+// holding a value can be, and the only place that has to know it.
+func (e *Evaluator) value(operand ir.Operand) []byte {
+	if operand.Kind() == ir.KindImm {
+		return operand.Bytes()
+	}
+	return e.environ.GetTemp(byteutil.ToHex(operand.Bytes()))
+}
+
+// operands reads the two values an operation consumes, as tapes of the configured size.
+func (e *Evaluator) operands(left, right ir.Operand) (*uint256.Int, *uint256.Int) {
+	x := byteutil.ToUint256(e.value(left), e.tapeSize)
+	y := byteutil.ToUint256(e.value(right), e.tapeSize)
 	return x, y
 }
 
@@ -130,28 +142,28 @@ func (e *Evaluator) setCondition(label []byte, cond bool) {
 	e.environ.SetTemp(byteutil.ToHex(label), value)
 }
 
-func (e *Evaluator) EvaluateAdd(label, left, right []byte) error {
+func (e *Evaluator) EvaluateAdd(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Add(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateSubtract(label, left, right []byte) error {
+func (e *Evaluator) EvaluateSubtract(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Sub(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateMultiply(label, left, right []byte) error {
+func (e *Evaluator) EvaluateMultiply(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Mul(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateDivide(label, left, right []byte) error {
+func (e *Evaluator) EvaluateDivide(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	if y.IsZero() {
 		return fmt.Errorf("integer divide by zero")
@@ -161,52 +173,52 @@ func (e *Evaluator) EvaluateDivide(label, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluateExponential(label, left, right []byte) error {
+func (e *Evaluator) EvaluateExponential(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Exp(x, y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateDiff(label, left, right []byte) error {
+func (e *Evaluator) EvaluateDiff(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, !x.Eq(y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateEquals(label, left, right []byte) error {
+func (e *Evaluator) EvaluateEquals(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, x.Eq(y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateBigger(label, left, right []byte) error {
+func (e *Evaluator) EvaluateBigger(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, x.Gt(y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateSmaller(label, left, right []byte) error {
+func (e *Evaluator) EvaluateSmaller(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, x.Lt(y))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateAnd(label, left, right []byte) error {
-	x := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(right)))
+func (e *Evaluator) EvaluateAnd(label []byte, left, right ir.Operand) error {
+	x := byteutil.ToBoolean(e.value(left))
+	y := byteutil.ToBoolean(e.value(right))
 	e.setCondition(label, x && y)
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateOr(label, left, right []byte) error {
-	x := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
-	y := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(right)))
+func (e *Evaluator) EvaluateOr(label []byte, left, right ir.Operand) error {
+	x := byteutil.ToBoolean(e.value(left))
+	y := byteutil.ToBoolean(e.value(right))
 	e.setCondition(label, x || y)
 	e.IncrementCursor()
 	return nil
@@ -220,9 +232,9 @@ func (e *Evaluator) EvaluateOr(label, left, right []byte) error {
 // pulling 4 into a tape moves it one byte, not a whole tape width.
 
 // EvaluatePull shifts the tape left and lets the item in at the right end.
-func (e *Evaluator) EvaluatePull(label, left, right []byte) error {
-	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
-	item := byteutil.ExtractSignificantBytes(e.environ.GetTemp(byteutil.ToHex(right)))
+func (e *Evaluator) EvaluatePull(label []byte, left, right ir.Operand) error {
+	tape := byteutil.PaddingTape(e.value(left), e.tapeSize)
+	item := byteutil.ExtractSignificantBytes(e.value(right))
 
 	shifted := make([]byte, 0, len(tape)+len(item))
 	shifted = append(shifted, tape...)
@@ -235,9 +247,9 @@ func (e *Evaluator) EvaluatePull(label, left, right []byte) error {
 }
 
 // EvaluatePush shifts the tape right and lets the item in at the left end.
-func (e *Evaluator) EvaluatePush(label, left, right []byte) error {
-	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
-	item := byteutil.ExtractSignificantBytes(e.environ.GetTemp(byteutil.ToHex(right)))
+func (e *Evaluator) EvaluatePush(label []byte, left, right ir.Operand) error {
+	tape := byteutil.PaddingTape(e.value(left), e.tapeSize)
+	item := byteutil.ExtractSignificantBytes(e.value(right))
 
 	shifted := make([]byte, 0, len(tape)+len(item))
 	shifted = append(shifted, item...)
@@ -292,9 +304,9 @@ func (e *Evaluator) EvaluatePullOver(label []byte, operands []ir.Operand) error 
 	return nil
 }
 
-func (e *Evaluator) EvaluateJoin(label, left, right []byte) error {
-	run := e.environ.GetTemp(byteutil.ToHex(left))
-	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(right)), e.tapeSize)
+func (e *Evaluator) EvaluateJoin(label []byte, left, right ir.Operand) error {
+	run := e.value(left)
+	tape := byteutil.PaddingTape(e.value(right), e.tapeSize)
 
 	joined := make([]byte, 0, len(run)+len(tape))
 	joined = append(joined, run...)
@@ -311,9 +323,9 @@ func (e *Evaluator) EvaluateJoin(label, left, right []byte) error {
 // Reading past the end gives the neutral value rather than failing, the same answer feed
 // gives past the end of what was applied: an operation on tapes does not stop a running
 // program.
-func (e *Evaluator) EvaluateField(label, left, right []byte) error {
-	run := e.environ.GetTemp(byteutil.ToHex(left))
-	start := int(byteutil.ToUint64(right)) * e.tapeSize
+func (e *Evaluator) EvaluateField(label []byte, left, right ir.Operand) error {
+	run := e.value(left)
+	start := int(byteutil.ToUint64(right.Bytes())) * e.tapeSize
 
 	value := byteutil.FalseTape(e.tapeSize)
 	if start >= 0 && start+e.tapeSize <= len(run) {
@@ -325,7 +337,7 @@ func (e *Evaluator) EvaluateField(label, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluateHead(label, left, right []byte) error {
+func (e *Evaluator) EvaluateHead(label []byte, left, right ir.Operand) error {
 	significant, n := e.tapeSlice(left, right)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[:n], e.tapeSize))
 	e.IncrementCursor()
@@ -333,7 +345,7 @@ func (e *Evaluator) EvaluateHead(label, left, right []byte) error {
 }
 
 // EvaluateTail drops the first n significant bytes of the tape and keeps the rest.
-func (e *Evaluator) EvaluateTail(label, left, right []byte) error {
+func (e *Evaluator) EvaluateTail(label []byte, left, right ir.Operand) error {
 	significant, n := e.tapeSlice(left, right)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[n:], e.tapeSize))
 	e.IncrementCursor()
@@ -342,12 +354,12 @@ func (e *Evaluator) EvaluateTail(label, left, right []byte) error {
 
 // tapeSlice reads the tape under left and the index under right, and returns the tape's
 // significant bytes with the index already normalized into them.
-func (e *Evaluator) tapeSlice(left, right []byte) ([]byte, int) {
-	tape := byteutil.PaddingTape(e.environ.GetTemp(byteutil.ToHex(left)), e.tapeSize)
+func (e *Evaluator) tapeSlice(left, right ir.Operand) ([]byte, int) {
+	tape := byteutil.PaddingTape(e.value(left), e.tapeSize)
 	significant := byteutil.ExtractSignificantBytes(tape)
 
-	// The index is a literal operand, not a temp: the emitter writes it inline.
-	n := int(byteutil.ToUint64(right) % uint64(e.tapeSize))
+	// The index is what the operation takes about itself, not a value: it is written inline.
+	n := int(byteutil.ToUint64(right.Bytes()) % uint64(e.tapeSize))
 	if n > len(significant) {
 		n = len(significant)
 	}
@@ -360,15 +372,15 @@ func (e *Evaluator) tapeSlice(left, right []byte) ([]byte, int) {
 // What comes back is the value of the expression. Everything in Aurora answers with
 // something, and a print used to be the exception — it left nothing under its label, which is
 // why a line of "printd 42" in the REPL showed no value at all.
-func (e *Evaluator) EvaluatePrintBytes(label, left []byte) error {
+func (e *Evaluator) EvaluatePrintBytes(label []byte, left ir.Operand) error {
 	return e.print(e.printBytes, label, left)
 }
 
-func (e *Evaluator) EvaluatePrintChars(label, left []byte) error {
+func (e *Evaluator) EvaluatePrintChars(label []byte, left ir.Operand) error {
 	return e.print(e.printChars, label, left)
 }
 
-func (e *Evaluator) EvaluatePrintDecimal(label, left []byte) error {
+func (e *Evaluator) EvaluatePrintDecimal(label []byte, left ir.Operand) error {
 	return e.print(e.printDecimal, label, left)
 }
 
@@ -376,8 +388,8 @@ func (e *Evaluator) EvaluatePrintDecimal(label, left []byte) error {
 //
 // The error is returned rather than dropped: writing used to be "_, _ =", so a program whose
 // output went nowhere — a closed pipe — carried on as if it had been heard.
-func (e *Evaluator) print(printer Printer, label, left []byte) error {
-	val := e.environ.GetTemp(byteutil.ToHex(left))
+func (e *Evaluator) print(printer Printer, label []byte, left ir.Operand) error {
+	val := e.value(left)
 	if printer == nil {
 		return fmt.Errorf("no printer was given for this reading")
 	}
@@ -392,8 +404,8 @@ func (e *Evaluator) print(printer Printer, label, left []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluateSave(label, left, right []byte) error {
-	e.environ.SetTemp(byteutil.ToHex(label), left)
+func (e *Evaluator) EvaluateSave(label []byte, left, right ir.Operand) error {
+	e.environ.SetTemp(byteutil.ToHex(label), left.Bytes())
 	e.IncrementCursor()
 	return nil
 }
@@ -425,18 +437,18 @@ func (e *Evaluator) resolve(name []byte) ([]byte, *environ.Environ) {
 	return home.GetLocalIdent(key), home
 }
 
-func (e *Evaluator) EvaluateLoad(label, left, right []byte) error {
-	val, _ := e.resolve(left)
+func (e *Evaluator) EvaluateLoad(label []byte, left, right ir.Operand) error {
+	val, _ := e.resolve(left.Bytes())
 	if val == nil {
-		return fmt.Errorf("identifier %s not found", left)
+		return fmt.Errorf("identifier %s not found", left.Bytes())
 	}
 	e.environ.SetTemp(byteutil.ToHex(label), val)
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateIf(label, left, right []byte) error {
-	test := byteutil.ToBoolean(e.environ.GetTemp(byteutil.ToHex(left)))
+func (e *Evaluator) EvaluateIf(label []byte, left, right ir.Operand) error {
+	test := byteutil.ToBoolean(e.value(left))
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
 	next.SetArguments(e.environ.GetArguments())
 	e.environ = e.environ.Ahead(next)
@@ -444,25 +456,25 @@ func (e *Evaluator) EvaluateIf(label, left, right []byte) error {
 		e.cursor++
 		return nil
 	}
-	e.AddCursor(byteutil.ToUint64(right) + 1)
+	e.AddCursor(byteutil.ToUint64(right.Bytes()) + 1)
 	return nil
 }
 
-func (e *Evaluator) EvaluateJump(label, left, right []byte) error {
-	e.AddCursor(byteutil.ToUint64(left) + 1)
+func (e *Evaluator) EvaluateJump(label []byte, left, right ir.Operand) error {
+	e.AddCursor(byteutil.ToUint64(left.Bytes()) + 1)
 	return nil
 }
 
-func (e *Evaluator) EvaluateBeginScope(label, left, right []byte) error {
+func (e *Evaluator) EvaluateBeginScope(label []byte, left, right ir.Operand) error {
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
 	e.environ = e.environ.Ahead(next)
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateReturn(_, left, right []byte) error {
-	label := byteutil.ToHex(left)
-	value := e.environ.GetTemp(byteutil.ToHex(right))
+func (e *Evaluator) EvaluateReturn(_ []byte, left, right ir.Operand) error {
+	label := byteutil.ToHex(left.Bytes())
+	value := e.value(right)
 	if value == nil {
 		value = byteutil.FalseTape(e.tapeSize)
 	}
@@ -472,20 +484,20 @@ func (e *Evaluator) EvaluateReturn(_, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluateIdent(label, left, right []byte) error {
-	k := byteutil.ToHex(left)
+func (e *Evaluator) EvaluateIdent(label []byte, left, right ir.Operand) error {
+	k := byteutil.ToHex(left.Bytes())
 	if v := e.environ.GetLocalIdent(k); v != nil {
-		return fmt.Errorf("conflict between identifiers named %s", left)
+		return fmt.Errorf("conflict between identifiers named %s", left.Bytes())
 	}
-	val := e.environ.GetTemp(byteutil.ToHex(right))
+	val := e.value(right)
 	e.environ.SetIdent(k, val)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
 	e.IncrementCursor()
 	return nil
 }
 
-func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
-	index := byteutil.ToUint64(left)
+func (e *Evaluator) EvaluateGetArg(label []byte, left, right ir.Operand) error {
+	index := byteutil.ToUint64(left.Bytes())
 	v := builtin.FeedFunction(e.environ.GetArguments(), index, e.tapeSize)
 	l := byteutil.ToHex(label)
 	e.environ.SetTemp(l, v)
@@ -493,12 +505,12 @@ func (e *Evaluator) EvaluateGetArg(label, left, right []byte) error {
 	return nil
 }
 
-func (e *Evaluator) EvaluateDefer(label, left, right []byte) error {
-	bodylength := byteutil.ToUint64(right)
+func (e *Evaluator) EvaluateDefer(label []byte, left, right ir.Operand) error {
+	bodylength := byteutil.ToUint64(right.Bytes())
 	// e.cursor is the index of this OpDefer; the next instruction is the start of the deferred block (OpBeginScope).
 	from := e.cursor + 1
 	to := from + bodylength // index of OpReturn (last instruction of the block)
-	returnKey := byteutil.ToHex(left)
+	returnKey := byteutil.ToHex(left.Bytes())
 
 	// The value of a defer is its index as a tape, like every other value in the language.
 	// It used to be the hex key itself — 16 bytes of ASCII text that ignored the tape size.
@@ -553,10 +565,10 @@ func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error 
 // EvaluateAssert checks a condition, but only under a runner that asked for it. A plain
 // run consumes the operands and moves on: assertions belong to "aurora test", and a
 // program that happens to hold one should not fail because of it.
-func (e *Evaluator) EvaluateAssert(label, left, right []byte) error {
-	cond := e.environ.GetTemp(byteutil.ToHex(left))
+func (e *Evaluator) EvaluateAssert(label []byte, left, right ir.Operand) error {
+	cond := e.value(left)
 	// The message is written inline by the emitter, not held in a temp.
-	msg := string(right)
+	msg := string(right.Bytes())
 
 	if !e.asserts {
 		e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
@@ -609,7 +621,7 @@ func (e *Evaluator) AddCursor(offset uint64) {
 
 // operation is what an opcode runs: the label the result is written under, and the two
 // operands the emitter wrote beside it.
-type operation func(e *Evaluator, label, left, right []byte) error
+type operation func(e *Evaluator, label []byte, left, right ir.Operand) error
 
 // Which operation each opcode runs.
 //
@@ -644,13 +656,13 @@ func init() {
 
 		// Builtins. A print reads one operand, and the opcode is the whole difference between
 		// the three readings of it.
-		ir.OpPrintBytes: func(e *Evaluator, label, left, _ []byte) error {
+		ir.OpPrintBytes: func(e *Evaluator, label []byte, left, _ ir.Operand) error {
 			return e.EvaluatePrintBytes(label, left)
 		},
-		ir.OpPrintChars: func(e *Evaluator, label, left, _ []byte) error {
+		ir.OpPrintChars: func(e *Evaluator, label []byte, left, _ ir.Operand) error {
 			return e.EvaluatePrintChars(label, left)
 		},
-		ir.OpPrintDecimal: func(e *Evaluator, label, left, _ []byte) error {
+		ir.OpPrintDecimal: func(e *Evaluator, label []byte, left, _ ir.Operand) error {
 			return e.EvaluatePrintDecimal(label, left)
 		},
 
@@ -718,7 +730,7 @@ func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 		e.IncrementCursor()
 		return nil
 	}
-	return op(e, inst.GetLabel(), inst.GetLeft().Bytes(), inst.GetRight().Bytes())
+	return op(e, inst.GetLabel(), inst.GetLeft(), inst.GetRight())
 }
 
 func (e *Evaluator) ExecuteInstructions(from, to uint64) (eval.Returns, error) {

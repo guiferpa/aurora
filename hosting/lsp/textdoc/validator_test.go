@@ -207,3 +207,31 @@ func TestWithoutTheEmitterOnlyTheParseIsChecked(t *testing.T) {
 		t.Errorf("expected nothing to say, got %v", diagnostics)
 	}
 }
+
+// An editor validates on every keystroke, so what one pass costs is worth knowing rather than
+// assuming. The two benchmarks are the same document through the same session, with and
+// without the emitter, and the difference between them is what asking the compiler costs.
+func benchmarkValidate(b *testing.B, emit Emit) {
+	var source strings.Builder
+	source.WriteString("ident base = 10;\n")
+	for i := 0; i < 200; i++ {
+		source.WriteString("ident scope = defer { feed(0) + feed(1) * 2; };\n")
+		source.WriteString("printd scope(1, 2);\n")
+	}
+
+	session := NewSession(NewSessionOptions{Lexer: lexer.New(), Parser: parser.New(), Emit: emit})
+	doc := Document{Filename: "main.ar", Source: source.String()}
+
+	b.ReportAllocs()
+	for b.Loop() {
+		session.ValidateCode(doc)
+	}
+}
+
+func BenchmarkValidateCodeParseOnly(b *testing.B) {
+	benchmarkValidate(b, nil)
+}
+
+func BenchmarkValidateCodeWithTheEmitter(b *testing.B) {
+	benchmarkValidate(b, emitter.New(emitter.NewEmitterOptions{}).EmitProgram)
+}

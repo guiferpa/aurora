@@ -35,10 +35,9 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			wantNone: true,
 		},
 		{
-			name:    "a branch",
-			opcodes: []byte{ir.OpIf, ir.OpJump},
-			// Two instructions, one feature, one thing to say about it.
-			want: []string{"if does not reach the bytecode yet"},
+			name:     "a branch, which reaches the bytecode now",
+			opcodes:  []byte{ir.OpIf, ir.OpJump},
+			wantNone: true,
 		},
 		{
 			name:    "a comparison",
@@ -107,7 +106,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 // The same feature used twice is one thing to say, not two.
 func TestWarningsSayEachThingOnce(t *testing.T) {
 	warnings := Warnings(instructionsOf(
-		ir.OpIf, ir.OpJump, ir.OpIf, ir.OpJump, ir.OpBigger, ir.OpSmaller,
+		ir.OpPull, ir.OpHead, ir.OpPull, ir.OpHead, ir.OpBigger, ir.OpSmaller,
 	))
 
 	if len(warnings) != 2 {
@@ -118,7 +117,7 @@ func TestWarningsSayEachThingOnce(t *testing.T) {
 // They arrive in the order the program uses them, so the first thing a reader is told about
 // is the first thing that goes missing.
 func TestWarningsFollowTheProgram(t *testing.T) {
-	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpIf))
+	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpBigger))
 
 	if len(warnings) != 2 {
 		t.Fatalf("said %d things, want two", len(warnings))
@@ -172,7 +171,6 @@ func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
 		says   string
 		line   int
 	}{
-		{name: "an if", source: "printb 1;\nprintb if true { 1; };", says: "if", line: 2},
 		{name: "a call", source: "ident f = defer { 1; };\nprintb f();", says: "calling a scope", line: 2},
 		{name: "a comparison", source: "printb 1;\nprintb 2 bigger 1;", says: "a comparison", line: 2},
 		{name: "and or or", source: "printb 1;\nprintb true and false;", says: "and/or", line: 2},

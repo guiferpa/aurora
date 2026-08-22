@@ -25,9 +25,14 @@ given the address of the first. They go in two bytes now, and there is no third 
 a deployed contract cannot pass 24,576 bytes, so two bytes cover every legal one. Past that the
 builder refuses rather than writing.
 
-What is left is `if` and then `call`, in that order, and both need what the lowering keeps: a
-jump is only writable when the stack is known where the code splits. **Anything else in
-`builder/evm` still waits its turn**, and the turn is discussed first.
+A branch is written now. The bytes of a scope are measured before they are written, so a jump
+forward has an address; nothing is moved across a branch, so what an arm leaves is what the
+arm computed; and both arms leave one value, which is what makes an `if` an expression on a
+chain the way it is off one.
+
+What is left of that line is `call`, which needs a frame — the convention is in
+[rfcs/if_and_call.md](rfcs/if_and_call.md). **Anything else in `builder/evm` still waits its
+turn**, and the turn is discussed first.
 
 What the backend gained before stopping is the differential harness
 (`hosting/cli/evm_harness_test.go`) — the same source compiled, deployed to an EVM in memory,

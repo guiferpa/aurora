@@ -353,6 +353,14 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 		for _, inst := range n.Else.Body {
 			eul = EmitInstruction(tc, &euze, inst, tapeSize)
 		}
+	} else {
+		// An if with no else answers with the neutral value on the path where the test
+		// fails, and the arm says so rather than leaving whoever reads the IR to know it.
+		// A consumer that has to put a value somewhere — a stack — has nothing to put
+		// there otherwise, and one that does not would be reading an operand naming
+		// nothing.
+		eul = GenerateLabel(tc)
+		euze = append(euze, ir.NewInstruction(eul, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()).At(originOf(n.Token)))
 	}
 	euzelen := ir.TargetAt(uint64(len(euze)) + 1)
 

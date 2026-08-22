@@ -317,3 +317,32 @@ func TestManyNamesInAScopeAnswerTheSameOnChainAndOff(t *testing.T) {
 
 	agree(t, source, "scope", []string{"5"}, 0)
 }
+
+// A branch reaches the bytecode. The IR skips ahead when the test is false and the EVM jumps
+// when what it pops is not zero, so the test is turned over; both arms leave one value, which
+// is what makes an "if" an expression — whoever is under it finds a value without knowing
+// which way the program went.
+//
+// The test of each case is a value rather than a comparison, because a comparison does not
+// reach the bytecode yet and would be testing something that was never computed.
+func TestABranchAnswersTheSameOnChainAndOff(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		args   []string
+	}{
+		{name: "the then arm", source: `ident f = defer { if feed(0) { 42; } else { 7; }; };`, args: []string{"1"}},
+		{name: "the else arm", source: `ident f = defer { if feed(0) { 42; } else { 7; }; };`, args: []string{"0"}},
+		{name: "no else, taken", source: `ident f = defer { if feed(0) { 42; }; };`, args: []string{"1"}},
+		{name: "no else, not taken", source: `ident f = defer { if feed(0) { 42; }; };`, args: []string{"0"}},
+		{name: "the value is used after", source: `ident f = defer { ident r = if feed(0) { 42; } else { 7; }; r + 1; };`, args: []string{"1"}},
+		{name: "a branch inside a branch", source: `ident f = defer { if feed(0) { if feed(1) { 1; } else { 2; }; } else { 3; }; };`, args: []string{"1", "0"}},
+		{name: "arithmetic in both arms", source: `ident f = defer { if feed(0) { feed(1) + 1; } else { feed(1) * 2; }; };`, args: []string{"0", "5"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "f", tc.args, 0)
+		})
+	}
+}

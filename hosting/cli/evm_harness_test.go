@@ -218,3 +218,24 @@ func TestReadingPastTheValuesAppliedAnswersTheSameOnChainAndOff(t *testing.T) {
 
 	agree(t, source, "sum", []string{"5"}, 0)
 }
+
+// A name bound inside a scope used to compile to an MSTORE with nothing under it: the lowering
+// decided which operands named values from the opcode, and a binding was not on the list, so
+// the value it meant to store was never put on the stack. The contract answered 4 where the
+// program answers 7.
+func TestALocalInsideAScopeAnswersTheSameOnChainAndOff(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{name: "read once", source: `ident sum = defer { ident x = feed(0); x + feed(1); };`},
+		{name: "read twice", source: `ident sum = defer { ident x = feed(0); x + x; };`},
+		{name: "two of them, and one reads the other", source: `ident sum = defer { ident x = feed(0); ident y = x + feed(1); y + x; };`},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "sum", []string{"3", "4"}, 0)
+		})
+	}
+}

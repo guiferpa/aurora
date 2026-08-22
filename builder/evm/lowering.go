@@ -57,9 +57,21 @@ func consumes(inst ir.Instruction) []ir.Operand {
 	return taken
 }
 
-// flipped names the operations the EVM reads the other way round.
+// flipped names the operations the EVM reads top-first.
+//
+// It pops its first operand off the top, so `a - b` wants b underneath a: the right one
+// reaches the stack first. The same goes for division, for raising to a power, and for the two
+// comparisons that are not symmetric — `a bigger b` is GT of a over b, and GT reads the top as
+// the left-hand side.
+//
+// Equality, difference, and and or are symmetric, so the order they arrive in says nothing.
 func flipped(op byte) bool {
-	return op == ir.OpSubtract || op == ir.OpDivide
+	switch op {
+	case ir.OpSubtract, ir.OpDivide, ir.OpExponential, ir.OpBigger, ir.OpSmaller:
+		return true
+	default:
+		return false
+	}
 }
 
 // produces answers whether an instruction leaves its value on the stack, under its own label.
@@ -69,7 +81,9 @@ func flipped(op byte) bool {
 // expression is one — is handled where that is known.
 func produces(op byte) bool {
 	switch op {
-	case ir.OpSave, ir.OpGetFeed, ir.OpLoad, ir.OpAdd, ir.OpSubtract, ir.OpMultiply, ir.OpDivide:
+	case ir.OpSave, ir.OpGetFeed, ir.OpLoad,
+		ir.OpAdd, ir.OpSubtract, ir.OpMultiply, ir.OpDivide, ir.OpExponential,
+		ir.OpEquals, ir.OpDiff, ir.OpBigger, ir.OpSmaller, ir.OpAnd, ir.OpOr:
 		return true
 	default:
 		return false

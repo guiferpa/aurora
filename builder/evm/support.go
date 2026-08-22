@@ -19,19 +19,26 @@ import (
 // OpDefer and OpBeginScope write nothing of their own and are not gaps: the first becomes an
 // entry in the dispatcher, and the second opens a scope the builder lays out flat.
 var handled = map[byte]bool{
-	ir.OpAdd:        true,
-	ir.OpSubtract:   true,
-	ir.OpMultiply:   true,
-	ir.OpDivide:     true,
-	ir.OpSave:       true,
-	ir.OpIdent:      true,
-	ir.OpLoad:       true,
-	ir.OpGetFeed:    true,
-	ir.OpReturn:     true,
-	ir.OpDefer:      true,
-	ir.OpBeginScope: true,
-	ir.OpIf:         true,
-	ir.OpJump:       true,
+	ir.OpAdd:         true,
+	ir.OpSubtract:    true,
+	ir.OpMultiply:    true,
+	ir.OpDivide:      true,
+	ir.OpSave:        true,
+	ir.OpIdent:       true,
+	ir.OpLoad:        true,
+	ir.OpGetFeed:     true,
+	ir.OpReturn:      true,
+	ir.OpDefer:       true,
+	ir.OpBeginScope:  true,
+	ir.OpIf:          true,
+	ir.OpJump:        true,
+	ir.OpEquals:      true,
+	ir.OpDiff:        true,
+	ir.OpBigger:      true,
+	ir.OpSmaller:     true,
+	ir.OpAnd:         true,
+	ir.OpOr:          true,
+	ir.OpExponential: true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
@@ -56,8 +63,6 @@ var pending = map[byte]string{
 	ir.OpSmaller: "a comparison",
 	ir.OpAnd:     "and/or",
 	ir.OpOr:      "and/or",
-
-	ir.OpExponential: "^",
 
 	ir.OpPull: "a tape operation",
 	ir.OpPush: "a tape operation",

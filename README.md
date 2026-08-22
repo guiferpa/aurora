@@ -189,7 +189,7 @@ a binary that does less than the source said is announced rather than silent.
 | a value written down, wherever it is used | **yes** |
 | a branch, and the value it answers with | **yes** |
 | calling a scope from another | not yet |
-| comparisons, `and`/`or`, `^` | not yet |
+| comparisons, `and`/`or`, `^` | **yes** |
 | tape operations, `shape` | not yet |
 | `printb` / `printd` / `printc` | **by decision** — a log has nowhere to go on a chain |
 | `assert` | **by decision** — it belongs to `aurora test` |

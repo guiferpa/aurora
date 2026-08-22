@@ -120,9 +120,9 @@ everything below is not.
 The gap is wider than it looks, and it is silent, which is the dangerous part: a contract
 using any of the following **compiles successfully and does nothing on chain**.
 
-- `call`, `assert`, the comparisons, `and`/`or`, `^`, the tape operations and the shape
-  instructions (`OpJoin`, `OpField`) produce no bytecode at all. `WriteCode` covers arithmetic,
-  `OpSave`, `OpIdent`, `OpLoad`, `OpGetFeed`, `OpReturn` and now the branch — `OpIf` and
+- `call`, `assert`, the tape operations and the shape instructions (`OpJoin`, `OpField`)
+  produce no bytecode at all. `WriteCode` covers arithmetic, the comparisons, `and`/`or`, `^`,
+  `OpSave`, `OpIdent`, `OpLoad`, `OpGetFeed`, `OpReturn` and the branch — `OpIf` and
   `OpJump`. They are not refusals — a tape is at most 32 bytes and an EVM word is exactly 32, a
   shape is a run of words in memory, and a call is a jump with a return address. They are
   simply not written yet.

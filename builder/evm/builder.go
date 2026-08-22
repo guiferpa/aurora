@@ -16,14 +16,20 @@ import (
 )
 
 const (
-	BYTE_SIZE                = 8
-	DISPATCHER_BYTES_SIZE    = 15
+	BYTE_SIZE = 8
+	// DISPATCHER_BYTES_SIZE is what one entry of the dispatcher measures, added up from its
+	// parts rather than written as a number: the address of every body is counted from it, so
+	// a push changing size and this staying behind would put every jump one byte off per
+	// entry — and it would do that quietly.
+	DISPATCHER_BYTES_SIZE    = PUSH_ONE_SIZE + 1 + PUSH_ONE_SIZE + 1 + PUSH_FOUR_SIZE + 1 + PUSH_TWO_SIZE + 1
 	NO_MATCH_DISPATCHER_SIZE = 1
 	CALLDATA_SLOT_READABLE   = 32
 	MEMORY_SLOT_SIZE         = 32
 	// PUSH_ONE_SIZE and PUSH_TWO_SIZE are the opcode and what it carries.
 	PUSH_ONE_SIZE = 2
 	PUSH_TWO_SIZE = 3
+	// PUSH_FOUR_SIZE is the opcode and the four bytes of a selector.
+	PUSH_FOUR_SIZE = 5
 	// INSTANTIATE_BLOCK_SIZE is what the constructor measures, and the runtime begins right
 	// after it — so the block carries this number inside itself, as the offset it copies
 	// from. It is added up here rather than written as a literal, because it was the same

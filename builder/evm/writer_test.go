@@ -116,36 +116,52 @@ func TestWriteSave(t *testing.T) {
 	}
 }
 
+// A name is stored in a slot of memory of its own, and the address goes in two bytes. It used
+// to go in one, and a slot is thirty-two wide, so the ninth name was given the address of the
+// first: 8 * 32 is 256, and one byte holds none of it.
 func TestWriteIdent(t *testing.T) {
-	bs := bytes.NewBuffer(make([]byte, 0))
-	identManager := NewIdentManager()
-	label := "test"
-	offset := byte(0x20)
-	identManager.SetOffset(label, offset)
-	if _, err := WriteIdent(bs, identManager, []byte(label)); err != nil {
-		t.Errorf("Error writing ident: %v", err)
-		return
+	cases := []struct {
+		name  string
+		names int
+		want  []byte
+	}{
+		{name: "the first name", names: 0, want: []byte{OpPush2, 0x00, 0x00}},
+		{name: "the second", names: 1, want: []byte{OpPush2, 0x00, 0x20}},
+		{name: "the ninth, which used to land on the first", names: 8, want: []byte{OpPush2, 0x01, 0x00}},
 	}
-	got := bs.Bytes()
-	expected := []byte{OpPush1, offset, OpMemoryStore}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Ident: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			manager := NewIdentManager()
+			for i := 0; i < tc.names; i++ {
+				manager.SetOffset(string(rune('a'+i)), i*MEMORY_SLOT_SIZE)
+			}
+
+			bs := bytes.NewBuffer(make([]byte, 0))
+			if _, err := WriteIdent(bs, manager, []byte("x")); err != nil {
+				t.Fatalf("writing the binding: %v", err)
+			}
+
+			expected := append(append([]byte{}, tc.want...), OpMemoryStore)
+			if got := bs.Bytes(); !bytes.Equal(got, expected) {
+				t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+			}
+		})
 	}
 }
 
 func TestWriteLoad(t *testing.T) {
+	manager := NewIdentManager()
+	manager.SetOffset("test", 0x120)
+
 	bs := bytes.NewBuffer(make([]byte, 0))
-	identManager := NewIdentManager()
-	identManager.SetOffset("test", 0x20)
-	left := []byte("test")
-	if _, err := WriteLoad(bs, identManager, left); err != nil {
-		t.Errorf("Error writing load: %v", err)
-		return
+	if _, err := WriteLoad(bs, manager, []byte("test")); err != nil {
+		t.Fatalf("writing the read: %v", err)
 	}
-	got := bs.Bytes()
-	expected := []byte{OpPush1, 0x20, OpMemoryLoad}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Load: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+
+	expected := []byte{OpPush2, 0x01, 0x20, OpMemoryLoad}
+	if got := bs.Bytes(); !bytes.Equal(got, expected) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
 }
 
@@ -181,36 +197,39 @@ func TestWriteReturn(t *testing.T) {
 	}
 }
 
+// One entry of the dispatcher: read the selector out of the calldata, compare it with the one
+// this scope answers to, jump to the body when they match. The address goes in two bytes, so
+// a body past byte 255 of the runtime can be named.
 func TestWriteDispatcher(t *testing.T) {
 	cases := []struct {
-		Name       string
-		FnExpected func() []byte
+		name   string
+		jumpTo int
+		want   []byte
 	}{
-		{
-			"sample_dispatcher_1",
-			func() []byte {
-				expected := []byte{OpPush1, 0x00}
-				expected = append(expected, OpCallDataLoad)
-				expected = append(expected, []byte{OpPush1, 0xe0}...)
-				expected = append(expected, OpShiftRight)
-				expected = append(expected, []byte{OpPush4, 0x9c, 0x22, 0xff, 0x5f}...)
-				expected = append(expected, OpEqual)
-				expected = append(expected, []byte{OpPush1, 0x0a}...)
-				expected = append(expected, OpJumpIf)
-				return expected
-			},
-		},
+		{name: "a body near the top", jumpTo: 10, want: []byte{OpPush2, 0x00, 0x0a}},
+		{name: "a body past a byte", jumpTo: 300, want: []byte{OpPush2, 0x01, 0x2c}},
 	}
 
-	for _, c := range cases {
-		bs := bytes.NewBuffer(make([]byte, 0))
-		if _, err := WriteDispatcher(bs, "test", 10); err != nil {
-			t.Errorf("%v: %v", c.Name, err)
-			return
-		}
-		if got, expected := bs.Bytes(), c.FnExpected(); !bytes.Equal(got, expected) {
-			t.Errorf("EVM dispatcher: name: %v, got: %v, expected: %v", c.Name, byteutil.ToUpperHex(got), byteutil.ToUpperHex(c.FnExpected()))
-		}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bytes.NewBuffer(make([]byte, 0))
+			if _, err := WriteDispatcher(bs, "test", tc.jumpTo); err != nil {
+				t.Fatalf("writing the dispatcher: %v", err)
+			}
+
+			expected := []byte{OpPush1, 0x00, OpCallDataLoad, OpPush1, 0xe0, OpShiftRight,
+				OpPush4, 0x9c, 0x22, 0xff, 0x5f, OpEqual}
+			expected = append(expected, tc.want...)
+			expected = append(expected, OpJumpIf)
+
+			got := bs.Bytes()
+			if !bytes.Equal(got, expected) {
+				t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+			}
+			if len(got) != DISPATCHER_BYTES_SIZE {
+				t.Errorf("it measures %d and the offsets are counted from %d", len(got), DISPATCHER_BYTES_SIZE)
+			}
+		})
 	}
 }
 

@@ -24,6 +24,7 @@ Toda RFC abre dizendo em que estado está:
 |---|---|---|
 | [if_and_call.md](if_and_call.md) | proposta | como `if` e `call` viram bytecode, e a recursão que sai do segundo |
 | [ir.md](ir.md) | proposta | o IR é a fita do evaluator, e devia descrever o programa — pré-requisito da anterior |
+| [folding_literals.md](folding_literals.md) | proposta | um terço do IR existe para nomear números já conhecidos, e o que dobrar isso exige |
 
 A última foi `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
 escrito como o do módulo. Foi implementada em dois pull requests, e o que ficou decidido está

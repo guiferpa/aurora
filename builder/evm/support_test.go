@@ -40,9 +40,9 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			wantNone: true,
 		},
 		{
-			name:    "a comparison",
-			opcodes: []byte{ir.OpBigger},
-			want:    []string{"a comparison does not reach the bytecode yet"},
+			name:     "a comparison, which reaches the bytecode now",
+			opcodes:  []byte{ir.OpEquals, ir.OpBigger},
+			wantNone: true,
 		},
 		{
 			name:    "a tape operation",
@@ -106,7 +106,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 // The same feature used twice is one thing to say, not two.
 func TestWarningsSayEachThingOnce(t *testing.T) {
 	warnings := Warnings(instructionsOf(
-		ir.OpPull, ir.OpHead, ir.OpPull, ir.OpHead, ir.OpBigger, ir.OpSmaller,
+		ir.OpPull, ir.OpHead, ir.OpPull, ir.OpHead, ir.OpJoin, ir.OpField,
 	))
 
 	if len(warnings) != 2 {
@@ -117,7 +117,7 @@ func TestWarningsSayEachThingOnce(t *testing.T) {
 // They arrive in the order the program uses them, so the first thing a reader is told about
 // is the first thing that goes missing.
 func TestWarningsFollowTheProgram(t *testing.T) {
-	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpBigger))
+	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpPull))
 
 	if len(warnings) != 2 {
 		t.Fatalf("said %d things, want two", len(warnings))
@@ -172,9 +172,6 @@ func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
 		line   int
 	}{
 		{name: "a call", source: "ident f = defer { 1; };\nprintb f();", says: "calling a scope", line: 2},
-		{name: "a comparison", source: "printb 1;\nprintb 2 bigger 1;", says: "a comparison", line: 2},
-		{name: "and or or", source: "printb 1;\nprintb true and false;", says: "and/or", line: 2},
-		{name: "an exponent", source: "printb 1;\nprintb 2 ^ 3;", says: "^", line: 2},
 		// A tape literal is itself a tape operation — it builds the run byte by byte — so
 		// the first place the program uses one is the literal, not the pull below it.
 		{name: "a tape operation", source: "printb 1;\nident t = [1];\nprintb pull t 2;", says: "a tape operation", line: 2},

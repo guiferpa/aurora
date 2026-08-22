@@ -346,3 +346,55 @@ func TestABranchAnswersTheSameOnChainAndOff(t *testing.T) {
 		})
 	}
 }
+
+// A comparison answers with a tape like any other value, and the EVM answers these with one or
+// zero, which is what a tape holding true or false is.
+//
+// The two that are not symmetric are the ones that say anything: the EVM reads its first
+// operand off the top, so "a bigger b" has to arrive with a on top or it answers the question
+// backwards. Both sides of each are here for that reason.
+//
+// "and" and "or" are the logical ones and not the bitwise ones — Aurora asks whether both
+// values hold, not which bits they share — so "2 and 1" is here too, which a bitwise AND
+// would answer zero.
+func TestComparisonsAndLogicAnswerTheSameOnChainAndOff(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		args []string
+	}{
+		{name: "equals, and it does", body: "feed(0) equals feed(1);", args: []string{"5", "5"}},
+		{name: "equals, and it does not", body: "feed(0) equals feed(1);", args: []string{"5", "6"}},
+		{name: "different", body: "feed(0) different feed(1);", args: []string{"5", "6"}},
+		{name: "bigger, and it is", body: "feed(0) bigger feed(1);", args: []string{"9", "2"}},
+		{name: "bigger, and it is not", body: "feed(0) bigger feed(1);", args: []string{"2", "9"}},
+		{name: "smaller, and it is", body: "feed(0) smaller feed(1);", args: []string{"2", "9"}},
+		{name: "smaller, and it is not", body: "feed(0) smaller feed(1);", args: []string{"9", "2"}},
+		{name: "and, both hold", body: "feed(0) and feed(1);", args: []string{"1", "1"}},
+		{name: "and, one does not", body: "feed(0) and feed(1);", args: []string{"1", "0"}},
+		{name: "and, over values a bitwise one would answer zero for", body: "feed(0) and feed(1);", args: []string{"2", "1"}},
+		{name: "or, neither holds", body: "feed(0) or feed(1);", args: []string{"0", "0"}},
+		{name: "or, one does", body: "feed(0) or feed(1);", args: []string{"0", "3"}},
+		{name: "raised to a power", body: "feed(0) ^ feed(1);", args: []string{"2", "5"}},
+		{name: "a power that leaves the width", body: "feed(0) ^ feed(1);", args: []string{"3", "7"}},
+		{name: "a branch on a comparison", body: "if feed(0) bigger feed(1) { 42; } else { 7; };", args: []string{"9", "2"}},
+		{name: "a branch on a comparison, the other way", body: "if feed(0) bigger feed(1) { 42; } else { 7; };", args: []string{"2", "9"}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, "ident f = defer { "+tc.body+" };", "f", tc.args, 0)
+		})
+	}
+}
+
+// The same, at a width where a comparison and a power both have to answer for the tape they
+// are working in.
+func TestComparisonsFollowTheTapeWidth(t *testing.T) {
+	for _, size := range []int{1, 2, 32} {
+		t.Run(fmt.Sprint(size), func(t *testing.T) {
+			agree(t, "ident f = defer { feed(0) bigger feed(1); };", "f", []string{"200", "100"}, size)
+			agree(t, "ident f = defer { feed(0) ^ feed(1); };", "f", []string{"3", "5"}, size)
+		})
+	}
+}

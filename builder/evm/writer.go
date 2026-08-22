@@ -247,6 +247,27 @@ func WriteBodyCode(bs io.Writer, ds []Dispatcher, root *bytes.Buffer) (int, erro
 	return 0, nil
 }
 
+// comparisons maps each of them to what the EVM makes of it.
+//
+// The two that are not symmetric are read top-first, which the lowering already knows: `a
+// bigger b` arrives with a on top, and GT reads the top as the left-hand side.
+//
+// "different" is equality turned over, since the EVM has no opcode for it.
+//
+// And and or are the logical ones and not the bitwise ones — Aurora asks whether both values
+// hold, not which bits they share, so `2 and 1` is true where a bitwise AND would answer zero.
+// OR of the raw values is already non-zero when either is, so it only needs narrowing to one
+// or zero; AND cannot be done that way, and is written as the other one turned inside out:
+// not (not a or not b).
+var comparisons = map[byte][]byte{
+	ir.OpEquals:  {OpEqual},
+	ir.OpDiff:    {OpEqual, OpIsZero},
+	ir.OpBigger:  {OpGreaterThan},
+	ir.OpSmaller: {OpLessThan},
+	ir.OpOr:      {OpOr, OpIsZero, OpIsZero},
+	ir.OpAnd:     {OpIsZero, OpSwap1, OpIsZero, OpOr, OpIsZero},
+}
+
 // WriteImmediates puts on the stack the values an instruction carries inside itself.
 //
 // A Ref was already put there by whoever produced it, and the lowering saw to it that it
@@ -437,6 +458,23 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, tapeS
 
 	if op == ir.OpGetFeed {
 		if _, err := WriteGetArg(bs, inst.GetLeft().Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	// A comparison answers with a tape like any other value, and the EVM already answers
+	// these with one or zero, which is what a tape holding true or false is.
+	if compare, ok := comparisons[op]; ok {
+		if _, err := bs.Write(compare); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpExponential {
+		if _, err := bs.Write([]byte{OpExp}); err != nil {
+			return err
+		}
+		if _, err := WriteMask(bs, tapeSize); err != nil {
 			return err
 		}
 	}

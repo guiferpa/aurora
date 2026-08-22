@@ -159,11 +159,6 @@ func TestBuildSaysWhatTheBackendDoesNotCarry(t *testing.T) {
 		want   string
 	}{
 		{
-			name:   "a comparison",
-			source: "ident same = defer { feed(0) equals feed(1); };\n",
-			want:   "a comparison does not reach the bytecode yet",
-		},
-		{
 			name:   "a log",
 			source: "ident show = defer { printd feed(0); };\n",
 			want:   "printd writes a log",

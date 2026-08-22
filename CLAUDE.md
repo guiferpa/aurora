@@ -9,16 +9,23 @@ The language proves itself in the **evaluator** and in the **REPL**, and the poi
 backend is that **the same program answers the same thing on a chain and off it** — Aurora
 exists to let an on-chain call be simulated off-chain.
 
-**The backend is on stand-by, and stays there.** The architecture it was waiting for has
-landed; what surfaced underneath is bigger than a slice. Binding a name inside a scope —
-`ident x = feed(0);` in a `defer` body — reverts on chain: the lowering hands a value to
-arithmetic and to a return and to nothing else, so the one an `ident` meant to store is
-dropped and its `MSTORE` finds an empty stack. The builder still counts that instruction as
-covered, so the binary comes out silent. Under it sits a second ceiling: memory offsets, jump
-targets and the runtime size are all written with `PUSH1`, and each truncates past 255 without
-a word. Neither is a bug with a patch behind it — both are designs — and opening them now
-would stop the language moving. **Do not start there.** When the turn comes, it is deliberate
-and it is discussed first.
+**The backend is open again, deliberately, and it is being walked in order.** The first of the
+two things the stand-by named is done. The lowering decided which operands named values from
+the opcode, by a list of the four arithmetic instructions, so a name bound inside a scope was
+not on it: the value it meant to store was never put on the stack and its `MSTORE` found an
+empty one. `ident x = feed(0); x + feed(1);` answered 4 on the chain where the program answers
+7 — the quieter failure of the two, since it answered rather than reverted. The IR says what
+each operand is now, so the lowering reads instead of guessing, and the harness covers the
+case.
+
+The second is still standing: memory offsets, jump targets and the runtime size are written
+with `PUSH1` and truncate past 255. It is next, and `PUSH2` closes it for good — a deployed
+contract cannot pass 24,576 bytes, so two bytes cover every legal one and there is no third
+size after it.
+
+After it come `if` and then `call`, in that order, and both need what the lowering now keeps: a
+jump is only writable when the stack is known where the code splits. **Anything else in
+`builder/evm` still waits its turn**, and the turn is discussed first.
 
 What the backend gained before stopping is the differential harness
 (`hosting/cli/evm_harness_test.go`) — the same source compiled, deployed to an EVM in memory,

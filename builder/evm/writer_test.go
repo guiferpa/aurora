@@ -7,25 +7,44 @@ import (
 	"github.com/guiferpa/aurora/byteutil"
 )
 
+// The constructor copies the runtime out of the code being deployed and hands it to the chain.
+// The size goes in two bytes, and the offset it copies from is this block's own length —
+// written once, in the constant, and read here rather than repeated.
 func TestWriteInstantiateBlock(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
-	runtimeSize := byte(8)
-	if _, err := WriteInstantiateBlock(bs, runtimeSize); err != nil {
-		t.Errorf("Error writing instantiate block: %v", err)
-		return
+	if _, err := WriteInstantiateBlock(bs, 8); err != nil {
+		t.Fatalf("writing the instantiate block: %v", err)
 	}
-	got := bs.Bytes()
+
 	expected := []byte{
-		OpPush1, runtimeSize,
-		OpPush1, 0x0c,
+		OpPush2, 0x00, 0x08,
+		OpPush1, INSTANTIATE_BLOCK_SIZE,
 		OpPush1, 0x00,
 		OpCodeCopy,
-		OpPush1, runtimeSize,
+		OpPush2, 0x00, 0x08,
 		OpPush1, 0x00,
 		OpReturn,
 	}
-	if !bytes.Equal(got, expected) {
-		t.Errorf("Instantiate block: got: %v, expected: %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+	if got := bs.Bytes(); !bytes.Equal(got, expected) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+	}
+	if got := bs.Len(); got != INSTANTIATE_BLOCK_SIZE {
+		t.Errorf("the block measures %d and says it measures %d — the offset it copies from is its own length", got, INSTANTIATE_BLOCK_SIZE)
+	}
+}
+
+// A runtime past what one byte holds used to be truncated by the conversion, so the
+// constructor asked for 96 bytes of a contract that had 352 and the chain kept the first 96.
+// Three deferred scopes reached that.
+func TestARuntimePastOneByteIsWrittenWhole(t *testing.T) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if _, err := WriteInstantiateBlock(bs, 352); err != nil {
+		t.Fatalf("writing the instantiate block: %v", err)
+	}
+
+	got := bs.Bytes()
+	if want := []byte{OpPush2, 0x01, 0x60}; !bytes.Equal(got[:3], want) {
+		t.Errorf("it copies %v bytes, want %v — 352, not 352 modulo 256", byteutil.ToUpperHex(got[:3]), byteutil.ToUpperHex(want))
 	}
 }
 

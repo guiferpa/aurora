@@ -43,8 +43,9 @@ func TestBuildStartsWithTheInstantiateBlock(t *testing.T) {
 	if len(code) <= INSTANTIATE_BLOCK_SIZE {
 		t.Fatalf("bytecode is %d bytes, too short to hold the instantiate block", len(code))
 	}
-	// PUSH1 <size> PUSH1 0x0c PUSH1 0x00 CODECOPY PUSH1 <size> PUSH1 0x00 RETURN
-	want := []byte{OpPush1, byte(len(code) - INSTANTIATE_BLOCK_SIZE), OpPush1, 0x0c, OpPush1, 0x00, OpCodeCopy}
+	// PUSH2 <size> PUSH1 <this block> PUSH1 0x00 CODECOPY PUSH2 <size> PUSH1 0x00 RETURN
+	runtime := len(code) - INSTANTIATE_BLOCK_SIZE
+	want := []byte{OpPush2, byte(runtime >> 8), byte(runtime), OpPush1, INSTANTIATE_BLOCK_SIZE, OpPush1, 0x00, OpCodeCopy}
 	if !bytes.Equal(code[:len(want)], want) {
 		t.Errorf("instantiate block = %s, want %s",
 			byteutil.ToUpperHex(code[:len(want)]), byteutil.ToUpperHex(want))
@@ -69,7 +70,8 @@ func TestBuildAnnouncesTheRuntimeSize(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			code := build(t, tc.source, byteutil.DefaultTapeSize)
-			announced := int(code[1])
+			// Two bytes, big-endian, right after the PUSH2.
+			announced := int(code[1])<<8 | int(code[2])
 			if got := len(code) - INSTANTIATE_BLOCK_SIZE; announced != got {
 				t.Errorf("the block announces %d runtime bytes, %d follow", announced, got)
 			}

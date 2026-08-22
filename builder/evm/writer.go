@@ -127,26 +127,46 @@ func WriteStop(w io.Writer) (int, error) {
 	return w.Write([]byte{OpStop})
 }
 
-func WriteInstantiateBlock(w io.Writer, runtimeSize byte) (int, error) {
-	if _, err := w.Write([]byte{OpPush1, runtimeSize}); err != nil { // 2 bytes
+// WritePush2 emits PUSH2 with a number in two bytes, big-endian.
+//
+// Two bytes because one is not enough and three would never be: a published contract cannot
+// pass 24,576 bytes (EIP-170), so every length and every address inside a legal one fits in
+// 65,535. There is no size after this one.
+func WritePush2(w io.Writer, n int) (int, error) {
+	return w.Write([]byte{OpPush2, byte(n >> 8), byte(n)})
+}
+
+// WriteInstantiateBlock emits the constructor: it copies the runtime out of the code being
+// deployed and hands it to the chain, which is what the chain then keeps.
+//
+// The size is pushed in two bytes. It used to be one, and a runtime past 255 bytes was
+// truncated by the conversion — a program with three deferred scopes reached that — so the
+// constructor asked for 96 bytes of a contract that had 352. It deployed, and what the chain
+// kept was cut off in the middle of an instruction.
+//
+// The offset it copies from is this block's own length, since the runtime begins right after
+// it. That number is derived rather than written down twice: the two used to be the same
+// literal in two places, and changing a push meant remembering both.
+func WriteInstantiateBlock(w io.Writer, runtimeSize int) (int, error) {
+	if _, err := WritePush2(w, runtimeSize); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpPush1, 0x0c}); err != nil { // 2 bytes
+	if _, err := w.Write([]byte{OpPush1, byte(INSTANTIATE_BLOCK_SIZE)}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpPush1, 0x00}); err != nil { // 2 bytes
+	if _, err := w.Write([]byte{OpPush1, 0x00}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpCodeCopy}); err != nil { // 1 byte
+	if _, err := w.Write([]byte{OpCodeCopy}); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpPush1, runtimeSize}); err != nil { // 2 bytes
+	if _, err := WritePush2(w, runtimeSize); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpPush1, 0x00}); err != nil { // 2 bytes
+	if _, err := w.Write([]byte{OpPush1, 0x00}); err != nil {
 		return 0, err
 	}
-	return w.Write([]byte{OpReturn}) // 1 byte
+	return w.Write([]byte{OpReturn})
 }
 
 func WriteNoMatchDispatcher(w io.Writer) (int, error) {

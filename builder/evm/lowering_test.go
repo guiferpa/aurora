@@ -11,129 +11,96 @@ import (
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
-func TestOperandStackDelta(t *testing.T) {
+// What an instruction takes is read from its operands, not remembered from its opcode. A Ref
+// names a value another instruction left behind; an Imm is the value itself and a Const
+// belongs to the operation, and neither is waiting on the stack.
+func TestConsumesReadsTheOperands(t *testing.T) {
 	cases := []struct {
 		name string
-		op   byte
+		inst ir.Instruction
 		want int
 	}{
-		{name: "OpGetFeed_push", op: ir.OpGetFeed, want: 1},
-		{name: "OpSave_push", op: ir.OpSave, want: 1},
-		{name: "OpLoad_push", op: ir.OpLoad, want: 1},
-		{name: "OpSubtract_pop2_push1", op: ir.OpSubtract, want: -1},
-		{name: "OpDivide_pop2_push1", op: ir.OpDivide, want: -1},
-		{name: "OpBeginScope_neutral", op: ir.OpBeginScope, want: 0},
-		{name: "OpReturn_neutral", op: ir.OpReturn, want: 0},
-		{name: "OpIdent_neutral", op: ir.OpIdent, want: 0},
-		{name: "OpDefer_neutral", op: ir.OpDefer, want: 0},
+		{
+			name: "two values",
+			inst: ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
+			want: 2,
+		},
+		{
+			name: "a value and something written down",
+			inst: ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.Imm(10, 8)),
+			want: 1,
+		},
+		{
+			name: "a value and a number the operation takes",
+			inst: ir.NewInstruction([]byte("02"), ir.OpHead, ir.RefTo([]byte("00")), ir.Const(2, 8)),
+			want: 1,
+		},
+		{
+			name: "nothing waiting on the stack",
+			inst: ir.NewInstruction([]byte("00"), ir.OpSave, ir.Imm(1, 8), ir.Nothing()),
+			want: 0,
+		},
+		{
+			name: "as many as a construction has",
+			inst: ir.NewInstructionOver([]byte("03"), ir.OpJoin, ir.RefTo([]byte("00")), ir.RefTo([]byte("01")), ir.RefTo([]byte("02"))),
+			want: 3,
+		},
 	}
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := OperandStackDelta(tc.op)
-			if got != tc.want {
-				t.Errorf("OperandStackDelta(0x%02x) = %d, want %d", tc.op, got, tc.want)
+			if got := len(consumes(tc.inst)); got != tc.want {
+				t.Errorf("takes %d values, want %d", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestGetOperandStackDeltaDepth(t *testing.T) {
-	cases := []struct {
-		name  string
-		insts []ir.Instruction
-		want  []int
-	}{
-		{
-			name:  "empty",
-			insts: nil,
-			want:  []int{0},
-		},
-		{
-			name: "single_GetArg",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, ir.Const(0, 0), ir.Nothing()),
-			},
-			want: []int{0, 1},
-		},
-		{
-			name: "two_GetArg",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, ir.Const(0, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, ir.Const(1, 0), ir.Nothing()),
-			},
-			want: []int{0, 1, 2},
-		},
-		{
-			name: "GetArg_GetArg_Add",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, ir.Const(0, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, ir.Const(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("2"), ir.OpAdd, ir.RefTo([]byte("0")), ir.RefTo([]byte("1"))),
-			},
-			want: []int{0, 1, 2, 2},
-		},
-		{
-			name: "GetArg_GetArg_Sub",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, ir.Const(0, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, ir.Const(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("2"), ir.OpSubtract, ir.RefTo([]byte("0")), ir.RefTo([]byte("1"))),
-			},
-			want: []int{0, 1, 2, 1},
-		},
-		{
-			name: "GetArg_GetArg_GetArg_Sub_Sub",
-			insts: []ir.Instruction{
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, ir.Const(0, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, ir.Const(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("2"), ir.OpGetFeed, ir.Const(2, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("3"), ir.OpSubtract, ir.RefTo([]byte("0")), ir.RefTo([]byte("1"))),
-				ir.NewInstruction([]byte("4"), ir.OpSubtract, ir.RefTo([]byte("2")), ir.RefTo([]byte("3"))),
-			},
-			want: []int{0, 1, 2, 3, 2, 1},
-		},
-		{
-			name: "BeginScope_GetArg_GetArg_Sub_Return",
-			insts: []ir.Instruction{
-				ir.NewInstruction(nil, ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
-				ir.NewInstruction([]byte("0"), ir.OpGetFeed, ir.Const(0, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("1"), ir.OpGetFeed, ir.Const(1, 0), ir.Nothing()),
-				ir.NewInstruction([]byte("2"), ir.OpSubtract, ir.RefTo([]byte("0")), ir.RefTo([]byte("1"))),
-				ir.NewInstruction(nil, ir.OpReturn, ir.RefTo(nil), ir.RefTo(nil)),
-			},
-			want: []int{0, 0, 1, 2, 1, 1},
-		},
+// The EVM computes "top - next", so a subtraction wants its right operand pushed first. It is
+// the machine's rule and not the IR's, which is why it is the one thing here still keyed by
+// the opcode.
+func TestSubtractionAndDivisionPushTheOtherWayRound(t *testing.T) {
+	for _, op := range []byte{ir.OpSubtract, ir.OpDivide} {
+		inst := ir.NewInstruction([]byte("02"), op, ir.RefTo([]byte("00")), ir.RefTo([]byte("01")))
+		if got := string(consumes(inst)[0].Bytes()); got != "01" {
+			t.Errorf("%s pushes %q first, want the right operand", ir.ResolveOpCode(op), got)
+		}
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := GetOperandStackDeltaDepth(tc.insts)
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("GetOperandStackDeltaDepth(...) = %v, want %v", got, tc.want)
-			}
-		})
+	inst := ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01")))
+	if got := string(consumes(inst)[0].Bytes()); got != "00" {
+		t.Errorf("an addition pushes %q first, want the left operand", got)
 	}
 }
 
-func TestIsAsociativeOperator(t *testing.T) {
-	cases := []struct {
-		name string
-		op   byte
-		want bool
-	}{
-		{name: "Sub", op: ir.OpSubtract, want: true},
-		{name: "Div", op: ir.OpDivide, want: true},
-		{name: "Mul", op: ir.OpMultiply, want: false},
-		{name: "Add", op: ir.OpAdd, want: false},
-		{name: "GetArg", op: ir.OpGetFeed, want: false},
-		{name: "Return", op: ir.OpReturn, want: false},
+// StackDepth answers for one lowered scope, and what it answers for is that the scope holds
+// together: the stack never goes under, because an instruction that takes a value has to find
+// it there, and it ends leaving exactly the one value the scope answers with.
+//
+// It is what a jump will need — the two sides of a branch have to meet with the same stack
+// under them — so it is worth pinning before anything depends on it.
+func TestStackDepthAnswersForAScope(t *testing.T) {
+	// feed(0) + feed(1), already in the order the stack needs.
+	insts := []ir.Instruction{
+		ir.NewInstruction([]byte("00"), ir.OpGetFeed, ir.Const(0, 8), ir.Nothing()),
+		ir.NewInstruction([]byte("01"), ir.OpGetFeed, ir.Const(1, 8), ir.Nothing()),
+		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
 	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := IsAssociativeOperator(tc.op)
-			if got != tc.want {
-				t.Errorf("IsAssociativeOperator(0x%02x) = %v, want %v", tc.op, got, tc.want)
-			}
-		})
+
+	depth := StackDepth(insts)
+	if want := []int{0, 1, 2, 1}; !reflect.DeepEqual(depth, want) {
+		t.Errorf("depth is %v, want %v", depth, want)
+	}
+}
+
+// An instruction taking a value nobody put there shows up as the stack going under, which is
+// the whole point of counting: it is a scope that would not run, said before it is written.
+func TestStackDepthShowsAValueNobodyPutThere(t *testing.T) {
+	insts := []ir.Instruction{
+		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
+	}
+
+	if got := StackDepth(insts); got[len(got)-1] >= 0 {
+		t.Errorf("depth is %v, want it to go under: it adds two values nobody pushed", got)
 	}
 }
 
@@ -253,7 +220,7 @@ func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 			// Compared as the IR reads rather than as the struct is: this is about the
 			// order instructions come out in, and an instruction also carries where it was
 			// written, which the expectations below have no business restating.
-			got := ResolveOperandsOrder(insts)
+			got := ResolveOperandsOrder(insts, 0)
 			if ir.Format(got) != ir.Format(tc.want) {
 				t.Errorf("\ngot =\n%v \nwant =\n%v", ir.Format(got), ir.Format(tc.want))
 			}
@@ -298,7 +265,7 @@ func TestLowering(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Lowering(tc.insts)
+			got := Lowering(tc.insts, 0)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("Lowering(%v) = %v, want %v", tc.insts, got, tc.want)
 			}

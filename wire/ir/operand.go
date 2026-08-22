@@ -15,14 +15,14 @@ const (
 	// Empty is an instruction that points at one thing, or at none. It is not the same as
 	// an operand carrying no bytes: OpSave of an empty run points at something, and the
 	// right of OpSave points at nothing at all.
-	Empty Kind = iota
+	KindEmpty Kind = iota
 
 	// Ref is a value another instruction left behind, named by the label that instruction
 	// carries. It is the whole reason the IR is not a stack machine: a value is named where
 	// it is produced and cited where it is used, and the distance between the two is a
 	// question for whoever consumes this — a register allocator on one target, a stack
 	// scheduler on another.
-	Ref
+	KindRef
 
 	// Imm is a value of the program, written where it is used instead of computed. A literal
 	// is the case for it — the ten in "a + 10" is not something the program works out.
@@ -35,7 +35,7 @@ const (
 	// tape_size wide; something narrower is not a smaller value, it is not a value. Nothing
 	// wider reaches here: the parser refuses a literal that does not fit, where it was
 	// written.
-	Imm
+	KindImm
 
 	// Const is a number the operation takes about itself: the width of a slice, the index of
 	// a field, the position an argument is read from. It is not a value of the program, and
@@ -45,25 +45,25 @@ const (
 	// to the program or to the instruction — an OpHead reads its as a length, and an OpAdd
 	// would read the same bytes as a number, and a consumer knowing which by opcode is the
 	// table this kind set out to remove.
-	Const
+	KindConst
 
 	// Name is a name that outlives the instruction writing it: something a scope bound, or
 	// a scope to call. It is resolved by whoever runs the program rather than by position,
 	// which is why it is not a Ref — a Ref points inside one stretch of instructions, and a
 	// Name reaches across scopes and across modules.
-	Name
+	KindName
 
 	// Target is where control goes. Today it carries a count of instructions, which is what
 	// the evaluator's cursor takes, and that count is why the instruction list cannot be
 	// reordered: a pass that moves or inserts anything makes every count a lie. Naming it a
 	// target is what lets it become the name of a block instead, which is the point at
 	// which moving instructions becomes safe.
-	Target
+	KindTarget
 
 	// Text is bytes written for a person to read, and never a value. The message of an
 	// assertion is the only one so far. It exists so that nothing tries to do arithmetic on
 	// a sentence, and so that a tape width has no say over how long the sentence may be.
-	Text
+	KindText
 )
 
 // An Operand is one of the two things an instruction points at, and what it is.
@@ -87,7 +87,7 @@ func (o Operand) Bytes() []byte {
 }
 
 // RefTo points at a value another instruction left behind, under its label.
-func RefTo(label []byte) Operand { return Operand{Ref, label} }
+func RefTo(label []byte) Operand { return Operand{KindRef, label} }
 
 // ImmOf carries a value the program did not compute, as the tape it is.
 //
@@ -95,51 +95,51 @@ func RefTo(label []byte) Operand { return Operand{Ref, label} }
 // and a value narrower than one is not a value. Padding here is what keeps that from being
 // something each caller has to remember.
 func ImmOf(value []byte, tapeSize int) Operand {
-	return Operand{Imm, byteutil.PaddingTape(value, tapeSize)}
+	return Operand{KindImm, byteutil.PaddingTape(value, tapeSize)}
 }
 
-// ImmNum carries a number the program wrote down, as a tape.
-func ImmNum(n uint64, tapeSize int) Operand {
+// Imm carries a number the program wrote down, as a tape.
+func Imm(n uint64, tapeSize int) Operand {
 	return ImmOf(byteutil.FromUint64(n), tapeSize)
 }
 
-// ConstNum carries a number the operation takes about itself, as a tape.
+// Const carries a number the operation takes about itself, as a tape.
 //
 // A width, an index, a position: none of them is a value of the program, and all of them are
 // as wide as everything else here.
-func ConstNum(n uint64, tapeSize int) Operand {
-	return Operand{Const, byteutil.PaddingTape(byteutil.FromUint64(n), tapeSize)}
+func Const(n uint64, tapeSize int) Operand {
+	return Operand{KindConst, byteutil.PaddingTape(byteutil.FromUint64(n), tapeSize)}
 }
 
 // NameOf carries a name, which outlives the instruction that writes it.
-func NameOf(name string) Operand { return Operand{Name, []byte(name)} }
+func NameOf(name string) Operand { return Operand{KindName, []byte(name)} }
 
 // TargetAt carries where control goes. It is still counted in instructions, which is what the
 // evaluator's cursor takes; saying that it is a target is what will let it become something
 // a pass can move without breaking.
-func TargetAt(n uint64) Operand { return Operand{Target, byteutil.FromUint64(n)} }
+func TargetAt(n uint64) Operand { return Operand{KindTarget, byteutil.FromUint64(n)} }
 
 // TextOf carries bytes written for a person: the message of an assertion, and nothing else
 // so far.
-func TextOf(text string) Operand { return Operand{Text, []byte(text)} }
+func TextOf(text string) Operand { return Operand{KindText, []byte(text)} }
 
 // Nothing is the operand of an instruction that only points at one thing, or at none.
-func Nothing() Operand { return Operand{Empty, nil} }
+func Nothing() Operand { return Operand{KindEmpty, nil} }
 
 // String names a kind for a person reading the IR.
 func (k Kind) String() string {
 	switch k {
-	case Ref:
+	case KindRef:
 		return "ref"
-	case Imm:
+	case KindImm:
 		return "imm"
-	case Const:
+	case KindConst:
 		return "const"
-	case Name:
+	case KindName:
 		return "name"
-	case Target:
+	case KindTarget:
 		return "target"
-	case Text:
+	case KindText:
 		return "text"
 	}
 	return "-"
@@ -147,7 +147,7 @@ func (k Kind) String() string {
 
 // String writes an operand as what it is and what it carries, which is how a person reads one.
 func (o Operand) String() string {
-	if o.kind == Empty {
+	if o.kind == KindEmpty {
 		return "-"
 	}
 	return o.kind.String() + " " + byteutil.ToHexPretty(o.bytes)

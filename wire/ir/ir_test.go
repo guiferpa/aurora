@@ -49,10 +49,10 @@ func TestAnInstructionAnswersWithWhatItWasGiven(t *testing.T) {
 	if got := inst.GetOpCode(); got != OpMultiply {
 		t.Errorf("opcode is %d, want %d", got, OpMultiply)
 	}
-	if got := inst.GetLeft(); got.Kind() != Ref || len(got.Bytes()) != 2 || got.Bytes()[0] != 1 {
+	if got := inst.GetLeft(); got.Kind() != KindRef || len(got.Bytes()) != 2 || got.Bytes()[0] != 1 {
 		t.Errorf("left is %v, want a ref to [1 2]", got)
 	}
-	if got := inst.GetRight(); got.Kind() != Ref || len(got.Bytes()) != 1 || got.Bytes()[0] != 3 {
+	if got := inst.GetRight(); got.Kind() != KindRef || len(got.Bytes()) != 1 || got.Bytes()[0] != 3 {
 		t.Errorf("right is %v, want a ref to [3]", got)
 	}
 }

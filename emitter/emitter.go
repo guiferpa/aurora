@@ -274,7 +274,7 @@ func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression
 	// shape head and tail use. Nothing here knows the field had a name.
 	lv := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, ir.RefTo(lv), ir.ConstNum(n.Index, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, ir.RefTo(lv), ir.Const(n.Index, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }
@@ -301,7 +301,7 @@ func emitPullExpression(tc *int, insts *[]ir.Instruction, n ast.PullExpression, 
 func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, tapeSize int) ir.Label {
 	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpHead, ir.RefTo(e), ir.ConstNum(n.Length, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpHead, ir.RefTo(e), ir.Const(n.Length, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }
@@ -310,7 +310,7 @@ func emitHeadExpression(tc *int, insts *[]ir.Instruction, n ast.HeadExpression, 
 func emitTailExpression(tc *int, insts *[]ir.Instruction, n ast.TailExpression, tapeSize int) ir.Label {
 	e := EmitInstruction(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpTail, ir.RefTo(e), ir.ConstNum(n.Length, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpTail, ir.RefTo(e), ir.Const(n.Length, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }
@@ -408,7 +408,7 @@ func emitAssertStatement(tc *int, insts *[]ir.Instruction, n ast.AssertStatement
 // emitFeedExpression reads the nth value applied to this scope.
 func emitFeedExpression(tc *int, insts *[]ir.Instruction, n ast.FeedExpression, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpGetFeed, ir.ConstNum(n.Nth.Value, tapeSize), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpGetFeed, ir.Const(n.Nth.Value, tapeSize), ir.Nothing()))
 	return l
 
 }
@@ -441,7 +441,7 @@ func emitBinaryExpression(tc *int, insts *[]ir.Instruction, n ast.BinaryExpressi
 // emitNumberLiteral saves a number as a tape.
 func emitNumberLiteral(tc *int, insts *[]ir.Instruction, n ast.NumberLiteral, tapeSize int) ir.Label {
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmNum(n.Value, tapeSize), ir.Nothing()).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.Imm(n.Value, tapeSize), ir.Nothing()).At(originOf(n.Token)))
 	return l
 
 }

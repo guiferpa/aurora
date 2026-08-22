@@ -14,14 +14,14 @@ func TestAnOperandSaysWhatItIs(t *testing.T) {
 		kind    Kind
 		bytes   []byte
 	}{
-		{name: "a reference", operand: RefTo([]byte("07")), kind: Ref, bytes: []byte("07")},
-		{name: "a value written down", operand: ImmOf([]byte{1, 2}, 8), kind: Imm, bytes: []byte{0, 0, 0, 0, 0, 0, 1, 2}},
-		{name: "a number the program wrote", operand: ImmNum(3, 8), kind: Imm, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
-		{name: "a number the operation takes", operand: ConstNum(2, 8), kind: Const, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 2}},
-		{name: "a name", operand: NameOf("x"), kind: Name, bytes: []byte("x")},
-		{name: "a target", operand: TargetAt(3), kind: Target, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
-		{name: "some text", operand: TextOf("hi"), kind: Text, bytes: []byte("hi")},
-		{name: "nothing", operand: Nothing(), kind: Empty, bytes: []byte{}},
+		{name: "a reference", operand: RefTo([]byte("07")), kind: KindRef, bytes: []byte("07")},
+		{name: "a value written down", operand: ImmOf([]byte{1, 2}, 8), kind: KindImm, bytes: []byte{0, 0, 0, 0, 0, 0, 1, 2}},
+		{name: "a number the program wrote", operand: Imm(3, 8), kind: KindImm, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
+		{name: "a number the operation takes", operand: Const(2, 8), kind: KindConst, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 2}},
+		{name: "a name", operand: NameOf("x"), kind: KindName, bytes: []byte("x")},
+		{name: "a target", operand: TargetAt(3), kind: KindTarget, bytes: []byte{0, 0, 0, 0, 0, 0, 0, 3}},
+		{name: "some text", operand: TextOf("hi"), kind: KindText, bytes: []byte("hi")},
+		{name: "nothing", operand: Nothing(), kind: KindEmpty, bytes: []byte{}},
 	}
 
 	for _, tc := range cases {
@@ -54,8 +54,8 @@ func TestAnOperandWritesItselfForAPerson(t *testing.T) {
 		want    string
 	}{
 		{operand: RefTo([]byte{7}), want: "ref 0x07"},
-		{operand: ImmNum(1, 8), want: "imm 0x0000000000000001"},
-		{operand: ConstNum(2, 8), want: "const 0x0000000000000002"},
+		{operand: Imm(1, 8), want: "imm 0x0000000000000001"},
+		{operand: Const(2, 8), want: "const 0x0000000000000002"},
 		{operand: NameOf("x"), want: "name 0x78"},
 		{operand: Nothing(), want: "-"},
 	}
@@ -92,7 +92,7 @@ func TestAnInstructionCarriesAsManyOperandsAsItWasGiven(t *testing.T) {
 func TestAnOperandBeyondWhatAnInstructionHasIsNothing(t *testing.T) {
 	inst := NewInstructionOver([]byte("09"), OpSave, ImmOf([]byte{1}, 8))
 
-	if got := inst.GetRight(); got.Kind() != Empty {
+	if got := inst.GetRight(); got.Kind() != KindEmpty {
 		t.Errorf("the second operand of a one-operand instruction is %v, want nothing", got)
 	}
 }

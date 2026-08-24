@@ -442,13 +442,15 @@ func TestExecuteInstructionCarriesAnErrorBack(t *testing.T) {
 	}
 }
 
-// An opcode with no operation behind it steps over and says nothing. OpPreCall is the one
-// declared and never emitted, which is exactly the shape of an opcode added tomorrow and not
-// yet wired: a running program does not stop because of it.
+// An opcode with no operation behind it steps over and says nothing. Every opcode the IR
+// declares has one today, so this one is not from the IR at all — which is exactly the shape
+// of an opcode added tomorrow and wired into one consumer before the other: a running program
+// does not stop because of it.
 func TestExecuteInstructionStepsOverAnOpcodeItDoesNotKnow(t *testing.T) {
 	e := New(NewEvaluatorOptions{})
 
-	inst := ir.NewInstruction([]byte("02"), ir.OpPreCall, ir.Nothing(), ir.Nothing())
+	const notAnOpcodeYet = byte(0xfe)
+	inst := ir.NewInstruction([]byte("02"), notAnOpcodeYet, ir.Nothing(), ir.Nothing())
 	if err := e.ExecuteInstruction(inst); err != nil {
 		t.Fatalf("executing: %v", err)
 	}
@@ -468,8 +470,6 @@ var coveredElsewhere = map[byte]bool{
 	ir.OpPrintDecimal: true,
 	ir.OpAssert:       true,
 	ir.OpCall:         true,
-	// Declared and never emitted; the step-over test is what covers it.
-	ir.OpPreCall: true,
 }
 
 // A new opcode is added to the emitter and wired into the evaluator in two separate places,

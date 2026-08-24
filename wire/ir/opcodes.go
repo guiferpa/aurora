@@ -44,9 +44,7 @@ const (
 	// in an ordinary tape.
 	OpBeginScope // opens a scope, and leaves the value its body ends with
 	OpDefer      // Ref, Target -> stores the scope that follows, and leaves its index
-	OpPreCall    // declared and never emitted; either it becomes where arguments are written,
-	//              or it goes
-	OpCall // Name -> runs the scope that name reaches, and leaves what it answered
+	OpCall       // Name -> runs the scope that name reaches, and leaves what it answered
 
 	// Control. Both operands are counted in instructions, which is what the evaluator's
 	// cursor takes and what stops any pass from reordering the list.

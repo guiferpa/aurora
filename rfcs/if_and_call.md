@@ -74,9 +74,10 @@ que a proposta não previu — o código que escopo nenhum segura, o topo de um 
 tem para quem voltar e por isso encerra a chamada. Esse não dá para ler da instrução, então é
 parâmetro.
 
-**4 · `OpPreCall`.** Continua sem uso e deve sair da lista. Os argumentos chegam à pilha pelo
-lowering, que os põe imediatamente antes da chamada, e é a própria chamada que os escreve no
-frame. Não sobrou lugar para ele.
+**4 · `OpPreCall`.** Saiu da lista. Os argumentos chegam à pilha pelo lowering, que os põe
+imediatamente antes da chamada, e é a própria chamada que os escreve no frame — não sobrou
+lugar para ele. Todo opcode que o IR declara agora tem operação atrás de si nos dois
+consumidores.
 
 **5 · Quem zera as posições que ninguém escreveu.** Quem chama, e sem nenhuma das duas saídas
 que a proposta via como únicas. Ela achava que quem chama não pode saber quantas posições o
@@ -94,10 +95,20 @@ reler estas perguntas contra o código. A pergunta estava certa antes de o códi
 
 ## O que ficou por fazer
 
-**O `StackDepth` não virou recusa.** A proposta dizia que ele provaria que os dois braços de um
-desvio deixam a mesma pilha, "e vira uma recusa de compilação quando ela não valer". Ele existe
-em `builder/evm/lowering.go` e **nenhum código o chama** — só os testes. A afirmação continua
-verdadeira por construção e não por verificação.
+**O `StackDepth` não virou recusa, e foi removido.** A proposta dizia que ele provaria que os
+dois braços de um desvio deixam a mesma pilha, "e vira uma recusa de compilação quando ela não
+valer". Nunca virou: nenhum código o chamava, só os testes. E ao olhar de perto ele estava
+**errado** — `produces` não lista `OpCall`, então ele contava toda chamada como quem come os
+argumentos e não deixa nada, e cada chamada afundava a conta em um. Ninguém percebeu porque
+ninguém o chamava.
+
+Uma função errada e sem uso é pior que qualquer uma das duas coisas sozinha: ela parece uma
+garantia. E o desenho dela também não dava para o que foi prometido — ela anda em linha reta,
+então num `if` conta os dois braços em sequência, que é justamente o que ela deveria provar não
+acontecer.
+
+A invariante continua verdadeira **por construção**: o emitter não produz desvio desbalanceado.
+Quando isso deixar de ser óbvio, o que entra é uma verificação que conhece caminhos, e não esta.
 
 **Static link.** Um `defer` que lê nome do escopo onde foi escrito continua de fora, como a
 proposta já dizia. Hoje é mais do que de fora: um escopo escrito dentro de outro não é escrito.

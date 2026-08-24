@@ -428,3 +428,61 @@ func TestACallToSomethingThatIsNotAScopeIsRefused(t *testing.T) {
 		t.Errorf("it says %q, and never names what was called", err)
 	}
 }
+
+// A run is its tapes and nothing else, so how wide it is follows from how many it has. A word
+// is thirty-two bytes, so five tapes of eight do not fit — and a shape that wide is refused
+// rather than written with its first field shifted off the end.
+func TestARunWiderThanAWordIsRefused(t *testing.T) {
+	tapes := make([]ir.Operand, 0, 5)
+	for at := 0; at < 5; at++ {
+		tapes = append(tapes, ir.Imm(uint64(at), 8))
+	}
+
+	err := WriteJoin(io.Discard, ir.NewInstructionOver([]byte("00"), ir.OpJoin, tapes...), 8)
+	if err == nil {
+		t.Fatal("it wrote a run of forty bytes into a word of thirty-two")
+	}
+	if !strings.Contains(err.Error(), "40") {
+		t.Errorf("it says %q, and never says how wide the run was", err)
+	}
+
+	// Four of them is exactly a word, which is the widest that does fit.
+	if err := WriteJoin(io.Discard, ir.NewInstructionOver([]byte("00"), ir.OpJoin, tapes[:4]...), 8); err != nil {
+		t.Errorf("it refused a run that fills a word exactly: %v", err)
+	}
+}
+
+// A field counts back from the last tape of the run, so where it reads depends on how many
+// tapes the run has and not only on the index. The first field of a run of two is shifted down
+// by one tape; the last field of any run is not shifted at all.
+func TestAFieldCountsBackFromTheEndOfTheRun(t *testing.T) {
+	cases := []struct {
+		name  string
+		at    uint64
+		tapes uint64
+		want  []byte
+	}{
+		{name: "the first of two", at: 0, tapes: 2, want: []byte{OpPush1, 64, OpShiftRight}},
+		{name: "the last of two", at: 1, tapes: 2, want: nil},
+		{name: "the middle of three", at: 1, tapes: 3, want: []byte{OpPush1, 64, OpShiftRight}},
+		{name: "the first of three", at: 0, tapes: 3, want: []byte{OpPush1, 128, OpShiftRight}},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			bs := bytes.NewBuffer(make([]byte, 0))
+			inst := ir.NewInstructionOver([]byte("00"), ir.OpField,
+				ir.RefTo([]byte("01")), ir.Const(tc.at, 8), ir.Const(tc.tapes, 8))
+			if err := WriteField(bs, inst, 8); err != nil {
+				t.Fatalf("writing the field: %v", err)
+			}
+
+			// The mask follows the shift and is the same for every case, so what is compared
+			// is the shift alone.
+			shift := bs.Bytes()[:len(tc.want)]
+			if !bytes.Equal(shift, tc.want) {
+				t.Errorf("it shifts by %v, want %v", byteutil.ToUpperHex(shift), byteutil.ToUpperHex(tc.want))
+			}
+		})
+	}
+}

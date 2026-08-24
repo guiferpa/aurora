@@ -449,3 +449,73 @@ ident outer = defer { middle(feed(0)) + middle(1); };`
 
 	agree(t, source, "outer", []string{"4"}, 0)
 }
+
+// A shape reaches the chain. It is not a new kind of value: Point{10, 20} is two tapes laid
+// end to end, and on a chain that is one word with the first tape at the far end — the same
+// number the evaluator answers, which is what lets a scope hand a run back either way.
+//
+// Reading a field is counting back from the last tape, which is why the instruction says how
+// many the run has: nothing in the value marks where it ends.
+func TestAShapeAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `shape Point { x, y };
+ident first = defer { ident p = Point{feed(0), 20}; p.x; };
+ident second = defer { ident p = Point{feed(0), 20}; p.y; };`
+
+	for _, name := range []string{"first", "second"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source, name, []string{"10"}, 0)
+		})
+	}
+}
+
+// A run of three, where the middle field is the one that proves the counting: it is neither
+// the tape the run starts with nor the one it ends with.
+func TestAFieldOfAWiderRunAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `shape Line { a, b, c };
+ident middle = defer { ident l = Line{1, feed(0), 3}; l.b; };`
+
+	agree(t, source, "middle", []string{"7"}, 0)
+}
+
+// A run is as wide as its tapes, so it follows the tape width the way everything else does. At
+// one byte a run of three is three bytes, and each field is still the byte it was laid in.
+func TestAShapeFollowsTheTapeWidth(t *testing.T) {
+	const source = `shape Line { a, b, c };
+ident third = defer { ident l = Line{1, 2, feed(0)}; l.c; };
+ident first = defer { ident l = Line{1, 2, feed(0)}; l.a; };`
+
+	for _, name := range []string{"third", "first"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source, name, []string{"9"}, 1)
+		})
+	}
+}
+
+// A run laid out of what a call answered, and a field read out of it. The two features meet
+// here: the values a shape is built from are worked out before it, and the lowering has to put
+// each of them on the stack in the order the run is laid in.
+func TestAShapeBuiltFromCallsAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `shape Point { x, y };
+ident twice = defer { feed(0) * 2; };
+ident build = defer { ident p = Point{twice(feed(0)), twice(feed(1))}; p.x + p.y; };`
+
+	agree(t, source, "build", []string{"3", "4"}, 0)
+}
+
+// A scope answering a whole run answers the tapes laid end to end, with the first at the far
+// end — which is what makes the run a number the evaluator agrees with.
+//
+// This one cannot go through the harness's usual comparison: it compares what printd wrote,
+// and printd writes a run tape by tape while a chain answers one word. So the word is read
+// against the tapes themselves.
+func TestAScopeAnswersAWholeRun(t *testing.T) {
+	const source = `shape Point { x, y };
+ident whole = defer { Point{feed(0), 20}; };`
+
+	returned := onChain(t, source, "whole", []string{"10"}, 0)
+
+	want := new(big.Int).SetBytes([]byte{0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 20})
+	if got := new(big.Int).SetBytes(returned); got.Cmp(want) != 0 {
+		t.Errorf("the chain answered %s, want the two tapes laid end to end, which is %s", got, want)
+	}
+}

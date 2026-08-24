@@ -217,6 +217,94 @@ func WriteScopeEpilogue(w io.Writer) error {
 	return err
 }
 
+// WriteJoin lays tapes end to end into one value.
+//
+// A run has no header, no length and no tag — it is the tapes and nothing else, which is what
+// the language says a shape is. So on a chain it is a word like every other value, with the
+// first tape at the far end and the last one at the bottom, which is where a tape sits inside
+// a word anyway. Point{10, 20} at a tape of eight bytes is 10 << 64 | 20, the same number the
+// evaluator answers, so a scope answering a run answers the same thing on both sides.
+//
+// That is also the ceiling: a word is thirty-two bytes and a run is as many tapes as it has,
+// so a shape of five fields at the default tape does not fit, and the builder refuses it
+// rather than writing a value with the first field shifted off the end.
+//
+// It is built from the last tape back, because that is the order the stack offers them. The
+// ones another instruction worked out are on it already, put there in field order by the
+// lowering, so the last of them is on top; the ones the program wrote down reach the stack
+// here. Either way what has been built so far sits under what comes next, which is why a tape
+// taken off the stack changes places with it and one pushed does not.
+func WriteJoin(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	tapes := valueOperands(inst)
+	if run := len(tapes) * tapeSize; run > byteutil.MaxTapeSize {
+		return fmt.Errorf(
+			"a run of %d tapes is %d bytes and a word is %d: a shape this wide does not reach the bytecode",
+			len(tapes), run, byteutil.MaxTapeSize)
+	}
+
+	for at := len(tapes) - 1; at >= 0; at-- {
+		tape := tapes[at]
+		switch {
+		case tape.Kind() == ir.KindImm:
+			if _, err := WritePush(w, tape.Bytes(), tapeSize); err != nil {
+				return err
+			}
+		case at < len(tapes)-1:
+			// It is under what has been built so far, and it is what the shift applies to.
+			if _, err := w.Write([]byte{OpSwap1}); err != nil {
+				return err
+			}
+		}
+
+		// A tape wider than the tape size is cut to it, which is what the evaluator does
+		// when it lays one into a run: a run of tapes holds tapes.
+		if _, err := WriteMask(w, tapeSize); err != nil {
+			return err
+		}
+
+		if bits := (len(tapes) - 1 - at) * tapeSize * BYTE_SIZE; bits > 0 {
+			if _, err := WritePush(w, byteutil.FromUint64(uint64(bits)), 1); err != nil {
+				return err
+			}
+			if _, err := w.Write([]byte{OpShiftLeft}); err != nil {
+				return err
+			}
+		}
+
+		if at < len(tapes)-1 {
+			if _, err := w.Write([]byte{OpOr}); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// WriteField takes one tape out of a run.
+//
+// The run is on the stack and the two numbers are the instruction's own: which tape, and how
+// many the run has. Both are needed because a run is counted from its first tape and kept from
+// its last — nothing in the value says where it ends, so the only way to the tape at index i
+// is to know there are n of them and count back.
+func WriteField(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	operands := inst.GetOperands()
+	at := int(byteutil.ToUint64(operands[1].Bytes()))
+	tapes := int(byteutil.ToUint64(operands[2].Bytes()))
+
+	if bits := (tapes - 1 - at) * tapeSize * BYTE_SIZE; bits > 0 {
+		if _, err := WritePush(w, byteutil.FromUint64(uint64(bits)), 1); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte{OpShiftRight}); err != nil {
+			return err
+		}
+	}
+
+	_, err := WriteMask(w, tapeSize)
+	return err
+}
+
 // WriteCall enters another scope of this contract and comes back with what it answered.
 //
 // It is a jump, and deliberately not a message call. A message call to your own contract is a
@@ -770,7 +858,7 @@ func targetOf(inst ir.Instruction, at int, positions []int) int {
 func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, target int, scope Scope) error {
 	op := inst.GetOpCode()
 
-	if handled[op] && op != ir.OpSave && op != ir.OpCall {
+	if handled[op] && op != ir.OpSave && op != ir.OpCall && op != ir.OpJoin {
 		if err := WriteImmediates(bs, inst, scope.TapeSize); err != nil {
 			return err
 		}
@@ -843,6 +931,18 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, targe
 
 	if op == ir.OpCall {
 		if err := WriteCall(bs, inst, scope, target); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpJoin {
+		if err := WriteJoin(bs, inst, scope.TapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpField {
+		if err := WriteField(bs, inst, scope.TapeSize); err != nil {
 			return err
 		}
 	}

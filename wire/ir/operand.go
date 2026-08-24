@@ -60,6 +60,11 @@ const (
 	// which moving instructions becomes safe.
 	KindTarget
 
+	// Block names a block of the program: the scope a name was bound to. A Target says where
+	// control goes; a Block says which piece of the program is meant, and control does not
+	// move because of it.
+	KindBlock
+
 	// Text is bytes written for a person to read, and never a value. The message of an
 	// assertion is the only one so far. It exists so that nothing tries to do arithmetic on
 	// a sentence, and so that a tape width has no say over how long the sentence may be.
@@ -123,6 +128,13 @@ func TargetAt(n uint64) Operand { return Operand{KindTarget, byteutil.FromUint64
 // so far.
 func TextOf(text string) Operand { return Operand{KindText, []byte(text)} }
 
+// BlockOf answers an operand naming a block of the program: the scope a name was bound to, so
+// that binding a scope is an ordinary instruction taking an ordinary operand.
+func BlockOf(id BlockID) Operand { return Operand{KindBlock, byteutil.FromUint64(uint64(id))} }
+
+// Block answers which block this operand names.
+func (o Operand) Block() BlockID { return BlockID(byteutil.ToUint64(o.bytes)) }
+
 // Nothing is the operand of an instruction that only points at one thing, or at none.
 func Nothing() Operand { return Operand{KindEmpty, nil} }
 
@@ -137,6 +149,8 @@ func (k Kind) String() string {
 		return "const"
 	case KindName:
 		return "name"
+	case KindBlock:
+		return "block"
 	case KindTarget:
 		return "target"
 	case KindText:

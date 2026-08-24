@@ -533,6 +533,7 @@ func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 
 	return ir.Program{
 		Instructions: insts,
+		Blocks:       BlocksOf(insts),
 		Expressions:  exprs,
 		Warnings:     warnings,
 	}, nil

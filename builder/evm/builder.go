@@ -140,7 +140,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	entries := make(map[string]Entry, len(dispatchers))
 	for at := range dispatchers {
 		d := &dispatchers[at]
-		entries[string(d.Selector)] = Entry{Reads: b.blocks[d.Entry].Params}
+		entries[string(d.Selector)] = Entry{Reads: len(b.blocks[d.Entry].Params)}
 	}
 
 	offset, err := b.measureScopes(dispatchers, entries)
@@ -157,7 +157,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 
 	for at := range dispatchers {
 		d := &dispatchers[at]
-		internal, err := ScopeInternalAt(referenced+d.Offset, b.blocks[d.Entry].Params, b.tapeSize)
+		internal, err := ScopeInternalAt(referenced+d.Offset, len(b.blocks[d.Entry].Params), b.tapeSize)
 		if err != nil {
 			return nil, err
 		}

@@ -1014,7 +1014,7 @@ type Entry struct {
 func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[string]Entry, answers bool) Scope {
 	params := 0
 	if len(order) > 0 {
-		params = blocks[order[0]].Params
+		params = len(blocks[order[0]].Params)
 	}
 
 	names := make(map[string]int)

@@ -18,9 +18,17 @@ type BlockID int
 // lets a jump name where it goes rather than count how far.
 type Block struct {
 	ID BlockID
-	// Params is how many values arrive with control. A scope's are the values applied to it;
-	// a block that two arms of a branch meet at takes the one value each of them computed.
-	Params int
+	// Params is what arrives with control, and what each of them is known as inside.
+	//
+	// A scope's are unnamed: they arrive as the vector applied to it, and feed reads a
+	// position of that vector rather than a name. A block reached from somewhere that hands a
+	// value over names the one it takes — where the arms of a branch meet, and where a block
+	// written inside an expression carries on — because whoever reads that value reads it
+	// under the name the value had before the split.
+	//
+	// Naming it is what makes the handover checkable. It used to be an agreement: off a chain
+	// a name in a map, on one a place on the stack, and nothing in the IR either way.
+	Params []Label
 	Insts  []Instruction
 	Term   Terminator
 	Origin Origin

@@ -50,6 +50,14 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			wantNone: true,
 		},
 		{
+			// Nothing the emitter produces is pending any more, so what this guards is the
+			// next thing added to the IR: an opcode the builder does not write and nobody
+			// named is warned about under the name the IR gives it, rather than passed over.
+			name:    "an instruction nobody wrote down",
+			opcodes: []byte{ir.OpPreCall},
+			want:    []string{"OpPreCall does not reach the bytecode yet"},
+		},
+		{
 			name:     "a shape, which reaches the bytecode now",
 			opcodes:  []byte{ir.OpJoin, ir.OpField},
 			wantNone: true,

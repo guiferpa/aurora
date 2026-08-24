@@ -14,10 +14,18 @@ type Expression struct {
 	Label []byte
 }
 
-// Program is what a source file compiled to: the instruction stream, where each top-level
-// expression sits inside it, and anything worth saying that did not stop the compilation.
+// Program is what a source file compiled to: the instruction stream, the same program as
+// blocks, where each top-level expression sits inside the stream, and anything worth saying
+// that did not stop the compilation.
+//
+// The two forms describe the same program, and both are here while its consumers cross from
+// one to the other. The stream says structure by counting — how many instructions an "if"
+// skips, how long a scope's body is — so every consumer works the structure out again, each in
+// its own way, and two ways of counting one thing is two chances to count it differently. The
+// blocks say it once.
 type Program struct {
 	Instructions []Instruction
+	Blocks       []Block
 	Expressions  []Expression
 	Warnings     []diag.Warning
 }

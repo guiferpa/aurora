@@ -9,6 +9,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // build compiles source all the way to EVM bytecode, which is what actually gets deployed.
@@ -28,7 +29,7 @@ func build(t *testing.T, source string, tapeSize int) []byte {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	bytecode, err := NewBuilder(insts, NewBuilderOptions{TapeSize: tapeSize}).Build()
+	bytecode, err := NewBuilder(ir.BlocksOf(insts), NewBuilderOptions{TapeSize: tapeSize}).Build()
 	if err != nil {
 		t.Fatalf("builder: %v", err)
 	}
@@ -129,8 +130,10 @@ func TestBuildWithoutCallables(t *testing.T) {
 	if runtime[0] == OpPush1 && len(runtime) > 2 && runtime[2] == OpCallDataLoad {
 		t.Error("no dispatcher should be emitted when there is no callable")
 	}
-	if runtime[len(runtime)-1] != OpStop {
-		t.Errorf("runtime should end in STOP, got %#x", runtime[len(runtime)-1])
+	// The top of a program is a block, and a block answers with what it computed. It used to
+	// stop instead, throwing the value away and leaving a dead byte at the end of every scope.
+	if runtime[len(runtime)-1] != OpReturn {
+		t.Errorf("runtime should answer, got %#x", runtime[len(runtime)-1])
 	}
 }
 
@@ -328,14 +331,22 @@ func TestBuildIsDeterministic(t *testing.T) {
 	}
 }
 
-func TestWriteCodeEndsInStop(t *testing.T) {
+// A block with nothing in it answers with the neutral value. The top of a program is a block
+// like any other, so a contract whose top does nothing still answers rather than falling off
+// the end of its own code.
+func TestAnEmptyBlockAnswersWithNothing(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	if _, err := WriteCode(buf, NewIdentManager(), nil, 0, ScopeOf(nil, byteutil.DefaultTapeSize, nil, true)); err != nil {
-		t.Fatalf("WriteCode: %v", err)
+	scope := ScopeOf(nil, nil, byteutil.DefaultTapeSize, nil, true)
+	if err := writeBlocks(buf, []ir.Block{{}}, []ir.BlockID{0}, 0, scope); err != nil {
+		t.Fatalf("writing the block: %v", err)
 	}
+
 	got := buf.Bytes()
-	if len(got) != 1 || got[0] != OpStop {
-		t.Errorf("got %v, want a single STOP", got)
+	if got[0] != OpJumpDestiny {
+		t.Errorf("it opens with %v, want somewhere to arrive at", byteutil.ToUpperHex(got[:1]))
+	}
+	if got[len(got)-1] != OpReturn {
+		t.Errorf("it ends with %v, want it answering", byteutil.ToUpperHex(got[len(got)-1:]))
 	}
 }
 

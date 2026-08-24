@@ -69,34 +69,21 @@ func WriteSave(w io.Writer, left []byte, size int) (int, error) {
 	return WritePush(w, left, size)
 }
 
-type IdentOffsetMapper interface {
-	GetOffset(ident []byte) int
-	SetOffset(ident string, offset int)
-	GetLength() uint
-	// Base is how far into the frame the names of this scope begin, past the places the
-	// values applied to it are kept.
-	Base() int
-}
-
-// WriteIdent stores a value under a name, in a slot of memory of its own.
+// WriteIdent stores a value under a name, in the place the frame keeps for it.
 //
 // The address goes in two bytes. It used to go in one, and a slot is thirty-two wide, so the
-// ninth name in a contract was given the address of the first — 8 * 32 is 256, and one byte
-// holds none of it. Two names became one piece of memory, and each wrote over the other.
-func WriteIdent(w io.Writer, m IdentOffsetMapper, ident []byte) (int, error) {
-	offset := m.Base() + int(m.GetLength())*MEMORY_SLOT_SIZE
-	if err := WriteFrameAddress(w, offset); err != nil {
+// ninth name in a contract was given the address of the first: two names became one piece of
+// memory, and each wrote over the other.
+func WriteIdent(w io.Writer, names map[string]int, ident []byte) (int, error) {
+	if err := WriteFrameAddress(w, names[string(ident)]); err != nil {
 		return 0, err
 	}
-	if _, err := w.Write([]byte{OpMemoryStore}); err != nil {
-		return 0, err
-	}
-	m.SetOffset(string(ident), offset)
-	return 0, nil
+	return w.Write([]byte{OpMemoryStore})
 }
 
-func WriteLoad(w io.Writer, m IdentOffsetMapper, left []byte) (int, error) {
-	if err := WriteFrameAddress(w, m.GetOffset(left)); err != nil {
+// WriteLoad reads what a name holds.
+func WriteLoad(w io.Writer, names map[string]int, ident []byte) (int, error) {
+	if err := WriteFrameAddress(w, names[string(ident)]); err != nil {
 		return 0, err
 	}
 	return w.Write([]byte{OpMemoryLoad})
@@ -703,9 +690,9 @@ func writeFrameMove(w io.Writer, by int, op byte) error {
 //
 // It is measured rather than added up from a table of sizes, for the reason every address here
 // is: a table is a second description of the same bytes, and two descriptions drift.
-func ScopeInternalAt(base int, body []ir.Instruction, tapeSize int) (int, error) {
+func ScopeInternalAt(base, params, tapeSize int) (int, error) {
 	var measured counter
-	if err := WriteScopePrologue(&measured, FrameNamesAt(body)/MEMORY_SLOT_SIZE, tapeSize, 0, 0); err != nil {
+	if err := WriteScopePrologue(&measured, params, tapeSize, 0, 0); err != nil {
 		return 0, err
 	}
 	// The way in opens with a JUMPDEST the dispatcher lands on; the prologue follows; what it
@@ -714,15 +701,16 @@ func ScopeInternalAt(base int, body []ir.Instruction, tapeSize int) (int, error)
 }
 
 // WriteScope emits a scope whole: the way in from a transaction, what that way comes back to,
-// and the body both ways share.
+// and the blocks both ways share.
 //
 // The addresses inside it are worked out by measuring the prologue, which is the only part
-// whose length depends on the scope — one copy per position the body addresses. Every push is
-// a fixed size, so measuring once is enough.
-func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int, entries map[string]Entry) error {
-	reads := FrameNamesAt(body) / MEMORY_SLOT_SIZE
+// whose length depends on the scope — one copy per value applied to it. Every push is a fixed
+// size, so measuring once is enough.
+func WriteScope(bs io.Writer, blocks []ir.Block, entry ir.BlockID, tapeSize, base int, entries map[string]Entry) error {
+	order := layoutOf(blocks, entry)
+	scope := ScopeOf(blocks, order, tapeSize, entries, false)
 
-	internal, err := ScopeInternalAt(base, body, tapeSize)
+	internal, err := ScopeInternalAt(base, scope.Params, tapeSize)
 	if err != nil {
 		return err
 	}
@@ -731,7 +719,7 @@ func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int, entries
 	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
 		return err
 	}
-	if err := WriteScopePrologue(bs, reads, tapeSize, epilogue, internal); err != nil {
+	if err := WriteScopePrologue(bs, scope.Params, tapeSize, epilogue, internal); err != nil {
 		return err
 	}
 	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
@@ -740,45 +728,10 @@ func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int, entries
 	if err := WriteScopeEpilogue(bs); err != nil {
 		return err
 	}
-	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
-		return err
-	}
 
-	_, err = WriteCode(bs, NewIdentManagerAt(FrameNamesAt(body)), body, internal+1, ScopeOf(body, tapeSize, entries, false))
-	return err
-}
-
-// FrameNamesAt answers how far into a frame the names of a scope begin.
-//
-// Before them sit the values applied to the scope, one slot each, and how many of those there
-// are is what the body says it reads: the highest position it feeds, plus one. It is the same
-// number the compiler warns a short call about, and it is known where the body is written.
-func FrameNamesAt(insts []ir.Instruction) int {
-	highest := -1
-	for _, inst := range insts {
-		if inst.GetOpCode() != ir.OpGetFeed {
-			continue
-		}
-		if at := int(byteutil.ToUint64(inst.GetLeft().Bytes())); at > highest {
-			highest = at
-		}
-	}
-	return (highest + 1) * MEMORY_SLOT_SIZE
-}
-
-// FrameSizeAt answers how much memory a scope keeps.
-//
-// The values applied to it come first, then the names it binds — one slot each, in the order
-// they are bound, which is what WriteIdent hands out. It is the whole of what one activation
-// of a scope occupies, and it is what a call moves the frame pointer by.
-func FrameSizeAt(insts []ir.Instruction) int {
-	names := make(map[string]bool)
-	for _, inst := range insts {
-		if inst.GetOpCode() == ir.OpIdent {
-			names[string(inst.GetLeft().Bytes())] = true
-		}
-	}
-	return FrameNamesAt(insts) + len(names)*MEMORY_SLOT_SIZE
+	// The first block opens with a JUMPDEST of its own, which is the way in from another
+	// scope.
+	return writeBlocks(bs, blocks, order, internal, scope)
 }
 
 // WriteFrameStart writes where the first frame begins, which every scope reads from until a
@@ -1017,135 +970,77 @@ func (c *counter) Write(p []byte) (int, error) {
 // A Scope is what writing an instruction needs to know beyond the instruction itself: the
 // facts that belong to the scope it is written inside rather than to the instruction written.
 //
-// They used to be threaded one at a time, so every fact the backend learned about a scope
-// widened four signatures at once and every call site had to be visited to say the same thing
-// again. They travel together because they are read together — each of them is a fact about
-// the same scope, and no instruction is written without one.
+// All of it is known before a byte is written, which is what blocks bought. The places a scope
+// keeps used to be handed out as the writer went — a name got the next free slot at the moment
+// its binding was written — so writing the same scope twice, which measuring does, had to be
+// careful to hand out the same places both times. Now the frame is laid out once and read.
 type Scope struct {
-	// TapeSize is how wide a value is, which is what every result is cut back to. It is the
-	// program's, not the machine's: the EVM works in words of thirty-two bytes whatever the
-	// tape says.
+	// TapeSize is how wide a value is, which every result is cut back to.
 	TapeSize int
-	// Arms holds the labels an "if" answers under, so a return naming one is known to end a
-	// branch rather than a scope. The two are the same opcode and which it is can be read.
-	Arms map[string]bool
-	// Answers says whether a return ends the call rather than handing its value back. Code no
-	// scope holds — the top of a program, run when a contract has no scope to dispatch to —
-	// has nobody to go back to.
+	// Answers says whether ending the scope ends the call rather than handing the value back.
+	// Code no scope holds — the top of a program — has nobody to go back to.
 	Answers bool
-	// Frame is how much memory this scope keeps: the values applied to it, then the names it
-	// binds. A call puts the frame of whoever it calls right after this one, so the two never
-	// share a slot and a scope can be entered again while it is running.
+	// Params is how many values are applied to this scope, which is what its first block
+	// takes and what its prologue copies.
+	Params int
+	// Names answers where in the frame each name this scope binds is kept.
+	Names map[string]int
+	// Frame is how much memory this scope keeps: the values applied to it, then its names. A
+	// call puts the frame of whoever it calls right after this one.
 	Frame int
 	// Entries answers, for the name a scope was bound to, what a call needs to know about it.
-	// The names and what each reads are known before any address of one is, so the addresses
-	// are filled in before the scopes are written — a call measures the same either way,
-	// since every push is a fixed size and what does change its length is known from the
-	// start.
 	Entries map[string]Entry
 }
 
 // An Entry is what a call needs to know about the scope it calls: where to go in, and how many
-// values that scope reads.
+// values that scope takes.
 //
-// It reads a fixed number of positions — the highest it feeds, plus one — and that is a
-// property of the body, known where the body is. What a call applies is a property of the call.
-// The two need not agree, and where they do not is where the caller has work to do.
+// A scope takes a fixed number — what its first block says — and that is a property of the
+// scope. What a call applies is a property of the call. The two need not agree, and where they
+// do not is where the caller has work to do.
 type Entry struct {
 	// At is the byte another scope enters this one at, past its prologue.
 	At int
-	// Reads is how many positions the body addresses.
+	// Reads is how many values the scope takes.
 	Reads int
 }
 
-// ScopeOf answers what the writer needs to know about a body of instructions.
+// ScopeOf answers what the writer needs to know about a run of blocks.
 //
-// What it derives is derived once, here, rather than at each of the places that reads it:
-// working the arms out twice is how the writing pass and the measuring pass come to disagree.
-func ScopeOf(insts []ir.Instruction, tapeSize int, entries map[string]Entry, answers bool) Scope {
+// The frame is laid out here: the values applied to the scope first, one slot each, then the
+// names it binds in the order they are first bound. Reading the whole scope before writing any
+// of it is what makes that possible, and it is the thing an instruction list could not offer —
+// there, a name in a block that had not been reached yet was a name nobody knew about.
+func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[string]Entry, answers bool) Scope {
+	params := 0
+	if len(order) > 0 {
+		params = blocks[order[0]].Params
+	}
+
+	names := make(map[string]int)
+	offset := params * MEMORY_SLOT_SIZE
+	for _, id := range order {
+		for _, inst := range blocks[id].Insts {
+			if inst.GetOpCode() != ir.OpIdent {
+				continue
+			}
+			name := string(inst.GetLeft().Bytes())
+			if _, bound := names[name]; bound {
+				continue
+			}
+			names[name] = offset
+			offset += MEMORY_SLOT_SIZE
+		}
+	}
+
 	return Scope{
 		TapeSize: tapeSize,
-		Arms:     armsOf(insts),
 		Answers:  answers,
-		Frame:    FrameSizeAt(insts),
+		Params:   params,
+		Names:    names,
+		Frame:    offset,
 		Entries:  entries,
 	}
-}
-
-// PositionsOf answers the byte each instruction of a scope starts at, and where the scope ends.
-//
-// It measures by writing — to something that only counts — rather than by adding up a table of
-// sizes beside the writer. A table would be a second description of the same thing, and two
-// descriptions of one thing drift: this backend has been wrong that way more than once, and
-// the drift is silent because the bytes still come out, just at the wrong addresses.
-//
-// The names are registered into a manager of its own and thrown away, since what is measured
-// is how many bytes an instruction takes and every push is a fixed size now.
-func PositionsOf(insts []ir.Instruction, landings map[int]bool, scope Scope) ([]int, error) {
-	positions := make([]int, len(insts)+1)
-	im := NewIdentManager()
-	for at, inst := range insts {
-		var measured counter
-		if landings[at] {
-			measured++
-		}
-		if err := WriteInstruction(&measured, im, inst, 0, scope); err != nil {
-			return nil, err
-		}
-		positions[at+1] = positions[at] + int(measured)
-	}
-	return positions, nil
-}
-
-// landingsOf answers the instructions a jump arrives at.
-//
-// The IR counts its jumps in instructions, which is what the evaluator's cursor takes; the EVM
-// takes a byte, and it refuses one that is not a JUMPDEST. So the places that are arrived at
-// are worked out first, from the counts alone, and each of them opens with one.
-//
-// A landing one past the last instruction is the way out of an "if" that ends a scope, and it
-// gets a JUMPDEST of its own after everything.
-func landingsOf(insts []ir.Instruction) map[int]bool {
-	landings := make(map[int]bool)
-	for at, inst := range insts {
-		switch inst.GetOpCode() {
-		case ir.OpIf:
-			landings[at+1+int(byteutil.ToUint64(inst.GetRight().Bytes()))] = true
-		case ir.OpJump:
-			landings[at+1+int(byteutil.ToUint64(inst.GetLeft().Bytes()))] = true
-		}
-	}
-	return landings
-}
-
-// armsOf answers the labels an "if" answers under, so an OpReturn naming one is known to end a
-// branch rather than a scope.
-func armsOf(insts []ir.Instruction) map[string]bool {
-	arms := make(map[string]bool)
-	for _, inst := range insts {
-		if inst.GetOpCode() == ir.OpIf {
-			arms[byteutil.ToHex(inst.GetLabel())] = true
-		}
-	}
-	return arms
-}
-
-// targetOf answers the byte an instruction jumps to, or zero for one that does not jump.
-func targetOf(inst ir.Instruction, at int, positions []int) int {
-	var ahead int
-	switch inst.GetOpCode() {
-	case ir.OpIf:
-		ahead = int(byteutil.ToUint64(inst.GetRight().Bytes()))
-	case ir.OpJump:
-		ahead = int(byteutil.ToUint64(inst.GetLeft().Bytes()))
-	case ir.OpCall:
-		// A call carries its own landing rather than jumping to another instruction: it comes
-		// back to the byte right after it went, which it works out from where it begins.
-		return positions[at]
-	default:
-		return 0
-	}
-	return positions[at+1+ahead]
 }
 
 // WriteInstruction emits one instruction.
@@ -1160,7 +1055,7 @@ func targetOf(inst ir.Instruction, at int, positions []int) int {
 // Answers says what the third kind does. Code that no scope holds — the top of a program, run
 // when a contract has no scope to dispatch to — has nobody to go back to, so its return ends
 // the call rather than handing a value over.
-func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, target int, scope Scope) error {
+func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, scope Scope, at int) error {
 	op := inst.GetOpCode()
 
 	if handled[op] && !ordersItsOwn[op] {
@@ -1202,20 +1097,6 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, targe
 		}
 	}
 
-	if op == ir.OpReturn {
-		// The value of an arm is already on the stack, which is where whoever is under the
-		// branch finds it: there is nothing to write. Only a scope answers to the chain.
-		if !scope.Arms[byteutil.ToHex(inst.GetLeft().Bytes())] {
-			write := WriteReturn
-			if scope.Answers {
-				write = WriteAnswer
-			}
-			if _, err := write(bs); err != nil {
-				return err
-			}
-		}
-	}
-
 	if op == ir.OpSave {
 		if _, err := WriteSave(bs, inst.GetLeft().Bytes(), scope.TapeSize); err != nil {
 			return err
@@ -1223,19 +1104,27 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, targe
 	}
 
 	if op == ir.OpIdent {
-		if _, err := WriteIdent(bs, im, inst.GetLeft().Bytes()); err != nil {
+		// A name bound to a scope holds the neutral value here. A scope is not a value on a
+		// chain: it is code, reached by a transaction naming it or by another scope calling
+		// it, and neither of those goes through the name's place in memory.
+		if inst.GetRight().Kind() == ir.KindBlock {
+			if _, err := WritePush(bs, nil, scope.TapeSize); err != nil {
+				return err
+			}
+		}
+		if _, err := WriteIdent(bs, names, inst.GetLeft().Bytes()); err != nil {
 			return err
 		}
 	}
 
 	if op == ir.OpLoad {
-		if _, err := WriteLoad(bs, im, inst.GetLeft().Bytes()); err != nil {
+		if _, err := WriteLoad(bs, names, inst.GetLeft().Bytes()); err != nil {
 			return err
 		}
 	}
 
 	if op == ir.OpCall {
-		if err := WriteCall(bs, inst, scope, target); err != nil {
+		if err := WriteCall(bs, inst, scope, at); err != nil {
 			return err
 		}
 	}
@@ -1299,67 +1188,5 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, targe
 		}
 	}
 
-	if op == ir.OpIf {
-		// The IR skips ahead when the test is false and the EVM jumps when what it pops is
-		// not zero, so the test is turned over first.
-		if _, err := bs.Write([]byte{OpIsZero}); err != nil {
-			return err
-		}
-		if _, err := WritePush2(bs, target); err != nil {
-			return err
-		}
-		if _, err := bs.Write([]byte{OpJumpIf}); err != nil {
-			return err
-		}
-	}
-
-	if op == ir.OpJump {
-		if _, err := WritePush2(bs, target); err != nil {
-			return err
-		}
-		if _, err := bs.Write([]byte{OpJump}); err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-// WriteCode emits a scope: measure, resolve, write.
-//
-// A jump forward needs the address of code that has not been written, so the bytes are
-// measured first and the addresses fall out of the measurement. Every push is a fixed size, so
-// one pass is enough — nothing here has to be measured again because an address turned out
-// longer than it was guessed.
-//
-// The base is where this scope lands in the runtime, since a jump carries an address in the
-// contract and not an offset into a scope. It is zero while a scope is being measured, and the
-// measurement does not depend on it.
-func WriteCode(bs io.Writer, im *IdentManager, insts []ir.Instruction, base int, scope Scope) (int, error) {
-	landings := landingsOf(insts)
-
-	positions, err := PositionsOf(insts, landings, scope)
-	if err != nil {
-		return 0, err
-	}
-
-	for at, inst := range insts {
-		if landings[at] {
-			if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
-				return 0, err
-			}
-		}
-		if err := WriteInstruction(bs, im, inst, base+targetOf(inst, at, positions), scope); err != nil {
-			return 0, err
-		}
-	}
-
-	// The way out of an "if" that ends a scope lands past the last instruction.
-	if landings[len(insts)] {
-		if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
-			return 0, err
-		}
-	}
-
-	return bs.Write([]byte{OpStop})
 }

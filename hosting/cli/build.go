@@ -11,6 +11,7 @@ import (
 
 	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // BuildReport is what a build produced.
@@ -52,7 +53,7 @@ func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildRe
 
 	// Assembling and writing are two things, and the builder only does the first: it
 	// hands the bytecode back, and where it lands is decided here.
-	bytecode, err := evm.NewBuilder(program.Instructions, evm.NewBuilderOptions{
+	bytecode, err := evm.NewBuilder(ir.BlocksOf(program.Instructions), evm.NewBuilderOptions{
 		TapeSize: s.tapeSize,
 	}).Build()
 	if err != nil {

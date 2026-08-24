@@ -99,6 +99,37 @@ func Lowering(insts []ir.Instruction, tapeSize int) []ir.Instruction {
 	return ResolveOperandsOrder(insts, tapeSize)
 }
 
+// LowerBlock answers a block whose instructions are in the order the stack needs them.
+//
+// A block ends in a terminator, and the terminator takes values the instructions left behind —
+// so what the block computes has to be ordered for it too. It is not one of the instructions,
+// so it is stood in for by one while the ordering runs: an instruction that takes exactly what
+// the terminator takes and is a place control can go, which is what makes everything still
+// waiting come out in front of it. Then it is taken away again.
+//
+// Standing it in rather than teaching the ordering about terminators is what keeps the
+// ordering about one thing: values, and who takes them.
+func LowerBlock(block ir.Block, tapeSize int) ir.Block {
+	taken := make([]ir.Operand, 0, 3)
+	term := block.Term
+	if term.Kind == ir.BrIf {
+		taken = append(taken, term.Cond)
+	}
+	if term.Kind == ir.Ret {
+		taken = append(taken, term.Value)
+	}
+	for _, target := range term.Targets {
+		taken = append(taken, target.Args...)
+	}
+
+	insts := append(append(make([]ir.Instruction, 0, len(block.Insts)+1), block.Insts...),
+		ir.NewInstructionOver(nil, ir.OpReturn, taken...))
+
+	lowered := ResolveOperandsOrder(insts, tapeSize)
+	block.Insts = lowered[:len(lowered)-1]
+	return block
+}
+
 // ResolveOperandsOrder emits every value right before whoever takes it.
 //
 // An instruction that leaves a value is held back under its label rather than emitted where it

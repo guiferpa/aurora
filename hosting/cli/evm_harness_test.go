@@ -655,3 +655,48 @@ func TestAScopeWrittenInsideAnotherDoesNotRunOnTheWayPast(t *testing.T) {
 		})
 	}
 }
+
+// A position a scope reads and the call did not fill answers with zeros, which is what the
+// language answers for reading past what was applied.
+//
+// On the way in from a transaction that is free: the calldata gives zeros past its end. A
+// frame is not free — it is memory an earlier activation already used, so what is left there
+// is the last call's values. Two scopes reading two positions, one of them called with one,
+// and the second read the first call's second value: the chain answered 501 where the program
+// answers 301.
+func TestAShortCallReadsZeroOnChainToo(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "a call short by one, after a call that filled the place",
+			source: `ident c = defer { feed(0) + feed(1); };
+ident b = defer { feed(0) + feed(1); };
+ident a = defer { c(100, 200) + b(1); };`,
+		},
+		{
+			name: "short by two",
+			source: `ident c = defer { feed(0) + feed(1) + feed(2); };
+ident b = defer { feed(0) + feed(1) + feed(2); };
+ident a = defer { c(100, 200, 300) + b(1); };`,
+		},
+		{
+			name: "the same scope, called long and then short",
+			source: `ident b = defer { feed(0) + feed(1); };
+ident a = defer { b(100, 200) + b(1); };`,
+		},
+		{
+			name: "a scope that reads nothing, called with values",
+			source: `ident c = defer { feed(0) + feed(1); };
+ident b = defer { 7; };
+ident a = defer { c(100, 200) + b(1, 2); };`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "a", []string{"0"}, 0)
+		})
+	}
+}

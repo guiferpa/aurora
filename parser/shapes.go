@@ -246,7 +246,13 @@ func (p *pr) parseField(expr ast.Node) (ast.Node, error) {
 			shape, field, name.GetLine(), name.GetColumn(), strings.Join(fields, ", "))
 	}
 
-	return ast.FieldExpression{Expression: expr, Index: uint64(index), Field: field, Token: name}, nil
+	return ast.FieldExpression{
+		Expression: expr,
+		Index:      uint64(index),
+		Fields:     uint64(len(fields)),
+		Field:      field,
+		Token:      name,
+	}, nil
 }
 
 // parseShape reads `as Point`. It claims a shape rather than checking one: a value is a run

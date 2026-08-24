@@ -50,9 +50,9 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			want:    []string{"a tape operation does not reach the bytecode yet"},
 		},
 		{
-			name:    "a shape",
-			opcodes: []byte{ir.OpJoin, ir.OpField},
-			want:    []string{"shape does not reach the bytecode yet"},
+			name:     "a shape, which reaches the bytecode now",
+			opcodes:  []byte{ir.OpJoin, ir.OpField},
+			wantNone: true,
 		},
 		{
 			name:     "calling a scope, which reaches the bytecode now",
@@ -106,7 +106,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 // The same feature used twice is one thing to say, not two.
 func TestWarningsSayEachThingOnce(t *testing.T) {
 	warnings := Warnings(instructionsOf(
-		ir.OpPull, ir.OpHead, ir.OpPull, ir.OpHead, ir.OpJoin, ir.OpField,
+		ir.OpPull, ir.OpHead, ir.OpPull, ir.OpHead, ir.OpPrintDecimal, ir.OpPrintDecimal,
 	))
 
 	if len(warnings) != 2 {
@@ -174,7 +174,6 @@ func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
 		// A tape literal is itself a tape operation — it builds the run byte by byte — so
 		// the first place the program uses one is the literal, not the pull below it.
 		{name: "a tape operation", source: "printb 1;\nident t = [1];\nprintb pull t 2;", says: "a tape operation", line: 2},
-		{name: "a shape", source: "shape Point { x, y };\nprintb Point{1, 2}.x;", says: "shape", line: 2},
 	}
 
 	for _, tc := range cases {

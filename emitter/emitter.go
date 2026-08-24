@@ -290,9 +290,18 @@ func emitShapeLiteral(tc *int, insts *[]ir.Instruction, n ast.ShapeLiteral, tape
 func emitFieldExpression(tc *int, insts *[]ir.Instruction, n ast.FieldExpression, tapeSize int) ir.Label {
 	// The index was resolved while parsing, so it goes in as an immediate — the same
 	// shape head and tail use. Nothing here knows the field had a name.
+	//
+	// How many tapes the run has goes in beside it, because where a field sits inside a run
+	// cannot be worked out from the index alone. A run is tapes laid end to end and nothing
+	// in it says where it ends, so reading the last one means counting from the end — and a
+	// consumer keeping a run as a fixed-width value has no other way to find it. It is not
+	// something the reader could work out either: the run may arrive under a name, as a value
+	// applied to a scope, or as a field of another run, and in none of those is the
+	// construction in sight. The declaration the index came from says both, so both are said.
 	lv := operandFor(tc, insts, n.Expression, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpField, lv, ir.Const(n.Index, tapeSize)).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstructionOver(
+		l, ir.OpField, lv, ir.Const(n.Index, tapeSize), ir.Const(n.Fields, tapeSize)).At(originOf(n.Token)))
 	return l
 
 }

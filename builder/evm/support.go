@@ -40,6 +40,8 @@ var handled = map[byte]bool{
 	ir.OpOr:          true,
 	ir.OpExponential: true,
 	ir.OpCall:        true,
+	ir.OpJoin:        true,
+	ir.OpField:       true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
@@ -68,9 +70,6 @@ var pending = map[byte]string{
 	ir.OpPush: "a tape operation",
 	ir.OpHead: "a tape operation",
 	ir.OpTail: "a tape operation",
-
-	ir.OpJoin:  "shape",
-	ir.OpField: "shape",
 }
 
 // Warnings reports what a program uses that does not reach the bytecode.

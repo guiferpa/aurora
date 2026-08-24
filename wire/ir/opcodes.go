@@ -73,5 +73,5 @@ const (
 	// Shapes. A shape is a run of tapes laid end to end, and both of these came with it.
 	// Reading past the end gives the neutral value rather than failing.
 	OpJoin  // Ref, Ref -> the run with one more tape at its end
-	OpField // Ref, Imm -> the tape at that index of the run
+	OpField // Ref, Const, Const -> the tape at that index of a run of that many tapes
 )

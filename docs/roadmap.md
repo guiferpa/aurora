@@ -115,17 +115,19 @@ it**. Since the differential harness exists (`hosting/cli/evm_harness_test.go`) 
 longer a hope: an EVM is built in memory, the contract is deployed and called, and the answer
 is compared against the evaluator. What it proves is arithmetic across a dispatcher at any
 tape width — a result that leaves the width is cut back to it, the way the evaluator does —
-names bound inside a scope, branches, the comparisons and `and`/`or`, and a scope calling
-another as deep as it nests.
+names bound inside a scope, branches, the comparisons and `and`/`or`, a scope calling another
+as deep as it nests, and shapes.
 
 What is left is narrower than it was, but it is still silent, which is the dangerous part: a
 contract using any of the following **compiles and does nothing on chain**. `aurora build`
 says so, once per feature, at the line that used it.
 
-- The tape operations and the shape instructions (`OpJoin`, `OpField`) produce no bytecode.
-  They are not refusals — a tape is at most 32 bytes and an EVM word is exactly 32, and a
-  shape is a run of words in memory, which is what a frame already gives them. They are simply
-  not written yet.
+- The tape operations produce no bytecode. It is not a refusal — a tape is at most 32 bytes
+  and an EVM word is exactly 32, so each of them is a shift and a mask. They are simply not
+  written yet.
+- **A shape reaches the chain while its run fits a word.** A run is its tapes and nothing
+  else, so a shape of five fields at the default tape of eight is forty bytes and is refused
+  rather than written short. Four fields fill a word exactly.
 - **Only a scope bound at the top of a program can be called.** A scope bound inside another,
   or reached through an alias, is refused by the builder rather than written: what would be
   written is a jump to an address no scope has.

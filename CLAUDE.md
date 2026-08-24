@@ -40,16 +40,20 @@ finds the frame written. The convention is in [rfcs/if_and_call.md](rfcs/if_and_
 One limit is worth knowing: only a scope bound at the top of a program can be called, and
 anything else is refused rather than written.
 
-**Anything else in `builder/evm` still waits its turn**, and the turn is discussed first. What
-`shape` needs is what the frame already gives it: a run of memory where `base + i * tape_size`
-works.
+`shape` is written too. A run is its tapes and nothing else, so it is one word with the first
+tape at the far end — the same number the evaluator answers — and a field is a shift and a
+mask. That is also its ceiling: a run past thirty-two bytes is refused rather than written
+short, which is four fields at the default tape.
+
+What is left of the backend is the tape operations. **Anything else in `builder/evm` still
+waits its turn**, and the turn is discussed first.
 
 What the backend gained before stopping is the differential harness
 (`hosting/cli/evm_harness_test.go`) — the same source compiled, deployed to an EVM in memory,
 called, and compared against the evaluator — so whatever is written next is provable rather
 than believed. What it proves today is arithmetic over arguments at any tape width, names
-bound inside a scope, branches, the comparisons and `and`/`or`, and a scope calling another as
-deep as it nests.
+bound inside a scope, branches, the comparisons and `and`/`or`, a scope calling another as
+deep as it nests, and shapes.
 
 A feature still does **not** need bytecode to be finished. `shape` and text-as-a-tape shipped
 without it.

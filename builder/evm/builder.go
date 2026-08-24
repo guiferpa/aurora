@@ -113,8 +113,41 @@ func (b *Builder) PickDeferAtCursor(cursor int) (d *Dispatcher, nextCursor int, 
 		return nil, cursor, false
 	}
 
-	body := Lowering(b.insts[cursor+1:end], b.tapeSize)
+	body := Lowering(withoutNestedScopes(b.insts[cursor+1:end], b.tapeSize), b.tapeSize)
 	return &Dispatcher{Selector: selectorInst.GetLeft().Bytes(), Body: body}, end, true
+}
+
+// withoutNestedScopes takes the scopes written inside this one out of its body.
+//
+// A scope's body is code that runs when the scope is called, never where it was written. Left
+// in, the inner body was written straight into the outer one and ran on the way past: its
+// return fired in the middle of code that had not asked for it, so
+//
+//	ident outer = defer { ident inner = defer { 1; }; 2; };
+//
+// answered 1 on chain where the program answers 2. It compiled, it deployed, and it said
+// nothing — the worst way for a contract to be wrong.
+//
+// What replaces it is the neutral value, which is what the binding is worth here: a scope
+// written inside another is not something a transaction can reach, and calling one is already
+// refused, so on a chain the name it was bound to holds nothing. Replacing rather than dropping
+// is what keeps the binding, and a scope whose last expression is one still answers what it
+// answered.
+func withoutNestedScopes(insts []ir.Instruction, tapeSize int) []ir.Instruction {
+	out := make([]ir.Instruction, 0, len(insts))
+	for at := 0; at < len(insts); at++ {
+		inst := insts[at]
+		if inst.GetOpCode() != ir.OpDefer {
+			out = append(out, inst)
+			continue
+		}
+		// A scope written inside this one carries how long its body is, and a scope inside
+		// that one is inside those instructions, so stepping over them steps over every depth.
+		out = append(out, ir.NewInstruction(
+			inst.GetLabel(), ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
+		at += int(byteutil.ToUint64(inst.GetRight().Bytes()))
+	}
+	return out
 }
 
 // pickScopes separates the scopes a transaction can reach from the code that is not held by

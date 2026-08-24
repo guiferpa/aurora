@@ -734,3 +734,50 @@ ident odd = defer { if feed(0) equals 0 { 0; } else { even(feed(0) - 1); }; };`
 		})
 	}
 }
+
+// A program of several files reaches the chain whole: a scope bound in one file is as callable
+// by a transaction as one bound in another.
+//
+// Each file is compiled on its own and numbers its blocks from zero, so joining them moves
+// everything the later ones name — and the program runs through all of them in the order their
+// dependencies were found, so a scope bound in any of them is reached the same way.
+func TestAProgramOfSeveralFilesReachesTheChain(t *testing.T) {
+	dir := projectOf(t, map[string]string{
+		"src/geometry.ar": "ident area = defer { feed(0) * feed(1); };",
+		"src/main.ar":     "use geometry as g;\nident twice = defer { g.area(feed(0), 2); };",
+	})
+
+	binary := filepath.Join(dir, "contract.bin")
+	if _, err := newSession(t, sessionOpts{}).Build(t.Context(), filepath.Join(dir, "src", "main.ar"), binary); err != nil {
+		t.Fatalf("building: %v", err)
+	}
+	bytecode, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatalf("reading the binary: %v", err)
+	}
+
+	cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
+	_, address, _, err := runtime.Create(bytecode, cfg)
+	if err != nil {
+		t.Fatalf("deploying: %v", err)
+	}
+
+	// The scope bound in the file that was imported, called straight from a transaction. It
+	// answers to the name the module gave it, which is how a name crossing a file is written.
+	returned, _, err := runtime.Call(address, append(EncodeSelector("geometry.area"), ParseArgs([]string{"6", "7"})...), cfg)
+	if err != nil {
+		t.Fatalf("calling geometry.area: %v", err)
+	}
+	if got := decimalOf(returned); got != "42" {
+		t.Errorf("geometry.area answered %s, want 42", got)
+	}
+
+	// And the scope of the file that imported it, which reaches the other through a call.
+	returned, _, err = runtime.Call(address, append(EncodeSelector("twice"), ParseArgs([]string{"21"})...), cfg)
+	if err != nil {
+		t.Fatalf("calling twice: %v", err)
+	}
+	if got := decimalOf(returned); got != "42" {
+		t.Errorf("twice answered %s, want 42", got)
+	}
+}

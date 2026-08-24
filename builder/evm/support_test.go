@@ -71,7 +71,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			// A log is not a gap: it is absent on purpose, and the wording says so.
 			name:    "a print",
 			opcodes: []byte{ir.OpPrintDecimal},
-			want:    []string{"printd writes a log", "by decision"},
+			want:    []string{"printd is ignored in compiled code", "the value it was given carries on"},
 		},
 		{
 			name:    "an assertion",

@@ -822,3 +822,53 @@ func TestABlockInsideAnExpressionAnswersTheSameOnChainAndOff(t *testing.T) {
 		})
 	}
 }
+
+// On a chain a print is the value it was given.
+//
+// The log has nowhere to go — that is a decision, not a gap — but a print is an expression like
+// any other and is worth what it showed, which is what lets one be written into a program that
+// already works without changing what that program answers.
+//
+// It carried on by accident before, and only sometimes: a value another instruction worked out
+// was already on the stack, so a print over it happened to leave the right thing there. A value
+// the program wrote down was never put on the stack at all, and the contract underflowed the
+// first time anything read what the print was worth.
+//
+// The evaluator prints as it goes and the chain does not, so what is compared here is only what
+// the scope answers with — the harness runs both and reads the last thing said.
+func TestAPrintIsTheValueItWasGivenOnChain(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{
+			name:   "a value the program wrote down",
+			source: "ident f = defer { ident a = printd 5; a + 10; };",
+			want:   "15",
+		},
+		{
+			name:   "a value another instruction worked out",
+			source: "ident f = defer { ident a = printb feed(0); a + 10; };",
+			want:   "13",
+		},
+		{
+			name:   "read as text, which changes nothing about the value",
+			source: "ident f = defer { ident a = printc 26729; a + 1; };",
+			want:   "26730",
+		},
+		{
+			name:   "and one whose value nobody reads still answers for the scope",
+			source: "ident f = defer { printd feed(0); };",
+			want:   "3",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := decimalOf(onChain(t, tc.source, "f", []string{"3"}, 0)); got != tc.want {
+				t.Errorf("the chain answered %s, want %s", got, tc.want)
+			}
+		})
+	}
+}

@@ -92,12 +92,16 @@ func TestPickRuntimeCode(t *testing.T) {
 			//nolint:errcheck
 			func(got []byte) error {
 				want := bytes.NewBuffer(make([]byte, 0))
-				// Every block opens with somewhere to arrive at.
-				want.Write([]byte{OpJumpDestiny})
+				// Three blocks: the run up to the block written inside, the block itself,
+				// and where the run carries on with its value in hand.
+				want.Write([]byte{OpJumpDestiny, OpJumpDestiny})
 				WritePush(want, byteutil.FromUint64(4294967295), byteutil.DefaultTapeSize)
 				WritePush(want, byteutil.FromUint64(4294967295), byteutil.DefaultTapeSize)
 				WriteAdd(want)
 				WriteMask(want, byteutil.DefaultTapeSize)
+				want.Write([]byte{OpJumpDestiny})
+				WriteIdent(want, map[string]int{"a": 0}, []byte("a"))
+				WritePush(want, nil, byteutil.DefaultTapeSize)
 				WriteAnswer(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
@@ -111,9 +115,13 @@ func TestPickRuntimeCode(t *testing.T) {
 			//nolint:errcheck
 			func(got []byte) error {
 				want := bytes.NewBuffer(make([]byte, 0))
-				// Every block opens with somewhere to arrive at.
-				want.Write([]byte{OpJumpDestiny})
+				// Three blocks: the run up to the block written inside, the block itself,
+				// and where the run carries on with its value in hand.
+				want.Write([]byte{OpJumpDestiny, OpJumpDestiny})
 				WritePush(want, byteutil.TrueTape(byteutil.DefaultTapeSize), byteutil.DefaultTapeSize)
+				want.Write([]byte{OpJumpDestiny})
+				WriteIdent(want, map[string]int{"a": 0}, []byte("a"))
+				WritePush(want, nil, byteutil.DefaultTapeSize)
 				WriteAnswer(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
@@ -127,12 +135,16 @@ func TestPickRuntimeCode(t *testing.T) {
 			//nolint:errcheck
 			func(got []byte) error {
 				want := bytes.NewBuffer(make([]byte, 0))
-				// Every block opens with somewhere to arrive at.
-				want.Write([]byte{OpJumpDestiny})
+				// Three blocks: the run up to the block written inside, the block itself,
+				// and where the run carries on with its value in hand.
+				want.Write([]byte{OpJumpDestiny, OpJumpDestiny})
 				WriteGetArg(want, byteutil.FromUint64(1), byteutil.DefaultTapeSize)
 				WriteGetArg(want, byteutil.FromUint64(0), byteutil.DefaultTapeSize)
 				WriteSubtract(want)
 				WriteMask(want, byteutil.DefaultTapeSize)
+				want.Write([]byte{OpJumpDestiny})
+				WriteIdent(want, map[string]int{"a": 2 * MEMORY_SLOT_SIZE}, []byte("a"))
+				WritePush(want, nil, byteutil.DefaultTapeSize)
 				WriteAnswer(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))

@@ -21,7 +21,11 @@ import "github.com/guiferpa/aurora/byteutil"
 func BlocksOf(insts []Instruction) []Block {
 	b := &blocking{scopes: make(map[string]BlockID)}
 	top := b.reserve()
-	b.run(top, insts, 0, func() Terminator { return Ends(Nothing()) })
+	// The top of a program takes values the way a scope does. Nothing applies any to it — no
+	// transaction names it — so what it reads there is zeros, which is what reading past what
+	// was applied answers. Saying how many it addresses is still what keeps the names it binds
+	// from being kept in the same places.
+	b.run(top, insts, feedsRead(insts), func() Terminator { return Ends(Nothing()) })
 	return b.blocks
 }
 
@@ -69,14 +73,17 @@ func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
 
 		switch inst.GetOpCode() {
 		case OpBeginScope:
-			// The block is the scope. Nothing opens it but arriving at it.
+			// Whatever opened this run was taken off before it got here, so anything that
+			// opens now is a block written inside it.
+			b.inline(id, params, held, origin, insts, at, tail)
+			return
 
 		case OpDefer:
 			// The body is what this instruction says is its own, and it becomes a block.
 			length := int(byteutil.ToUint64(inst.GetRight().Bytes()))
 			body := insts[at+1 : at+1+length]
 			scope := b.reserve()
-			b.run(scope, body, feedsRead(body), func() Terminator { return Ends(Nothing()) })
+			b.run(scope, opened(body), feedsRead(body), func() Terminator { return Ends(Nothing()) })
 			b.scopes[byteutil.ToHex(inst.GetLabel())] = scope
 			at += length
 
@@ -90,7 +97,8 @@ func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
 			held = append(held, inst)
 
 		case OpReturn:
-			// A scope ends here, and answers with what the return names.
+			// Whatever this closes was taken off before it got here, so a return that
+			// arrives is one nothing claimed: the run ends, answering with what it names.
 			b.put(id, params, held, Ends(inst.GetRight()), origin)
 			return
 
@@ -104,6 +112,37 @@ func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
 	}
 
 	b.put(id, params, held, tail(), origin)
+}
+
+// inline splits a run at a block written inside it.
+//
+// A block is an expression: control goes into it, it computes a value, and control carries on
+// with that value in hand. So it is three blocks — the run up to it, the block itself, and
+// where the run carries on — and the value reaches the third the way the arms of a branch
+// reach where they meet: handed over, rather than left in a place both sides agree on.
+//
+// It used to end the scope instead. A block opens with the instruction a scope's body opens
+// with and ends with the same return, so the return of the inner one was read as the outer
+// one's, and everything written after it was dropped from a contract that still deployed. What
+// tells them apart is the name: a return names the thing it closes.
+func (b *blocking) inline(id BlockID, params int, held []Instruction, origin Origin, insts []Instruction, at int, tail ends) {
+	opened := byteutil.ToHex(insts[at].GetLabel())
+
+	closes := len(insts)
+	answer := Nothing()
+	for ahead := at + 1; ahead < len(insts); ahead++ {
+		if insts[ahead].GetOpCode() == OpReturn && byteutil.ToHex(insts[ahead].GetLeft().Bytes()) == opened {
+			closes, answer = ahead, insts[ahead].GetRight()
+			break
+		}
+	}
+
+	rest := b.reserve()
+	inside := b.reserve()
+	b.run(inside, insts[at+1:closes], 0, func() Terminator { return Goes(rest, answer) })
+	b.run(rest, insts[min(closes+1, len(insts)):], 1, tail)
+
+	b.put(id, params, held, Goes(inside), origin)
 }
 
 // branch splits a run at an "if" into the two arms and the block they meet at.
@@ -162,6 +201,16 @@ func (b *blocking) arm(insts []Instruction, meet BlockID) BlockID {
 	id := b.reserve()
 	b.run(id, insts, 0, func() Terminator { return Goes(meet, answer) })
 	return id
+}
+
+// opened answers a scope's body without the instruction that opened it. The block is the
+// scope, so what opened it has nothing left to do — and leaving it in would make the body look
+// like a block written inside itself.
+func opened(body []Instruction) []Instruction {
+	if len(body) > 0 && body[0].GetOpCode() == OpBeginScope {
+		return body[1:]
+	}
+	return body
 }
 
 // feedsRead answers how many positions a body addresses. A scope written inside it reads its

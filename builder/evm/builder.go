@@ -91,14 +91,19 @@ func (b *Builder) PickScopes() []Dispatcher {
 		return dispatchers
 	}
 
-	for _, inst := range b.blocks[TOP_BLOCK].Insts {
-		if inst.GetOpCode() != ir.OpIdent || inst.GetRight().Kind() != ir.KindBlock {
-			continue
+	// Every block the program runs through, and not only the first: a program made of several
+	// files is one run through all of them, so a scope bound in the second is as reachable by
+	// a transaction as one bound in the first.
+	for _, id := range ir.Reaches(b.blocks, TOP_BLOCK) {
+		for _, inst := range b.blocks[id].Insts {
+			if inst.GetOpCode() != ir.OpIdent || inst.GetRight().Kind() != ir.KindBlock {
+				continue
+			}
+			dispatchers = append(dispatchers, Dispatcher{
+				Selector: inst.GetLeft().Bytes(),
+				Entry:    inst.GetRight().Block(),
+			})
 		}
-		dispatchers = append(dispatchers, Dispatcher{
-			Selector: inst.GetLeft().Bytes(),
-			Entry:    inst.GetRight().Block(),
-		})
 	}
 	return dispatchers
 }

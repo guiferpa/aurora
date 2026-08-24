@@ -915,6 +915,23 @@ var comparisons = map[byte][]byte{
 	ir.OpAnd:     {OpIsZero, OpSwap1, OpIsZero, OpOr, OpIsZero},
 }
 
+// passesThrough names the instructions that write nothing and are worth what they were given.
+//
+// A print is one. The log has nowhere to go on a chain — that is a decision, not a gap — but a
+// print is an expression like any other and is worth the value it showed, which is what lets it
+// be written into a program that is already working without changing what that program answers.
+// So on a chain it is the identity: nothing is written, and the value carries on.
+//
+// It carried on by accident before, and only sometimes. A value another instruction worked out
+// was already on the stack, so a print over it happened to leave the right thing there; a value
+// the program wrote down was never put on the stack at all, and the contract underflowed the
+// first time anything read what the print was worth.
+var passesThrough = map[byte]bool{
+	ir.OpPrintBytes:   true,
+	ir.OpPrintChars:   true,
+	ir.OpPrintDecimal: true,
+}
+
 // ordersItsOwn names the instructions that put their own written-down values on the stack.
 //
 // Most take a pair and the pair is enough for WriteImmediates to know where each one goes. An
@@ -1058,7 +1075,7 @@ func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[st
 func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, scope Scope, at int) error {
 	op := inst.GetOpCode()
 
-	if handled[op] && !ordersItsOwn[op] {
+	if (handled[op] || passesThrough[op]) && !ordersItsOwn[op] {
 		if err := WriteImmediates(bs, inst, scope.TapeSize); err != nil {
 			return err
 		}

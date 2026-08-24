@@ -161,7 +161,7 @@ func TestBuildSaysWhatTheBackendDoesNotCarry(t *testing.T) {
 		{
 			name:   "a log",
 			source: "ident show = defer { printd feed(0); };\n",
-			want:   "printd writes a log",
+			want:   "printd is ignored in compiled code",
 		},
 	}
 

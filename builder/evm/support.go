@@ -50,10 +50,15 @@ var handled = map[byte]bool{
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
 // program whose logs vanish should hear it from the compiler rather than from the silence.
+//
+// A print is ignored rather than refused, and what is left of it is the value it was given. It
+// is an expression like any other and is worth what it showed, so a print written into a
+// working program to see what a value is does not change what that program answers — on a
+// chain it is the identity, and off one it is the identity that also says something.
 var offChain = map[byte]string{
-	ir.OpPrintBytes:   "printb writes a log, and a chain has nowhere to put one: it produces no bytecode, by decision",
-	ir.OpPrintChars:   "printc writes a log, and a chain has nowhere to put one: it produces no bytecode, by decision",
-	ir.OpPrintDecimal: "printd writes a log, and a chain has nowhere to put one: it produces no bytecode, by decision",
+	ir.OpPrintBytes:   "printb is ignored in compiled code, by decision: a chain has nowhere to put a log, and the value it was given carries on",
+	ir.OpPrintChars:   "printc is ignored in compiled code, by decision: a chain has nowhere to put a log, and the value it was given carries on",
+	ir.OpPrintDecimal: "printd is ignored in compiled code, by decision: a chain has nowhere to put a log, and the value it was given carries on",
 	ir.OpAssert:       "assert belongs to 'aurora test' and produces no bytecode, by decision",
 }
 

@@ -25,7 +25,7 @@ func BlocksOf(insts []Instruction) []Block {
 	// transaction names it — so what it reads there is zeros, which is what reading past what
 	// was applied answers. Saying how many it addresses is still what keeps the names it binds
 	// from being kept in the same places.
-	b.run(top, insts, feedsRead(insts), func() Terminator { return Ends(Nothing()) })
+	b.run(top, insts, applied(feedsRead(insts)), func() Terminator { return Ends(Nothing()) })
 	return b.blocks
 }
 
@@ -49,7 +49,7 @@ func (b *blocking) reserve() BlockID {
 }
 
 // put fills a block that was reserved.
-func (b *blocking) put(id BlockID, params int, insts []Instruction, term Terminator, origin Origin) {
+func (b *blocking) put(id BlockID, params []Label, insts []Instruction, term Terminator, origin Origin) {
 	b.blocks[id] = Block{ID: id, Params: params, Insts: insts, Term: term, Origin: origin}
 }
 
@@ -61,7 +61,7 @@ type ends func() Terminator
 // It is one block until something splits it. A branch splits it into the run before, the two
 // arms, and the block they meet at — and each of those is a straight run again, so the same
 // walk handles a branch inside a branch without knowing that it is doing so.
-func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
+func (b *blocking) run(id BlockID, insts []Instruction, params []Label, tail ends) {
 	held := make([]Instruction, 0, len(insts))
 	origin := Origin{}
 	if len(insts) > 0 {
@@ -83,7 +83,7 @@ func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
 			length := int(byteutil.ToUint64(inst.GetRight().Bytes()))
 			body := insts[at+1 : at+1+length]
 			scope := b.reserve()
-			b.run(scope, opened(body), feedsRead(body), func() Terminator { return Ends(Nothing()) })
+			b.run(scope, opened(body), applied(feedsRead(body)), func() Terminator { return Ends(Nothing()) })
 			b.scopes[byteutil.ToHex(inst.GetLabel())] = scope
 			at += length
 
@@ -125,7 +125,7 @@ func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
 // with and ends with the same return, so the return of the inner one was read as the outer
 // one's, and everything written after it was dropped from a contract that still deployed. What
 // tells them apart is the name: a return names the thing it closes.
-func (b *blocking) inline(id BlockID, params int, held []Instruction, origin Origin, insts []Instruction, at int, tail ends) {
+func (b *blocking) inline(id BlockID, params []Label, held []Instruction, origin Origin, insts []Instruction, at int, tail ends) {
 	opened := byteutil.ToHex(insts[at].GetLabel())
 
 	closes := len(insts)
@@ -139,8 +139,8 @@ func (b *blocking) inline(id BlockID, params int, held []Instruction, origin Ori
 
 	rest := b.reserve()
 	inside := b.reserve()
-	b.run(inside, insts[at+1:closes], 0, func() Terminator { return Goes(rest, answer) })
-	b.run(rest, insts[min(closes+1, len(insts)):], 1, tail)
+	b.run(inside, insts[at+1:closes], nil, func() Terminator { return Goes(rest, answer) })
+	b.run(rest, insts[min(closes+1, len(insts)):], []Label{insts[at].GetLabel()}, tail)
 
 	b.put(id, params, held, Goes(inside), origin)
 }
@@ -151,7 +151,7 @@ func (b *blocking) inline(id BlockID, params int, held []Instruction, origin Ori
 // the "if" says to skip, the other reaches to where the jump closing the first one lands, and
 // what is left is where both arrive. Those counts are read here and nowhere after — what comes
 // out of this names blocks.
-func (b *blocking) branch(id BlockID, params int, held []Instruction, origin Origin, insts []Instruction, at int, tail ends) {
+func (b *blocking) branch(id BlockID, params []Label, held []Instruction, origin Origin, insts []Instruction, at int, tail ends) {
 	inst := insts[at]
 	otherwise := at + 1 + int(byteutil.ToUint64(inst.GetRight().Bytes()))
 
@@ -171,7 +171,7 @@ func (b *blocking) branch(id BlockID, params int, held []Instruction, origin Ori
 	// arms meet at does: the branch is inside that run, not around it. A branch written inside
 	// an arm of another meets, and then carries on to where the outer arms meet — and getting
 	// that wrong ended the outer scope in the middle of it.
-	b.run(meet, insts[meeting:], 1, tail)
+	b.run(meet, insts[meeting:], []Label{inst.GetLabel()}, tail)
 
 	b.put(id, params, held, Chooses(inst.GetLeft(), To(whenTrue), To(whenFalse)), origin)
 }
@@ -199,8 +199,17 @@ func (b *blocking) arm(insts []Instruction, meet BlockID) BlockID {
 	}
 
 	id := b.reserve()
-	b.run(id, insts, 0, func() Terminator { return Goes(meet, answer) })
+	b.run(id, insts, nil, func() Terminator { return Goes(meet, answer) })
 	return id
+}
+
+// applied answers the parameters of a scope: as many as its body reads, and none of them
+// named. They arrive as the vector applied to the scope, and feed reads a position of it.
+func applied(reads int) []Label {
+	if reads == 0 {
+		return nil
+	}
+	return make([]Label, reads)
 }
 
 // opened answers a scope's body without the instruction that opened it. The block is the

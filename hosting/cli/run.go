@@ -28,8 +28,8 @@ func (s *Session) Run(ctx context.Context, source string) error {
 	if err != nil {
 		return err
 	}
-	for _, each := range program.Ranges {
-		if _, err := ev.EvaluateModule(program.Instructions, each.From, each.To, string(each.Module)); err != nil {
+	for at, each := range program.Ranges {
+		if _, err := ev.EvaluateBlocks(program.Blocks, each.Top, program.StopsAt(at), string(each.Module)); err != nil {
 			return err
 		}
 	}

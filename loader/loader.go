@@ -118,6 +118,19 @@ type Range struct {
 	Warnings []diag.Warning
 }
 
+// StopsAt answers where the file at this range ends: at the top of the one after it.
+//
+// A file carries on into the next, because a program made of several is one run through all of
+// them — so what says a file is over is arriving somewhere, not counting to somewhere. The last
+// one is over when it answers, and nothing stops it.
+func (p Program) StopsAt(at int) func(ir.BlockID) bool {
+	if at+1 >= len(p.Ranges) {
+		return nil
+	}
+	next := p.Ranges[at+1].Top
+	return func(id ir.BlockID) bool { return id == next }
+}
+
 // Emit compiles one tree. It is a port because the loader is a phase like any other and does
 // not know the emitter.
 type Emit func(ast.AST) (ir.Program, error)

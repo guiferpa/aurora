@@ -164,7 +164,7 @@ func findTests(root string) ([]string, error) {
 // against the test being run, which is what the reader is already looking at.
 func runRanges(ev *evaluator.Evaluator, program loader.Program) error {
 	for i, each := range program.Ranges {
-		_, err := ev.EvaluateModule(program.Instructions, each.From, each.To, string(each.Module))
+		_, err := ev.EvaluateBlocks(program.Blocks, each.Top, program.StopsAt(i), string(each.Module))
 		if err == nil {
 			continue
 		}

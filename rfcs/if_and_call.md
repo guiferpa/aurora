@@ -94,10 +94,20 @@ reler estas perguntas contra o código. A pergunta estava certa antes de o códi
 
 ## O que ficou por fazer
 
-**O `StackDepth` não virou recusa.** A proposta dizia que ele provaria que os dois braços de um
-desvio deixam a mesma pilha, "e vira uma recusa de compilação quando ela não valer". Ele existe
-em `builder/evm/lowering.go` e **nenhum código o chama** — só os testes. A afirmação continua
-verdadeira por construção e não por verificação.
+**O `StackDepth` não virou recusa, e foi removido.** A proposta dizia que ele provaria que os
+dois braços de um desvio deixam a mesma pilha, "e vira uma recusa de compilação quando ela não
+valer". Nunca virou: nenhum código o chamava, só os testes. E ao olhar de perto ele estava
+**errado** — `produces` não lista `OpCall`, então ele contava toda chamada como quem come os
+argumentos e não deixa nada, e cada chamada afundava a conta em um. Ninguém percebeu porque
+ninguém o chamava.
+
+Uma função errada e sem uso é pior que qualquer uma das duas coisas sozinha: ela parece uma
+garantia. E o desenho dela também não dava para o que foi prometido — ela anda em linha reta,
+então num `if` conta os dois braços em sequência, que é justamente o que ela deveria provar não
+acontecer.
+
+A invariante continua verdadeira **por construção**: o emitter não produz desvio desbalanceado.
+Quando isso deixar de ser óbvio, o que entra é uma verificação que conhece caminhos, e não esta.
 
 **Static link.** Um `defer` que lê nome do escopo onde foi escrito continua de fora, como a
 proposta já dizia. Hoje é mais do que de fora: um escopo escrito dentro de outro não é escrito.

@@ -72,38 +72,6 @@ func TestSubtractionAndDivisionPushTheOtherWayRound(t *testing.T) {
 	}
 }
 
-// StackDepth answers for one lowered scope, and what it answers for is that the scope holds
-// together: the stack never goes under, because an instruction that takes a value has to find
-// it there, and it ends leaving exactly the one value the scope answers with.
-//
-// It is what a jump will need — the two sides of a branch have to meet with the same stack
-// under them — so it is worth pinning before anything depends on it.
-func TestStackDepthAnswersForAScope(t *testing.T) {
-	// feed(0) + feed(1), already in the order the stack needs.
-	insts := []ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpGetFeed, ir.Const(0, 8), ir.Nothing()),
-		ir.NewInstruction([]byte("01"), ir.OpGetFeed, ir.Const(1, 8), ir.Nothing()),
-		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
-	}
-
-	depth := StackDepth(insts)
-	if want := []int{0, 1, 2, 1}; !reflect.DeepEqual(depth, want) {
-		t.Errorf("depth is %v, want %v", depth, want)
-	}
-}
-
-// An instruction taking a value nobody put there shows up as the stack going under, which is
-// the whole point of counting: it is a scope that would not run, said before it is written.
-func TestStackDepthShowsAValueNobodyPutThere(t *testing.T) {
-	insts := []ir.Instruction{
-		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
-	}
-
-	if got := StackDepth(insts); got[len(got)-1] >= 0 {
-		t.Errorf("depth is %v, want it to go under: it adds two values nobody pushed", got)
-	}
-}
-
 func TestResolveOperandsOrderFromSourceCode(t *testing.T) {
 	cases := []struct {
 		name   string

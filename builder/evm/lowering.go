@@ -217,21 +217,3 @@ func labelsTaken(insts []ir.Instruction) map[string]int {
 	}
 	return taken
 }
-
-// StackDepth answers how deep the stack is after each instruction of a lowered scope, starting
-// at zero.
-//
-// It is what says a scope is balanced, and it is what a jump will need: the two sides of a
-// branch have to meet with the same stack under them.
-func StackDepth(insts []ir.Instruction) []int {
-	depth := make([]int, len(insts)+1)
-	for at, inst := range insts {
-		op := inst.GetOpCode()
-		after := depth[at] - len(consumes(inst))
-		if produces(op) {
-			after++
-		}
-		depth[at+1] = after
-	}
-	return depth
-}

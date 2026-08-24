@@ -199,6 +199,7 @@ type PrintStatement struct {
 	mark
 	Format PrintFormat `json:"format"`
 	Param  Node        `json:"parameter"`
+	Token  token.Token `json:"-"`
 }
 
 // FeedExpression is "feed(n)": it reads the nth value applied to the running scope.

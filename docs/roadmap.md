@@ -116,21 +116,18 @@ longer a hope: an EVM is built in memory, the contract is deployed and called, a
 is compared against the evaluator. What it proves is arithmetic across a dispatcher at any
 tape width — a result that leaves the width is cut back to it, the way the evaluator does —
 names bound inside a scope, branches, the comparisons and `and`/`or`, a scope calling another
-as deep as it nests, and shapes.
+as deep as it nests, shapes, and the tape operations.
 
-What is left is narrower than it was, but it is still silent, which is the dangerous part: a
-contract using any of the following **compiles and does nothing on chain**. `aurora build`
-says so, once per feature, at the line that used it.
+Nothing a program can write is missing from it any more. What a contract does not get is what
+was decided not to reach a chain, and two limits that are written down:
 
-- The tape operations produce no bytecode. It is not a refusal — a tape is at most 32 bytes
-  and an EVM word is exactly 32, so each of them is a shift and a mask. They are simply not
-  written yet.
-- **A shape reaches the chain while its run fits a word.** A run is its tapes and nothing
-  else, so a shape of five fields at the default tape of eight is forty bytes and is refused
-  rather than written short. Four fields fill a word exactly.
-- **Only a scope bound at the top of a program can be called.** A scope bound inside another,
-  or reached through an alias, is refused by the builder rather than written: what would be
-  written is a jump to an address no scope has.
+- **A shape reaches the chain while its run fits a word.** A run is its tapes and nothing else,
+  so a shape of five fields at the default tape of eight is forty bytes and is refused rather
+  than written short. Four fields fill a word exactly.
+- **Only a scope bound at the top of a program can be called**, and **a tape literal built out
+  of values a program works out** is refused rather than written wrong — `pull t x` one value
+  at a time is written.
+
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.
 - **Events are missing entirely.** `LOG0`–`LOG4` (`0xA0`–`0xA4`) are not in the opcode table.

@@ -717,9 +717,10 @@ func init() {
 // ExecuteInstruction runs one instruction: the opcode names the operation, and the operation
 // moves the cursor itself, since where it lands is part of what the instruction does.
 //
-// An opcode with no operation behind it is stepped over rather than refused. OpPreCall is
-// declared and never emitted, and an instruction the evaluator does not know is exactly what
-// a half-wired new opcode looks like — a running program does not stop for it.
+// An opcode with no operation behind it is stepped over rather than refused. Every opcode the
+// IR declares has one today, so what this is for is the next one: an opcode added to the IR
+// and wired into one consumer before the other is exactly what a half-wired new opcode looks
+// like, and a running program does not stop for it.
 func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 	if over, ok := runOperations[inst.GetOpCode()]; ok {
 		return over(e, inst.GetLabel(), inst.GetOperands())

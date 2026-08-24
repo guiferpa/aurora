@@ -34,8 +34,6 @@ func ResolveOpCode(op byte) string {
 		return "OpDefer"
 	case OpSave:
 		return "OpSave"
-	case OpPreCall:
-		return "OpPreCall"
 	case OpCall:
 		return "OpCall"
 	case OpPrintBytes:

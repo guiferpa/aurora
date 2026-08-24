@@ -74,9 +74,10 @@ que a proposta não previu — o código que escopo nenhum segura, o topo de um 
 tem para quem voltar e por isso encerra a chamada. Esse não dá para ler da instrução, então é
 parâmetro.
 
-**4 · `OpPreCall`.** Continua sem uso e deve sair da lista. Os argumentos chegam à pilha pelo
-lowering, que os põe imediatamente antes da chamada, e é a própria chamada que os escreve no
-frame. Não sobrou lugar para ele.
+**4 · `OpPreCall`.** Saiu da lista. Os argumentos chegam à pilha pelo lowering, que os põe
+imediatamente antes da chamada, e é a própria chamada que os escreve no frame — não sobrou
+lugar para ele. Todo opcode que o IR declara agora tem operação atrás de si nos dois
+consumidores.
 
 **5 · Quem zera as posições que ninguém escreveu.** Quem chama, e sem nenhuma das duas saídas
 que a proposta via como únicas. Ela achava que quem chama não pode saber quantas posições o

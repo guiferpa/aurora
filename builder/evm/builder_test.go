@@ -288,3 +288,40 @@ func TestNewIdentManager(t *testing.T) {
 		}
 	})
 }
+
+// A scope written inside another is taken out of the body before it is written, at every
+// depth, and what stays in its place is the neutral value the binding is worth on a chain.
+func TestWithoutNestedScopes(t *testing.T) {
+	// outer { inner { deep { } } ; 2 }, as the emitter lays it out: a scope carries how long
+	// its body is, and a scope inside it lives inside those instructions.
+	insts := []ir.Instruction{
+		ir.NewInstruction([]byte("0"), ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
+		ir.NewInstruction([]byte("1"), ir.OpDefer, ir.RefTo([]byte("2")), ir.TargetAt(5)),
+		ir.NewInstruction([]byte("2"), ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
+		ir.NewInstruction([]byte("3"), ir.OpDefer, ir.RefTo([]byte("4")), ir.TargetAt(2)),
+		ir.NewInstruction([]byte("4"), ir.OpBeginScope, ir.Nothing(), ir.Nothing()),
+		ir.NewInstruction([]byte("5"), ir.OpReturn, ir.RefTo([]byte("4")), ir.RefTo([]byte("4"))),
+		ir.NewInstruction([]byte("6"), ir.OpReturn, ir.RefTo([]byte("2")), ir.RefTo([]byte("2"))),
+		ir.NewInstruction([]byte("7"), ir.OpIdent, ir.NameOf("inner"), ir.RefTo([]byte("1"))),
+		ir.NewInstruction([]byte("8"), ir.OpSave, ir.Imm(2, 8), ir.Nothing()),
+		ir.NewInstruction([]byte("9"), ir.OpReturn, ir.RefTo([]byte("0")), ir.RefTo([]byte("8"))),
+	}
+
+	kept := withoutNestedScopes(insts, 8)
+
+	wanted := []byte{ir.OpBeginScope, ir.OpSave, ir.OpIdent, ir.OpSave, ir.OpReturn}
+	if len(kept) != len(wanted) {
+		t.Fatalf("kept %d instructions, want %d: %v", len(kept), len(wanted), kept)
+	}
+	for at, want := range wanted {
+		if got := kept[at].GetOpCode(); got != want {
+			t.Errorf("instruction %d is %s, want %s", at, ir.ResolveOpCode(got), ir.ResolveOpCode(want))
+		}
+	}
+
+	// The binding still finds what it was bound to, so nothing that read the scope's label is
+	// left pointing at an instruction that is no longer there.
+	if got := string(kept[1].GetLabel()); got != "1" {
+		t.Errorf("what replaced the scope answers to %q, want the label the binding reads", got)
+	}
+}

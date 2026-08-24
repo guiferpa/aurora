@@ -616,3 +616,42 @@ func TestTapeOperationsAnswerTheSameOnChainAndOff(t *testing.T) {
 		})
 	}
 }
+
+// A scope written inside another does not run where it was written.
+//
+// A body is code that runs when the scope is called, and that is as true of a scope written
+// inside another as of one written at the top. Its body used to be written straight into the
+// outer one and run on the way past — its return firing in the middle of code that had not
+// asked for it — so the first of these answered 1 on chain where the program answers 2. It
+// compiled, it deployed, and it said nothing.
+func TestAScopeWrittenInsideAnotherDoesNotRunOnTheWayPast(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "the outer scope answers its own last expression",
+			source: "ident outer = defer { ident inner = defer { 1; }; 2 + feed(0); };",
+		},
+		{
+			// A scope whose last expression is a binding answers the neutral value, which is
+			// what the binding is worth here: on a chain a scope is not a value.
+			name:   "even when the binding is the last thing in it",
+			source: "ident outer = defer { ident inner = defer { 1; }; };",
+		},
+		{
+			name:   "and at any depth",
+			source: "ident outer = defer { ident inner = defer { ident deep = defer { 9; }; 1; }; 2 + feed(0); };",
+		},
+		{
+			name:   "the names the outer scope binds are still its own",
+			source: "ident outer = defer { ident x = feed(0); ident inner = defer { 1; }; x + x; };",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "outer", []string{"3"}, 0)
+		})
+	}
+}

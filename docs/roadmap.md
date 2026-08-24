@@ -124,9 +124,11 @@ was decided not to reach a chain, and two limits that are written down:
 - **A shape reaches the chain while its run fits a word.** A run is its tapes and nothing else,
   so a shape of five fields at the default tape of eight is forty bytes and is refused rather
   than written short. Four fields fill a word exactly.
-- **Only a scope bound at the top of a program can be called**, and **a tape literal built out
-  of values a program works out** is refused rather than written wrong — `pull t x` one value
-  at a time is written.
+- **Only a scope bound at the top of a program can be called.** A scope written inside another
+  is not written at all: on a chain the name it was bound to holds the neutral value, and
+  calling it is refused rather than written as a jump to an address no scope has.
+- **A tape literal built out of values a program works out** is refused rather than written
+  wrong — `pull t x` one value at a time is written.
 
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.

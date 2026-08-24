@@ -700,3 +700,37 @@ ident a = defer { c(100, 200) + b(1, 2); };`,
 		})
 	}
 }
+
+// A scope calls itself, which is what the frame was for.
+//
+// Nothing was written to make this happen: each activation moves the frame pointer past the
+// caller's own memory before writing what it applies, so the call from inside does not see the
+// places the call from outside is keeping. What used to stop it was not the missing jump — it
+// was that a name had one address for the whole contract, so the second activation wrote over
+// the first.
+//
+// There is no depth written down anywhere, and there should not be. What ends a recursion that
+// does not end itself is gas.
+func TestAScopeCallsItselfOnChainToo(t *testing.T) {
+	const source = `ident down = defer { if feed(0) equals 0 { 0; } else { down(feed(0) - 1) + 1; }; };`
+
+	for _, from := range []string{"0", "1", "3", "9"} {
+		t.Run("from "+from, func(t *testing.T) {
+			agree(t, source, "down", []string{from}, 0)
+		})
+	}
+}
+
+// Two scopes calling each other, which needs the same thing and one more: a scope that names
+// one written after it. The names of every scope are known before any address of one is, so
+// which of them was written first says nothing.
+func TestTwoScopesCallEachOtherOnChainToo(t *testing.T) {
+	const source = `ident even = defer { if feed(0) equals 0 { 1; } else { odd(feed(0) - 1); }; };
+ident odd = defer { if feed(0) equals 0 { 0; } else { even(feed(0) - 1); }; };`
+
+	for _, from := range []string{"0", "1", "4", "7"} {
+		t.Run("from "+from, func(t *testing.T) {
+			agree(t, source, "even", []string{from}, 0)
+		})
+	}
+}

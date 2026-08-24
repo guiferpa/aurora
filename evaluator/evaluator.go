@@ -464,8 +464,16 @@ func (e *Evaluator) EvaluateJump(label []byte, left, right ir.Operand) error {
 	return nil
 }
 
+// EvaluateBeginScope opens a block: a place for names, inside whatever is running.
+//
+// It carries the values applied to the running scope in with it. A block is not applied
+// anything of its own — nothing calls it, control walks into it — so "the vector applied to
+// this scope" is still the enclosing one's, and feed reads it. An arm of an "if" already did
+// this; a block did not, so a block written inside a scope could not read what the scope was
+// called with, and answered as if it had been called with nothing.
 func (e *Evaluator) EvaluateBeginScope(label []byte, left, right ir.Operand) error {
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
+	next.SetArguments(e.environ.GetArguments())
 	e.environ = e.environ.Ahead(next)
 	e.IncrementCursor()
 	return nil

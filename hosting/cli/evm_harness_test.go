@@ -781,3 +781,44 @@ func TestAProgramOfSeveralFilesReachesTheChain(t *testing.T) {
 		t.Errorf("twice answered %s, want 42", got)
 	}
 }
+
+// A block written inside an expression is an expression: control goes into it, it computes a
+// value, and control carries on with that value in hand.
+//
+// It used to end the scope instead. A block opens with the same instruction a scope's body
+// does and ends with the same return, so the derivation read the inner return as the outer
+// scope's — and everything written after the block was dropped, quietly, from a contract that
+// still deployed.
+func TestABlockInsideAnExpressionAnswersTheSameOnChainAndOff(t *testing.T) {
+	cases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name:   "its value is used after it",
+			source: "ident f = defer { ident a = { feed(0) + 1; }; a * 10; };",
+		},
+		{
+			name:   "and the scope answers with something else entirely",
+			source: "ident f = defer { ident a = { feed(0) + 1; }; feed(0) * 2; };",
+		},
+		{
+			name:   "a block whose value is the scope's answer",
+			source: "ident f = defer { { feed(0) + 1; }; };",
+		},
+		{
+			name:   "two of them",
+			source: "ident f = defer { ident a = { feed(0) + 1; }; ident b = { a * 2; }; b + a; };",
+		},
+		{
+			name:   "one inside a branch",
+			source: "ident f = defer { if feed(0) bigger 0 { ident a = { feed(0) + 1; }; a * 3; } else { 0; }; };",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "f", []string{"4"}, 0)
+		})
+	}
+}

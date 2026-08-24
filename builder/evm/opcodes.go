@@ -122,7 +122,13 @@ const (
 
 const (
 	OpReturn byte = 0xf3 // Halt execution returning output data from the last call
-	OpSwap1  byte = 0x90 // Swap 1st and 2nd stack items
+	// Copying and exchanging what is on the stack. A machine with no addressing has these
+	// instead: reaching a value means bringing it to the top, and keeping one means copying
+	// it before whoever takes it does.
+	OpDup1  byte = 0x80 // Copy the 1st stack item
+	OpDup3  byte = 0x82 // Copy the 3rd stack item
+	OpSwap1 byte = 0x90 // Swap 1st and 2nd stack items
+	OpSwap2 byte = 0x91 // Swap 1st and 3rd stack items
 )
 
 func ToOpByte(op uint32) []byte {
@@ -338,8 +344,14 @@ func ResolveOpCode(op byte) string {
 		return "PUSH32"
 	case OpReturn:
 		return "RETURN"
+	case OpDup1:
+		return "DUP1"
+	case OpDup3:
+		return "DUP3"
 	case OpSwap1:
 		return "SWAP1"
+	case OpSwap2:
+		return "SWAP2"
 	}
 	return "Unknown"
 }

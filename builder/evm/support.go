@@ -42,6 +42,10 @@ var handled = map[byte]bool{
 	ir.OpCall:        true,
 	ir.OpJoin:        true,
 	ir.OpField:       true,
+	ir.OpPull:        true,
+	ir.OpPush:        true,
+	ir.OpHead:        true,
+	ir.OpTail:        true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
@@ -53,24 +57,16 @@ var offChain = map[byte]string{
 	ir.OpAssert:       "assert belongs to 'aurora test' and produces no bytecode, by decision",
 }
 
-// pending is what the builder does not write yet, named as the user wrote it. Instructions
-// that come from one feature share a name, so an "if" is one warning rather than two.
-var pending = map[byte]string{
-	ir.OpIf:      "if",
-	ir.OpJump:    "if",
-	ir.OpPreCall: "calling a scope",
-	ir.OpDiff:    "a comparison",
-	ir.OpEquals:  "a comparison",
-	ir.OpBigger:  "a comparison",
-	ir.OpSmaller: "a comparison",
-	ir.OpAnd:     "and/or",
-	ir.OpOr:      "and/or",
-
-	ir.OpPull: "a tape operation",
-	ir.OpPush: "a tape operation",
-	ir.OpHead: "a tape operation",
-	ir.OpTail: "a tape operation",
-}
+// pending is what the builder does not write yet, named as the user wrote it rather than as
+// the IR names it. Instructions that come from one feature share a name, so a feature is one
+// warning rather than one per opcode it lowers to.
+//
+// It is empty. Every instruction the emitter produces reaches the bytecode now, which is the
+// news — and it is also what makes the entry below matter more than it did: an opcode in
+// neither list is warned about under the name the IR gives it, rather than passed over. A gap
+// nobody remembered to write down here is still a gap, and the point of this file is that a
+// gap is never silent.
+var pending = map[byte]string{}
 
 // Warnings reports what a program uses that does not reach the bytecode.
 //
@@ -94,9 +90,9 @@ func Warnings(insts []ir.Instruction) []diag.Warning {
 
 		message, ok := offChain[op]
 		if !ok {
-			name, pendingOp := pending[op]
-			if !pendingOp {
-				continue
+			name, named := pending[op]
+			if !named {
+				name = ir.ResolveOpCode(op)
 			}
 			message = fmt.Sprintf(
 				"%s does not reach the bytecode yet: a contract using it compiles and does nothing on chain", name)

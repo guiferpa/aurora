@@ -178,9 +178,10 @@ Manifest reference: **[docs/manifest.md](docs/manifest.md)** · tests and `asser
 
 ## What reaches the chain today
 
-The evaluator runs the whole language. The EVM backend is being written in slices, and
-`aurora build` **says what it could not carry**, once per feature, at the line that used it —
-a binary that does less than the source said is announced rather than silent.
+The evaluator runs the whole language, and the EVM backend carries all of it — everything
+except what is meant to be absent. `aurora build` still **says what it could not carry**, once
+per feature, at the line that used it: a binary that does less than the source said is
+announced rather than silent.
 
 | | on a chain |
 |---|---|
@@ -191,7 +192,7 @@ a binary that does less than the source said is announced rather than silent.
 | calling a scope from another | **yes**, nested as deep as it goes |
 | comparisons, `and`/`or`, `^` | **yes** |
 | `shape` | **yes**, while the run fits a word |
-| tape operations | not yet |
+| `pull` / `push` / `head` / `tail` | **yes**, at any tape width |
 | `printb` / `printd` / `printc` | **by decision** — a log has nowhere to go on a chain |
 | `assert` | **by decision** — it belongs to `aurora test` |
 

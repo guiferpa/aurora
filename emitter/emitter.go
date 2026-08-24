@@ -424,7 +424,7 @@ func emitCalleeLiteral(tc *int, insts *[]ir.Instruction, n ast.CalleeLiteral, ta
 func emitPrintStatement(tc *int, insts *[]ir.Instruction, n ast.PrintStatement, tapeSize int) ir.Label {
 	ll := operandFor(tc, insts, n.Param, tapeSize)
 	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, printOpCodes[n.Format], ll, ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(l, printOpCodes[n.Format], ll, ir.Nothing()).At(originOf(n.Token)))
 	return l
 
 }

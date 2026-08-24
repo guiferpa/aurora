@@ -519,3 +519,100 @@ ident whole = defer { Point{feed(0), 20}; };`
 		t.Errorf("the chain answered %s, want the two tapes laid end to end, which is %s", got, want)
 	}
 }
+
+// A tape is a shift register, and the operations on it reach the chain. Each of them is
+// defined by how much of a value means something — its bytes once the zeros in front are
+// dropped — which off a chain is the length of a slice and on one has to be worked out from
+// the word itself.
+func TestTapeOperationsAnswerTheSameOnChainAndOff(t *testing.T) {
+	cases := []struct {
+		name     string
+		source   string
+		args     []string
+		tapeSize int
+	}{
+		{
+			name:   "a literal is pulled one value at a time",
+			source: "ident t = defer { ident tape = [1, 2, 3]; tape + feed(0); };",
+			args:   []string{"0"},
+		},
+		{
+			name:   "an empty literal is a tape of zeros",
+			source: "ident t = defer { ident tape = []; tape + feed(0); };",
+			args:   []string{"5"},
+		},
+		{
+			name:   "a value the program works out enters at the right",
+			source: "ident t = defer { ident x = feed(0); pull [1, 2] x; };",
+			args:   []string{"7"},
+		},
+		{
+			name:   "and one written down",
+			source: "ident t = defer { pull [1, 2] 4; };",
+			args:   []string{"0"},
+		},
+		{
+			name:   "a value wider than a byte enters as the bytes it takes",
+			source: "ident t = defer { ident x = feed(0); pull [1] x; };",
+			args:   []string{"300"},
+		},
+		{
+			name:   "pushing lets a value in at the left and the far byte falls off",
+			source: "ident t = defer { ident x = feed(0); push [1, 2, 3] x; };",
+			args:   []string{"5"},
+		},
+		{
+			name:   "and one written down",
+			source: "ident t = defer { push [1, 2, 3] 5; };",
+			args:   []string{"0"},
+		},
+		{
+			name:   "head keeps the first significant bytes",
+			source: "ident t = defer { ident five = [1, 2, 3, 4, 5]; head five 2; };",
+			args:   []string{"0"},
+		},
+		{
+			name:   "tail drops them",
+			source: "ident t = defer { ident five = [1, 2, 3, 4, 5]; tail five 2; };",
+			args:   []string{"0"},
+		},
+		{
+			name:   "an index past the tape width wraps into it",
+			source: "ident t = defer { ident full = [1, 2, 3, 4, 5, 6, 7, 8]; tail full 18; };",
+			args:   []string{"0"},
+		},
+		{
+			name:   "an index past what the value says gives all of it, or none",
+			source: "ident t = defer { ident x = feed(0); head x 5; };",
+			args:   []string{"7"},
+		},
+		{
+			name:   "the same, dropping",
+			source: "ident t = defer { ident x = feed(0); tail x 5; };",
+			args:   []string{"7"},
+		},
+		{
+			name:   "a tape of zeros is one byte long, so pulling onto it moves one place",
+			source: "ident t = defer { ident x = feed(0); pull x 9; };",
+			args:   []string{"0"},
+		},
+		{
+			name:     "at one byte, everything happens inside a single place",
+			source:   "ident t = defer { ident x = feed(0); pull [1] x; };",
+			args:     []string{"9"},
+			tapeSize: 1,
+		},
+		{
+			name:     "and at the full width, where a shift reaches the end of a word",
+			source:   "ident t = defer { ident x = feed(0); head x 4; };",
+			args:     []string{"1000000"},
+			tapeSize: 32,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "t", tc.args, tc.tapeSize)
+		})
+	}
+}

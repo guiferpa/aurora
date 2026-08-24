@@ -883,15 +883,16 @@ var printFormats = map[string]ast.PrintFormat{
 	token.PRINTD: ast.PrintDecimal,
 }
 
-func (p *pr) ParsePrint(token string, format ast.PrintFormat) (ast.Node, error) {
-	if _, err := p.EatToken(token); err != nil {
+func (p *pr) ParsePrint(tokenName string, format ast.PrintFormat) (ast.Node, error) {
+	at, err := p.EatToken(tokenName)
+	if err != nil {
 		return nil, err
 	}
 	expr, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
-	return ast.PrintStatement{Format: format, Param: expr}, nil
+	return ast.PrintStatement{Format: format, Param: expr, Token: at}, nil
 }
 
 func (p *pr) ParseAssert() (ast.Node, error) {

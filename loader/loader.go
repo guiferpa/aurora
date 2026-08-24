@@ -123,12 +123,12 @@ type Range struct {
 // A file carries on into the next, because a program made of several is one run through all of
 // them — so what says a file is over is arriving somewhere, not counting to somewhere. The last
 // one is over when it answers, and nothing stops it.
-func (p Program) StopsAt(at int) func(ir.BlockID) bool {
+func (p Program) StopsAt(at int) func(ir.Point) bool {
 	if at+1 >= len(p.Ranges) {
 		return nil
 	}
-	next := p.Ranges[at+1].Top
-	return func(id ir.BlockID) bool { return id == next }
+	next := ir.Point{Block: p.Ranges[at+1].Top}
+	return func(point ir.Point) bool { return point == next }
 }
 
 // Emit compiles one tree. It is a port because the loader is a phase like any other and does

@@ -16,6 +16,8 @@ import (
 	"github.com/guiferpa/aurora/evaluator"
 	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/wire/eval"
+
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // TestExtension marks a test file, and marking it is all it does: a test file is a program
@@ -164,7 +166,7 @@ func findTests(root string) ([]string, error) {
 // against the test being run, which is what the reader is already looking at.
 func runRanges(ev *evaluator.Evaluator, program loader.Program) error {
 	for i, each := range program.Ranges {
-		_, err := ev.EvaluateBlocks(program.Blocks, each.Top, program.StopsAt(i), string(each.Module))
+		_, err := ev.EvaluateBlocks(program.Blocks, ir.Point{Block: each.Top}, program.StopsAt(i), string(each.Module))
 		if err == nil {
 			continue
 		}

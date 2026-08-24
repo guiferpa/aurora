@@ -514,6 +514,33 @@ func (e *emt) Emit(tree ast.AST) ([]ir.Instruction, error) {
 	return program.Instructions, nil
 }
 
+// placed answers where each top-level expression begins among the blocks.
+//
+// It is the first of the expression's instructions that landed somewhere the program runs
+// through. That last part is the whole of the care needed: an expression that writes a scope
+// has instructions inside the scope's own blocks, and those are reached by being called rather
+// than by the run arriving at them — so the place an expression begins is where its binding
+// landed, not where its body did.
+func placed(exprs []ir.Expression, insts []ir.Instruction, blocks []ir.Block, places map[string]ir.Point) []ir.Expression {
+	runs := make(map[ir.BlockID]bool)
+	for _, id := range ir.Reaches(blocks, 0) {
+		runs[id] = true
+	}
+
+	out := make([]ir.Expression, 0, len(exprs))
+	for _, expr := range exprs {
+		for at := expr.From; at < expr.To && at < len(insts); at++ {
+			point, known := places[byteutil.ToHex(insts[at].GetLabel())]
+			if known && runs[point.Block] {
+				expr.At = point
+				break
+			}
+		}
+		out = append(out, expr)
+	}
+	return out
+}
+
 // EmitProgram compiles ast and records where each top-level expression landed, so a caller
 // can run them one at a time and report each value as it is produced.
 func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
@@ -531,10 +558,12 @@ func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 	warnings = append(warnings, checkAsserts(tree.Nodes)...)
 	warnings = append(warnings, checkAppliedValues(tree.Nodes)...)
 
+	blocks, places := ir.PlacedBlocksOf(insts)
+
 	return ir.Program{
 		Instructions: insts,
-		Blocks:       ir.BlocksOf(insts),
-		Expressions:  exprs,
+		Blocks:       blocks,
+		Expressions:  placed(exprs, insts, blocks, places),
 		Warnings:     warnings,
 	}, nil
 }

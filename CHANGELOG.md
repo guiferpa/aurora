@@ -4,6 +4,100 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## Unreleased
+
+### The EVM backend carries the whole language
+
+The point of the backend is that **the same program answers the same thing on a chain and off
+it**. Until now it answered for arithmetic across a dispatcher, and everything else compiled,
+deployed, and did something else. Now nothing a program can write is missing from it.
+
+- **A branch is an expression on a chain.** Both arms leave one value, so whoever is under an
+  `if` finds a value without knowing which way the program went.
+
+- **Comparisons, `and`/`or` and `^`.** A comparison answers with a tape like any other value.
+  `and` and `or` are the logical ones and not the bitwise ones — `2 and 1` is true, which a
+  bitwise AND would answer zero.
+
+- **A scope calls another, and can call itself.**
+
+  ```
+  ident down = defer { if feed(0) equals 0 { 0; } else { down(feed(0) - 1) + 1; }; };
+  ```
+
+  It is a jump inside one contract, deliberately not a message call: a message call to your own
+  contract is a transaction against yourself, and paying for that would make a call inside a
+  program cost what a call between contracts costs. Each activation gets its own run of memory,
+  so a scope can be entered while it is already running — recursion and two scopes calling each
+  other both work, and neither needed anything written for it.
+
+- **`shape` reaches the chain.** A shape is not a new kind of value: `Point{10, 20}` is two
+  tapes laid end to end, so on a chain it is one word with the first tape at the far end. That
+  is also its ceiling — a run past thirty-two bytes does not fit, which is four fields at the
+  default tape.
+
+- **`pull`, `push`, `head` and `tail`.** All four are defined by how much of a value means
+  something, which off a chain is the length of a slice and on one is worked out from the word
+  itself, without branching. When the values were written down none of that is needed: a tape
+  literal is one shift and one or on a chain, however many values were written between the
+  brackets.
+
+### What a contract can no longer do quietly
+
+Three things are refused at compile time rather than written as bytes that deploy and are
+wrong. Each of them used to compile and produce a contract that did something else.
+
+- A **shape whose run passes a word** — five fields at the default tape of eight.
+- A **call to anything but a scope bound at the top of a program**. A scope written inside
+  another is not written at all: the name it was bound to holds the neutral value.
+- A **tape literal built out of values a program works out** — `[a, b]`. `pull t a` one value
+  at a time is written.
+
+### Fixes
+
+- **A name bound inside a scope reached the chain with the wrong value.** The lowering decided
+  which operands named values by a list of four arithmetic opcodes, so a name bound in a scope
+  was not on it: `ident x = feed(0); x + feed(1);` answered 4 on a chain where the program
+  answers 7. It answered rather than reverted, which is the quieter of the two ways to be
+  wrong.
+
+- **A contract was published cut short.** Memory offsets, jump targets and the runtime size
+  were written in one byte and truncated past 255 — a program with three deferred scopes
+  reached that, and the chain kept a contract that ended in the middle of an instruction. A
+  scope past byte 255 was jumped to at the wrong address, and the ninth name in a contract was
+  given the address of the first, so two names shared one place and each wrote over the other.
+
+- **A scope written inside another ran on the way past.**
+  `ident outer = defer { ident inner = defer { 1; }; 2; };` answered 1 where the program
+  answers 2.
+
+- **A call short of what a scope reads read the last call's values.** Reading past what was
+  applied answers zeros — free on the way in from a transaction, since the calldata gives zeros
+  past its end, and not free in memory an earlier call already used.
+
+### The compiler says more
+
+- **A print says where it was written.** The three print builtins were the only nodes without
+  the token they came from, so `printb writes a log, and a chain has nowhere to put one`
+  pointed at line 0.
+
+- **A gap nobody wrote down is no longer silent.** The backend passed over any instruction it
+  had not been told about, which was harmless while the list of missing features was long and
+  stops being harmless now that it is empty.
+
+### Inside
+
+- **The IR says how long a run is.** `OpField` carried only an index, which is enough for a
+  reader that holds a run as a slice and counts from the left. It is not enough for one that
+  keeps a run as a value of fixed width, and it is not something that reader can work out — the
+  run arrives under a name, as a value applied to a scope, or as a field of another run.
+
+- The differential harness (`hosting/cli/evm_harness_test.go`) compiles the same source,
+  deploys it to an EVM in memory, calls it, and compares against the evaluator. Everything
+  above is pinned there.
+
+---
+
 ## v0.7.0-alpha — 2026-08-22
 
 ### The language

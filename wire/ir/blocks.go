@@ -1,9 +1,6 @@
-package emitter
+package ir
 
-import (
-	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/wire/ir"
-)
+import "github.com/guiferpa/aurora/byteutil"
 
 // BlocksOf answers the same program as blocks with terminators.
 //
@@ -21,10 +18,10 @@ import (
 // Five opcodes do not survive the crossing, because each of them was structure written as an
 // instruction: OpDefer, OpBeginScope, OpIf, OpJump and OpReturn. What is left inside a block
 // computes values and nothing else.
-func BlocksOf(insts []ir.Instruction) []ir.Block {
-	b := &blocking{scopes: make(map[string]ir.BlockID)}
+func BlocksOf(insts []Instruction) []Block {
+	b := &blocking{scopes: make(map[string]BlockID)}
 	top := b.reserve()
-	b.run(top, insts, 0, func() ir.Terminator { return ir.Ends(ir.Nothing()) })
+	b.run(top, insts, 0, func() Terminator { return Ends(Nothing()) })
 	return b.blocks
 }
 
@@ -34,35 +31,35 @@ func BlocksOf(insts []ir.Instruction) []ir.Block {
 // walked yet: the arms of an "if" are named by the terminator that chooses between them, and
 // that terminator is written before either arm is read.
 type blocking struct {
-	blocks []ir.Block
+	blocks []Block
 	// scopes answers, for the label an OpDefer left, the block its body became — so the
 	// binding that follows it can name a block instead of an instruction that is gone.
-	scopes map[string]ir.BlockID
+	scopes map[string]BlockID
 }
 
 // reserve takes the next number and leaves a place for the block to be put in.
-func (b *blocking) reserve() ir.BlockID {
-	id := ir.BlockID(len(b.blocks))
-	b.blocks = append(b.blocks, ir.Block{ID: id})
+func (b *blocking) reserve() BlockID {
+	id := BlockID(len(b.blocks))
+	b.blocks = append(b.blocks, Block{ID: id})
 	return id
 }
 
 // put fills a block that was reserved.
-func (b *blocking) put(id ir.BlockID, params int, insts []ir.Instruction, term ir.Terminator, origin ir.Origin) {
-	b.blocks[id] = ir.Block{ID: id, Params: params, Insts: insts, Term: term, Origin: origin}
+func (b *blocking) put(id BlockID, params int, insts []Instruction, term Terminator, origin Origin) {
+	b.blocks[id] = Block{ID: id, Params: params, Insts: insts, Term: term, Origin: origin}
 }
 
 // ends says how a run finishes when it reaches the end without a return of its own.
-type ends func() ir.Terminator
+type ends func() Terminator
 
 // run fills a reserved block from one straight run of instructions.
 //
 // It is one block until something splits it. A branch splits it into the run before, the two
 // arms, and the block they meet at — and each of those is a straight run again, so the same
 // walk handles a branch inside a branch without knowing that it is doing so.
-func (b *blocking) run(id ir.BlockID, insts []ir.Instruction, params int, tail ends) {
-	held := make([]ir.Instruction, 0, len(insts))
-	origin := ir.Origin{}
+func (b *blocking) run(id BlockID, insts []Instruction, params int, tail ends) {
+	held := make([]Instruction, 0, len(insts))
+	origin := Origin{}
 	if len(insts) > 0 {
 		origin = insts[0].GetOrigin()
 	}
@@ -71,34 +68,34 @@ func (b *blocking) run(id ir.BlockID, insts []ir.Instruction, params int, tail e
 		inst := insts[at]
 
 		switch inst.GetOpCode() {
-		case ir.OpBeginScope:
+		case OpBeginScope:
 			// The block is the scope. Nothing opens it but arriving at it.
 
-		case ir.OpDefer:
+		case OpDefer:
 			// The body is what this instruction says is its own, and it becomes a block.
 			length := int(byteutil.ToUint64(inst.GetRight().Bytes()))
 			body := insts[at+1 : at+1+length]
 			scope := b.reserve()
-			b.run(scope, body, feedsRead(body), func() ir.Terminator { return ir.Ends(ir.Nothing()) })
+			b.run(scope, body, feedsRead(body), func() Terminator { return Ends(Nothing()) })
 			b.scopes[byteutil.ToHex(inst.GetLabel())] = scope
 			at += length
 
-		case ir.OpIdent:
+		case OpIdent:
 			// A binding whose value was a scope names the block instead of an instruction
 			// that is no longer there.
 			if scope, ok := b.scopes[byteutil.ToHex(inst.GetRight().Bytes())]; ok {
-				inst = ir.NewInstruction(
-					inst.GetLabel(), ir.OpIdent, inst.GetLeft(), ir.BlockOf(scope)).At(inst.GetOrigin())
+				inst = NewInstruction(
+					inst.GetLabel(), OpIdent, inst.GetLeft(), BlockOf(scope)).At(inst.GetOrigin())
 			}
 			held = append(held, inst)
 
-		case ir.OpReturn:
+		case OpReturn:
 			// A scope ends here, and answers with what the return names.
-			b.put(id, params, held, ir.Ends(inst.GetRight()), origin)
+			b.put(id, params, held, Ends(inst.GetRight()), origin)
 			return
 
-		case ir.OpIf:
-			b.branch(id, params, held, origin, insts, at)
+		case OpIf:
+			b.branch(id, params, held, origin, insts, at, tail)
 			return
 
 		default:
@@ -115,14 +112,14 @@ func (b *blocking) run(id ir.BlockID, insts []ir.Instruction, params int, tail e
 // the "if" says to skip, the other reaches to where the jump closing the first one lands, and
 // what is left is where both arrive. Those counts are read here and nowhere after — what comes
 // out of this names blocks.
-func (b *blocking) branch(id ir.BlockID, params int, held []ir.Instruction, origin ir.Origin, insts []ir.Instruction, at int) {
+func (b *blocking) branch(id BlockID, params int, held []Instruction, origin Origin, insts []Instruction, at int, tail ends) {
 	inst := insts[at]
 	otherwise := at + 1 + int(byteutil.ToUint64(inst.GetRight().Bytes()))
 
 	// The arm taken when the test holds ends by jumping over the other one, and that jump is
 	// what says where the two meet.
 	meeting := len(insts)
-	if jump := otherwise - 1; jump >= 0 && jump < len(insts) && insts[jump].GetOpCode() == ir.OpJump {
+	if jump := otherwise - 1; jump >= 0 && jump < len(insts) && insts[jump].GetOpCode() == OpJump {
 		meeting = min(jump+1+int(byteutil.ToUint64(insts[jump].GetLeft().Bytes())), len(insts))
 	}
 
@@ -131,9 +128,13 @@ func (b *blocking) branch(id ir.BlockID, params int, held []ir.Instruction, orig
 	meet := b.reserve()
 	whenTrue := b.arm(insts[at+1:otherwise], meet)
 	whenFalse := b.arm(insts[min(otherwise, meeting):meeting], meet)
-	b.run(meet, insts[meeting:], 1, func() ir.Terminator { return ir.Ends(ir.Nothing()) })
+	// What the run this branch was part of does when it reaches its end is what the block the
+	// arms meet at does: the branch is inside that run, not around it. A branch written inside
+	// an arm of another meets, and then carries on to where the outer arms meet — and getting
+	// that wrong ended the outer scope in the middle of it.
+	b.run(meet, insts[meeting:], 1, tail)
 
-	b.put(id, params, held, ir.Chooses(inst.GetLeft(), ir.To(whenTrue), ir.To(whenFalse)), origin)
+	b.put(id, params, held, Chooses(inst.GetLeft(), To(whenTrue), To(whenFalse)), origin)
 }
 
 // arm turns one side of a branch into a block that hands its value to the block the two meet
@@ -147,33 +148,33 @@ func (b *blocking) branch(id ir.BlockID, params int, held []ir.Instruction, orig
 // Both arms answering with one value is what makes an "if" an expression. Saying it here, as a
 // value handed over, is what turns that from a convention two consumers each had to keep into
 // something written down.
-func (b *blocking) arm(insts []ir.Instruction, meet ir.BlockID) ir.BlockID {
-	answer := ir.Nothing()
+func (b *blocking) arm(insts []Instruction, meet BlockID) BlockID {
+	answer := Nothing()
 
-	if len(insts) > 0 && insts[len(insts)-1].GetOpCode() == ir.OpJump {
+	if len(insts) > 0 && insts[len(insts)-1].GetOpCode() == OpJump {
 		insts = insts[:len(insts)-1]
 	}
-	if len(insts) > 0 && insts[len(insts)-1].GetOpCode() == ir.OpReturn {
+	if len(insts) > 0 && insts[len(insts)-1].GetOpCode() == OpReturn {
 		answer = insts[len(insts)-1].GetRight()
 		insts = insts[:len(insts)-1]
 	}
 
 	id := b.reserve()
-	b.run(id, insts, 0, func() ir.Terminator { return ir.Goes(meet, answer) })
+	b.run(id, insts, 0, func() Terminator { return Goes(meet, answer) })
 	return id
 }
 
 // feedsRead answers how many positions a body addresses. A scope written inside it reads its
 // own vector, so its feeds say nothing about this one.
-func feedsRead(insts []ir.Instruction) int {
+func feedsRead(insts []Instruction) int {
 	highest := -1
 	for at := 0; at < len(insts); at++ {
 		inst := insts[at]
-		if inst.GetOpCode() == ir.OpDefer {
+		if inst.GetOpCode() == OpDefer {
 			at += int(byteutil.ToUint64(inst.GetRight().Bytes()))
 			continue
 		}
-		if inst.GetOpCode() != ir.OpGetFeed {
+		if inst.GetOpCode() != OpGetFeed {
 			continue
 		}
 		if read := int(byteutil.ToUint64(inst.GetLeft().Bytes())); read > highest {

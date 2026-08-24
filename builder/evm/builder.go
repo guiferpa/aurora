@@ -35,6 +35,9 @@ const (
 	// from. It is added up here rather than written as a literal, because it was the same
 	// number in two places and a push changing size meant remembering both.
 	INSTANTIATE_BLOCK_SIZE = PUSH_TWO_SIZE + PUSH_ONE_SIZE + PUSH_ONE_SIZE + 1 + PUSH_TWO_SIZE + PUSH_ONE_SIZE + 1
+	// TOP_BLOCK is the block the program begins at. Everything a transaction can reach is
+	// named from it, and it is the code that runs when a contract has no scope to dispatch to.
+	TOP_BLOCK = 0
 	// MAX_CONTRACT_SIZE is what a chain will keep: 24,576 bytes, by EIP-170. A runtime past
 	// it is refused rather than written, because writing it produces a binary that deploys
 	// and is not the program.
@@ -60,9 +63,9 @@ type Dispatcher struct {
 	Offset   int
 	Length   int
 	Code     *bytes.Buffer
-	// Body is what the code was written from, kept so it can be written again once where it
+	// Entry is the block the scope begins at, kept so it can be written again once where it
 	// lands is known.
-	Body []ir.Instruction
+	Entry ir.BlockID
 }
 
 type RuntimeCode struct {
@@ -72,116 +75,45 @@ type RuntimeCode struct {
 
 type Builder struct {
 	tapeSize int
-	cursor   int
-	insts    []ir.Instruction
-	operands [][]byte
+	blocks   []ir.Block
 }
 
-func (b *Builder) GetInstruction() ir.Instruction {
-	return b.insts[b.cursor]
-}
-
-// PickDeferAtCursor answers the scope written at this cursor, if one is: the instructions of
-// its body and the name it was bound to.
-//
-// It finds the scope and does not write it. Where a scope lands depends on how many come
-// before it, and none of that is known while they are still being found — so writing here
-// meant writing every scope twice, throwing the first away, and reporting a failure to write
-// as "there is no scope here", which is a different thing and hid the reason.
+// PickScopes answers the scopes a transaction can reach, and the block that is the top of the
+// program.
 //
 // A scope reaches the chain as an entry in the dispatcher, and what the dispatcher matches on
-// is the name it was bound to. So the binding that follows the body is part of finding one: a
-// scope nothing was bound to is nothing a transaction can reach.
-func (b *Builder) PickDeferAtCursor(cursor int) (d *Dispatcher, nextCursor int, ok bool) {
-	if cursor >= len(b.insts) {
-		return nil, cursor, false
-	}
-	inst := b.insts[cursor]
-	if inst.GetOpCode() != ir.OpDefer {
-		return nil, cursor, false
+// is the name it was bound to — so a scope is found by finding the binding that named it. That
+// is one pass over one block, where it used to be a walk that read a length off an instruction
+// and sliced the list, and did so only at the top of it.
+func (b *Builder) PickScopes() []Dispatcher {
+	dispatchers := make([]Dispatcher, 0)
+	if len(b.blocks) == 0 {
+		return dispatchers
 	}
 
-	// OpDefer layout: [OpDefer] [body of length N] [OpIdent]. Right operand = N (body length in instructions).
-	bodylength := byteutil.ToUint64(inst.GetRight().Bytes())
-	end := cursor + 1 + int(bodylength)
-	if end >= len(b.insts) {
-		return nil, cursor, false
-	}
-
-	selectorInst := b.insts[end]
-	if selectorInst.GetOpCode() != ir.OpIdent {
-		return nil, cursor, false
-	}
-
-	body := Lowering(withoutNestedScopes(b.insts[cursor+1:end], b.tapeSize), b.tapeSize)
-	return &Dispatcher{Selector: selectorInst.GetLeft().Bytes(), Body: body}, end, true
-}
-
-// withoutNestedScopes takes the scopes written inside this one out of its body.
-//
-// A scope's body is code that runs when the scope is called, never where it was written. Left
-// in, the inner body was written straight into the outer one and ran on the way past: its
-// return fired in the middle of code that had not asked for it, so
-//
-//	ident outer = defer { ident inner = defer { 1; }; 2; };
-//
-// answered 1 on chain where the program answers 2. It compiled, it deployed, and it said
-// nothing — the worst way for a contract to be wrong.
-//
-// What replaces it is the neutral value, which is what the binding is worth here: a scope
-// written inside another is not something a transaction can reach, and calling one is already
-// refused, so on a chain the name it was bound to holds nothing. Replacing rather than dropping
-// is what keeps the binding, and a scope whose last expression is one still answers what it
-// answered.
-func withoutNestedScopes(insts []ir.Instruction, tapeSize int) []ir.Instruction {
-	out := make([]ir.Instruction, 0, len(insts))
-	for at := 0; at < len(insts); at++ {
-		inst := insts[at]
-		if inst.GetOpCode() != ir.OpDefer {
-			out = append(out, inst)
+	for _, inst := range b.blocks[TOP_BLOCK].Insts {
+		if inst.GetOpCode() != ir.OpIdent || inst.GetRight().Kind() != ir.KindBlock {
 			continue
 		}
-		// A scope written inside this one carries how long its body is, and a scope inside
-		// that one is inside those instructions, so stepping over them steps over every depth.
-		out = append(out, ir.NewInstruction(
-			inst.GetLabel(), ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
-		at += int(byteutil.ToUint64(inst.GetRight().Bytes()))
+		dispatchers = append(dispatchers, Dispatcher{
+			Selector: inst.GetLeft().Bytes(),
+			Entry:    inst.GetRight().Block(),
+		})
 	}
-	return out
-}
-
-// pickScopes separates the scopes a transaction can reach from the code that is not held by
-// one, which is the top of the program.
-func (b *Builder) pickScopes() (dispatchers []Dispatcher, root []ir.Instruction) {
-	dispatchers = make([]Dispatcher, 0)
-	root = make([]ir.Instruction, 0)
-
-	for b.cursor < len(b.insts) {
-		if d, nextCursor, ok := b.PickDeferAtCursor(b.cursor); ok {
-			dispatchers = append(dispatchers, *d)
-			// Skip the binding that named the scope: it is the dispatcher's selector and
-			// has no meaning of its own on chain.
-			b.cursor = nextCursor + 1
-			continue
-		}
-		root = append(root, b.GetInstruction())
-		b.cursor++
-	}
-
-	return dispatchers, root
+	return dispatchers
 }
 
 // measureScopes answers how long each scope is and where it falls among them.
 //
 // It measures by writing to something that only counts, rather than by writing the whole scope
-// into a buffer that is then thrown away — which is what this did, since where a scope lands
-// is not known until every scope has been found and the scope has to be written again anyway.
+// into a buffer that is then thrown away — where a scope lands is not known until every scope
+// has been found, so it has to be written again anyway.
 func (b *Builder) measureScopes(dispatchers []Dispatcher, entries map[string]Entry) (int, error) {
 	offset := 0
 	for at := range dispatchers {
 		d := &dispatchers[at]
 		var measured counter
-		if err := WriteScope(&measured, d.Body, b.tapeSize, 0, entries); err != nil {
+		if err := WriteScope(&measured, b.blocks, d.Entry, b.tapeSize, 0, entries); err != nil {
 			return 0, err
 		}
 		d.Offset, d.Length = offset, int(measured)
@@ -190,20 +122,20 @@ func (b *Builder) measureScopes(dispatchers []Dispatcher, entries map[string]Ent
 	return offset, nil
 }
 
-// PickRuntimeCode assembles the runtime in passes, each of which needs the one before it:
-// the scopes are found, then measured, and only then written — a jump inside a scope carries
-// an address in the contract, and that address depends on how many scopes come before it.
+// PickRuntimeCode assembles the runtime in passes, each of which needs the one before it: the
+// scopes are found, then measured, and only then written — a jump inside a scope carries an
+// address in the contract, and that address depends on how many scopes come before it.
 func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
-	dispatchers, rootinsts := b.pickScopes()
+	dispatchers := b.PickScopes()
 
 	// The names come before any address of one does: a call inside a scope has to be written
 	// while the scopes are still being measured, and what it needs then is only that the name
-	// it calls is a scope of this contract. The addresses are filled in below, into this same
-	// map, once there are addresses to fill in.
+	// it calls is a scope of this contract, and how many values that scope takes. The
+	// addresses are filled into this same map below, once there are addresses to fill in.
 	entries := make(map[string]Entry, len(dispatchers))
 	for at := range dispatchers {
 		d := &dispatchers[at]
-		entries[string(d.Selector)] = Entry{Reads: FrameNamesAt(d.Body) / MEMORY_SLOT_SIZE}
+		entries[string(d.Selector)] = Entry{Reads: b.blocks[d.Entry].Params}
 	}
 
 	offset, err := b.measureScopes(dispatchers, entries)
@@ -220,7 +152,7 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 
 	for at := range dispatchers {
 		d := &dispatchers[at]
-		internal, err := ScopeInternalAt(referenced+d.Offset, d.Body, b.tapeSize)
+		internal, err := ScopeInternalAt(referenced+d.Offset, b.blocks[d.Entry].Params, b.tapeSize)
 		if err != nil {
 			return nil, err
 		}
@@ -232,23 +164,23 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	for at := range dispatchers {
 		d := &dispatchers[at]
 		code := bytes.NewBuffer(make([]byte, 0))
-		if err := WriteScope(code, d.Body, b.tapeSize, referenced+d.Offset, entries); err != nil {
+		if err := WriteScope(code, b.blocks, d.Entry, b.tapeSize, referenced+d.Offset, entries); err != nil {
 			return nil, err
 		}
 		d.Code = code
 	}
 
-	if len(rootinsts) > 0 {
-		rootinsts = Lowering(rootinsts, b.tapeSize)
-		root := bytes.NewBuffer(make([]byte, 0))
-		// Code no scope holds: nobody called it, so its return ends the call.
-		if _, err := WriteCode(root, NewIdentManagerAt(FrameNamesAt(rootinsts)), rootinsts, referenced+offset, ScopeOf(rootinsts, b.tapeSize, entries, true)); err != nil {
-			return nil, err
-		}
-		return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil
+	// Code no scope holds: nobody called it, so ending it ends the call. Its blocks are the
+	// ones the top of the program reaches, and a scope is not among them — a binding names a
+	// block, and naming is not going.
+	top := layoutOf(b.blocks, TOP_BLOCK)
+	root := bytes.NewBuffer(make([]byte, 0))
+	if err := writeBlocks(root, b.blocks, top, referenced+offset,
+		ScopeOf(b.blocks, top, b.tapeSize, entries, true)); err != nil {
+		return nil, err
 	}
 
-	return &RuntimeCode{Dispatchers: dispatchers}, nil
+	return &RuntimeCode{Root: root, Dispatchers: dispatchers}, nil
 }
 
 func (b *Builder) WriteRuntimeBlock(bs io.Writer, rc *RuntimeCode) (int, error) {
@@ -293,11 +225,16 @@ type NewBuilderOptions struct {
 	TapeSize int
 }
 
-func NewBuilder(insts []ir.Instruction, options NewBuilderOptions) *Builder {
-	return &Builder{
-		tapeSize: byteutil.TapeSize(options.TapeSize),
-		operands: make([][]byte, 0),
-		cursor:   0,
-		insts:    insts,
+func NewBuilder(blocks []ir.Block, options NewBuilderOptions) *Builder {
+	tapeSize := byteutil.TapeSize(options.TapeSize)
+
+	// Every block is put in the order the stack needs before any of it is written. It used to
+	// be done a scope at a time, as each was found, which was the same work spread out — and
+	// it had to be, because a scope was a stretch of a list and the list was walked once.
+	lowered := make([]ir.Block, len(blocks))
+	for at, block := range blocks {
+		lowered[at] = LowerBlock(block, tapeSize)
 	}
+
+	return &Builder{tapeSize: tapeSize, blocks: lowered}
 }

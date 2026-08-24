@@ -135,13 +135,10 @@ func TestWriteIdent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			manager := NewIdentManager()
-			for i := 0; i < tc.names; i++ {
-				manager.SetOffset(string(rune('a'+i)), i*MEMORY_SLOT_SIZE)
-			}
+			names := map[string]int{"x": tc.names * MEMORY_SLOT_SIZE}
 
 			bs := bytes.NewBuffer(make([]byte, 0))
-			if _, err := WriteIdent(bs, manager, []byte("x")); err != nil {
+			if _, err := WriteIdent(bs, names, []byte("x")); err != nil {
 				t.Fatalf("writing the binding: %v", err)
 			}
 
@@ -154,11 +151,8 @@ func TestWriteIdent(t *testing.T) {
 }
 
 func TestWriteLoad(t *testing.T) {
-	manager := NewIdentManager()
-	manager.SetOffset("test", 0x120)
-
 	bs := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteLoad(bs, manager, []byte("test")); err != nil {
+	if _, err := WriteLoad(bs, map[string]int{"test": 0x120}, []byte("test")); err != nil {
 		t.Fatalf("writing the read: %v", err)
 	}
 
@@ -354,40 +348,6 @@ func TestWriteMask(t *testing.T) {
 	}
 }
 
-// Measuring is writing to something that only counts, so what it says and what comes out
-// cannot disagree. That is the whole reason it is done this way rather than with a table of
-// sizes: a table is a second description, and two descriptions of one thing drift.
-func TestWhatIsMeasuredIsWhatIsWritten(t *testing.T) {
-	insts := []ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpGetFeed, ir.Const(0, 8), ir.Nothing()),
-		ir.NewInstruction([]byte("01"), ir.OpSave, ir.Imm(10, 8), ir.Nothing()),
-		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01"))),
-		ir.NewInstruction([]byte("03"), ir.OpIdent, ir.NameOf("x"), ir.RefTo([]byte("02"))),
-		ir.NewInstruction([]byte("04"), ir.OpLoad, ir.NameOf("x"), ir.Nothing()),
-	}
-
-	positions, err := PositionsOf(insts, nil, ScopeOf(insts, 8, nil, true))
-	if err != nil {
-		t.Fatalf("measuring: %v", err)
-	}
-	if len(positions) != len(insts)+1 {
-		t.Fatalf("measured %d positions for %d instructions", len(positions), len(insts))
-	}
-
-	bs := bytes.NewBuffer(make([]byte, 0))
-	im := NewIdentManager()
-	for at, inst := range insts {
-		before := bs.Len()
-		if err := WriteInstruction(bs, im, inst, 0, ScopeOf(insts, 8, nil, true)); err != nil {
-			t.Fatalf("writing: %v", err)
-		}
-		if want := positions[at+1] - positions[at]; bs.Len()-before != want {
-			t.Errorf("%s measured %d bytes and wrote %d",
-				ir.ResolveOpCode(inst.GetOpCode()), want, bs.Len()-before)
-		}
-	}
-}
-
 // A call carries its own landing rather than jumping to the instruction after it: the address
 // it pushes to come back to is a JUMPDEST inside its own bytes. It is worked out by measuring
 // what it is about to write, which is why it stays right when what a call writes changes.
@@ -396,7 +356,7 @@ func TestACallComesBackToItsOwnJumpDestiny(t *testing.T) {
 
 	bs := bytes.NewBuffer(make([]byte, 0))
 	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("f"), ir.Imm(1, 8))
-	if err := WriteCall(bs, inst, ScopeOf(nil, 8, map[string]Entry{"f": {At: 0x1234}}, false), at); err != nil {
+	if err := WriteCall(bs, inst, ScopeOf(nil, nil, 8, map[string]Entry{"f": {At: 0x1234}}, false), at); err != nil {
 		t.Fatalf("writing the call: %v", err)
 	}
 
@@ -420,7 +380,7 @@ func TestACallComesBackToItsOwnJumpDestiny(t *testing.T) {
 func TestACallToSomethingThatIsNotAScopeIsRefused(t *testing.T) {
 	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("nowhere"), ir.Imm(1, 8))
 
-	err := WriteCall(io.Discard, inst, ScopeOf(nil, 8, map[string]Entry{"elsewhere": {At: 0x40}}, false), 0)
+	err := WriteCall(io.Discard, inst, ScopeOf(nil, nil, 8, map[string]Entry{"elsewhere": {At: 0x40}}, false), 0)
 	if err == nil {
 		t.Fatal("it wrote a call to a scope that does not exist")
 	}

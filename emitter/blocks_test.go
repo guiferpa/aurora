@@ -42,7 +42,7 @@ printd answer(1);`
 	}
 
 	found := make(map[string]int)
-	for _, block := range BlocksOf(insts) {
+	for _, block := range ir.BlocksOf(insts) {
 		for _, inst := range block.Insts {
 			if structure[inst.GetOpCode()] {
 				t.Errorf("block %d holds %s, which is structure", block.ID, ir.ResolveOpCode(inst.GetOpCode()))
@@ -71,7 +71,7 @@ func TestEveryTerminatorNamesBlocksThatExist(t *testing.T) {
 };
 printd sign(5);`
 
-	blocks := BlocksOf(compile(t, source).Instructions)
+	blocks := ir.BlocksOf(compile(t, source).Instructions)
 
 	wanted := map[ir.TermKind]int{ir.Ret: 0, ir.Br: 1, ir.BrIf: 2}
 	for _, block := range blocks {
@@ -93,7 +93,7 @@ printd sign(5);`
 func TestBothArmsHandTheirValueToTheSameBlock(t *testing.T) {
 	const source = `ident answer = defer { if feed(0) bigger 0 { 10; } else { 20; }; };`
 
-	blocks := BlocksOf(compile(t, source).Instructions)
+	blocks := ir.BlocksOf(compile(t, source).Instructions)
 
 	var chose *ir.Block
 	for at := range blocks {
@@ -134,7 +134,7 @@ func TestAScopeBlockTakesWhatItsBodyReads(t *testing.T) {
 ident none = defer { 7; };
 ident outer = defer { ident inner = defer { feed(0) + feed(1) + feed(2); }; feed(0); };`
 
-	blocks := BlocksOf(compile(t, source).Instructions)
+	blocks := ir.BlocksOf(compile(t, source).Instructions)
 
 	found := make(map[int]int)
 	for _, block := range blocks {

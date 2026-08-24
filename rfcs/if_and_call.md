@@ -1,23 +1,115 @@
 # `if` e `call` em bytecode
 
-**Estado:** proposta · **Data:** 2026-08-20
+**Estado:** implementada · **Proposta:** 2026-08-20 · **Fechada:** 2026-08-24
+· PRs [#111](https://github.com/guiferpa/aurora/pull/111),
+[#113](https://github.com/guiferpa/aurora/pull/113),
+[#115](https://github.com/guiferpa/aurora/pull/115),
+[#119](https://github.com/guiferpa/aurora/pull/119)
 
-As duas instruções que faltam para um contrato deixar de ser uma calculadora. Hoje as duas
-**compilam e não produzem byte nenhum** — o binário sai, faz deploy, responde, e ignora o
-desvio e a chamada em silêncio.
+As duas instruções que faltavam para um contrato deixar de ser uma calculadora. As duas
+compilam hoje, e com elas o backend passou a carregar a linguagem inteira.
 
-Esta RFC diz como cada uma vira bytecode, e o que as duas exigem em comum. Ela não trata de
-storage, de `caller`, de evento nem de shape na memória: cada um é a sua conversa, e todos
-vêm depois destes dois.
+O texto abaixo da linha é a proposta como foi escrita, e fica como registro do que se pensava
+antes de escrever o código. **O que o código respondeu está aqui em cima**, porque quem lê uma
+RFC implementada quer primeiro saber o que ficou de pé.
 
-Tudo abaixo foi medido no código de hoje.
+## O que ficou diferente do proposto
 
-> Os blocos aqui **não** estão marcados como `aurora`: `hosting/cli/docs_test.go` executa todo
-> bloco assim marcado no repositório, e nada disto compila ainda.
+**Medir é escrever para algo que só conta.** A proposta dizia "percorrer as instruções e anotar
+quantos bytes cada uma ocupa" — uma tabela de tamanhos ao lado do escritor. O que foi escrito
+mede escrevendo, num `io.Writer` que só soma o que recebe (`counter`, `PositionsOf`). Uma
+tabela é uma segunda descrição dos mesmos bytes, e duas descrições de uma coisa divergem: este
+backend já errou assim mais de uma vez, e o erro é calado porque os bytes saem, só que nos
+endereços errados.
+
+**Quem move o ponteiro de frame é quem chama, e move pelo tamanho do frame *dele mesmo*.** A
+proposta via duas opções e preferia a segunda — quem chama mover, precisando saber o tamanho do
+frame de quem chama; ou o corpo mover, e quem chama não precisar saber. A terceira é melhor que
+as duas: quem chama soma o **próprio** tamanho, então nenhum dos lados precisa saber o do
+outro. Voltar é subtrair o mesmo número, e não uma cópia guardada — uma cópia teria que ficar
+em algum lugar durante a chamada, e o único lugar é a pilha, embaixo de uma resposta que o
+trabalho do chamado empilha por cima.
+
+**Um escopo é escrito uma vez e entrado duas.** A proposta dizia que "o dispatcher vira um
+chamador". O que ficou põe o prólogo **dentro do escopo**, com dois pontos de entrada e um
+epílogo:
+
+```
+external:  JUMPDEST          <- o dispatcher salta aqui
+           <prólogo>         copia a calldata para o frame
+           PUSH2 <epílogo>
+           PUSH2 <internal>
+           JUMP
+epílogo:   JUMPDEST          <- o corpo volta aqui, valor na pilha
+           <responde a cadeia>
+internal:  JUMPDEST          <- outro escopo salta aqui, frame já escrito
+           <corpo>           feed(n) lê o frame, seja quem for que o encheu
+           SWAP1; JUMP       volta para quem chamou
+```
+
+O efeito é o que a proposta queria — o corpo tem uma forma só, e nada nele sabe se veio de uma
+transação ou de outro escopo — mas o `RETURN` da EVM não fica no dispatcher: fica no epílogo do
+próprio escopo. Terminar um escopo é **sempre** voltar para quem chamou.
+
+**Só escopo ligado no topo do programa pode ser chamado.** Não estava na proposta e virou
+limite: um escopo escrito dentro de outro não é escrito de jeito nenhum (o nome guarda o valor
+neutro), e chamar um é recusado em vez de virar salto para um endereço que escopo nenhum tem.
+Essa recusa é o que torna o nome de uma chamada resolvível em tempo de compilação, e é dela que
+sai a resposta da pergunta 5.
+
+**Recursão e recursão mútua saem de graça, e agora estão provadas.** `hosting/cli/evm_harness_test.go`
+tem as duas contra o evaluator.
+
+## As perguntas em aberto, respondidas
+
+**1 · Onde mora o ponteiro de frame.** Em `0x00`, e o conflito com o `RETURN` foi resolvido
+dando à resposta um slot só dela (`RETURN_SCRATCH`, `0x20`). Os frames começam em `0x40`.
+Escrever a resposta no slot do ponteiro perderia o frame no ato de responder.
+
+**2 · Quem soma o ponteiro.** Quem chama, pelo tamanho do próprio frame. Ver acima.
+
+**3 · O `OpReturn` com dois sentidos.** Lido da estrutura, sem mexer no IR: um braço nomeia o
+`OpIf` a que pertence, e um escopo nomeia o `OpBeginScope`. E apareceu um **terceiro** sentido
+que a proposta não previu — o código que escopo nenhum segura, o topo de um programa, que não
+tem para quem voltar e por isso encerra a chamada. Esse não dá para ler da instrução, então é
+parâmetro.
+
+**4 · `OpPreCall`.** Continua sem uso e deve sair da lista. Os argumentos chegam à pilha pelo
+lowering, que os põe imediatamente antes da chamada, e é a própria chamada que os escreve no
+frame. Não sobrou lugar para ele.
+
+**5 · Quem zera as posições que ninguém escreveu.** Quem chama, e sem nenhuma das duas saídas
+que a proposta via como únicas. Ela achava que quem chama não pode saber quantas posições o
+corpo lê, "porque um `defer` é valor de primeira classe e pode ser chamado através de qualquer
+nome" — mas com a recusa acima o nome resolve em tempo de compilação, e o escopo nomeado diz
+quantas lê, que é o mesmo número que o prólogo dele já usa. Nada viaja no frame e nenhum teto é
+zerado: quem chama escreve exatamente os lugares entre o que aplicou e o que o chamado lê, que
+é nada quando a chamada não é curta.
+
+Isso não foi visto quando o `call` foi escrito. Um escopo lendo duas posições, chamado com uma,
+lia o segundo valor da chamada anterior — 501 onde o programa responde 301 — e só apareceu ao
+reler estas perguntas contra o código. A pergunta estava certa antes de o código existir.
+
+**6 · Recusar em vez de truncar.** Feito: acima de 24.576 bytes o builder recusa.
+
+## O que ficou por fazer
+
+**O `StackDepth` não virou recusa.** A proposta dizia que ele provaria que os dois braços de um
+desvio deixam a mesma pilha, "e vira uma recusa de compilação quando ela não valer". Ele existe
+em `builder/evm/lowering.go` e **nenhum código o chama** — só os testes. A afirmação continua
+verdadeira por construção e não por verificação.
+
+**Static link.** Um `defer` que lê nome do escopo onde foi escrito continua de fora, como a
+proposta já dizia. Hoje é mais do que de fora: um escopo escrito dentro de outro não é escrito.
+
+**`assert` → `REVERT`.** Continua de fora.
 
 ---
 
+
 ## O que já está de pé
+
+> A partir daqui, o texto é a proposta de 2026-08-20, sem retoque.
 
 Duas coisas precisam existir antes, e uma delas já foi escrita.
 

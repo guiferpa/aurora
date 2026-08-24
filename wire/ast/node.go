@@ -311,10 +311,15 @@ type ShapeLiteral struct {
 // the shape of the value, so nothing about the field's name survives here.
 type FieldExpression struct {
 	mark
-	Expression Node        `json:"expression"`
-	Index      uint64      `json:"index"`
-	Field      string      `json:"field"` // kept for the language server, never emitted
-	Token      token.Token `json:"-"`
+	Expression Node   `json:"expression"`
+	Index      uint64 `json:"index"`
+	// Fields is how many tapes the run has, which the declaration the index came from also
+	// says. Where a field sits inside a run cannot be worked out from the index alone: a run
+	// is tapes laid end to end with nothing marking where it ends, so a target that keeps one
+	// as a fixed-width value has to be told how long it is.
+	Fields uint64      `json:"fields"`
+	Field  string      `json:"field"` // kept for the language server, never emitted
+	Token  token.Token `json:"-"`
 }
 
 // ShapedExpression is `expr as Point`: it says how to read a value the compiler cannot

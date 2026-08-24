@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ir"
@@ -108,5 +109,43 @@ func TestEmitProgramLabelsScopes(t *testing.T) {
 				t.Errorf("the value lands under %q but the expression reports %q", last.GetLeft().Bytes(), expr.Label)
 			}
 		})
+	}
+}
+
+// A field says how many tapes the run it reads has, beside the index it reads at.
+//
+// A run is tapes laid end to end with nothing in it saying where it ends, so where a field
+// sits cannot be worked out from the index alone: reading the last tape of a run means
+// counting from the end. Whoever reads the IR cannot work it out either — the run may arrive
+// under a name, as a value applied to a scope, or as a field of another run, and in none of
+// those is the construction in sight.
+func TestAFieldSaysHowLongTheRunIs(t *testing.T) {
+	const source = `shape Point { x, y };
+shape Line { a, b, c };
+ident p = Point{1, 2};
+ident l = Line{1, 2, 3};
+printd p.y;
+printd l.c;`
+
+	wanted := []uint64{2, 3}
+	read := make([]uint64, 0, len(wanted))
+	for _, inst := range compile(t, source).Instructions {
+		if inst.GetOpCode() != ir.OpField {
+			continue
+		}
+		operands := inst.GetOperands()
+		if len(operands) != 3 {
+			t.Fatalf("a field carries %d operands, want the run it reads, the index, and the length", len(operands))
+		}
+		read = append(read, byteutil.ToUint64(operands[2].Bytes()))
+	}
+
+	if len(read) != len(wanted) {
+		t.Fatalf("found %d fields, want %d", len(read), len(wanted))
+	}
+	for at, want := range wanted {
+		if read[at] != want {
+			t.Errorf("the field reads a run of %d tapes, want %d", read[at], want)
+		}
 	}
 }

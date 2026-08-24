@@ -598,7 +598,7 @@ func WriteField(w io.Writer, inst ir.Instruction, tapeSize int) error {
 // somewhere is the stack, under an answer the callee's own work is piled on top of.
 func WriteCall(w io.Writer, inst ir.Instruction, scope Scope, at int) error {
 	name := string(inst.GetLeft().Bytes())
-	internal, known := scope.Entries[name]
+	callee, known := scope.Entries[name]
 	if !known {
 		return fmt.Errorf(
 			"a call to %q cannot be written: only a scope bound at the top of a program reaches the bytecode", name)
@@ -608,10 +608,10 @@ func WriteCall(w io.Writer, inst ir.Instruction, scope Scope, at int) error {
 	// a fixed size, so what is measured with a wrong address is what is written with the
 	// right one.
 	var measured counter
-	if err := writeCallOut(&measured, inst, scope, 0, internal); err != nil {
+	if err := writeCallOut(&measured, inst, scope, 0, callee); err != nil {
 		return err
 	}
-	if err := writeCallOut(w, inst, scope, at+int(measured), internal); err != nil {
+	if err := writeCallOut(w, inst, scope, at+int(measured), callee); err != nil {
 		return err
 	}
 
@@ -622,7 +622,7 @@ func WriteCall(w io.Writer, inst ir.Instruction, scope Scope, at int) error {
 }
 
 // writeCallOut fills the callee's frame, moves the pointer onto it, and goes.
-func writeCallOut(w io.Writer, inst ir.Instruction, scope Scope, back, internal int) error {
+func writeCallOut(w io.Writer, inst ir.Instruction, scope Scope, back int, callee Entry) error {
 	applied := valueOperands(inst)
 
 	for at, operand := range applied {
@@ -646,13 +646,28 @@ func writeCallOut(w io.Writer, inst ir.Instruction, scope Scope, back, internal 
 		}
 	}
 
+	// A position the callee reads and this call did not fill has to answer with zeros, which
+	// is what the language answers for reading past what was applied. On the way in from a
+	// transaction that is free — the calldata gives zeros past its end — but a frame is
+	// memory an earlier activation already used, so what is left there is the last call's
+	// values. Two scopes reading two positions, one of them called with one, and the second
+	// read the first call's second value.
+	for at := len(applied); at < callee.Reads; at++ {
+		if _, err := w.Write([]byte{OpPush1, 0x00}); err != nil {
+			return err
+		}
+		if err := writeFrameStore(w, scope.Frame+at*MEMORY_SLOT_SIZE); err != nil {
+			return err
+		}
+	}
+
 	if err := writeFrameMove(w, scope.Frame, OpAdd); err != nil {
 		return err
 	}
 	if _, err := WritePush2(w, back); err != nil {
 		return err
 	}
-	if _, err := WritePush2(w, internal); err != nil {
+	if _, err := WritePush2(w, callee.At); err != nil {
 		return err
 	}
 	_, err := w.Write([]byte{OpJump})
@@ -704,7 +719,7 @@ func ScopeInternalAt(base int, body []ir.Instruction, tapeSize int) (int, error)
 // The addresses inside it are worked out by measuring the prologue, which is the only part
 // whose length depends on the scope — one copy per position the body addresses. Every push is
 // a fixed size, so measuring once is enough.
-func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int, entries map[string]int) error {
+func WriteScope(bs io.Writer, body []ir.Instruction, tapeSize, base int, entries map[string]Entry) error {
 	reads := FrameNamesAt(body) / MEMORY_SLOT_SIZE
 
 	internal, err := ScopeInternalAt(base, body, tapeSize)
@@ -1022,18 +1037,32 @@ type Scope struct {
 	// binds. A call puts the frame of whoever it calls right after this one, so the two never
 	// share a slot and a scope can be entered again while it is running.
 	Frame int
-	// Entries answers, for the name a scope was bound to, the byte another scope enters it
-	// at. The names are known before any address of one is, so it is filled with zeros while
-	// the scopes are measured and with addresses before they are written — a call measures
-	// the same either way, since every push is a fixed size.
-	Entries map[string]int
+	// Entries answers, for the name a scope was bound to, what a call needs to know about it.
+	// The names and what each reads are known before any address of one is, so the addresses
+	// are filled in before the scopes are written — a call measures the same either way,
+	// since every push is a fixed size and what does change its length is known from the
+	// start.
+	Entries map[string]Entry
+}
+
+// An Entry is what a call needs to know about the scope it calls: where to go in, and how many
+// values that scope reads.
+//
+// It reads a fixed number of positions — the highest it feeds, plus one — and that is a
+// property of the body, known where the body is. What a call applies is a property of the call.
+// The two need not agree, and where they do not is where the caller has work to do.
+type Entry struct {
+	// At is the byte another scope enters this one at, past its prologue.
+	At int
+	// Reads is how many positions the body addresses.
+	Reads int
 }
 
 // ScopeOf answers what the writer needs to know about a body of instructions.
 //
 // What it derives is derived once, here, rather than at each of the places that reads it:
 // working the arms out twice is how the writing pass and the measuring pass come to disagree.
-func ScopeOf(insts []ir.Instruction, tapeSize int, entries map[string]int, answers bool) Scope {
+func ScopeOf(insts []ir.Instruction, tapeSize int, entries map[string]Entry, answers bool) Scope {
 	return Scope{
 		TapeSize: tapeSize,
 		Arms:     armsOf(insts),

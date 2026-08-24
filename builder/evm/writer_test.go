@@ -396,7 +396,7 @@ func TestACallComesBackToItsOwnJumpDestiny(t *testing.T) {
 
 	bs := bytes.NewBuffer(make([]byte, 0))
 	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("f"), ir.Imm(1, 8))
-	if err := WriteCall(bs, inst, ScopeOf(nil, 8, map[string]int{"f": 0x1234}, false), at); err != nil {
+	if err := WriteCall(bs, inst, ScopeOf(nil, 8, map[string]Entry{"f": {At: 0x1234}}, false), at); err != nil {
 		t.Fatalf("writing the call: %v", err)
 	}
 
@@ -420,7 +420,7 @@ func TestACallComesBackToItsOwnJumpDestiny(t *testing.T) {
 func TestACallToSomethingThatIsNotAScopeIsRefused(t *testing.T) {
 	inst := ir.NewInstructionOver([]byte("00"), ir.OpCall, ir.NameOf("nowhere"), ir.Imm(1, 8))
 
-	err := WriteCall(io.Discard, inst, ScopeOf(nil, 8, map[string]int{"elsewhere": 0x40}, false), 0)
+	err := WriteCall(io.Discard, inst, ScopeOf(nil, 8, map[string]Entry{"elsewhere": {At: 0x40}}, false), 0)
 	if err == nil {
 		t.Fatal("it wrote a call to a scope that does not exist")
 	}

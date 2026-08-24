@@ -176,7 +176,7 @@ func (b *Builder) pickScopes() (dispatchers []Dispatcher, root []ir.Instruction)
 // It measures by writing to something that only counts, rather than by writing the whole scope
 // into a buffer that is then thrown away — which is what this did, since where a scope lands
 // is not known until every scope has been found and the scope has to be written again anyway.
-func (b *Builder) measureScopes(dispatchers []Dispatcher, entries map[string]int) (int, error) {
+func (b *Builder) measureScopes(dispatchers []Dispatcher, entries map[string]Entry) (int, error) {
 	offset := 0
 	for at := range dispatchers {
 		d := &dispatchers[at]
@@ -200,9 +200,10 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 	// while the scopes are still being measured, and what it needs then is only that the name
 	// it calls is a scope of this contract. The addresses are filled in below, into this same
 	// map, once there are addresses to fill in.
-	entries := make(map[string]int, len(dispatchers))
+	entries := make(map[string]Entry, len(dispatchers))
 	for at := range dispatchers {
-		entries[string(dispatchers[at].Selector)] = 0
+		d := &dispatchers[at]
+		entries[string(d.Selector)] = Entry{Reads: FrameNamesAt(d.Body) / MEMORY_SLOT_SIZE}
 	}
 
 	offset, err := b.measureScopes(dispatchers, entries)
@@ -223,7 +224,9 @@ func (b *Builder) PickRuntimeCode() (*RuntimeCode, error) {
 		if err != nil {
 			return nil, err
 		}
-		entries[string(d.Selector)] = internal
+		entry := entries[string(d.Selector)]
+		entry.At = internal
+		entries[string(d.Selector)] = entry
 	}
 
 	for at := range dispatchers {

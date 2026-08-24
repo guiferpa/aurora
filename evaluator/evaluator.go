@@ -68,6 +68,10 @@ type Printer interface {
 }
 
 type Evaluator struct {
+	// blocks is the program as blocks, when it was given as blocks. It is what a call reaches
+	// into: a name bound to a scope holds the number of a block, and running the scope is
+	// running from there.
+	blocks        []ir.Block
 	cursor        uint64
 	end           uint64
 	insts         []ir.Instruction
@@ -114,7 +118,9 @@ func (e *Evaluator) GetAssertErrors() []error {
 // value: the program wrote it down and there is nothing to look up. Everything a position
 // holding a value can be, and the only place that has to know it.
 func (e *Evaluator) value(operand ir.Operand) []byte {
-	if operand.Kind() == ir.KindImm {
+	// An immediate is the value, and a block is the number of a block — both are read off the
+	// operand rather than looked up. Everything else names something another instruction left.
+	if operand.Kind() == ir.KindImm || operand.Kind() == ir.KindBlock {
 		return operand.Bytes()
 	}
 	return e.environ.GetTemp(byteutil.ToHex(operand.Bytes()))
@@ -542,6 +548,35 @@ func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error 
 		return fmt.Errorf("call: %s identifier not found", left)
 	}
 	index := byteutil.ToUint256(val, e.tapeSize).Uint64()
+
+	// A name bound to a scope holds the number of a block, and running the scope is running
+	// from there. It used to hold an index into a list of scopes, each of which recorded where
+	// its body sat as a stretch of the instructions being executed — so a call was a range,
+	// and the value it answered with had to be fetched afterwards from a key both sides agreed
+	// on. A block ends by answering, so the answer comes back from running it.
+	if e.blocks != nil {
+		args := make(map[uint64][]byte, len(operands)-1)
+		for at, operand := range operands[1:] {
+			args[uint64(at)] = e.value(operand)
+		}
+		next := environ.NewEnviron(environ.NewEnvironOptions{})
+		next.SetArguments(args)
+
+		outer := e.environ
+		e.environ = outer.Ahead(next)
+		answered, err := e.RunBlocks(e.blocks, ir.BlockID(index), nil)
+		e.environ = outer
+		if err != nil {
+			return err
+		}
+		if answered == nil {
+			answered = byteutil.FalseTape(e.tapeSize)
+		}
+		e.environ.SetTemp(byteutil.ToHex(label), answered)
+		e.IncrementCursor()
+		return nil
+	}
+
 	blob := home.GetLocalDefer(deferKey(index))
 	if blob == nil {
 		return fmt.Errorf("call: value is not a deferred scope")
@@ -720,6 +755,121 @@ func init() {
 		ir.OpPull: (*Evaluator).EvaluatePullOver,
 		ir.OpCall: (*Evaluator).EvaluateCallOver,
 	}
+}
+
+// RunBlocks runs from a block until it answers, or until control arrives somewhere the caller
+// wanted it to stop.
+//
+// A block is a run of instructions with one way in and one way out, so running one is running
+// its instructions in order and then reading its terminator. Nothing inside can send control
+// anywhere, which is why there is no cursor here: the old walk moved one because an "if"
+// carried how many instructions to skip, and a block names where it goes instead.
+//
+// Stopping is a place rather than a count for the same reason. A program made of several files
+// runs each of them with its own names, and where one ends is where the next begins — which is
+// a block, not an offset.
+func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.BlockID, until func(ir.BlockID) bool) ([]byte, error) {
+	held := e.blocks
+	e.blocks = blocks
+	defer func() { e.blocks = held }()
+
+	id := from
+	for {
+		if int(id) >= len(blocks) {
+			return nil, fmt.Errorf("no block numbered %d", id)
+		}
+		block := blocks[id]
+		for _, inst := range block.Insts {
+			if err := e.ExecuteInstruction(inst); err != nil {
+				return nil, err
+			}
+		}
+
+		term := block.Term
+		if term.Kind == ir.Ret {
+			return e.answered(term.Value), nil
+		}
+
+		target := term.Targets[0]
+		if term.Kind == ir.BrIf && !byteutil.ToBoolean(e.value(term.Cond)) {
+			target = term.Targets[1]
+		}
+		if until != nil && until(target.Block) {
+			return nil, nil
+		}
+		id = e.arrive(blocks[target.Block], target)
+	}
+}
+
+// answered reads what a terminator carries, and answers the neutral tape where there is
+// nothing to read. An empty block still has a value, and so does a scope whose last expression
+// bound a name rather than computing one.
+func (e *Evaluator) answered(operand ir.Operand) []byte {
+	if value := e.value(operand); value != nil {
+		return value
+	}
+	return byteutil.FalseTape(e.tapeSize)
+}
+
+// arrive goes to a block, opening or closing a place for names on the way.
+//
+// Arriving with values closes one. A branch hands the value of the arm that ran to where the
+// arms meet, and a block written inside an expression hands its value to where the run carries
+// on — and in both, what was bound inside is done with. The values are read before the place
+// closes and written down after, which is what lets the name a value is known by afterwards be
+// set in the place that will read it.
+//
+// Arriving with none opens one. That is going into an arm, or into a block written inside an
+// expression: what it binds is its own, so the "x" of an inner block is not the "x" of the one
+// around it. The values applied to the running scope come in with it, because a block is not
+// applied anything of its own and feed still means the enclosing vector.
+//
+// A scope's parameters are unnamed and nothing is written down for them: they arrive as the
+// vector applied to it, which whoever called it put in place.
+func (e *Evaluator) arrive(block ir.Block, target ir.Target) ir.BlockID {
+	if len(target.Args) == 0 {
+		next := environ.NewEnviron(environ.NewEnvironOptions{})
+		next.SetArguments(e.environ.GetArguments())
+		e.environ = e.environ.Ahead(next)
+		return target.Block
+	}
+
+	values := make([][]byte, 0, len(target.Args))
+	for _, arg := range target.Args {
+		values = append(values, e.answered(arg))
+	}
+
+	e.environ = e.environ.GetPrevious()
+	for at, value := range values {
+		if at >= len(block.Params) || len(block.Params[at]) == 0 {
+			continue
+		}
+		e.environ.SetTemp(byteutil.ToHex(block.Params[at]), value)
+	}
+	return target.Block
+}
+
+// EvaluateBlocks runs a program given as blocks, from a block, with names of its own when it
+// is a file of a program made of several.
+//
+// It is the way in for a runner that has a whole program in hand: aurora run and aurora test.
+// Where one file ends is where the next begins, so what stops it is arriving at that block.
+func (e *Evaluator) EvaluateBlocks(blocks []ir.Block, from ir.BlockID, until func(ir.BlockID) bool, id string) (eval.Returns, error) {
+	if id == "" {
+		if _, err := e.RunBlocks(blocks, from, until); err != nil {
+			return nil, err
+		}
+		return e.environ.GetTemps(), nil
+	}
+
+	outer := e.environ
+	e.environ = outer.OpenModule(id)
+	defer func() { e.environ = outer }()
+
+	if _, err := e.RunBlocks(blocks, from, until); err != nil {
+		return nil, err
+	}
+	return e.environ.GetTemps(), nil
 }
 
 // ExecuteInstruction runs one instruction: the opcode names the operation, and the operation

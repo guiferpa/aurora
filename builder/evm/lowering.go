@@ -84,7 +84,7 @@ func produces(op byte) bool {
 	case ir.OpSave, ir.OpGetFeed, ir.OpLoad,
 		ir.OpAdd, ir.OpSubtract, ir.OpMultiply, ir.OpDivide, ir.OpExponential,
 		ir.OpEquals, ir.OpDiff, ir.OpBigger, ir.OpSmaller, ir.OpAnd, ir.OpOr,
-		ir.OpJoin, ir.OpField:
+		ir.OpJoin, ir.OpField, ir.OpPull, ir.OpPush, ir.OpHead, ir.OpTail:
 		return true
 	default:
 		return false

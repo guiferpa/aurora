@@ -45,9 +45,9 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			wantNone: true,
 		},
 		{
-			name:    "a tape operation",
-			opcodes: []byte{ir.OpPull, ir.OpHead},
-			want:    []string{"a tape operation does not reach the bytecode yet"},
+			name:     "a tape operation, which reaches the bytecode now",
+			opcodes:  []byte{ir.OpPull, ir.OpHead},
+			wantNone: true,
 		},
 		{
 			name:     "a shape, which reaches the bytecode now",
@@ -106,7 +106,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 // The same feature used twice is one thing to say, not two.
 func TestWarningsSayEachThingOnce(t *testing.T) {
 	warnings := Warnings(instructionsOf(
-		ir.OpPull, ir.OpHead, ir.OpPull, ir.OpHead, ir.OpPrintDecimal, ir.OpPrintDecimal,
+		ir.OpPrintDecimal, ir.OpAssert, ir.OpPrintDecimal, ir.OpAssert,
 	))
 
 	if len(warnings) != 2 {
@@ -117,7 +117,7 @@ func TestWarningsSayEachThingOnce(t *testing.T) {
 // They arrive in the order the program uses them, so the first thing a reader is told about
 // is the first thing that goes missing.
 func TestWarningsFollowTheProgram(t *testing.T) {
-	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpPull))
+	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpAssert))
 
 	if len(warnings) != 2 {
 		t.Fatalf("said %d things, want two", len(warnings))
@@ -131,8 +131,8 @@ func TestWarningsFollowTheProgram(t *testing.T) {
 // carries where every instruction came from now, so the backend points at the first line that
 // used what it cannot carry.
 func TestWarningsPointAtWhereTheFeatureWasUsed(t *testing.T) {
-	const source = `printb 1;
-ident t = [1, 2];`
+	const source = `ident t = [1, 2];
+printd t;`
 
 	tokens, err := lexer.New().GetFilledTokens([]byte(source))
 	if err != nil {
@@ -148,18 +148,18 @@ ident t = [1, 2];`
 	}
 
 	for _, warning := range Warnings(insts) {
-		if !strings.Contains(warning.Message, "a tape operation") {
+		if !strings.Contains(warning.Message, "printd") {
 			continue
 		}
 		if !warning.Positioned() {
-			t.Fatal("the warning about a tape operation has no place to point at")
+			t.Fatal("the warning about a log has no place to point at")
 		}
 		if warning.Line != 2 {
-			t.Errorf("it points at line %d, want the line the tape was written on", warning.Line)
+			t.Errorf("it points at line %d, want the line the log was written on", warning.Line)
 		}
 		return
 	}
-	t.Fatal("nothing warned about a tape operation")
+	t.Fatal("nothing warned about a log")
 }
 
 // Every feature the backend cannot carry names the line it was written on. A warning that
@@ -173,7 +173,7 @@ func TestEveryPendingFeatureNamesItsPlace(t *testing.T) {
 	}{
 		// A tape literal is itself a tape operation — it builds the run byte by byte — so
 		// the first place the program uses one is the literal, not the pull below it.
-		{name: "a tape operation", source: "printb 1;\nident t = [1];\nprintb pull t 2;", says: "a tape operation", line: 2},
+		{name: "a log", source: "ident t = 1;\nprintd t;", says: "printd", line: 2},
 	}
 
 	for _, tc := range cases {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/guiferpa/aurora/byteutil"
@@ -214,6 +215,267 @@ func WriteScopePrologue(w io.Writer, reads int, tapeSize int, epilogue, internal
 // in from a transaction ends the call.
 func WriteScopeEpilogue(w io.Writer) error {
 	_, err := WriteAnswer(w)
+	return err
+}
+
+// WriteSignificantLength answers, in bits, how much of the value on the stack is significant:
+// eight times the number of bytes it takes once the zeros in front of it are dropped, and
+// eight for a value that is nothing but zeros.
+//
+// Every tape operation is defined in terms of that number, because a tape is a shift register
+// and what enters it is the value's own bytes and not a fixed run. Off a chain it is the
+// length of a slice. On one there is nothing to ask: a value is a word, and how much of it
+// means something has to be worked out.
+//
+// It is worked out by halving. Five times over, the value is asked whether anything survives a
+// shift of sixteen bytes, then eight, then four, then two, then one; each answer is one or
+// zero, so multiplying the shift by it either takes that step or takes nothing, and the same
+// product is added to the running total. Nothing branches, which is what keeps this a run of
+// instructions rather than five jumps, and the total is exact for every word.
+//
+// The last byte is added at the end and is never asked about, which is what makes a value of
+// zero one byte long rather than none — the same answer the evaluator gives, and the one that
+// keeps "pull t 0" a shift by one place.
+func WriteSignificantLength(w io.Writer) error {
+	// The running total starts at nothing and goes under the value, which is where every step
+	// leaves it.
+	if _, err := w.Write([]byte{OpPush1, 0x00, OpSwap1}); err != nil {
+		return err
+	}
+
+	for _, step := range []int{16, 8, 4, 2, 1} {
+		bits := byte(step * BYTE_SIZE)
+		// The value is on top and the total under it, and both come back that way.
+		if _, err := w.Write([]byte{
+			OpDup1, OpPush1, bits, OpShiftRight, OpIsZero, OpIsZero, OpPush1, bits, OpMul,
+			OpDup1, OpSwap2, OpSwap1, OpShiftRight, OpSwap2, OpAdd, OpSwap1,
+		}); err != nil {
+			return err
+		}
+	}
+
+	// What is left of the value is under a byte, and that byte counts.
+	_, err := w.Write([]byte{OpPop, OpPush1, BYTE_SIZE, OpAdd})
+	return err
+}
+
+// staticLength answers how many bytes of an operand mean something, when that can be known
+// while compiling. It can when the program wrote the value down; it cannot when another
+// instruction works it out.
+func staticLength(operand ir.Operand, tapeSize int) (int, bool) {
+	if operand.Kind() != ir.KindImm {
+		return 0, false
+	}
+	return len(byteutil.ExtractSignificantBytes(byteutil.PaddingTape(operand.Bytes(), tapeSize))), true
+}
+
+// WriteTapePull shifts a tape left and lets values in at the right, one after another, keeping
+// the tape's width — so whatever reaches the left end falls off.
+//
+// Each value enters as its own significant bytes, so where the tape has to move by is how long
+// the value is. When the program wrote the values down, that is known while compiling and the
+// whole run of them collapses into one shift and one or: a tape literal costs two instructions
+// on a chain, however many values were written between the brackets.
+//
+// When another instruction works the value out, the length is worked out beside it. That is
+// the ordinary "pull t x", and it is written for one value: a literal built out of values a
+// program computes would need each of them brought to the top of the stack in turn, and that
+// is refused rather than written wrong.
+func WriteTapePull(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	values := valueOperands(inst)
+	tape, items := values[0], values[1:]
+
+	// The tape is on the stack when another instruction worked it out, and reaches it here
+	// when the program wrote it down.
+	if values[0].Kind() == ir.KindImm {
+		if _, err := WritePush(w, values[0].Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	entering := make([]byte, 0, len(items)*tapeSize)
+	shift := 0
+	for _, item := range items {
+		length, known := staticLength(item, tapeSize)
+		if !known {
+			return writeTapePullOver(w, tape, items, tapeSize)
+		}
+		entering = append(entering, byteutil.PaddingTape(item.Bytes(), tapeSize)[tapeSize-length:]...)
+		shift += length * BYTE_SIZE
+	}
+
+	if err := writeShiftBy(w, shift, OpShiftLeft); err != nil {
+		return err
+	}
+	if len(entering) > 0 {
+		if _, err := WritePush(w, byteutil.PaddingTape(entering, byteutil.TapeSize(len(entering))), len(entering)); err != nil {
+			return err
+		}
+		if _, err := w.Write([]byte{OpOr}); err != nil {
+			return err
+		}
+	}
+	_, err := WriteMask(w, tapeSize)
+	return err
+}
+
+// writeTapePullOver pulls one value a program works out, which is the only shape of that the
+// builder writes. The tape is under it on the stack and both are needed, so the length is
+// taken off a copy and the two change places around it.
+func writeTapePullOver(w io.Writer, tape ir.Operand, items []ir.Operand, tapeSize int) error {
+	if len(items) != 1 {
+		return fmt.Errorf(
+			"a tape built from %d values a program works out does not reach the bytecode yet: write them down, or pull them one at a time",
+			len(items))
+	}
+	if tape.Kind() != ir.KindRef {
+		return fmt.Errorf("pulling onto a tape a program works out is not written yet")
+	}
+
+	if _, err := w.Write([]byte{OpDup1}); err != nil {
+		return err
+	}
+	if err := WriteSignificantLength(w); err != nil {
+		return err
+	}
+	// The length is on top, the value under it and the tape under that. The tape has to be on
+	// top for the shift, and the length above it.
+	if _, err := w.Write([]byte{OpSwap2, OpSwap1, OpSwap2, OpShiftLeft, OpOr}); err != nil {
+		return err
+	}
+	_, err := WriteMask(w, tapeSize)
+	return err
+}
+
+// WriteTapePush shifts a tape right and lets a value in at the left, keeping the tape's width —
+// so whatever reaches the right end falls off.
+//
+// The value goes in front of the tape and the first tape-width of bytes is what is kept, which
+// on a chain is the value moved up by what is left of the tape's width and the tape moved down
+// by the value's own. A value is a tape, so it is never wider than one, and neither shift can
+// run backwards.
+func WriteTapePush(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	values := valueOperands(inst)
+	item := values[1]
+
+	// The tape is on the stack when another instruction worked it out, and reaches it here
+	// when the program wrote it down.
+	if values[0].Kind() == ir.KindImm {
+		if _, err := WritePush(w, values[0].Bytes(), tapeSize); err != nil {
+			return err
+		}
+	}
+
+	if length, known := staticLength(item, tapeSize); known {
+		if err := writeShiftBy(w, length*BYTE_SIZE, OpShiftRight); err != nil {
+			return err
+		}
+		entering := byteutil.PaddingTape(item.Bytes(), tapeSize)[tapeSize-length:]
+		if err := writeShiftedIn(w, entering, (tapeSize-length)*BYTE_SIZE); err != nil {
+			return err
+		}
+		_, err := WriteMask(w, tapeSize)
+		return err
+	}
+
+	if _, err := w.Write([]byte{OpDup1}); err != nil {
+		return err
+	}
+	if err := WriteSignificantLength(w); err != nil {
+		return err
+	}
+	// The tape moves down by the length, keeping a copy of the length for the other shift.
+	if _, err := w.Write([]byte{OpSwap2, OpDup3, OpShiftRight, OpSwap2}); err != nil {
+		return err
+	}
+	if _, err := WritePush2(w, tapeSize*BYTE_SIZE); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte{OpSub, OpShiftLeft, OpOr}); err != nil {
+		return err
+	}
+	_, err := WriteMask(w, tapeSize)
+	return err
+}
+
+// writeShiftedIn ors a value into the tape at a place known while compiling.
+func writeShiftedIn(w io.Writer, entering []byte, shift int) error {
+	if len(entering) == 0 {
+		return nil
+	}
+	value := new(big.Int).SetBytes(entering)
+	value.Lsh(value, uint(shift))
+	if _, err := WritePush(w, byteutil.PaddingTape(value.Bytes(), byteutil.MaxTapeSize), byteutil.MaxTapeSize); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte{OpOr})
+	return err
+}
+
+// writeShiftBy moves what is on the stack by a number of bits known while compiling. A shift
+// of nothing is written as nothing.
+func writeShiftBy(w io.Writer, bits int, op byte) error {
+	if bits == 0 {
+		return nil
+	}
+	if bits > byteutil.MaxTapeSize*BYTE_SIZE {
+		bits = byteutil.MaxTapeSize * BYTE_SIZE
+	}
+	if _, err := WritePush2(w, bits); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte{op})
+	return err
+}
+
+// WriteTapeHead keeps the first bytes of what a tape says, and WriteTapeTail drops them.
+//
+// Both count in significant bytes, so both start by asking how long the value is. What is kept
+// is measured from the other end: keeping the first n of s bytes means moving the tape down by
+// s minus n, and dropping them means keeping that many. The index is taken modulo the tape
+// width, so it can never be out of bounds, and it is held to the value's own length — asking
+// for more of a tape than it has gives all of it.
+func WriteTapeHead(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	if err := writeRemainingLength(w, inst, tapeSize); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte{OpShiftRight})
+	return err
+}
+
+func WriteTapeTail(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	if err := writeRemainingLength(w, inst, tapeSize); err != nil {
+		return err
+	}
+	// Every bit below what is kept, which for a whole word comes out of the shift as zero and
+	// out of the subtraction as all ones — which is the tape untouched, and is what dropping
+	// none of it means.
+	_, err := w.Write([]byte{OpPush1, 0x01, OpSwap1, OpShiftLeft, OpPush1, 0x01, OpSwap1, OpSub, OpAnd})
+	return err
+}
+
+// writeRemainingLength leaves, above the tape, how many bits of it are past the index.
+func writeRemainingLength(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	at := int(byteutil.ToUint64(inst.GetRight().Bytes())) % tapeSize
+
+	if _, err := w.Write([]byte{OpDup1}); err != nil {
+		return err
+	}
+	if err := WriteSignificantLength(w); err != nil {
+		return err
+	}
+	if at == 0 {
+		return nil
+	}
+
+	// The index can be past the end of what the value says, and then there is nothing past it:
+	// the subtraction would run backwards, so it is multiplied by whether it should have
+	// happened at all.
+	bits := byte(at * BYTE_SIZE)
+	_, err := w.Write([]byte{
+		OpDup1, OpPush1, bits, OpGreaterThan, OpIsZero,
+		OpSwap1, OpPush1, bits, OpSwap1, OpSub, OpMul,
+	})
 	return err
 }
 
@@ -685,6 +947,20 @@ var comparisons = map[byte][]byte{
 	ir.OpAnd:     {OpIsZero, OpSwap1, OpIsZero, OpOr, OpIsZero},
 }
 
+// ordersItsOwn names the instructions that put their own written-down values on the stack.
+//
+// Most take a pair and the pair is enough for WriteImmediates to know where each one goes. An
+// instruction that takes as many values as it was given is not: which of them are on the stack
+// already and which are being written down is what decides the order, and only the instruction
+// knows what it does with them. A save is here for the older reason — it is the value.
+var ordersItsOwn = map[byte]bool{
+	ir.OpSave: true,
+	ir.OpCall: true,
+	ir.OpJoin: true,
+	ir.OpPull: true,
+	ir.OpPush: true,
+}
+
 // WriteImmediates puts on the stack the values an instruction carries inside itself.
 //
 // A Ref was already put there by whoever produced it, and the lowering saw to it that it
@@ -858,7 +1134,7 @@ func targetOf(inst ir.Instruction, at int, positions []int) int {
 func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, target int, scope Scope) error {
 	op := inst.GetOpCode()
 
-	if handled[op] && op != ir.OpSave && op != ir.OpCall && op != ir.OpJoin {
+	if handled[op] && !ordersItsOwn[op] {
 		if err := WriteImmediates(bs, inst, scope.TapeSize); err != nil {
 			return err
 		}
@@ -931,6 +1207,30 @@ func WriteInstruction(bs io.Writer, im *IdentManager, inst ir.Instruction, targe
 
 	if op == ir.OpCall {
 		if err := WriteCall(bs, inst, scope, target); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpPull {
+		if err := WriteTapePull(bs, inst, scope.TapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpPush {
+		if err := WriteTapePush(bs, inst, scope.TapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpHead {
+		if err := WriteTapeHead(bs, inst, scope.TapeSize); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpTail {
+		if err := WriteTapeTail(bs, inst, scope.TapeSize); err != nil {
 			return err
 		}
 	}

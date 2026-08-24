@@ -42,6 +42,10 @@ var handled = map[byte]bool{
 	ir.OpCall:        true,
 	ir.OpJoin:        true,
 	ir.OpField:       true,
+	ir.OpPull:        true,
+	ir.OpPush:        true,
+	ir.OpHead:        true,
+	ir.OpTail:        true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
@@ -54,23 +58,11 @@ var offChain = map[byte]string{
 }
 
 // pending is what the builder does not write yet, named as the user wrote it. Instructions
-// that come from one feature share a name, so an "if" is one warning rather than two.
-var pending = map[byte]string{
-	ir.OpIf:      "if",
-	ir.OpJump:    "if",
-	ir.OpPreCall: "calling a scope",
-	ir.OpDiff:    "a comparison",
-	ir.OpEquals:  "a comparison",
-	ir.OpBigger:  "a comparison",
-	ir.OpSmaller: "a comparison",
-	ir.OpAnd:     "and/or",
-	ir.OpOr:      "and/or",
-
-	ir.OpPull: "a tape operation",
-	ir.OpPush: "a tape operation",
-	ir.OpHead: "a tape operation",
-	ir.OpTail: "a tape operation",
-}
+// that come from one feature share a name, so a feature is one warning rather than one per
+// opcode it lowers to.
+//
+// It is empty: every instruction the emitter produces reaches the bytecode now.
+var pending = map[byte]string{}
 
 // Warnings reports what a program uses that does not reach the bytecode.
 //

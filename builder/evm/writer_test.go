@@ -486,3 +486,42 @@ func TestAFieldCountsBackFromTheEndOfTheRun(t *testing.T) {
 		})
 	}
 }
+
+// A tape built out of values a program works out would need each of them brought to the top of
+// the stack in turn, and that is not written. It is refused rather than written wrong: the
+// values are on the stack in the order they appear and the fold needs them in the other one.
+func TestATapeBuiltFromWorkedOutValuesIsRefused(t *testing.T) {
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpPull,
+		ir.RefTo([]byte("01")), ir.RefTo([]byte("02")), ir.RefTo([]byte("03")))
+
+	err := WriteTapePull(io.Discard, inst, 8)
+	if err == nil {
+		t.Fatal("it wrote a fold the stack cannot give it")
+	}
+	if !strings.Contains(err.Error(), "one at a time") {
+		t.Errorf("it says %q, and never says what to do instead", err)
+	}
+}
+
+// A tape literal collapses into one shift and one or, however many values were written between
+// the brackets: their lengths are known while compiling, so the whole run of them is a number.
+func TestATapeLiteralIsOneShiftAndOneOr(t *testing.T) {
+	items := []ir.Operand{ir.RefTo([]byte("01"))}
+	for _, value := range []uint64{1, 2, 3} {
+		items = append(items, ir.Imm(value, 8))
+	}
+
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapePull(bs, ir.NewInstructionOver([]byte("00"), ir.OpPull, items...), 8); err != nil {
+		t.Fatalf("writing the literal: %v", err)
+	}
+
+	// Three values of one byte each move the tape three places, and what enters is the three
+	// of them read as one number. The mask after it is what keeps the tape its own width,
+	// which is what makes whatever reached the left end fall off.
+	expected := []byte{OpPush2, 0x00, 24, OpShiftLeft, OpPush3, 0x01, 0x02, 0x03, OpOr,
+		OpPush8, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, OpAnd}
+	if got := bs.Bytes(); !bytes.Equal(got, expected) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+	}
+}

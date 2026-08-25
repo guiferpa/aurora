@@ -176,7 +176,7 @@ func shapesOf(analysis *Analysis, aliases moduleAliases) shapeTable {
 //
 // It is the parser's own Import with the alias in front instead of the specifier — the same
 // two halves, read for the same reason. The shapes say what a construction is made of; the
-// promises say what a call answers with, which is the only shape a name bound from another
+// returns say what a call gives back, which is the only shape a name bound from another
 // module's scope ever has.
 func importedShapes(analysis *Analysis, aliases moduleAliases) shapeTable {
 	shapes := newShapeTable()
@@ -188,12 +188,12 @@ func importedShapes(analysis *Analysis, aliases moduleAliases) shapeTable {
 		for _, shape := range found.Tree.Shapes {
 			shapes.fields[alias+"."+shape.Name] = shape.Fields
 		}
-		for _, promise := range found.Tree.Promises {
-			// A promise may name a shape of a third module, which this one never declared, so
+		for _, returns := range found.Tree.Returns {
+			// A scope may return a shape of a third module, which this one never declared, so
 			// the fields come with it rather than being looked up.
-			named := alias + "." + promise.Shape
-			shapes.fields[named] = promise.Fields
-			shapes.promises[alias+"."+promise.Scope] = named
+			named := alias + "." + returns.Shape
+			shapes.fields[named] = returns.Fields
+			shapes.returns[alias+"."+returns.Scope] = named
 		}
 	}
 	return shapes

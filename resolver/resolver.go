@@ -112,10 +112,10 @@ func (r *Resolver) Resolve(entry string) ([]module.Module, error) {
 func OffersOf(modules []module.Module) map[string]ast.Offer {
 	offers := make(map[string]ast.Offer, len(modules))
 	for _, each := range modules {
-		if len(each.Tree.Promises) == 0 && len(each.Tree.Shapes) == 0 {
+		if len(each.Tree.Returns) == 0 && len(each.Tree.Shapes) == 0 {
 			continue
 		}
-		offers[string(each.ID)] = ast.Offer{Shapes: each.Tree.Shapes, Promises: each.Tree.Promises}
+		offers[string(each.ID)] = ast.Offer{Shapes: each.Tree.Shapes, Returns: each.Tree.Returns}
 	}
 	return offers
 }

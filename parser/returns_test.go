@@ -8,17 +8,17 @@ import (
 	"github.com/guiferpa/aurora/wire/token"
 )
 
-// What a block promises, and what happens when it does not keep it.
+// What a block declares it returns, and what happens when it does not keep it.
 //
-// `as` is a claim the compiler believes; this is a promise it checks. The two live in one
-// program, and a block that promises nothing goes on answering with a run of tapes.
+// `as` is a claim the compiler believes; this is a declaration it checks. The two live in one
+// program, and a block that declares nothing goes on returning a run of tapes.
 
 const person = "shape Person { name };\n"
 const result = "shape Result { failed, value };\n"
 
-// The promise is read at the end of a block, and it is the same place for a deferred scope,
+// The `returns` is read at the end of a block, and it is the same place for a deferred scope,
 // which is a block with a word in front of it.
-func TestABlockPromisesAShape(t *testing.T) {
+func TestABlockDeclaresWhatItReturns(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		source string
@@ -46,7 +46,7 @@ func TestABlockPromisesAShape(t *testing.T) {
 				"} returns Result;",
 		},
 		{
-			// The promise is kept by a name whose shape was named, the same way a field read
+			// It is kept by a name whose shape was named, the same way a field read
 			// is allowed by one.
 			name:   "a name that was shaped",
 			source: person + "ident make = defer {\nident p = feed(0) as Person;\np;\n} returns Person;",
@@ -60,8 +60,8 @@ func TestABlockPromisesAShape(t *testing.T) {
 	}
 }
 
-// The promise reaches the tree, so whoever reads the block knows what it answers with.
-func TestThePromiseIsOnTheBlock(t *testing.T) {
+// It reaches the tree, so whoever reads the block knows what it returns.
+func TestWhatItReturnsIsOnTheBlock(t *testing.T) {
 	nodes := parse(t, person+"{ Person{\"Joana\"}; } returns Person;")
 
 	block, ok := nodes[1].(ast.BlockExpression)
@@ -91,12 +91,12 @@ var brokenPromises = []struct {
 	{
 		name:   "ends with a number",
 		source: person + "{ ident p = Person{\"Joana\"};\n10; } returns Person;",
-		want:   "answers with Person and ends with a number",
+		want:   "returns Person and ends with a number",
 	},
 	{
 		name:   "ends with another shape",
 		source: person + "shape Place { city };\n{ Place{\"Recife\"}; } returns Person;",
-		want:   "answers with Person and ends with a Place",
+		want:   "returns Person and ends with a Place",
 	},
 	{
 		name:   "an if with no else",
@@ -104,14 +104,14 @@ var brokenPromises = []struct {
 		want:   "its if has no else",
 	},
 	{
-		name:   "an else that answers with something else",
+		name:   "an else that returns something else",
 		source: person + "{ if true { Person{\"Joana\"}; } else { 0; }; } returns Person;",
-		want:   "the else answers with a number",
+		want:   "the else returns a number",
 	},
 	{
-		name:   "an if arm that answers with something else",
+		name:   "an if arm that returns something else",
 		source: person + "{ if true { 0; } else { Person{\"Joana\"}; }; } returns Person;",
-		want:   "the if answers with a number",
+		want:   "the if returns a number",
 	},
 	{
 		name:   "a shape nobody declared",
@@ -125,7 +125,7 @@ var brokenPromises = []struct {
 	},
 }
 
-func TestABlockThatDoesNotKeepItsPromise(t *testing.T) {
+func TestABlockThatDoesNotKeepItsDeclaration(t *testing.T) {
 	for _, tc := range brokenPromises {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseSource(t, tc.source, "main.ar")

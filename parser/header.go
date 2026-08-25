@@ -29,7 +29,7 @@ func ScanUses(tokens []token.Token) []ast.UseDeclaration {
 }
 
 // readUse reads one declaration starting at the use token: the path it names, and the alias
-// it is reached by. A half-written line answers with nothing, which is the common case while
+// it is reached by. A half-written line returns nothing, which is the common case while
 // somebody is typing one.
 func readUse(tokens []token.Token, i int) (string, string, int) {
 	specifier := ""

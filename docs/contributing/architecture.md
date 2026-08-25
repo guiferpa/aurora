@@ -190,9 +190,19 @@ then in the same place, and then somebody adds a third because neither of the tw
 word for this — not "answers", not "promises". "Promise" in particular came from another
 tradition and never said anything this language means.
 
-**One exception, and it is a different thing.** A server *answers* a request. That is a
-protocol answering a client, not an expression giving a value, and `hosting/lsp` is full of it
-for a good reason. It stays.
+**The rule is about the language's concept, and the subject is how you tell.** When the thing
+giving a value is an Aurora construct — an expression, a scope, a block, a terminator — it
+**returns**. Two other uses of "answer" are a different word wearing the same spelling, and
+both stay:
+
+- **A Go function described in prose.** "sameKind answers whether b is the kind of node a is"
+  is this project's voice for saying what a helper does. It is not a construct of the language
+  giving a value.
+- **A server answering a request.** That is a protocol answering a client, and `hosting/lsp` is
+  full of it for a good reason.
+
+A rule that does not name its exceptions is a rule somebody breaks by accident, and this one
+was nearly broken twice while it was being written.
 
 **Declared or worked out.** What a scope returns is known two ways: it was declared with
 `returns`, or it was worked out from the body. Both are the same fact and carry the same word;

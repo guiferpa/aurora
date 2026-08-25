@@ -17,17 +17,17 @@ import (
 type shapeTable struct {
 	fields map[string][]string // shape name -> its fields, in order
 	reads  map[string]string   // identifier name -> the shape it is read as
-	// promises is what `returns` said: the name of a scope -> the shape calling it answers
-	// with. A name bound from such a call is read as that shape without anybody claiming it.
-	promises map[string]string
+	// returns is the name of a scope -> the shape calling it gives back. A name bound from
+	// such a call is read as that shape without anybody claiming it.
+	returns map[string]string
 }
 
 // newShapeTable is what nothing has been read into yet.
 func newShapeTable() shapeTable {
 	return shapeTable{
-		fields:   make(map[string][]string),
-		reads:    make(map[string]string),
-		promises: make(map[string]string),
+		fields:  make(map[string][]string),
+		reads:   make(map[string]string),
+		returns: make(map[string]string),
 	}
 }
 
@@ -50,12 +50,12 @@ func (found shapeTable) scan(tokens []token.Token) shapeTable {
 			// `ident p = Point{`, `ident p = <anything> as Point` and a call to a scope that
 			// promised all say what p is; `ident f = defer { ... } returns Point` says what
 			// calling f will.
-			name, shape, promised, called := readBinding(tokens, i)
-			if promised != "" {
-				found.promises[name] = promised
+			name, shape, declared, called := readBinding(tokens, i)
+			if declared != "" {
+				found.returns[name] = declared
 			}
 			if shape == "" && called != "" {
-				shape = found.promises[called]
+				shape = found.returns[called]
 			}
 			if shape != "" {
 				found.reads[name] = shape

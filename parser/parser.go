@@ -726,14 +726,14 @@ func (p *pr) parseBlock() (ast.BlockExpression, error) {
 		return ast.BlockExpression{}, err
 	}
 
-	// The promise is read here, which is the one place it is written. The body of an if is
+	// The declaration is read here, which is the one place it is written. The body of an if is
 	// read straight rather than through here, so it never takes one.
-	promised, err := p.parseReturns(exprs, closing)
+	declared, err := p.parseReturns(exprs, closing)
 	if err != nil {
 		return ast.BlockExpression{}, err
 	}
 
-	return ast.BlockExpression{Body: exprs, Returns: promised}, nil
+	return ast.BlockExpression{Body: exprs, Returns: declared}, nil
 }
 
 func (p *pr) ParseDefer() (ast.Node, error) {

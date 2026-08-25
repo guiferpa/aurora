@@ -130,7 +130,7 @@ which is the same thing since a scope's value is its index. Nothing else:
 - a name bound inside a block or a deferred body belongs to the scope that binds it, and is
   gone when that scope is;
 - a `shape`'s **name** stays in the file that declared it, and is written elsewhere as the
-  module's: `g.Square` builds one, names one with `as`, and promises one with `returns`;
+  module's: `g.Square` builds one, names one with `as`, and declares one with `returns`;
 - an import is not passed on. If `main` uses `a` and `a` uses `b`, then `main` does not reach
   `b` — it writes its own `use b as ...;`. Every file declares what it needs, and a name used
   in a file has its origin declared in that file.
@@ -155,10 +155,10 @@ use geometry as g;
 printd g.area(1, 2);
 ```
 
-### A shape crosses with the promise that names it
+### A shape crosses with the scope that returns it
 
-A scope that says what it answers with hands the shape over, so whoever imports it reads the
-fields without naming anything:
+What a scope returns hands the shape over, so whoever imports it reads the fields without
+naming anything:
 
 ```
 #- src/os.ar
@@ -166,7 +166,7 @@ shape Env { found, value };
 
 ident lookup = defer {
   Env{1, 42};
-} returns Env;
+};
 ```
 
 ```
@@ -178,12 +178,16 @@ printd r.found;
 printd r.value;
 ```
 
-Nothing in `main.ar` mentions `Env`, and nothing has to. What crossed is the promise — the
-shape and the fields it is made of — which is what turns `found` into the first tape of the
-run.
+Nothing in `main.ar` mentions `Env`, and nothing has to. What crossed is what `lookup`
+returns — the shape and the fields it is made of — which is what turns `found` into the first
+tape of the run. Nothing in `os.ar` says it either: the compiler read what the body ends with.
+Writing `returns Env` on it changes nothing about what crosses; it is a declaration `os.ar` is
+held to, so a change to that body that stops returning an `Env` is refused in the file that
+made the mistake.
 
-A scope that promised nothing hands over a run of tapes and no shape, exactly as it did
-before: the file reading it has to name one.
+What does not cross is a scope whose shape nothing says — one ending with arithmetic, which is
+a tape and not a run. It hands over the tapes and no shape, and the file reading it has to
+name one.
 
 ### And a shape can be named
 

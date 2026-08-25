@@ -239,12 +239,12 @@ func TestAShapeValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 	})
 }
 
-// A shape crosses a module with the promise that names it.
+// A shape crosses a module with the scope that returns it.
 //
 // The shape is declared in one file and read in another, and nothing in the reading file
-// names it: what crossed is the promise the scope made, with the fields of the shape it
+// names it: what crossed is the declaration the scope made, with the fields of the shape it
 // returns — which is what turns a field name into the index of a tape.
-func TestAPromisedShapeCrossesAModule(t *testing.T) {
+func TestADeclaredShapeCrossesAModule(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/os.ar": "shape Env { found, value };\n" +
 			"ident lookup = defer {\n" +
@@ -265,9 +265,9 @@ func TestAPromisedShapeCrossesAModule(t *testing.T) {
 	}
 }
 
-// A field the promised shape does not have is refused where it was written, naming what the
+// A field the declared shape does not have is refused where it was written, naming what the
 // shape is made of — the same refusal a local shape gets.
-func TestAFieldThePromiseDoesNotHave(t *testing.T) {
+func TestAFieldTheDeclarationDoesNotHave(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/os.ar":   "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
 		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.missing;",
@@ -318,12 +318,12 @@ func TestAScopeWhoseShapeNothingSaysCrossesNothing(t *testing.T) {
 	}
 }
 
-// A test reads a promised shape like anybody else, because it imports like anybody else.
-func TestATestReadsAPromisedShape(t *testing.T) {
+// A test reads a declared shape like anybody else, because it imports like anybody else.
+func TestATestReadsADeclaredShape(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/os.ar":        "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;",
 		"src/main.ar":      "printd 1;",
-		"src/main.test.ar": "use os as o;\nident r = o.lookup(0);\nassert(r.value equals 42, \"the field is read through the promise\");",
+		"src/main.test.ar": "use os as o;\nident r = o.lookup(0);\nassert(r.value equals 42, \"the field is read through what lookup returns\");",
 	})
 
 	report, err := tested(t, "", sessionOpts{asserts: true})
@@ -335,7 +335,7 @@ func TestATestReadsAPromisedShape(t *testing.T) {
 	}
 }
 
-// Naming a shape another module declared: built, claimed with `as`, and promised with
+// Naming a shape another module declared: built, claimed with `as`, and declared with
 // `returns` — the three places a shape's name is written, all reading the qualified form the
 // way a qualified value already did.
 func TestNamingAShapeOfAnotherModule(t *testing.T) {
@@ -357,7 +357,7 @@ func TestNamingAShapeOfAnotherModule(t *testing.T) {
 			want:   "7",
 		},
 		{
-			name: "promised with returns",
+			name: "declared with returns",
 			source: "use geometry as g;\n" +
 				"ident make = defer { g.Square{2, 3}; } returns g.Square;\n" +
 				"ident s = make();\nprintd s.width;",

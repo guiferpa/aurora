@@ -186,7 +186,7 @@ assert(a bigger 0, "still runs after a failure");
 	}
 }
 
-// A shape crosses from the module a test names, which is how a test builds one: the promise
+// A shape crosses from the module a test names, which is how a test builds one: the shape
 // and the name both travel, and a field is an index resolved while parsing.
 func TestAShapeCrossesFromTheModuleATestNames(t *testing.T) {
 	dir := project(t)

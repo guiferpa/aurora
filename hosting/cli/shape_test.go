@@ -192,9 +192,9 @@ func TestAShapeComesOutOfAScope(t *testing.T) {
 	}
 }
 
-// A promise, kept, and the claim gone from the call site: the shape is known because the
+// A declaration, kept, and the claim gone from the call site: the shape is known because the
 // scope said so, and the compiler checked that it said the truth.
-func TestAPromisedShapeIsReadWithoutAClaim(t *testing.T) {
+func TestADeclaredShapeIsReadWithoutAClaim(t *testing.T) {
 	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer {\n" +
 		"  if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; };\n" +

@@ -73,8 +73,8 @@ func TestWhatItReturnsIsOnTheBlock(t *testing.T) {
 	}
 }
 
-// A block that promises nothing is a block, and answers with a run of tapes as it always did.
-func TestABlockWithoutAPromiseIsUnchanged(t *testing.T) {
+// A block that declares nothing is a block, and returns a run of tapes as it always did.
+func TestABlockWithoutADeclarationIsUnchanged(t *testing.T) {
 	nodes := parse(t, person+"{ Person{\"Joana\"}; };")
 
 	if block := nodes[1].(ast.BlockExpression); block.Returns != "" {
@@ -82,8 +82,8 @@ func TestABlockWithoutAPromiseIsUnchanged(t *testing.T) {
 	}
 }
 
-// Every way of breaking the promise, and what it says.
-var brokenPromises = []struct {
+// Every way of breaking a declaration, and what it says.
+var brokenDeclarations = []struct {
 	name   string
 	source string
 	want   string
@@ -134,7 +134,7 @@ var brokenPromises = []struct {
 }
 
 func TestABlockThatDoesNotKeepItsDeclaration(t *testing.T) {
-	for _, tc := range brokenPromises {
+	for _, tc := range brokenDeclarations {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseSource(t, tc.source, "main.ar")
 			if err == nil {
@@ -151,9 +151,9 @@ func TestABlockThatDoesNotKeepItsDeclaration(t *testing.T) {
 	}
 }
 
-// A scope that promised gives its callers a shape, so the claim disappears from the place it
+// A scope that declared gives its callers a shape, so the claim disappears from the place it
 // used to be repeated once per call.
-func TestACallToAScopeThatPromisedHasAShape(t *testing.T) {
+func TestACallToAScopeThatDeclaredHasAShape(t *testing.T) {
 	const source = result +
 		"ident divide = defer {\n" +
 		"if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; };\n" +
@@ -174,7 +174,7 @@ func TestACallToAScopeThatPromisedHasAShape(t *testing.T) {
 // A scope that wrote no `returns` is understood anyway, because the compiler reads what its
 // body ends with — which is the same walk that checks a `returns` when there is one.
 //
-// So the claim disappears from the caller without the scope having to make a promise. What
+// So the claim disappears from the caller without the scope having to declare anything. What
 // `returns` is for is what a walk cannot reach.
 func TestACallToAScopeThatDeclaredNothing(t *testing.T) {
 	const source = result + "ident divide = defer { Result{0, 5}; };\nident r = divide(10, 2);\nprintd r.value;"
@@ -199,8 +199,8 @@ func TestACallToAScopeWhoseShapeNothingSays(t *testing.T) {
 	}
 }
 
-// A block bound to a name is the run of tapes itself, so the promise is the name's own shape.
-func TestABlockBoundToANameCarriesItsPromise(t *testing.T) {
+// A block bound to a name is the run of tapes itself, so what it returns is the name's own shape.
+func TestABlockBoundToANameCarriesWhatItReturns(t *testing.T) {
 	if _, err := parseSource(t, person+"ident p = { Person{\"Joana\"}; } returns Person;\nprintc p.name;", "main.ar"); err != nil {
 		t.Errorf("parsing: %v", err)
 	}

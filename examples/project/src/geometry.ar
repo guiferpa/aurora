@@ -8,8 +8,9 @@
 #-
 #- A file that imports this one writes the shape as g.Square, never as Square: the name of a
 #- shape carries the module it was declared in, so a Square here and a Square there are two
-#- shapes. It does not have to write it at all — new_square promises one, and a promise
-#- carries the fields with it.
+#- shapes. It does not have to write it at all — what new_square returns crosses with the
+#- fields, and the "returns Square" below is not what makes that happen: the compiler reads
+#- what the body ends with. What the word does is hold this file to it.
 #-
 #- It prints nothing on its own, so it declares no output: a module of declarations does its
 #- work when somebody imports it.

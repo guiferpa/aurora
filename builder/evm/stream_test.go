@@ -65,7 +65,7 @@ func TestBytecodeIsAWellFormedStream(t *testing.T) {
 	}
 }
 
-// The walk has to be able to fail, or it proves nothing: a push that promises more bytes
+// The walk has to be able to fail, or it proves nothing: a push that claims more bytes
 // than the stream has is exactly the desynchronisation being guarded against.
 func TestTheWalkNoticesATruncatedPush(t *testing.T) {
 	truncated := []byte{OpPush4, 0x01, 0x02}

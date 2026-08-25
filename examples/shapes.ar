@@ -67,13 +67,17 @@ ident single = 7 as Point;
 printd single.y;
 
 
-#- "as" is what whoever reads a value claims about it. "returns" is what a block
-#- promises about itself, and the compiler refuses the block that does not keep
-#- it — so a scope that says it answers with a Result and ends with a number
-#- does not compile.
+#- A call already has a shape without anybody saying so: the compiler reads what
+#- the body ends with, so divide could drop the "returns Result" below and
+#- r.value would still be the second tape.
 #-
-#- What it buys is the other end: a call to a scope that promised has a shape,
-#- so nobody has to claim one at every call site.
+#- What "returns" adds is being held to it. The compiler refuses the block that
+#- does not keep what it declared, so a scope that says it returns a Result and
+#- ends with a number does not compile — the mistake is caught in the file that
+#- made it rather than at a call somewhere else.
+#-
+#- "as" is the third thing, and the only one that is a claim: it is for a value
+#- whose shape nothing in the program says.
 shape Result { failed, value };
 
 ident divide = defer {

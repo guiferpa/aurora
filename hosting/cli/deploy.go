@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -53,6 +54,24 @@ func decodeBytecode(raw []byte) ([]byte, error) {
 	return decoded, nil
 }
 
+// readPrivkey reads the key that signs the deploy.
+//
+// A key is hex and nothing else here, and a "0x" in front of it is refused by the reader with
+// "invalid hex character 'x'" — which is true and says nothing about what to do. A key copied
+// out of a wallet has that prefix more often than not, so the mistake is named.
+func readPrivkey(written string) (*ecdsa.PrivateKey, error) {
+	key := strings.TrimSpace(written)
+	if strings.HasPrefix(key, "0x") || strings.HasPrefix(key, "0X") {
+		return nil, fmt.Errorf("privkey starts with %q, and a key is written here as hex on its own: drop the prefix", key[:2])
+	}
+
+	privateKey, err := crypto.HexToECDSA(key)
+	if err != nil {
+		return nil, fmt.Errorf("privkey is not a key: %w", err)
+	}
+	return privateKey, nil
+}
+
 // Deploy sends the bytecode to the chain and returns the contract address, the deploy transaction hash, and the deploy timestamp. The caller should persist these via manifest.PersistDeploy.
 func Deploy(ctx context.Context, in DeployInput) (address string, deployTxHash string, deployedAt time.Time, err error) {
 	raw, err := os.ReadFile(in.BinaryPath)
@@ -68,7 +87,7 @@ func Deploy(ctx context.Context, in DeployInput) (address string, deployTxHash s
 		return "", "", time.Time{}, fmt.Errorf("bytecode too short (%d bytes); need at least %d", len(bs), MIN_BYTECODE_LEN)
 	}
 
-	privateKey, err := crypto.HexToECDSA(strings.TrimSpace(in.Privkey))
+	privateKey, err := readPrivkey(in.Privkey)
 	if err != nil {
 		return "", "", time.Time{}, err
 	}

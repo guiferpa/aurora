@@ -366,7 +366,7 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 				return
 			}
 
-			// What the program answers with is the value of its last expression, and the
+			// What the program returns is the value of its last expression, and the
 			// emitter says which label that landed under. A test asking for a label it
 			// guessed is pinning how the emitter numbers them, which is not what it means
 			// to check.
@@ -1170,7 +1170,7 @@ ident answer = outer(7, 99);`,
 					t.Fatalf("evaluating: %v", err)
 				}
 				// inner reads position 1 and one value was applied to it, so it reads past
-				// the end and answers with zeros: one, after the addition. It used to read
+				// the end and returns zeros: one, after the addition. It used to read
 				// 99 — the second value applied to outer, which inner never saw applied to
 				// itself — and answer 100.
 				for _, value := range returns {

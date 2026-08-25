@@ -94,7 +94,7 @@ func TestCallingSomethingThatIsNotADeferFails(t *testing.T) {
 	}{
 		{name: "a number with no scope behind it", source: "ident a = 777;\na();"},
 		// The value of a block is a number like any other, so what makes it callable or not
-		// is whether it names a block — the same bargain as below. A block answering 1 is
+		// is whether it names a block — the same bargain as below. A block returning 1 is
 		// answering the number of a block, and calling it is calling that scope.
 		{name: "the value of a block that names none", source: "ident a = { 777; };\na();"},
 	}

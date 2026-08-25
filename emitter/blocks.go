@@ -208,7 +208,7 @@ func (b *blocking) branch(id ir.BlockID, params []ir.Label, held []ir.Instructio
 // arm turns one side of a branch into a block that hands its value to the block the two meet
 // at.
 //
-// What it answers with is its own closing return — the one naming the "if" rather than a
+// What it returns is its own closing return — the one naming the "if" rather than a
 // scope, which used to mean "the value of this arm". It is taken off the end rather than
 // searched for, because a branch written inside this one has returns of its own and they
 // belong to it.

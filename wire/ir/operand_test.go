@@ -36,12 +36,12 @@ func TestAnOperandSaysWhatItIs(t *testing.T) {
 	}
 }
 
-// An operand that is not there answers with an empty slice, never nil: that is what every
+// An operand that is not there returns an empty slice, never nil: that is what every
 // reader of the IR has always been handed, and none of them checks.
 func TestAnOperandThatIsNotThereStillAnswersWithBytes(t *testing.T) {
 	for _, operand := range []Operand{Nothing(), RefTo(nil), ImmOf(nil, 8)} {
 		if got := operand.Bytes(); got == nil {
-			t.Errorf("%v answered with nil", operand)
+			t.Errorf("%v returned nil", operand)
 		}
 	}
 }

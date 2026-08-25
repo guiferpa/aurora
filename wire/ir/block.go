@@ -49,7 +49,7 @@ type Block struct {
 type TermKind byte
 
 const (
-	// Ret ends the block and answers with Value. For a scope's last block that is the scope's
+	// Ret ends the block and returns Value. For a scope's last block that is the scope's
 	// answer.
 	Ret TermKind = iota
 	// Br goes to the one block in Targets.
@@ -71,7 +71,7 @@ type Terminator struct {
 	Kind TermKind
 	// Cond is what BrIf chooses on.
 	Cond Operand
-	// Value is what Ret answers with.
+	// Value is what Ret returns.
 	Value Operand
 	// Targets is where control goes: one block for Br, two for BrIf, none for Ret.
 	Targets []Target

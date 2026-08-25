@@ -82,7 +82,7 @@ func (o Operand) Kind() Kind { return o.kind }
 
 // Bytes answers the operand as the bytes it carries.
 //
-// An operand that is not there answers with an empty slice rather than nil, because that is
+// An operand that is not there returns an empty slice rather than nil, because that is
 // what every reader of the IR has always been handed and none of them checks.
 func (o Operand) Bytes() []byte {
 	if o.bytes == nil {

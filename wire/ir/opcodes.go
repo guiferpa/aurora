@@ -25,7 +25,7 @@ const (
 	OpSave  // Imm -> the bytes themselves, which is how a literal reaches the program
 	OpLoad  // Name -> what the name is bound to, looked up where the program is running
 
-	// Comparison. The answer is a tape like any other: false is all zeros.
+	// Comparison. What it returns is a tape like any other: false is all zeros.
 	OpDiff    // Ref, Ref -> whether the two differ
 	OpEquals  // Ref, Ref -> whether the two are the same
 	OpBigger  // Ref, Ref -> whether the first is greater
@@ -40,7 +40,7 @@ const (
 	OpGetFeed // Imm -> the value at that position of the vector applied to this scope, or a
 	//            tape of zeros where nothing was applied
 
-	OpCall // Name -> runs the scope that name reaches, and leaves what it answered
+	OpCall // Name -> runs the scope that name reaches, and leaves what it returned
 
 	// Printing. Three readings of one tape, and the whole difference between them is which
 	// opcode it is. They are logs, and they produce no bytecode, by decision.

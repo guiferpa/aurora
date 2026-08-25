@@ -194,11 +194,11 @@ func TestWriteGetArg(t *testing.T) {
 }
 
 // Ending a scope goes back to whoever called it: the value is on the stack and the address to
-// go back to is under it. It never answers the chain — that is the epilogue's, and keeping it
+// go back to is under it. It never returns to the chain — that is the epilogue's, and keeping it
 // there is what lets one body serve a transaction and a scope alike.
-func TestWriteReturn(t *testing.T) {
+func TestWriteReturnToCaller(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteReturn(bs); err != nil {
+	if _, err := WriteReturnToCaller(bs); err != nil {
 		t.Fatalf("writing the return: %v", err)
 	}
 	if got, want := bs.Bytes(), []byte{OpSwap1, OpJump}; !bytes.Equal(got, want) {
@@ -209,17 +209,17 @@ func TestWriteReturn(t *testing.T) {
 // Answering the chain goes through a slot of its own, not the first one: that holds where the
 // running scope's frame begins, and writing the answer there would lose the frame in the act
 // of answering.
-func TestWriteAnswer(t *testing.T) {
+func TestWriteReturnToChain(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteAnswer(bs); err != nil {
+	if _, err := WriteReturnToChain(bs); err != nil {
 		t.Fatalf("writing the answer: %v", err)
 	}
 	expected := []byte{OpPush1, RETURN_SCRATCH, OpMemoryStore, OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn}
 	if got := bs.Bytes(); !bytes.Equal(got, expected) {
 		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
-	if bs.Len() != ANSWER_SIZE {
-		t.Errorf("it measures %d and says it measures %d", bs.Len(), ANSWER_SIZE)
+	if bs.Len() != RETURN_TO_CHAIN_SIZE {
+		t.Errorf("it measures %d and says it measures %d", bs.Len(), RETURN_TO_CHAIN_SIZE)
 	}
 }
 

@@ -25,7 +25,7 @@ func GenerateLabel(tc *int) []byte {
 }
 
 // originOf answers where a token was written, so an instruction can point at it. A nil token
-// answers with nothing, which is what a phase after this one reads as "no place to point at".
+// returns nothing, which is what a phase after this one reads as "no place to point at".
 func originOf(t token.Token) ir.Origin {
 	if t == nil {
 		return ir.Origin{}
@@ -117,7 +117,7 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 		return emitIdentifierLiteral(tc, insts, n, tapeSize)
 	}
 
-	// A node this does not know emits nothing, and answers with the neutral value.
+	// A node this does not know emits nothing, and returns the neutral value.
 	return byteutil.FalseTape(tapeSize)
 }
 
@@ -243,7 +243,7 @@ func emitTapeBracketExpression(tc *int, insts *[]ir.Instruction, n ast.TapeBrack
 
 // emitShapeDeclaration answers the neutral value: a declaration does no work.
 func emitShapeDeclaration(tc *int, insts *[]ir.Instruction, _ ast.ShapeDeclaration, tapeSize int) ir.Label {
-	// A declaration emits no work. It still answers with a value, because everything in
+	// A declaration emits no work. It still returns a value, because everything in
 	// Aurora is an expression, and the neutral one is what a declaration is worth.
 	l := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
@@ -363,7 +363,7 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 			eul = EmitInstruction(tc, &euze, inst, tapeSize)
 		}
 	} else {
-		// An if with no else answers with the neutral value on the path where the test
+		// An if with no else returns the neutral value on the path where the test
 		// fails, and the arm says so rather than leaving whoever reads the IR to know it.
 		// A consumer that has to put a value somewhere — a stack — has nothing to put
 		// there otherwise, and one that does not would be reading an operand naming

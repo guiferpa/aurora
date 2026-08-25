@@ -54,8 +54,8 @@ const (
 	// FRAME_START_SIZE is what writing where the first frame begins measures: a push of the
 	// address, a push of the slot, and the store.
 	FRAME_START_SIZE = PUSH_TWO_SIZE + PUSH_ONE_SIZE + 1
-	// ANSWER_SIZE is what handing a value to the chain measures.
-	ANSWER_SIZE = PUSH_ONE_SIZE + 1 + PUSH_ONE_SIZE + PUSH_ONE_SIZE + 1
+	// RETURN_TO_CHAIN_SIZE is what handing a value to the chain measures.
+	RETURN_TO_CHAIN_SIZE = PUSH_ONE_SIZE + 1 + PUSH_ONE_SIZE + PUSH_ONE_SIZE + 1
 )
 
 type Dispatcher struct {

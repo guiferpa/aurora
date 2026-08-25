@@ -232,11 +232,11 @@ func ResolveOperandsOrder(insts []ir.Instruction, tapeSize int) []ir.Instruction
 		case produces(op) && taken[label] > 0:
 			hold(label, sequence)
 		case produces(op):
-			// Nobody takes it, so there is nowhere to move it to: it is the answer of the
+			// Nobody takes it, so there is nowhere to move it to: it is what is returned by the
 			// scope it was written in, and it stays where it was written.
 			out = append(out, sequence...)
 		case op == ir.OpIdent && taken[label] > 0:
-			// A scope whose last expression is a binding answers with the neutral value,
+			// A scope whose last expression is a binding returns the neutral value,
 			// which is what the evaluator answers. On the stack that has to be pushed: the
 			// binding itself left nothing there.
 			sequence = append(sequence, ir.NewInstruction(inst.GetLabel(), ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))

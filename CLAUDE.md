@@ -123,6 +123,9 @@ source of truth — this table is a pointer, not a copy.
   them. Read it before writing code here.
 - **`.claude/agents/aurora-internals.md`** — how the compiler actually works, verified
   against the code rather than the docs.
+- **[docs/contributing/ir.md](docs/contributing/ir.md)** — what the IR is and what a consumer
+  of it has to do. Read it before touching the emitter, the evaluator or a backend;
+  **[why-blocks.md](docs/contributing/why-blocks.md)** beside it says why it has this shape.
 - **`docs/`** for the end user, **`docs/contributing/`** for contributors (English),
   **`rfcs/`** for proposals and debt (Portuguese).
 - **`docs/roadmap.md`** is the direction: anything the user can perceive gets an entry there.

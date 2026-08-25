@@ -77,7 +77,14 @@ func documentationFiles(t *testing.T) []string {
 	t.Helper()
 
 	var docs []string
-	for _, root := range []string{repoRoot(t), filepath.Join(repoRoot(t), "docs")} {
+	// The contributing documents too: Aurora written for a contributor is Aurora, and a
+	// snippet that stopped compiling is as wrong there as anywhere else.
+	roots := []string{
+		repoRoot(t),
+		filepath.Join(repoRoot(t), "docs"),
+		filepath.Join(repoRoot(t), "docs", "contributing"),
+	}
+	for _, root := range roots {
 		entries, err := os.ReadDir(root)
 		if err != nil {
 			t.Fatalf("reading %s: %v", root, err)

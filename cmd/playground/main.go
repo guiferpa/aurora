@@ -14,6 +14,8 @@ import (
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/shared/printer"
 	"github.com/guiferpa/aurora/version"
+
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // defaultTapeSize is the width the playground starts at, and it is wider than the language's
@@ -86,8 +88,13 @@ func init() {
 			// One top-level expression at a time, reporting its value before moving on.
 			// Running everything and then walking the temp map put every printed line first and
 			// the values after, in no order at all — a map has none.
-			for _, expr := range program.Expressions {
-				temps, err := ev.EvaluateRange(program.Instructions, uint64(expr.From), uint64(expr.To))
+			for at, expr := range program.Expressions {
+				var until func(ir.Point) bool
+				if at+1 < len(program.Expressions) {
+					next := program.Expressions[at+1].At
+					until = func(point ir.Point) bool { return point == next }
+				}
+				temps, err := ev.EvaluateBlocks(program.Blocks, expr.At, until, "")
 				if err != nil {
 					errorWriter.Write([]byte(err.Error()))
 					return nil

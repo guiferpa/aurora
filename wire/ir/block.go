@@ -4,6 +4,16 @@ package ir
 // that where it sits in a list says nothing about it.
 type BlockID int
 
+// A Point is a place in a program: a block, and how far into it.
+//
+// It is what an offset into a list of instructions used to be, and it needs two numbers for
+// the reason the whole of this does: instructions that run one after another are not
+// necessarily written one after another, so where something is cannot be counted to.
+type Point struct {
+	Block BlockID
+	At    int
+}
+
 // A Block is a run of instructions with one way in and one way out.
 //
 // It is what the instruction list does not say. Today a scope is found by reading a length off

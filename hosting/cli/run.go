@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/guiferpa/aurora/byteutil"
+
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // Run compiles the source and everything it imports, and evaluates it.
@@ -29,7 +31,7 @@ func (s *Session) Run(ctx context.Context, source string) error {
 		return err
 	}
 	for at, each := range program.Ranges {
-		if _, err := ev.EvaluateBlocks(program.Blocks, each.Top, program.StopsAt(at), string(each.Module)); err != nil {
+		if _, err := ev.EvaluateBlocks(program.Blocks, ir.Point{Block: each.Top}, program.StopsAt(at), string(each.Module)); err != nil {
 			return err
 		}
 	}

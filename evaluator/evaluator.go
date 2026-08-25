@@ -564,7 +564,7 @@ func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error 
 
 		outer := e.environ
 		e.environ = outer.Ahead(next)
-		answered, err := e.RunBlocks(e.blocks, ir.BlockID(index), nil)
+		answered, err := e.RunBlocks(e.blocks, ir.Point{Block: ir.BlockID(index)}, nil)
 		e.environ = outer
 		if err != nil {
 			return err
@@ -768,19 +768,25 @@ func init() {
 // Stopping is a place rather than a count for the same reason. A program made of several files
 // runs each of them with its own names, and where one ends is where the next begins — which is
 // a block, not an offset.
-func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.BlockID, until func(ir.BlockID) bool) ([]byte, error) {
+func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.Point, until func(ir.Point) bool) ([]byte, error) {
 	held := e.blocks
 	e.blocks = blocks
 	defer func() { e.blocks = held }()
 
-	id := from
+	id, at := from.Block, from.At
 	for {
 		if int(id) >= len(blocks) {
 			return nil, fmt.Errorf("no block numbered %d", id)
 		}
 		block := blocks[id]
-		for _, inst := range block.Insts {
-			if err := e.ExecuteInstruction(inst); err != nil {
+		for ; at < len(block.Insts); at++ {
+			// Stopping is checked in front of each instruction rather than only on the way
+			// into a block, because where a run is meant to stop is where something else
+			// begins, and that can be halfway through one.
+			if until != nil && until(ir.Point{Block: id, At: at}) {
+				return nil, nil
+			}
+			if err := e.ExecuteInstruction(block.Insts[at]); err != nil {
 				return nil, err
 			}
 		}
@@ -794,10 +800,10 @@ func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.BlockID, until func(ir.
 		if term.Kind == ir.BrIf && !byteutil.ToBoolean(e.value(term.Cond)) {
 			target = term.Targets[1]
 		}
-		if until != nil && until(target.Block) {
+		if until != nil && until(ir.Point{Block: target.Block, At: 0}) {
 			return nil, nil
 		}
-		id = e.arrive(blocks[target.Block], target)
+		id, at = e.arrive(blocks[target.Block], target), 0
 	}
 }
 
@@ -854,7 +860,7 @@ func (e *Evaluator) arrive(block ir.Block, target ir.Target) ir.BlockID {
 //
 // It is the way in for a runner that has a whole program in hand: aurora run and aurora test.
 // Where one file ends is where the next begins, so what stops it is arriving at that block.
-func (e *Evaluator) EvaluateBlocks(blocks []ir.Block, from ir.BlockID, until func(ir.BlockID) bool, id string) (eval.Returns, error) {
+func (e *Evaluator) EvaluateBlocks(blocks []ir.Block, from ir.Point, until func(ir.Point) bool, id string) (eval.Returns, error) {
 	if id == "" {
 		if _, err := e.RunBlocks(blocks, from, until); err != nil {
 			return nil, err

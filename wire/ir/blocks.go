@@ -19,14 +19,25 @@ import "github.com/guiferpa/aurora/byteutil"
 // instruction: OpDefer, OpBeginScope, OpIf, OpJump and OpReturn. What is left inside a block
 // computes values and nothing else.
 func BlocksOf(insts []Instruction) []Block {
-	b := &blocking{scopes: make(map[string]BlockID)}
+	blocks, _ := PlacedBlocksOf(insts)
+	return blocks
+}
+
+// PlacedBlocksOf answers the same blocks, and where each instruction of the list ended up.
+//
+// Whoever compiled the list knows things about it in terms of the list — which stretch of it
+// each top-level expression is, so a runner can stop between them and answer where each one
+// happens rather than all of them at the end. Those stretches have to move with the
+// instructions, and an instruction's place is now two numbers rather than one.
+func PlacedBlocksOf(insts []Instruction) ([]Block, map[string]Point) {
+	b := &blocking{scopes: make(map[string]BlockID), places: make(map[string]Point)}
 	top := b.reserve()
 	// The top of a program takes values the way a scope does. Nothing applies any to it — no
 	// transaction names it — so what it reads there is zeros, which is what reading past what
 	// was applied answers. Saying how many it addresses is still what keeps the names it binds
 	// from being kept in the same places.
 	b.run(top, insts, applied(feedsRead(insts)), func() Terminator { return Ends(Nothing()) })
-	return b.blocks
+	return b.blocks, b.places
 }
 
 // blocking builds blocks as it walks, handing each the number it will be known by.
@@ -39,6 +50,8 @@ type blocking struct {
 	// scopes answers, for the label an OpDefer left, the block its body became — so the
 	// binding that follows it can name a block instead of an instruction that is gone.
 	scopes map[string]BlockID
+	// places answers where each instruction ended up, by the label it leaves its value under.
+	places map[string]Point
 }
 
 // reserve takes the next number and leaves a place for the block to be put in.
@@ -48,9 +61,12 @@ func (b *blocking) reserve() BlockID {
 	return id
 }
 
-// put fills a block that was reserved.
+// put fills a block that was reserved, and writes down where each of its instructions landed.
 func (b *blocking) put(id BlockID, params []Label, insts []Instruction, term Terminator, origin Origin) {
 	b.blocks[id] = Block{ID: id, Params: params, Insts: insts, Term: term, Origin: origin}
+	for at, inst := range insts {
+		b.places[byteutil.ToHex(inst.GetLabel())] = Point{Block: id, At: at}
+	}
 }
 
 // ends says how a run finishes when it reaches the end without a return of its own.

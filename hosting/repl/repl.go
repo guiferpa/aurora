@@ -116,7 +116,10 @@ type Session struct {
 	declarations *parser.Declarations
 	// Every line's instructions go into the same buffer, which is what keeps the range a
 	// defer recorded valid when it is called on a later line.
-	insts []ir.Instruction
+	// blocks is the session so far. A session is a file typed slowly, so it only grows: a
+	// scope written on one line is called from a later one, and what the name holds is the
+	// number of its block.
+	blocks []ir.Block
 
 	// resolver finds the files a line imports. Nil is a session that takes no use line,
 	// which is what a REPL with nowhere to read from is.
@@ -232,9 +235,8 @@ func (s *Session) load(tree ast.AST) error {
 		if err != nil {
 			return err
 		}
-		from := uint64(len(s.insts))
-		s.insts = append(s.insts, program.Instructions...)
-		if _, err := s.ev.EvaluateModule(s.insts, from, uint64(len(s.insts)), string(each.ID)); err != nil {
+		top := s.join(program)
+		if _, err := s.ev.EvaluateBlocks(s.blocks, ir.Point{Block: top}, nil, string(each.ID)); err != nil {
 			return err
 		}
 		s.loaded[each.ID] = each
@@ -248,16 +250,45 @@ func (s *Session) load(tree ast.AST) error {
 // evaluate runs the line's expressions one at a time, so a line holding several of them
 // answers where each one happens rather than all of them at the end.
 func (s *Session) evaluate(program ir.Program) {
-	offset := len(s.insts)
-	s.insts = append(s.insts, program.Instructions...)
+	top := s.join(program)
 
-	for _, expr := range program.Expressions {
-		temps, err := s.ev.EvaluateRange(s.insts, uint64(offset+expr.From), uint64(offset+expr.To))
+	for at, expr := range program.Expressions {
+		temps, err := s.ev.EvaluateBlocks(s.blocks, s.at(top, expr), s.stopsAt(top, program, at), "")
 		render(s.out, temps, byteutil.ToHex(expr.Label), err)
 		if err != nil {
 			return
 		}
 	}
+}
+
+// join adds a line's blocks to the session and answers where that line begins.
+//
+// A session is a file typed slowly, and its blocks only ever grow: a scope written on one line
+// is called from a later one, and what the name holds is the number of its block. Each line is
+// compiled on its own and numbers from zero, so every line but the first moves.
+func (s *Session) join(program ir.Program) ir.BlockID {
+	top := ir.BlockID(len(s.blocks))
+	s.blocks = append(s.blocks, ir.Shifted(program.Blocks, top)...)
+	return top
+}
+
+// at answers where an expression of a line begins, among the session's blocks.
+func (s *Session) at(top ir.BlockID, expr ir.Expression) ir.Point {
+	return ir.Point{Block: expr.At.Block + top, At: expr.At.At}
+}
+
+// stopsAt answers where an expression of a line ends: where the next one begins. The last one
+// on a line ends when the line does, and nothing stops it.
+//
+// Running one expression at a time is what puts each value next to the prints that came with
+// it. Running the line whole and reading the values afterwards put every printed line first
+// and the values after, in no order at all.
+func (s *Session) stopsAt(top ir.BlockID, program ir.Program, at int) func(ir.Point) bool {
+	if at+1 >= len(program.Expressions) {
+		return nil
+	}
+	next := s.at(top, program.Expressions[at+1])
+	return func(point ir.Point) bool { return point == next }
 }
 
 // remember records the line before it is evaluated, so a line that fails to compile is still

@@ -35,17 +35,17 @@ func listOf(t *testing.T, source string) []ir.Instruction {
 // structure names the opcodes that do not survive the crossing: each of them said where
 // control goes or how far something reached, which is what a block and a terminator say now.
 var structure = map[byte]bool{
-	ir.OpDefer:      true,
-	ir.OpBeginScope: true,
-	ir.OpIf:         true,
-	ir.OpJump:       true,
-	ir.OpReturn:     true,
+	opDefer:      true,
+	opBeginScope: true,
+	opIf:         true,
+	opJump:       true,
+	opReturn:     true,
 }
 
 // A scope is the one of them that leaves something behind: it said how long its body was, and
 // that is gone, but a scope is a value like any other and what it is worth crosses over under
 // the same name.
-var leavesAValue = map[byte]bool{ir.OpDefer: true}
+var leavesAValue = map[byte]bool{opDefer: true}
 
 // The blocks describe the same program: every instruction that computes a value is in exactly
 // one of them, and nothing else is.
@@ -72,7 +72,7 @@ printd answer(1);`
 	}
 
 	found := make(map[string]int)
-	for _, block := range ir.BlocksOf(insts) {
+	for _, block := range blocksOf(insts) {
 		for _, inst := range block.Insts {
 			if structure[inst.GetOpCode()] {
 				t.Errorf("block %d holds %s, which is structure", block.ID, ir.ResolveOpCode(inst.GetOpCode()))

@@ -40,17 +40,7 @@ const (
 	OpGetFeed // Imm -> the value at that position of the vector applied to this scope, or a
 	//            tape of zeros where nothing was applied
 
-	// Scopes. A deferred scope is a value: an index into the scopes its environ knows, held
-	// in an ordinary tape.
-	OpBeginScope // opens a scope, and leaves the value its body ends with
-	OpDefer      // Ref, Target -> stores the scope that follows, and leaves its index
-	OpCall       // Name -> runs the scope that name reaches, and leaves what it answered
-
-	// Control. Both operands are counted in instructions, which is what the evaluator's
-	// cursor takes and what stops any pass from reordering the list.
-	OpIf     // Ref, Target -> skips ahead when the test is false
-	OpJump   // Target -> skips ahead, always
-	OpReturn // Ref, Ref -> the value of the scope, or of the arm of an if
+	OpCall // Name -> runs the scope that name reaches, and leaves what it answered
 
 	// Printing. Three readings of one tape, and the whole difference between them is which
 	// opcode it is. They are logs, and they produce no bytecode, by decision.

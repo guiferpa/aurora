@@ -142,9 +142,9 @@ func emitBlockExpression(tc *int, insts *[]ir.Instruction, n ast.BlockExpression
 	}
 
 	lsc := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(lsc, ir.OpBeginScope, ir.Nothing(), ir.Nothing()))
+	*insts = append(*insts, ir.NewInstruction(lsc, opBeginScope, ir.Nothing(), ir.Nothing()))
 
-	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpReturn, ir.RefTo(lsc), ir.RefTo(l)))
+	body = append(body, ir.NewInstruction(GenerateLabel(tc), opReturn, ir.RefTo(lsc), ir.RefTo(l)))
 	*insts = append(*insts, body...)
 
 	return lsc
@@ -157,7 +157,7 @@ func emitDeferExpression(tc *int, insts *[]ir.Instruction, n ast.DeferExpression
 	l := EmitInstruction(tc, &body, n.Block, tapeSize)
 	bodylength := uint64(len(body))
 	lo := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(lo, ir.OpDefer, ir.RefTo(l), ir.TargetAt(bodylength)))
+	*insts = append(*insts, ir.NewInstruction(lo, opDefer, ir.RefTo(l), ir.TargetAt(bodylength)))
 	*insts = append(*insts, body...)
 	return lo
 
@@ -382,13 +382,13 @@ func emitIfExpression(tc *int, insts *[]ir.Instruction, n ast.IfExpression, tape
 
 	lt := operandFor(tc, insts, n.Test, tapeSize)
 	inl := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(inl, ir.OpIf, lt, bodylen).At(originOf(n.Token)))
+	*insts = append(*insts, ir.NewInstruction(inl, opIf, lt, bodylen).At(originOf(n.Token)))
 
-	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpReturn, ir.RefTo(inl), ir.RefTo(bl)))
-	body = append(body, ir.NewInstruction(GenerateLabel(tc), ir.OpJump, euzelen, ir.Nothing()).At(originOf(n.Token)))
+	body = append(body, ir.NewInstruction(GenerateLabel(tc), opReturn, ir.RefTo(inl), ir.RefTo(bl)))
+	body = append(body, ir.NewInstruction(GenerateLabel(tc), opJump, euzelen, ir.Nothing()).At(originOf(n.Token)))
 	*insts = append(*insts, body...)
 
-	euze = append(euze, ir.NewInstruction(GenerateLabel(tc), ir.OpReturn, ir.RefTo(inl), ir.RefTo(eul)))
+	euze = append(euze, ir.NewInstruction(GenerateLabel(tc), opReturn, ir.RefTo(inl), ir.RefTo(eul)))
 	*insts = append(*insts, euze...)
 
 	return inl
@@ -567,7 +567,7 @@ func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 	warnings = append(warnings, checkAsserts(tree.Nodes)...)
 	warnings = append(warnings, checkAppliedValues(tree.Nodes)...)
 
-	blocks, places := ir.PlacedBlocksOf(insts)
+	blocks, places := placedBlocksOf(insts)
 
 	return ir.Program{
 		Blocks:      blocks,

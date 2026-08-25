@@ -28,10 +28,6 @@ func ResolveOpCode(op byte) string {
 		return "OpEquals"
 	case OpSmaller:
 		return "OpSmaller"
-	case OpBeginScope:
-		return "OpBeginScope"
-	case OpDefer:
-		return "OpDefer"
 	case OpSave:
 		return "OpSave"
 	case OpCall:
@@ -42,12 +38,6 @@ func ResolveOpCode(op byte) string {
 		return "OpPrintChars"
 	case OpPrintDecimal:
 		return "OpPrintDecimal"
-	case OpReturn:
-		return "OpReturn"
-	case OpIf:
-		return "OpIf"
-	case OpJump:
-		return "OpJump"
 	case OpOr:
 		return "OpOr"
 	case OpAnd:

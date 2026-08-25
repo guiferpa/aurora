@@ -14,21 +14,35 @@
   # tape_size = 16
 
 [profiles]
-  # "main" is what you get when no profile is named.
+  # "main" is what you get when no profile is named. It says where the source is and where
+  # the binary goes, and nothing else: running and building need nothing else.
   [profiles.main]
     source = "src/main.ar"
     binary = "bin/main"
-    # What deploy and call need, and what this file must not hold. A value written as
-    # ${{ NAME }} is read from .env beside this file, or from the environment the command
-    # runs in when .env does not have it — so a manifest can be tracked and a key cannot.
-    #
-    # A name nothing sets is refused rather than read as empty, so these are left commented
-    # out: this project is built and run by the test suite, and it deploys nowhere.
-    # rpc = "${{ AURORA_RPC }}"
-    # privkey = "${{ AURORA_PRIVKEY }}"
 
   # A project holds as many profiles as it has things to build. This one is a
   # second program with a binary of its own.
   [profiles.label]
     source = "src/label.ar"
     binary = "bin/label"
+
+  # The same program, said again with what it takes to put it on a chain. Deploying and
+  # calling are the two commands that need an address and a key, and a profile is where a
+  # command's settings live — so the chain is a profile rather than a flag repeated by hand:
+  #
+  #   aurora deploy -p sepolia
+  #   aurora call main -p sepolia
+  #
+  # A value written as ${{ NAME }} is read from .env beside this file, or from the
+  # environment the command runs in when .env does not have it. Which is the point: this
+  # file is tracked and a key must not be, so the manifest names the value instead of
+  # holding it.
+  #
+  # A name nothing sets is refused rather than read as empty, so this profile only loads
+  # where somebody has set them. That is why it is a profile of its own: "main" is built and
+  # run by the test suite, on a machine that deploys nowhere and sets nothing.
+  [profiles.sepolia]
+    source = "src/main.ar"
+    binary = "bin/main"
+    rpc = "${{ AURORA_RPC }}"
+    privkey = "${{ AURORA_PRIVKEY }}"

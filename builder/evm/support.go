@@ -14,10 +14,11 @@ import (
 // writing: the emitter cannot hold it, because a phase knows nothing of the one after it, and
 // the host cannot hold it either, because what a backend covers is not the host's to know.
 
-// handled is every instruction the builder turns into opcodes or consumes as structure.
+// handled is every instruction the builder turns into opcodes.
 //
-// OpDefer and OpBeginScope write nothing of their own and are not gaps: the first becomes an
-// entry in the dispatcher, and the second opens a scope the builder lays out flat.
+// Nothing here is structure. Where a program goes is what a block's terminator says, and an
+// instruction computes a value and does nothing else — so the list used to hold five opcodes
+// that wrote no bytes and were not gaps, and now it holds none.
 var handled = map[byte]bool{
 	ir.OpAdd:         true,
 	ir.OpSubtract:    true,
@@ -27,11 +28,6 @@ var handled = map[byte]bool{
 	ir.OpIdent:       true,
 	ir.OpLoad:        true,
 	ir.OpGetFeed:     true,
-	ir.OpReturn:      true,
-	ir.OpDefer:       true,
-	ir.OpBeginScope:  true,
-	ir.OpIf:          true,
-	ir.OpJump:        true,
 	ir.OpEquals:      true,
 	ir.OpDiff:        true,
 	ir.OpBigger:      true,

@@ -139,24 +139,6 @@ var dispatchCases = []dispatchCase{
 		},
 	},
 
-	// if and jump both move the cursor and write nothing, so the landing is the whole answer.
-	{
-		name:   "if, the test holds",
-		opcode: ir.OpIf,
-		setup: func(e *Evaluator) {
-			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(tapeSize))
-		},
-		left: []byte("00"), right: byteutil.FromUint64(4), cursor: 1,
-	},
-	{
-		name:   "if, the test does not hold",
-		opcode: ir.OpIf,
-		setup: func(e *Evaluator) {
-			e.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(tapeSize))
-		},
-		left: []byte("00"), right: byteutil.FromUint64(4), cursor: 5,
-	},
-
 	{
 		name:   "get feed",
 		opcode: ir.OpGetFeed,
@@ -440,17 +422,9 @@ var coveredElsewhere = map[byte]bool{
 	ir.OpCall:         true,
 }
 
-// structure names the opcodes that say where control goes. None of them reaches the evaluator,
-// and that is not a gap: control is what a block's terminator decides, and an instruction
-// computes a value and does nothing else. They are how the emitter writes structure down on
-// its way to the blocks, and the crossing consumes them.
-var structure = map[byte]bool{
-	ir.OpDefer:      true,
-	ir.OpBeginScope: true,
-	ir.OpIf:         true,
-	ir.OpJump:       true,
-	ir.OpReturn:     true,
-}
+// Every opcode the IR declares reaches the evaluator. Structure is not among them: where a
+// program goes is what a block's terminator says, and how the emitter wrote that down on its
+// way to the blocks never leaves the emitter.
 
 // A new opcode is added to the emitter and wired into the evaluator in two separate places,
 // and nothing connects them. This is what notices when the second half is missing.
@@ -461,7 +435,7 @@ func TestEveryOpcodeIsDispatchedByACase(t *testing.T) {
 	}
 
 	for op := ir.OpMultiply; op <= ir.OpField; op++ {
-		if tested[op] || coveredElsewhere[op] || structure[op] {
+		if tested[op] || coveredElsewhere[op] {
 			continue
 		}
 		t.Errorf("%s reaches no test through ExecuteInstruction", ir.ResolveOpCode(op))

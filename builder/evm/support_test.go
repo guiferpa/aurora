@@ -37,17 +37,15 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 			// What a contract is made of today: values, names, arguments, arithmetic and a
 			// return, inside a scope that becomes a dispatcher entry.
 			name:     "a program the builder writes whole",
-			opcodes:  []byte{ir.OpDefer, ir.OpBeginScope, ir.OpGetFeed, ir.OpSave, ir.OpAdd, ir.OpReturn, ir.OpIdent},
+			opcodes:  []byte{ir.OpGetFeed, ir.OpSave, ir.OpAdd, ir.OpCall, ir.OpIdent},
 			wantNone: true,
 		},
 		{
-			name:     "a branch, which reaches the bytecode now",
-			opcodes:  []byte{ir.OpIf, ir.OpJump},
-			wantNone: true,
-		},
-		{
-			name:     "a comparison, which reaches the bytecode now",
-			opcodes:  []byte{ir.OpEquals, ir.OpBigger},
+			// A branch is not an instruction any more, so there is nothing here to name: it
+			// is a block ending one way rather than another, and the writer answers for that
+			// where it writes terminators.
+			name:     "a comparison and a call, which reach the bytecode now",
+			opcodes:  []byte{ir.OpEquals, ir.OpCall},
 			wantNone: true,
 		},
 		{

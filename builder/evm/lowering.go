@@ -126,7 +126,7 @@ func LowerBlock(block ir.Block, tapeSize int) ir.Block {
 	}
 
 	insts := append(append(make([]ir.Instruction, 0, len(block.Insts)+1), block.Insts...),
-		ir.NewInstructionOver(nil, ir.OpReturn, taken...))
+		ir.NewInstructionOver(nil, opEnds, taken...))
 
 	lowered := ResolveOperandsOrder(insts, tapeSize)
 	block.Insts = lowered[:len(lowered)-1]
@@ -142,6 +142,14 @@ func LowerBlock(block ir.Block, tapeSize int) ir.Block {
 //
 // A value nobody takes has nowhere to be moved to, so it stays where it was written. That is
 // the last expression of a scope, which is the scope's answer.
+// opEnds stands in for a block's terminator while the instructions of that block are being put
+// in order. It is not an opcode of the IR and never leaves this file: what it is for is to be
+// something the ordering treats as a place control can go, so that everything still waiting
+// comes out in front of it.
+//
+// It is a number no opcode uses, and it never reaches a writer.
+const opEnds = 0xff
+
 // divides answers whether control can leave an instruction for somewhere other than the next
 // one, or arrive at it from somewhere other than the one before.
 //
@@ -152,7 +160,7 @@ func LowerBlock(block ir.Block, tapeSize int) ir.Block {
 // inside a block and never through one.
 func divides(op byte) bool {
 	switch op {
-	case ir.OpIf, ir.OpJump, ir.OpReturn, ir.OpBeginScope, ir.OpDefer, ir.OpCall:
+	case ir.OpCall, opEnds:
 		return true
 	default:
 		return false

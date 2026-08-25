@@ -27,6 +27,11 @@ type Manifest struct {
 	Project  Project                `toml:"project"`
 	Profiles map[string]Profile     `toml:"profiles"`
 	Deploys  map[string]DeployState `toml:"deploys"`
+
+	// environment is what the values a profile names are read from, and path is what an error
+	// about one of them points at. Neither is written in the file.
+	environment Environment
+	path        string
 }
 
 // DeployState holds the last deploy result for a profile. Written by the CLI on each deploy; do not edit by hand.
@@ -124,39 +129,15 @@ func Load(projectRoot string) (*Manifest, error) {
 	if m.Profiles == nil {
 		m.Profiles = make(map[string]Profile)
 	}
-	if err := m.readEnvironment(projectRoot, path); err != nil {
+	if m.environment, err = LoadEnvironment(projectRoot); err != nil {
 		return nil, err
 	}
+	m.path = path
 	m.Deploys = loadDeploysFile(projectRoot)
 	if m.Deploys == nil {
 		m.Deploys = make(map[string]DeployState)
 	}
 	return &m, nil
-}
-
-// readEnvironment replaces every value that names the environment with what it names.
-//
-// The fields are written out rather than walked, because a value that may come from outside is
-// a decision about that value: a path is a path and a name is a name, and neither is a thing a
-// project would keep somewhere else. What is left is what a deploy needs and a manifest should
-// not hold.
-func (m *Manifest) readEnvironment(projectRoot, path string) error {
-	environment, err := LoadEnvironment(projectRoot)
-	if err != nil {
-		return err
-	}
-
-	for name, profile := range m.Profiles {
-		where := fmt.Sprintf("%s: profile %s", path, name)
-		if profile.RPC, err = environment.Expand(where, profile.RPC); err != nil {
-			return err
-		}
-		if profile.Privkey, err = environment.Expand(where, profile.Privkey); err != nil {
-			return err
-		}
-		m.Profiles[name] = profile
-	}
-	return nil
 }
 
 // loadDeploysFile reads .aurora.deploys.toml and returns the deploys map, or nil if the file is missing.
@@ -211,6 +192,20 @@ func (m *Manifest) Profile(name string) (Profile, error) {
 	p, ok := m.Profiles[name]
 	if !ok {
 		return Profile{}, fmt.Errorf("profile %q not found in manifest", name)
+	}
+
+	// What the profile names is read here rather than when the manifest was loaded, so a
+	// profile is only ever asked for what somebody is using it for. A project holding a
+	// profile for a chain — an address and a key, named rather than written down — is a
+	// project that has to build and run on a machine that sets neither, and reading every
+	// profile at load made it refuse to do anything at all.
+	where := fmt.Sprintf("%s: profile %s", m.path, name)
+	var err error
+	if p.RPC, err = m.environment.Expand(where, p.RPC); err != nil {
+		return Profile{}, err
+	}
+	if p.Privkey, err = m.environment.Expand(where, p.Privkey); err != nil {
+		return Profile{}, err
 	}
 	return p, nil
 }

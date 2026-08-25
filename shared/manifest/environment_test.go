@@ -36,7 +36,11 @@ func TestAManifestReadsWhatItNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loading: %v", err)
 	}
-	if got := m.Profiles["main"].Privkey; got != "abc123" {
+	main, err := m.Profile("main")
+	if err != nil {
+		t.Fatalf("reading the profile: %v", err)
+	}
+	if got := main.Privkey; got != "abc123" {
 		t.Errorf("the key is %q, want what .env set", got)
 	}
 }
@@ -64,10 +68,14 @@ func TestTheProjectComesFirstAndTheMachineSecond(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loading: %v", err)
 	}
-	if got := m.Profiles["main"].Privkey; got != "from-the-project" {
+	main, err := m.Profile("main")
+	if err != nil {
+		t.Fatalf("reading the profile: %v", err)
+	}
+	if got := main.Privkey; got != "from-the-project" {
 		t.Errorf("the key is %q, want the project's own", got)
 	}
-	if got := m.Profiles["main"].RPC; got != "from-the-machine" {
+	if got := main.RPC; got != "from-the-machine" {
 		t.Errorf("the address is %q, want the machine's, since the project does not say", got)
 	}
 }
@@ -85,9 +93,13 @@ func TestANameNothingSetsIsRefused(t *testing.T) {
 `,
 	})
 
-	_, err := Load(dir)
+	m, err := Load(dir)
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+	_, err = m.Profile("main")
 	if err == nil {
-		t.Fatal("it loaded a manifest naming something nothing sets")
+		t.Fatal("it read a profile naming something nothing sets")
 	}
 	for _, want := range []string{"NOBODY_SETS_THIS", EnvFilename} {
 		if !strings.Contains(err.Error(), want) {
@@ -107,8 +119,12 @@ func TestAManifestThatNamesNothingNeedsNothing(t *testing.T) {
 `,
 	})
 
-	if _, err := Load(dir); err != nil {
+	m, err := Load(dir)
+	if err != nil {
 		t.Fatalf("loading: %v", err)
+	}
+	if _, err := m.Profile("main"); err != nil {
+		t.Fatalf("reading the profile: %v", err)
 	}
 }
 
@@ -185,8 +201,12 @@ func TestACommentIsNotAValue(t *testing.T) {
 `,
 	})
 
-	if _, err := Load(dir); err != nil {
+	m, err := Load(dir)
+	if err != nil {
 		t.Fatalf("loading: %v", err)
+	}
+	if _, err := m.Profile("main"); err != nil {
+		t.Fatalf("reading the profile: %v", err)
 	}
 }
 
@@ -211,7 +231,47 @@ func TestOnlyWhatADeployNeedsIsRead(t *testing.T) {
 	if got := m.Project.Name; got != "${{ SOMETHING }}" {
 		t.Errorf("the project is named %q, want the reference left as it was written", got)
 	}
-	if got := m.Profiles["main"].Source; got != "${{ SOMETHING }}" {
+	main, err := m.Profile("main")
+	if err != nil {
+		t.Fatalf("reading the profile: %v", err)
+	}
+	if got := main.Source; got != "${{ SOMETHING }}" {
 		t.Errorf("the source is %q, want the reference left as it was written", got)
+	}
+}
+
+// A project holding a profile for a chain builds and runs on a machine that sets nothing.
+//
+// This is the whole reason a profile's values are read when the profile is asked for, and not
+// when the manifest is loaded. Reading every profile at load made a project with one deploy
+// profile refuse to do anything at all — build, run, test — anywhere the key was not set. It
+// went unnoticed locally because the machine that wrote it had a .env, and the machine that
+// runs the tests does not.
+func TestAProfileNobodyAsksForIsNotRead(t *testing.T) {
+	dir := projectWith(t, map[string]string{
+		Filename: `[project]
+  name = "p"
+[profiles]
+  [profiles.main]
+    source = "src/main.ar"
+    binary = "bin/main"
+  [profiles.sepolia]
+    source = "src/main.ar"
+    rpc = "${{ NOBODY_SETS_THIS }}"
+    privkey = "${{ NOR_THIS }}"
+`,
+	})
+
+	m, err := Load(dir)
+	if err != nil {
+		t.Fatalf("loading: %v", err)
+	}
+	if _, err := m.Profile("main"); err != nil {
+		t.Fatalf("reading the profile nobody has to set anything for: %v", err)
+	}
+
+	// And the one that does name them still says so, to whoever asks for it.
+	if _, err := m.Profile("sepolia"); err == nil {
+		t.Error("the profile that names what nothing sets was read without a word")
 	}
 }

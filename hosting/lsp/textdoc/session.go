@@ -4,6 +4,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ast"
+	"github.com/guiferpa/aurora/wire/diag"
 	"github.com/guiferpa/aurora/wire/ir"
 	"github.com/guiferpa/aurora/wire/module"
 )
@@ -20,6 +21,7 @@ type Session struct {
 	parser  parser.Parser
 	resolve Resolve
 	emit    Emit
+	carries Carries
 }
 
 // Emit compiles a tree, which is how the editor hears what the compiler has to say about a
@@ -32,6 +34,17 @@ type Session struct {
 //
 // It is a port for the same reason Resolve is: a host does not put the compiler together.
 type Emit func(ast.AST) (ir.Program, error)
+
+// Carries answers what a backend cannot carry of a compiled program.
+//
+// It is a second port because it is a second question, asked of a different phase. The emitter
+// says what is wrong with a program; a backend says what is missing from the binary it would
+// write — a feature it does not compile yet, and a print, whose log has nowhere to go on a
+// chain.
+//
+// The editor is where that is cheapest to hear. Before this it was only said by "aurora
+// build", which is after the writing is done and often after the deciding is done too.
+type Carries func([]ir.Block) []diag.Warning
 
 // Resolve answers with the modules a document imports, given the use lines it opens with.
 //
@@ -53,8 +66,11 @@ type NewSessionOptions struct {
 	Resolve Resolve
 	// Emit is optional. Without it a document is only checked as far as it parses.
 	Emit Emit
+	// Carries is optional too, and needs Emit: it is asked of what Emit answered. Without it
+	// a document hears nothing about the binary it would compile to.
+	Carries Carries
 }
 
 func NewSession(opts NewSessionOptions) *Session {
-	return &Session{lexer: opts.Lexer, parser: opts.Parser, resolve: opts.Resolve, emit: opts.Emit}
+	return &Session{lexer: opts.Lexer, parser: opts.Parser, resolve: opts.Resolve, emit: opts.Emit, carries: opts.Carries}
 }

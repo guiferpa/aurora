@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"syscall/js"
 
+	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/hosting/lsp/textdoc"
@@ -75,9 +76,10 @@ func analyses() []js.Func {
 	// One session for the page, the way the language server holds one for an editor: the
 	// phases are built here and the width comes with each document.
 	session := textdoc.NewSession(textdoc.NewSessionOptions{
-		Lexer:  lexer.New(),
-		Parser: parser.New(),
-		Emit:   emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+		Lexer:   lexer.New(),
+		Parser:  parser.New(),
+		Emit:    emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+		Carries: evm.Warnings,
 	})
 
 	diagnostics := js.FuncOf(func(this js.Value, args []js.Value) any {

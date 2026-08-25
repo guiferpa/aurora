@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
-	"github.com/guiferpa/aurora/evaluator/environ"
 	"github.com/guiferpa/aurora/wire/ir"
 )
 
@@ -157,10 +156,6 @@ var dispatchCases = []dispatchCase{
 		},
 		left: []byte("00"), right: byteutil.FromUint64(4), cursor: 5,
 	},
-	{
-		name: "jump", opcode: ir.OpJump,
-		left: byteutil.FromUint64(3), cursor: 4,
-	},
 
 	{
 		name:   "get feed",
@@ -169,12 +164,6 @@ var dispatchCases = []dispatchCase{
 			e.environ.SetArgument(0, byteutil.FromUint64(99))
 		},
 		left: byteutil.FromUint64(0), want: byteutil.FromUint64(99), cursor: 1,
-	},
-	{
-		// A defer answers with its index as a tape and steps over the body it just stored.
-		name: "defer", opcode: ir.OpDefer,
-		left: []byte("ret"), right: byteutil.FromUint64(2),
-		want: byteutil.FalseTape(tapeSize), cursor: 3,
 	},
 
 	// The tape operations move the same two values in four different directions.
@@ -224,29 +213,6 @@ var dispatchCases = []dispatchCase{
 		left: []byte("00"), right: byteutil.FromUint64(1),
 		want: byteutil.FromUint64(2), cursor: 1,
 	},
-
-	{
-		name: "begin scope", opcode: ir.OpBeginScope, cursor: 1,
-		check: func(t *testing.T, e *Evaluator) {
-			if e.environ.GetPrevious() == nil {
-				t.Error("no scope was opened")
-			}
-		},
-	},
-	{
-		name:   "return",
-		opcode: ir.OpReturn,
-		setup: func(e *Evaluator) {
-			e.environ = e.environ.Ahead(environ.NewEnviron(environ.NewEnvironOptions{}))
-			e.environ.SetTemp(byteutil.ToHex([]byte("01")), byteutil.FromUint64(13))
-		},
-		left: []byte("ret"), right: []byte("01"), cursor: 1,
-		check: func(t *testing.T, e *Evaluator) {
-			if got := e.environ.GetTemp(byteutil.ToHex([]byte("ret"))); !bytes.Equal(got, byteutil.FromUint64(13)) {
-				t.Errorf("the caller got %v back, want 13", got)
-			}
-		},
-	},
 }
 
 func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
@@ -271,9 +237,6 @@ func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
 				if !bytes.Equal(got, tc.want) {
 					t.Errorf("label holds %v, want %v", got, tc.want)
 				}
-			}
-			if cursor, _ := e.GetInstructionsOffset(); cursor != tc.cursor {
-				t.Errorf("cursor landed on %d, want %d", cursor, tc.cursor)
 			}
 			if tc.check != nil {
 				tc.check(t, e)
@@ -463,9 +426,6 @@ func TestExecuteInstructionStepsOverAnOpcodeItDoesNotKnow(t *testing.T) {
 		t.Fatalf("executing: %v", err)
 	}
 
-	if cursor, _ := e.GetInstructionsOffset(); cursor != 1 {
-		t.Errorf("cursor landed on %d, want 1", cursor)
-	}
 	if got := e.environ.GetTemp(byteutil.ToHex([]byte("02"))); got != nil {
 		t.Errorf("wrote %v under the label, want nothing", got)
 	}
@@ -480,6 +440,18 @@ var coveredElsewhere = map[byte]bool{
 	ir.OpCall:         true,
 }
 
+// structure names the opcodes that say where control goes. None of them reaches the evaluator,
+// and that is not a gap: control is what a block's terminator decides, and an instruction
+// computes a value and does nothing else. They are how the emitter writes structure down on
+// its way to the blocks, and the crossing consumes them.
+var structure = map[byte]bool{
+	ir.OpDefer:      true,
+	ir.OpBeginScope: true,
+	ir.OpIf:         true,
+	ir.OpJump:       true,
+	ir.OpReturn:     true,
+}
+
 // A new opcode is added to the emitter and wired into the evaluator in two separate places,
 // and nothing connects them. This is what notices when the second half is missing.
 func TestEveryOpcodeIsDispatchedByACase(t *testing.T) {
@@ -489,7 +461,7 @@ func TestEveryOpcodeIsDispatchedByACase(t *testing.T) {
 	}
 
 	for op := ir.OpMultiply; op <= ir.OpField; op++ {
-		if tested[op] || coveredElsewhere[op] {
+		if tested[op] || coveredElsewhere[op] || structure[op] {
 			continue
 		}
 		t.Errorf("%s reaches no test through ExecuteInstruction", ir.ResolveOpCode(op))

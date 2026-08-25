@@ -1,7 +1,6 @@
 package evaluator
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -14,49 +13,6 @@ import (
 	"github.com/guiferpa/aurora/wire/ir"
 	"github.com/guiferpa/aurora/wire/module"
 )
-
-// deferMark opens every defer blob. The value handed to a program is an ordinary tape
-// holding an index, so any number can be presented as a deferred scope; the mark is what
-// keeps "call: value is not a deferred scope" an error rather than a silent jump into
-// whatever scope happens to sit at that index.
-const deferMark = 0xAE
-
-// encodeDeferBlob serializes a deferred scope into a blob for storage in environ.defers.
-// Layout: [0] mark, [1:9] from (uint64 BE), [9:17] to (uint64 BE), [17] keyLen,
-// [18:18+N] returnKey. Total length: 18 + len(returnKey).
-func encodeDeferBlob(from, to uint64, returnKey string) []byte {
-	key := []byte(returnKey)
-	b := make([]byte, 0, 18+len(key))
-	b = append(b, deferMark)
-	b = append(b, byteutil.FromUint64(from)...)
-	b = append(b, byteutil.FromUint64(to)...)
-	b = append(b, byte(len(key)))
-	b = append(b, key...)
-	return b
-}
-
-// decodeDeferBlob parses a blob from encodeDeferBlob.
-// Returns (from, to, returnKey, true) or (0, 0, "", false) when val is too short, does not
-// carry the mark, or is otherwise not a deferred scope.
-func decodeDeferBlob(val []byte) (from, to uint64, returnKey string, ok bool) {
-	const minLen = 18
-	if len(val) < minLen || val[0] != deferMark {
-		return 0, 0, "", false
-	}
-	from = binary.BigEndian.Uint64(val[1:9])
-	to = binary.BigEndian.Uint64(val[9:17])
-	keyLen := int(val[17])
-	if 18+keyLen > len(val) {
-		return 0, 0, "", false
-	}
-	return from, to, string(val[18 : 18+keyLen]), true
-}
-
-// deferKey is the internal key of a deferred scope, derived from its index. Keeping the key
-// separate from the value lets the value be an ordinary tape, whatever the tape size.
-func deferKey(index uint64) string {
-	return byteutil.ToHex(byteutil.FromUint64(index))
-}
 
 // A Printer is how a value leaves a program.
 //
@@ -72,9 +28,6 @@ type Evaluator struct {
 	// into: a name bound to a scope holds the number of a block, and running the scope is
 	// running from there.
 	blocks        []ir.Block
-	cursor        uint64
-	end           uint64
-	insts         []ir.Instruction
 	assertResults []eval.AssertResult // what each assertion did, in the order they ran
 	asserts       bool                // whether assertions are evaluated at all
 	printBytes    Printer
@@ -154,21 +107,18 @@ func (e *Evaluator) setCondition(label []byte, cond bool) {
 func (e *Evaluator) EvaluateAdd(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Add(x, y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateSubtract(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Sub(x, y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateMultiply(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Mul(x, y))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -178,42 +128,36 @@ func (e *Evaluator) EvaluateDivide(label []byte, left, right ir.Operand) error {
 		return fmt.Errorf("integer divide by zero")
 	}
 	e.setValue(label, new(uint256.Int).Div(x, y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateExponential(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setValue(label, new(uint256.Int).Exp(x, y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateDiff(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, !x.Eq(y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateEquals(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, x.Eq(y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateBigger(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, x.Gt(y))
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateSmaller(label []byte, left, right ir.Operand) error {
 	x, y := e.operands(left, right)
 	e.setCondition(label, x.Lt(y))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -221,7 +165,6 @@ func (e *Evaluator) EvaluateAnd(label []byte, left, right ir.Operand) error {
 	x := byteutil.ToBoolean(e.value(left))
 	y := byteutil.ToBoolean(e.value(right))
 	e.setCondition(label, x && y)
-	e.IncrementCursor()
 	return nil
 }
 
@@ -229,7 +172,6 @@ func (e *Evaluator) EvaluateOr(label []byte, left, right ir.Operand) error {
 	x := byteutil.ToBoolean(e.value(left))
 	y := byteutil.ToBoolean(e.value(right))
 	e.setCondition(label, x || y)
-	e.IncrementCursor()
 	return nil
 }
 
@@ -251,7 +193,6 @@ func (e *Evaluator) EvaluatePull(label []byte, left, right ir.Operand) error {
 
 	// Keeping the last bytes drops what was shifted out on the left.
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(shifted, e.tapeSize))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -266,7 +207,6 @@ func (e *Evaluator) EvaluatePush(label []byte, left, right ir.Operand) error {
 
 	// Keeping the first bytes drops what was shifted out on the right.
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.LeadingTape(shifted, e.tapeSize))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -289,7 +229,6 @@ func (e *Evaluator) EvaluateJoinOver(label []byte, operands []ir.Operand) error 
 	}
 
 	e.environ.SetTemp(byteutil.ToHex(label), joined)
-	e.IncrementCursor()
 	return nil
 }
 
@@ -308,7 +247,6 @@ func (e *Evaluator) EvaluatePullOver(label []byte, operands []ir.Operand) error 
 	}
 
 	e.environ.SetTemp(byteutil.ToHex(label), tape)
-	e.IncrementCursor()
 	return nil
 }
 
@@ -321,7 +259,6 @@ func (e *Evaluator) EvaluateJoin(label []byte, left, right ir.Operand) error {
 	joined = append(joined, tape...)
 
 	e.environ.SetTemp(byteutil.ToHex(label), joined)
-	e.IncrementCursor()
 	return nil
 }
 
@@ -341,14 +278,12 @@ func (e *Evaluator) EvaluateField(label []byte, left, right ir.Operand) error {
 	}
 
 	e.environ.SetTemp(byteutil.ToHex(label), value)
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateHead(label []byte, left, right ir.Operand) error {
 	significant, n := e.tapeSlice(left, right)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[:n], e.tapeSize))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -356,7 +291,6 @@ func (e *Evaluator) EvaluateHead(label []byte, left, right ir.Operand) error {
 func (e *Evaluator) EvaluateTail(label []byte, left, right ir.Operand) error {
 	significant, n := e.tapeSlice(left, right)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(significant[n:], e.tapeSize))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -408,13 +342,11 @@ func (e *Evaluator) print(printer Printer, label []byte, left ir.Operand) error 
 	}
 
 	e.environ.SetTemp(byteutil.ToHex(label), printed)
-	e.IncrementCursor()
 	return nil
 }
 
 func (e *Evaluator) EvaluateSave(label []byte, left, right ir.Operand) error {
 	e.environ.SetTemp(byteutil.ToHex(label), e.value(left))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -451,52 +383,6 @@ func (e *Evaluator) EvaluateLoad(label []byte, left, right ir.Operand) error {
 		return fmt.Errorf("identifier %s not found", left.Bytes())
 	}
 	e.environ.SetTemp(byteutil.ToHex(label), val)
-	e.IncrementCursor()
-	return nil
-}
-
-func (e *Evaluator) EvaluateIf(label []byte, left, right ir.Operand) error {
-	test := byteutil.ToBoolean(e.value(left))
-	next := environ.NewEnviron(environ.NewEnvironOptions{})
-	next.SetArguments(e.environ.GetArguments())
-	e.environ = e.environ.Ahead(next)
-	if test {
-		e.cursor++
-		return nil
-	}
-	e.AddCursor(byteutil.ToUint64(right.Bytes()) + 1)
-	return nil
-}
-
-func (e *Evaluator) EvaluateJump(label []byte, left, right ir.Operand) error {
-	e.AddCursor(byteutil.ToUint64(left.Bytes()) + 1)
-	return nil
-}
-
-// EvaluateBeginScope opens a block: a place for names, inside whatever is running.
-//
-// It carries the values applied to the running scope in with it. A block is not applied
-// anything of its own — nothing calls it, control walks into it — so "the vector applied to
-// this scope" is still the enclosing one's, and feed reads it. An arm of an "if" already did
-// this; a block did not, so a block written inside a scope could not read what the scope was
-// called with, and answered as if it had been called with nothing.
-func (e *Evaluator) EvaluateBeginScope(label []byte, left, right ir.Operand) error {
-	next := environ.NewEnviron(environ.NewEnvironOptions{})
-	next.SetArguments(e.environ.GetArguments())
-	e.environ = e.environ.Ahead(next)
-	e.IncrementCursor()
-	return nil
-}
-
-func (e *Evaluator) EvaluateReturn(_ []byte, left, right ir.Operand) error {
-	label := byteutil.ToHex(left.Bytes())
-	value := e.value(right)
-	if value == nil {
-		value = byteutil.FalseTape(e.tapeSize)
-	}
-	e.environ = e.environ.GetPrevious()
-	e.environ.SetTemp(label, value)
-	e.IncrementCursor()
 	return nil
 }
 
@@ -508,7 +394,6 @@ func (e *Evaluator) EvaluateIdent(label []byte, left, right ir.Operand) error {
 	val := e.value(right)
 	e.environ.SetIdent(k, val)
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
-	e.IncrementCursor()
 	return nil
 }
 
@@ -517,24 +402,6 @@ func (e *Evaluator) EvaluateGetArg(label []byte, left, right ir.Operand) error {
 	v := builtin.FeedFunction(e.environ.GetArguments(), index, e.tapeSize)
 	l := byteutil.ToHex(label)
 	e.environ.SetTemp(l, v)
-	e.IncrementCursor()
-	return nil
-}
-
-func (e *Evaluator) EvaluateDefer(label []byte, left, right ir.Operand) error {
-	bodylength := byteutil.ToUint64(right.Bytes())
-	// e.cursor is the index of this OpDefer; the next instruction is the start of the deferred block (OpBeginScope).
-	from := e.cursor + 1
-	to := from + bodylength // index of OpReturn (last instruction of the block)
-	returnKey := byteutil.ToHex(left.Bytes())
-
-	// The value of a defer is its index as a tape, like every other value in the language.
-	// It used to be the hex key itself — 16 bytes of ASCII text that ignored the tape size.
-	index := uint64(e.environ.DefersLength())
-	e.environ.SetDefer(deferKey(index), encodeDeferBlob(from, to, returnKey))
-	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FromUint256(uint256.NewInt(index), e.tapeSize))
-
-	e.AddCursor(1 + bodylength)
 	return nil
 }
 
@@ -546,70 +413,42 @@ func (e *Evaluator) EvaluateDefer(label []byte, left, right ir.Operand) error {
 // the call applied fewer values than the caller had received.
 func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error {
 	left := operands[0].Bytes()
-	val, home := e.resolve(left)
+	val, _ := e.resolve(left)
 	if val == nil {
 		return fmt.Errorf("call: %s identifier not found", left)
 	}
 	index := byteutil.ToUint256(val, e.tapeSize).Uint64()
 
 	// A name bound to a scope holds the number of a block, and running the scope is running
-	// from there. It used to hold an index into a list of scopes, each of which recorded where
-	// its body sat as a stretch of the instructions being executed — so a call was a range,
-	// and the value it answered with had to be fetched afterwards from a key both sides agreed
-	// on. A block ends by answering, so the answer comes back from running it.
-	if e.blocks != nil {
-		// A value that does not name a block is a value with no scope behind it: a number, or
-		// what a block answered with. Calling it is the same mistake it always was.
-		if int(index) >= len(e.blocks) || index == 0 {
-			return fmt.Errorf("call: value is not a deferred scope")
-		}
-
-		args := make(map[uint64][]byte, len(operands)-1)
-		for at, operand := range operands[1:] {
-			args[uint64(at)] = e.value(operand)
-		}
-		next := environ.NewEnviron(environ.NewEnvironOptions{})
-		next.SetArguments(args)
-
-		outer := e.environ
-		e.environ = outer.Ahead(next)
-		answered, err := e.RunBlocks(e.blocks, ir.Point{Block: ir.BlockID(index)}, nil)
-		e.environ = outer
-		if err != nil {
-			return err
-		}
-		if answered == nil {
-			answered = byteutil.FalseTape(e.tapeSize)
-		}
-		e.environ.SetTemp(byteutil.ToHex(label), answered)
-		e.IncrementCursor()
-		return nil
-	}
-
-	blob := home.GetLocalDefer(deferKey(index))
-	if blob == nil {
+	// from there. A value that names no block is a value with no scope behind it — a number,
+	// or what a block answered with — and block zero is the top of the program, which nothing
+	// is bound to.
+	if int(index) >= len(e.blocks) || index == 0 {
 		return fmt.Errorf("call: value is not a deferred scope")
 	}
-	from, to, returnKey, ok := decodeDeferBlob(blob)
-	if !ok {
-		return fmt.Errorf("call: invalid deferred scope data")
-	}
+
+	// The values arrive as operands, so the place built for the call holds exactly them. They
+	// used to arrive through the place of whoever was calling, written there an instruction
+	// each — which meant a scope calling another handed over its own values as well, wherever
+	// the call applied fewer than the caller had received.
 	args := make(map[uint64][]byte, len(operands)-1)
 	for at, operand := range operands[1:] {
 		args[uint64(at)] = e.value(operand)
 	}
 	next := environ.NewEnviron(environ.NewEnvironOptions{})
 	next.SetArguments(args)
-	e.environ = e.environ.Ahead(next)
-	savedCursor, savedEnd := e.cursor, e.end
-	_, err := e.ExecuteInstructions(from+1, to)
-	e.cursor, e.end = savedCursor, savedEnd
+
+	outer := e.environ
+	e.environ = outer.Ahead(next)
+	answered, err := e.RunBlocks(e.blocks, ir.Point{Block: ir.BlockID(index)}, nil)
+	e.environ = outer
 	if err != nil {
 		return err
 	}
-	retval := e.environ.GetTemp(returnKey)
-	e.environ.SetTemp(byteutil.ToHex(label), retval)
-	e.IncrementCursor()
+	if answered == nil {
+		answered = byteutil.FalseTape(e.tapeSize)
+	}
+	e.environ.SetTemp(byteutil.ToHex(label), answered)
 	return nil
 }
 
@@ -623,7 +462,6 @@ func (e *Evaluator) EvaluateAssert(label []byte, left, right ir.Operand) error {
 
 	if !e.asserts {
 		e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
-		e.IncrementCursor()
 		return nil
 	}
 
@@ -637,37 +475,7 @@ func (e *Evaluator) EvaluateAssert(label []byte, left, right ir.Operand) error {
 	e.assertResults = append(e.assertResults, result)
 
 	e.environ.SetTemp(byteutil.ToHex(label), byteutil.FalseTape(e.tapeSize))
-	e.IncrementCursor()
 	return nil
-}
-
-func (e *Evaluator) CanReadInstructions() bool {
-	return e.cursor < e.end
-}
-
-func (e *Evaluator) GetInstruction() ir.Instruction {
-	return e.insts[e.cursor]
-}
-
-func (e *Evaluator) SetInstructions(insts []ir.Instruction) {
-	e.insts = insts
-}
-
-func (e *Evaluator) SetInstructionsOffset(begin, end uint64) {
-	e.cursor = begin
-	e.end = end
-}
-
-func (e *Evaluator) GetInstructionsOffset() (uint64, uint64) {
-	return e.cursor, e.end
-}
-
-func (e *Evaluator) IncrementCursor() {
-	e.cursor++
-}
-
-func (e *Evaluator) AddCursor(offset uint64) {
-	e.cursor += offset
 }
 
 // operation is what an opcode runs: the label the result is written under, and the two
@@ -722,17 +530,14 @@ func init() {
 		ir.OpLoad:  (*Evaluator).EvaluateLoad,
 		ir.OpIdent: (*Evaluator).EvaluateIdent,
 
-		// Control flow
-		ir.OpIf:         (*Evaluator).EvaluateIf,
-		ir.OpJump:       (*Evaluator).EvaluateJump,
-		ir.OpBeginScope: (*Evaluator).EvaluateBeginScope,
-		ir.OpReturn:     (*Evaluator).EvaluateReturn,
+		// Control is not an instruction. Where a program goes next is what a block's
+		// terminator says, and an instruction computes a value and does nothing else — which
+		// is why there is nothing to run for OpIf, OpJump, OpBeginScope or OpReturn. They are
+		// how the emitter writes structure down on its way to the blocks, and the crossing
+		// consumes them.
 
 		// Arguments
 		ir.OpGetFeed: (*Evaluator).EvaluateGetArg,
-
-		// Defer
-		ir.OpDefer: (*Evaluator).EvaluateDefer,
 
 		// Tape operations
 		ir.OpPull:  (*Evaluator).EvaluatePull,
@@ -904,60 +709,9 @@ func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 	}
 	op, ok := operations[inst.GetOpCode()]
 	if !ok {
-		e.IncrementCursor()
 		return nil
 	}
 	return op(e, inst.GetLabel(), inst.GetLeft(), inst.GetRight())
-}
-
-func (e *Evaluator) ExecuteInstructions(from, to uint64) (eval.Returns, error) {
-	e.SetInstructionsOffset(from, to)
-
-	for e.CanReadInstructions() {
-		inst := e.GetInstruction()
-		if err := e.ExecuteInstruction(inst); err != nil {
-			return nil, err
-		}
-	}
-
-	return e.environ.GetTemps(), nil
-}
-
-func (e *Evaluator) Evaluate(insts []ir.Instruction) (eval.Returns, error) {
-	e.SetInstructions(insts)
-	returns, err := e.ExecuteInstructions(0, uint64(len(e.insts)))
-	return returns, err
-}
-
-// EvaluateRange sets the full instruction slice and runs only the range [from, to).
-// Used by the REPL: buffer accumulates all instructions; each line we append and run only the new slice,
-// so defer from/to indices stay valid in the same buffer.
-func (e *Evaluator) EvaluateRange(insts []ir.Instruction, from, to uint64) (eval.Returns, error) {
-	e.SetInstructions(insts)
-	e.environ.ClearTemps()
-	returns, err := e.ExecuteInstructions(from, to)
-	return returns, err
-}
-
-// EvaluateModule runs one module's range, in the environ that module's names belong to.
-//
-// A program of several files is one stream of instructions, and each module is a range of it
-// — a call reaching across modules lands on a body that has to be there, so the stream is
-// never sliced. What changes from range to range is where the names go: a module binds into
-// an environ of its own, which is what lets two modules bind the same word.
-//
-// The empty name is the file somebody asked to run. It has no environ of its own; it has the
-// one every chain ends at, which is where a program with no modules at all has always run.
-func (e *Evaluator) EvaluateModule(insts []ir.Instruction, from, to uint64, id string) (eval.Returns, error) {
-	if id == "" {
-		return e.EvaluateRange(insts, from, to)
-	}
-
-	outer := e.environ
-	e.environ = outer.OpenModule(id)
-	defer func() { e.environ = outer }()
-
-	return e.EvaluateRange(insts, from, to)
 }
 
 type NewEvaluatorOptions struct {
@@ -975,9 +729,6 @@ type NewEvaluatorOptions struct {
 
 func New(options NewEvaluatorOptions) *Evaluator {
 	return &Evaluator{
-		cursor:        0,
-		end:           0,
-		insts:         make([]ir.Instruction, 0),
 		assertResults: make([]eval.AssertResult, 0),
 		asserts:       options.Asserts,
 		printBytes:    options.PrintBytes,

@@ -8,6 +8,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // evaluateAsserts compiles source as a test file and runs it, with assertions on or off.
@@ -22,13 +23,13 @@ func evaluateAsserts(t *testing.T, source string, asserts bool) *Evaluator {
 	if err != nil {
 		t.Fatalf("parser: %v", err)
 	}
-	insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+	blocks, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}
 
 	ev := New(NewEvaluatorOptions{Asserts: asserts})
-	if _, err := ev.Evaluate(insts); err != nil {
+	if _, err := ev.EvaluateBlocks(blocks, ir.Point{}, nil, ""); err != nil {
 		t.Fatalf("evaluating: %v", err)
 	}
 	return ev

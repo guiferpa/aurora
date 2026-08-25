@@ -214,18 +214,19 @@ func TestLoadLaysEveryModuleEndToEnd(t *testing.T) {
 		t.Errorf("the range names %q, want the file it came from", program.Ranges[0].Filename)
 	}
 
-	previous := uint64(0)
+	// Each file begins after the one before it, and the first begins at the first block.
+	previous := ir.BlockID(0)
 	for i, each := range program.Ranges {
-		if each.From != previous {
-			t.Errorf("range %d starts at %d, want %d", i, each.From, previous)
+		if i == 0 && each.Top != 0 {
+			t.Errorf("the first file begins at block %d, want the first", each.Top)
 		}
-		if each.To <= each.From {
-			t.Errorf("range %d is empty", i)
+		if i > 0 && each.Top <= previous {
+			t.Errorf("file %d begins at block %d, which is not after %d", i, each.Top, previous)
 		}
-		previous = each.To
+		previous = each.Top
 	}
-	if previous != uint64(len(program.Instructions)) {
-		t.Errorf("the ranges cover %d instructions, the program has %d", previous, len(program.Instructions))
+	if int(previous) >= len(program.Blocks) {
+		t.Errorf("the last file begins at block %d, and the program has %d", previous, len(program.Blocks))
 	}
 }
 

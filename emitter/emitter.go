@@ -10,7 +10,7 @@ import (
 )
 
 type Emitter interface {
-	Emit(tree ast.AST) ([]ir.Instruction, error)
+	Emit(tree ast.AST) ([]ir.Block, error)
 	EmitProgram(tree ast.AST) (ir.Program, error)
 }
 
@@ -506,12 +506,12 @@ func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLit
 
 }
 
-func (e *emt) Emit(tree ast.AST) ([]ir.Instruction, error) {
+func (e *emt) Emit(tree ast.AST) ([]ir.Block, error) {
 	program, err := e.EmitProgram(tree)
 	if err != nil {
 		return nil, err
 	}
-	return program.Instructions, nil
+	return program.Blocks, nil
 }
 
 // placed answers where each top-level expression begins among the blocks.
@@ -521,7 +521,7 @@ func (e *emt) Emit(tree ast.AST) ([]ir.Instruction, error) {
 // has instructions inside the scope's own blocks, and those are reached by being called rather
 // than by the run arriving at them — so the place an expression begins is where its binding
 // landed, not where its body did.
-func placed(exprs []ir.Expression, insts []ir.Instruction, blocks []ir.Block, places map[string]ir.Point) []ir.Expression {
+func placed(exprs []reach, insts []ir.Instruction, blocks []ir.Block, places map[string]ir.Point) []ir.Expression {
 	runs := make(map[ir.BlockID]bool)
 	for _, id := range ir.Reaches(blocks, 0) {
 		runs[id] = true
@@ -529,16 +529,25 @@ func placed(exprs []ir.Expression, insts []ir.Instruction, blocks []ir.Block, pl
 
 	out := make([]ir.Expression, 0, len(exprs))
 	for _, expr := range exprs {
-		for at := expr.From; at < expr.To && at < len(insts); at++ {
-			point, known := places[byteutil.ToHex(insts[at].GetLabel())]
+		at := ir.Expression{Label: expr.label}
+		for over := expr.from; over < expr.to && over < len(insts); over++ {
+			point, known := places[byteutil.ToHex(insts[over].GetLabel())]
 			if known && runs[point.Block] {
-				expr.At = point
+				at.At = point
 				break
 			}
 		}
-		out = append(out, expr)
+		out = append(out, at)
 	}
 	return out
+}
+
+// A reach is one top-level expression while it is still a stretch of the instruction list the
+// emitter builds on its way to the blocks. It does not leave this package: what a caller is
+// given is where the expression begins among the blocks.
+type reach struct {
+	from, to int
+	label    []byte
 }
 
 // EmitProgram compiles ast and records where each top-level expression landed, so a caller
@@ -546,12 +555,12 @@ func placed(exprs []ir.Expression, insts []ir.Instruction, blocks []ir.Block, pl
 func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 	tc := 0
 	insts := make([]ir.Instruction, 0)
-	exprs := make([]ir.Expression, 0, len(tree.Nodes))
+	exprs := make([]reach, 0, len(tree.Nodes))
 
 	for _, node := range tree.Nodes {
 		from := len(insts)
 		label := EmitInstruction(&tc, &insts, node, e.tapeSize)
-		exprs = append(exprs, ir.Expression{From: from, To: len(insts), Label: label})
+		exprs = append(exprs, reach{from: from, to: len(insts), label: label})
 	}
 
 	warnings := checkDeferCapacity(tree.Nodes, e.tapeSize)
@@ -561,10 +570,9 @@ func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 	blocks, places := ir.PlacedBlocksOf(insts)
 
 	return ir.Program{
-		Instructions: insts,
-		Blocks:       blocks,
-		Expressions:  placed(exprs, insts, blocks, places),
-		Warnings:     warnings,
+		Blocks:      blocks,
+		Expressions: placed(exprs, insts, blocks, places),
+		Warnings:    warnings,
 	}, nil
 }
 

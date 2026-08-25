@@ -47,8 +47,10 @@ func (s *Session) Build(ctx context.Context, source, outputPath string) (BuildRe
 	// what it can carry: the second is the builder's to answer, since it is the one writing,
 	// and it is about the binary rather than about any one file.
 	s.report(program)
-	ReportWarnings(s.warnings, source, evm.Warnings(program.Instructions))
-	report.Instructions = len(program.Instructions)
+	ReportWarnings(s.warnings, source, evm.Warnings(program.Blocks))
+	for _, block := range program.Blocks {
+		report.Instructions += len(block.Insts)
+	}
 
 	// Assembling and writing are two things, and the builder only does the first: it
 	// hands the bytecode back, and where it lands is decided here.

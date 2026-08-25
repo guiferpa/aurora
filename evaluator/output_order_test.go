@@ -9,6 +9,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // tagged is a printer that collects what it was asked to print, tagged, so the order of a
@@ -46,8 +47,13 @@ func runInOrder(t *testing.T, source string) []string {
 		PrintBytes: tagged{tag: "printb", lines: &lines},
 	})
 
-	for _, expr := range program.Expressions {
-		temps, err := ev.EvaluateRange(program.Instructions, uint64(expr.From), uint64(expr.To))
+	for at, expr := range program.Expressions {
+		var until func(ir.Point) bool
+		if at+1 < len(program.Expressions) {
+			next := program.Expressions[at+1].At
+			until = func(point ir.Point) bool { return point == next }
+		}
+		temps, err := ev.EvaluateBlocks(program.Blocks, expr.At, until, "")
 		if err != nil {
 			t.Fatalf("evaluating: %v", err)
 		}

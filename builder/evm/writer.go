@@ -69,6 +69,13 @@ func WriteSave(w io.Writer, left []byte, size int) (int, error) {
 	return WritePush(w, left, size)
 }
 
+// WriteScopeValue puts on the stack what a scope is worth on a chain, which is the neutral
+// value. A scope is not a value here: it is code, reached by a transaction naming it or by
+// another scope calling it, and neither of those goes through where the value was kept.
+func WriteScopeValue(w io.Writer, size int) (int, error) {
+	return WritePush(w, nil, size)
+}
+
 // WriteIdent stores a value under a name, in the place the frame keeps for it.
 //
 // The address goes in two bytes. It used to go in one, and a slot is thirty-two wide, so the
@@ -1115,20 +1122,16 @@ func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, s
 	}
 
 	if op == ir.OpSave {
-		if _, err := WriteSave(bs, inst.GetLeft().Bytes(), scope.TapeSize); err != nil {
+		write := WriteSave
+		if inst.GetLeft().Kind() == ir.KindBlock {
+			write = func(w io.Writer, _ []byte, size int) (int, error) { return WriteScopeValue(w, size) }
+		}
+		if _, err := write(bs, inst.GetLeft().Bytes(), scope.TapeSize); err != nil {
 			return err
 		}
 	}
 
 	if op == ir.OpIdent {
-		// A name bound to a scope holds the neutral value here. A scope is not a value on a
-		// chain: it is code, reached by a transaction naming it or by another scope calling
-		// it, and neither of those goes through the name's place in memory.
-		if inst.GetRight().Kind() == ir.KindBlock {
-			if _, err := WritePush(bs, nil, scope.TapeSize); err != nil {
-				return err
-			}
-		}
 		if _, err := WriteIdent(bs, names, inst.GetLeft().Bytes()); err != nil {
 			return err
 		}

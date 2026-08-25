@@ -118,10 +118,13 @@ func (e *Evaluator) GetAssertErrors() []error {
 // value: the program wrote it down and there is nothing to look up. Everything a position
 // holding a value can be, and the only place that has to know it.
 func (e *Evaluator) value(operand ir.Operand) []byte {
-	// An immediate is the value, and a block is the number of a block — both are read off the
-	// operand rather than looked up. Everything else names something another instruction left.
-	if operand.Kind() == ir.KindImm || operand.Kind() == ir.KindBlock {
+	if operand.Kind() == ir.KindImm {
 		return operand.Bytes()
+	}
+	// A scope is worth the number of its block, and it is a value like any other — so it is a
+	// tape of this program's width, not of whatever width the number was written in.
+	if operand.Kind() == ir.KindBlock {
+		return byteutil.PaddingTape(operand.Bytes(), e.tapeSize)
 	}
 	return e.environ.GetTemp(byteutil.ToHex(operand.Bytes()))
 }
@@ -410,7 +413,7 @@ func (e *Evaluator) print(printer Printer, label []byte, left ir.Operand) error 
 }
 
 func (e *Evaluator) EvaluateSave(label []byte, left, right ir.Operand) error {
-	e.environ.SetTemp(byteutil.ToHex(label), left.Bytes())
+	e.environ.SetTemp(byteutil.ToHex(label), e.value(left))
 	e.IncrementCursor()
 	return nil
 }
@@ -555,6 +558,12 @@ func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error 
 	// and the value it answered with had to be fetched afterwards from a key both sides agreed
 	// on. A block ends by answering, so the answer comes back from running it.
 	if e.blocks != nil {
+		// A value that does not name a block is a value with no scope behind it: a number, or
+		// what a block answered with. Calling it is the same mistake it always was.
+		if int(index) >= len(e.blocks) || index == 0 {
+			return fmt.Errorf("call: value is not a deferred scope")
+		}
+
 		args := make(map[uint64][]byte, len(operands)-1)
 		for at, operand := range operands[1:] {
 			args[uint64(at)] = e.value(operand)
@@ -775,6 +784,13 @@ func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.Point, until func(ir.Po
 
 	id, at := from.Block, from.At
 	for {
+		// Arriving somewhere is the last thing the run before it does — the value it worked
+		// out is handed over on the way in — so the stop is read here, once control is
+		// already there and the handover is done. Reading it before would leave the value of
+		// whatever was running behind.
+		if until != nil && until(ir.Point{Block: id, At: at}) {
+			return nil, nil
+		}
 		if int(id) >= len(blocks) {
 			return nil, fmt.Errorf("no block numbered %d", id)
 		}
@@ -799,9 +815,6 @@ func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.Point, until func(ir.Po
 		target := term.Targets[0]
 		if term.Kind == ir.BrIf && !byteutil.ToBoolean(e.value(term.Cond)) {
 			target = term.Targets[1]
-		}
-		if until != nil && until(ir.Point{Block: target.Block, At: 0}) {
-			return nil, nil
 		}
 		id, at = e.arrive(blocks[target.Block], target), 0
 	}

@@ -307,7 +307,7 @@ func TestAConstructionIsOneInstruction(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			insts := compileWith(t, tc.source, 0).Instructions
+			insts := everyInstruction(compileWith(t, tc.source, 0).Blocks)
 
 			found := 0
 			for _, inst := range insts {

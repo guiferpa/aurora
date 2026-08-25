@@ -12,6 +12,12 @@ import (
 )
 
 // instructionsOf builds the instruction stream by opcode, which is all Warnings reads.
+// blocksOf answers a program of one block holding these opcodes, which is what the backend is
+// handed now that structure is the block rather than an instruction.
+func blocksOf(opcodes ...byte) []ir.Block {
+	return []ir.Block{{Insts: instructionsOf(opcodes...)}}
+}
+
 func instructionsOf(opcodes ...byte) []ir.Instruction {
 	insts := make([]ir.Instruction, 0, len(opcodes))
 	for i, op := range opcodes {
@@ -87,7 +93,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			warnings := Warnings(instructionsOf(tc.opcodes...))
+			warnings := Warnings(blocksOf(tc.opcodes...))
 
 			if tc.wantNone {
 				if len(warnings) != 0 {
@@ -113,7 +119,7 @@ func TestWarningsNamesWhatDoesNotReachTheBytecode(t *testing.T) {
 
 // The same feature used twice is one thing to say, not two.
 func TestWarningsSayEachThingOnce(t *testing.T) {
-	warnings := Warnings(instructionsOf(
+	warnings := Warnings(blocksOf(
 		ir.OpPrintDecimal, ir.OpAssert, ir.OpPrintDecimal, ir.OpAssert,
 	))
 
@@ -125,7 +131,7 @@ func TestWarningsSayEachThingOnce(t *testing.T) {
 // They arrive in the order the program uses them, so the first thing a reader is told about
 // is the first thing that goes missing.
 func TestWarningsFollowTheProgram(t *testing.T) {
-	warnings := Warnings(instructionsOf(ir.OpPrintDecimal, ir.OpAssert))
+	warnings := Warnings(blocksOf(ir.OpPrintDecimal, ir.OpAssert))
 
 	if len(warnings) != 2 {
 		t.Fatalf("said %d things, want two", len(warnings))

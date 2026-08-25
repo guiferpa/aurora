@@ -90,29 +90,20 @@ func listing(names map[string]bool) string {
 	return strings.Join(offered, ", ")
 }
 
-// A Program is what runs: one stream of instructions, the same program as blocks, and which
-// module each part of it is.
+// A Program is what runs: the blocks of every file, and which file each part of them is.
 //
-// The stream is never sliced. A deferred scope records where its body sits as positions in
-// the instructions being executed, so a call reaching into another module lands on a body
-// that has to be among them — what changes from range to range is where the names go, not
-// which instructions are there.
-//
-// The blocks say the same thing without positions. Each file is compiled on its own and
-// numbers its blocks from zero, so the ones after the first are renumbered as they are joined,
-// and each file's top carries on to the next — which is the order they have to run in, and the
-// order they were found in.
+// Each file is compiled on its own and numbers its blocks from zero, so the ones after the
+// first are renumbered as they are joined, and each file's top carries on to the next — which
+// is the order they have to run in, and the order they were found in.
 type Program struct {
-	Instructions []ir.Instruction
-	Blocks       []ir.Block
-	Ranges       []Range
+	Blocks []ir.Block
+	Ranges []Range
 }
 
 // A Range is one module's part of the program, and what compiling it had to say.
 type Range struct {
 	Module   module.ID
 	Filename string
-	From, To uint64
 	// Top is the block this module begins at.
 	Top      ir.BlockID
 	Warnings []diag.Warning
@@ -147,18 +138,14 @@ func Load(modules []module.Module, emit Emit) (Program, error) {
 	}
 
 	program := Program{
-		Instructions: make([]ir.Instruction, 0),
-		Blocks:       make([]ir.Block, 0),
-		Ranges:       make([]Range, 0, len(modules)),
+		Blocks: make([]ir.Block, 0),
+		Ranges: make([]Range, 0, len(modules)),
 	}
 	for _, each := range modules {
 		compiled, err := emit(each.Tree)
 		if err != nil {
 			return Program{}, err
 		}
-
-		from := uint64(len(program.Instructions))
-		program.Instructions = append(program.Instructions, compiled.Instructions...)
 
 		// A file numbers its blocks from zero, so every one after the first moves. And the
 		// file before this one stops answering and carries on into it instead: a program made
@@ -173,8 +160,6 @@ func Load(modules []module.Module, emit Emit) (Program, error) {
 		program.Ranges = append(program.Ranges, Range{
 			Module:   each.ID,
 			Filename: each.Tree.Filename,
-			From:     from,
-			To:       uint64(len(program.Instructions)),
 			Top:      top,
 			Warnings: compiled.Warnings,
 		})

@@ -9,7 +9,6 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
-	"github.com/guiferpa/aurora/wire/ir"
 )
 
 type PickedRuntimeCodeExpectation struct {
@@ -59,7 +58,7 @@ false;
 			return
 		}
 
-		builder := NewBuilder(ir.BlocksOf(insts), NewBuilderOptions{})
+		builder := NewBuilder(insts, NewBuilderOptions{})
 		rc, err := builder.PickRuntimeCode()
 		if err != nil {
 			t.Errorf("%v: %v", c.Name, err)
@@ -173,7 +172,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}
-			rc, err := NewBuilder(ir.BlocksOf(insts), NewBuilderOptions{}).PickRuntimeCode()
+			rc, err := NewBuilder(insts, NewBuilderOptions{}).PickRuntimeCode()
 			if err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return

@@ -4,6 +4,63 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.9.0-alpha — 2026-08-25
+
+### A manifest can name a value instead of holding it
+
+```toml
+[profiles.main]
+  rpc = "${{ AURORA_RPC }}"
+  privkey = "${{ AURORA_PRIVKEY }}"
+```
+
+Read from the project's `.env`, or from the environment the command runs in when `.env` does
+not have it. That order is the point: a project says what it needs beside itself, so it can be
+cloned and run, and a machine that knows better — a build server holding the real key, somebody
+running against another chain — still gets to say so for whatever the project did not write
+down.
+
+A name nothing sets is **refused**, not read as empty. An empty value reaches a deploy as a key
+that is not a key, and the failure that follows says nothing about the manifest that caused it.
+
+The braces are doubled so a shell cannot mistake one for its own: `${NAME}` and `$NAME` are
+left exactly as written. Only `rpc` and `privkey` are read this way — a path is a path and a
+name is a name, and neither is a thing a project keeps somewhere else.
+
+`.env` is ignored by the repository, wherever a project sits. So is `.aurora.deploys.toml`,
+which names a contract's address and its transaction: the rule was anchored at the repository
+root, and a project is not only there.
+
+### The editor says what a chain would not carry
+
+A print writes no bytecode — the log has nowhere to go on a chain, and that is a decision — and
+the only thing that said so was `aurora build`, which is after the writing is done and often
+after the deciding is done too. The editor says it now, on the line the print is on, the same
+as every other warning.
+
+It is a second port and not a wider first one, because it is a second question asked of a
+different phase: the emitter answers what is wrong with a program, a backend answers what would
+be missing from the binary it would write.
+
+### Fixes
+
+- **A scope reading a name from around it answered zeros on a chain.**
+
+  ```
+  ident base = 30;
+  ident show = defer { base * 2; };
+  ```
+
+  answered 0 where the program answers 60. It compiled, it deployed, and it said nothing — a
+  name lives in the frame of the scope that bound it, so a scope reading one from outside was
+  reading its own frame at the place that name has in another scope. It is refused now, and
+  says which mistake it is.
+
+  **Breaking:** a program written that way no longer compiles. Binding the name inside the
+  scope is what works, and `examples/project` shows it.
+
+---
+
 ## v0.8.0-alpha — 2026-08-25
 
 ### The EVM backend carries the whole language

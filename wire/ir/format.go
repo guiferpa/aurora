@@ -29,3 +29,65 @@ func Format(insts []Instruction) string {
 	}
 	return bs.String()
 }
+
+// FormatBlocks writes a program as a person reads it: each block, what it takes, what it
+// computes, and how it ends.
+//
+// It replaces printing a list. A list read in order was once the program in order, and it is
+// not: the block a run goes to next is the one its terminator names, which is what these lines
+// say and a list never could.
+func FormatBlocks(blocks []Block) string {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	for _, block := range blocks {
+		fmt.Fprintf(bs, "b%d(", block.ID)
+		for at, param := range block.Params {
+			if at > 0 {
+				fmt.Fprint(bs, ", ")
+			}
+			if len(param) == 0 {
+				fmt.Fprint(bs, "_")
+				continue
+			}
+			fmt.Fprint(bs, byteutil.ToHexPretty(param))
+		}
+		fmt.Fprintln(bs, ")")
+
+		for _, inst := range block.Insts {
+			fmt.Fprintf(bs, "    %s %s", byteutil.ToHexPretty(inst.GetLabel()), ResolveOpCode(inst.GetOpCode()))
+			for _, operand := range inst.GetOperands() {
+				fmt.Fprintf(bs, " %s", operand)
+			}
+			fmt.Fprintln(bs)
+		}
+
+		fmt.Fprintf(bs, "    %s\n", block.Term)
+	}
+	return bs.String()
+}
+
+// String writes how a block ends, which is the one thing that says where a program goes next.
+func (t Terminator) String() string {
+	switch t.Kind {
+	case Ret:
+		return fmt.Sprintf("ret %s", t.Value)
+	case Br:
+		return fmt.Sprintf("br %s", t.Targets[0])
+	case BrIf:
+		return fmt.Sprintf("brif %s -> %s, %s", t.Cond, t.Targets[0], t.Targets[1])
+	}
+	return "?"
+}
+
+// String writes a block and what is handed to it.
+func (t Target) String() string {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	fmt.Fprintf(bs, "b%d(", t.Block)
+	for at, arg := range t.Args {
+		if at > 0 {
+			fmt.Fprint(bs, ", ")
+		}
+		fmt.Fprint(bs, arg)
+	}
+	fmt.Fprint(bs, ")")
+	return bs.String()
+}

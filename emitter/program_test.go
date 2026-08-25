@@ -32,8 +32,23 @@ func compile(t *testing.T, source string) ir.Program {
 	return compileWith(t, source, 0)
 }
 
-// A program reports one expression per top-level node, in source order, and the ranges
-// tile the instruction stream without gaps.
+// everyInstruction answers every instruction of a program, whichever block it landed in. A
+// test about what an instruction carries has no business knowing which block that is.
+func everyInstruction(blocks []ir.Block) []ir.Instruction {
+	insts := make([]ir.Instruction, 0)
+	for _, block := range blocks {
+		insts = append(insts, block.Insts...)
+	}
+	return insts
+}
+
+// A program reports one expression per top-level node, in source order, and each one says
+// where it begins among the blocks — which is what lets a runner answer where each expression
+// happens rather than all of them at the end.
+//
+// They begin one after another, which is the whole of what "in order" means when the thing
+// they are places in is no longer a list: a later expression is either further into the same
+// block or in a block reached after it.
 func TestEmitProgramCoversEveryTopLevelExpression(t *testing.T) {
 	program := compile(t, "ident a = 1;\nprintb a;\n2 + 3;\n")
 
@@ -41,21 +56,22 @@ func TestEmitProgramCoversEveryTopLevelExpression(t *testing.T) {
 		t.Fatalf("expected 3 expressions, got %d", len(program.Expressions))
 	}
 
-	previous := 0
+	previous := ir.Point{}
 	for i, expr := range program.Expressions {
-		if expr.From != previous {
-			t.Errorf("expression %d starts at %d, want %d", i, expr.From, previous)
+		if expr.At.Block < previous.Block || (expr.At.Block == previous.Block && expr.At.At < previous.At) {
+			t.Errorf("expression %d begins at b%d@%d, which is before b%d@%d",
+				i, expr.At.Block, expr.At.At, previous.Block, previous.At)
 		}
-		if expr.To <= expr.From {
-			t.Errorf("expression %d is empty: %+v", i, expr)
+		if i > 0 && expr.At == previous {
+			t.Errorf("expression %d begins where %d does, and they are two", i, i-1)
 		}
 		if len(expr.Label) == 0 {
 			t.Errorf("expression %d has no label", i)
 		}
-		previous = expr.To
+		previous = expr.At
 	}
-	if previous != len(program.Instructions) {
-		t.Errorf("expressions cover %d instructions, the program has %d", previous, len(program.Instructions))
+	if int(previous.Block) >= len(program.Blocks) {
+		t.Errorf("the last expression is in block %d, and the program has %d", previous.Block, len(program.Blocks))
 	}
 }
 
@@ -71,12 +87,12 @@ func TestEmitMatchesEmitProgram(t *testing.T) {
 		t.Fatalf("Emit: %v", err)
 	}
 
-	if len(insts) != len(program.Instructions) {
-		t.Fatalf("Emit gave %d instructions, EmitProgram %d", len(insts), len(program.Instructions))
+	if len(insts) != len(program.Blocks) {
+		t.Fatalf("Emit gave %d blocks, EmitProgram %d", len(insts), len(program.Blocks))
 	}
 	for i := range insts {
-		if !bytes.Equal(insts[i].GetLabel(), program.Instructions[i].GetLabel()) {
-			t.Errorf("instruction %d differs", i)
+		if ir.FormatBlocks(insts[i:i+1]) != ir.FormatBlocks(program.Blocks[i:i+1]) {
+			t.Errorf("block %d differs", i)
 		}
 	}
 }
@@ -101,12 +117,18 @@ func TestEmitProgramLabelsScopes(t *testing.T) {
 			}
 			expr := program.Expressions[0]
 
-			last := program.Instructions[expr.To-1]
-			if last.GetOpCode() != ir.OpReturn {
-				t.Fatalf("a scope should end in OpReturn, got %s", ir.ResolveOpCode(last.GetOpCode()))
+			// The value of a scope reaches whoever reads it by being handed over: the block
+			// the run carries on into takes it, under the name the expression answers by.
+			taken := false
+			for _, block := range program.Blocks {
+				for _, param := range block.Params {
+					if bytes.Equal(param, expr.Label) {
+						taken = true
+					}
+				}
 			}
-			if !bytes.Equal(last.GetLeft().Bytes(), expr.Label) {
-				t.Errorf("the value lands under %q but the expression reports %q", last.GetLeft().Bytes(), expr.Label)
+			if !taken {
+				t.Errorf("no block takes %q, and that is the name the expression answers by", expr.Label)
 			}
 		})
 	}
@@ -129,7 +151,7 @@ printd l.c;`
 
 	wanted := []uint64{2, 3}
 	read := make([]uint64, 0, len(wanted))
-	for _, inst := range compile(t, source).Instructions {
+	for _, inst := range everyInstruction(compile(t, source).Blocks) {
 		if inst.GetOpCode() != ir.OpField {
 			continue
 		}

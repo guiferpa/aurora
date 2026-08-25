@@ -16,7 +16,7 @@ import (
 // Each module is compiled on its own and appended to one stream, and each is run as a range
 // of it. That is what the loader will do, written out here so the evaluator can be asked the
 // questions only a program of several modules raises — and the stream is never sliced,
-// because a call crossing a module lands on a body that has to be among the instructions the
+// because a call crossing a module lands on a block that has to be among the blocks the
 // evaluator is holding.
 
 // file is one module of a program: the name it is known by, and what is in it. The empty name
@@ -41,9 +41,9 @@ func runProgram(t *testing.T, files ...file) ([]uint64, error) {
 	printed := make([]uint64, 0)
 	ev := New(NewEvaluatorOptions{PrintDecimal: decimals{&printed}})
 
-	instructions := make([]ir.Instruction, 0)
+	blocks := make([]ir.Block, 0)
 	ranges := make([]file, 0, len(files))
-	bounds := make([][2]uint64, 0, len(files))
+	tops := make([]ir.BlockID, 0, len(files))
 
 	for _, each := range files {
 		tokens, err := lexer.New().GetFilledTokens([]byte(each.source))
@@ -58,19 +58,29 @@ func runProgram(t *testing.T, files ...file) ([]uint64, error) {
 		if err != nil {
 			t.Fatalf("parser on %q: %v", each.id, err)
 		}
-		insts, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
+		compiled, err := emitter.New(emitter.NewEmitterOptions{}).Emit(tree)
 		if err != nil {
 			t.Fatalf("emitter on %q: %v", each.id, err)
 		}
 
-		from := uint64(len(instructions))
-		instructions = append(instructions, insts...)
+		// Each file numbers its blocks from zero, so every one after the first moves, and the
+		// file before it carries on into this one.
+		top := ir.BlockID(len(blocks))
+		if len(tops) > 0 {
+			blocks = ir.GoesOnTo(blocks, tops[len(tops)-1], top)
+		}
+		blocks = append(blocks, ir.Shifted(compiled, top)...)
 		ranges = append(ranges, each)
-		bounds = append(bounds, [2]uint64{from, uint64(len(instructions))})
+		tops = append(tops, top)
 	}
 
 	for i, each := range ranges {
-		if _, err := ev.EvaluateModule(instructions, bounds[i][0], bounds[i][1], each.id); err != nil {
+		var until func(ir.Point) bool
+		if i+1 < len(tops) {
+			next := ir.Point{Block: tops[i+1]}
+			until = func(point ir.Point) bool { return point == next }
+		}
+		if _, err := ev.EvaluateBlocks(blocks, ir.Point{Block: tops[i]}, until, each.id); err != nil {
 			return printed, err
 		}
 	}

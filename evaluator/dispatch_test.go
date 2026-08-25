@@ -27,10 +27,14 @@ type dispatchCase struct {
 	opcode byte
 	setup  func(e *Evaluator)
 	left   []byte
-	right  []byte
-	want   []byte // what label "02" holds afterwards; nil when check does the asking
-	cursor uint64 // where the cursor lands, counted from zero
-	check  func(t *testing.T, e *Evaluator)
+	// immediate says the left operand is the value itself rather than the name of one another
+	// instruction left. A save is the instruction that writes a value down, so its operand is
+	// the value; everything else here names one.
+	immediate bool
+	right     []byte
+	want      []byte // what label "02" holds afterwards; nil when check does the asking
+	cursor    uint64 // where the cursor lands, counted from zero
+	check     func(t *testing.T, e *Evaluator)
 }
 
 // operands puts the two values a binary operation reads under the labels it reads them from.
@@ -110,7 +114,7 @@ var dispatchCases = []dispatchCase{
 	},
 
 	{
-		name: "save", opcode: ir.OpSave,
+		name: "save", opcode: ir.OpSave, immediate: true,
 		left: byteutil.FromUint64(7), want: byteutil.FromUint64(7), cursor: 1,
 	},
 	{
@@ -253,7 +257,11 @@ func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
 				tc.setup(e)
 			}
 
-			inst := ir.NewInstruction([]byte("02"), tc.opcode, ir.RefTo(tc.left), ir.RefTo(tc.right))
+			left := ir.RefTo(tc.left)
+			if tc.immediate {
+				left = ir.ImmOf(tc.left, byteutil.DefaultTapeSize)
+			}
+			inst := ir.NewInstruction([]byte("02"), tc.opcode, left, ir.RefTo(tc.right))
 			if err := e.ExecuteInstruction(inst); err != nil {
 				t.Fatalf("executing %s: %v", ir.ResolveOpCode(tc.opcode), err)
 			}

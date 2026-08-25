@@ -30,7 +30,7 @@ func BlocksOf(insts []Instruction) []Block {
 // happens rather than all of them at the end. Those stretches have to move with the
 // instructions, and an instruction's place is now two numbers rather than one.
 func PlacedBlocksOf(insts []Instruction) ([]Block, map[string]Point) {
-	b := &blocking{scopes: make(map[string]BlockID), places: make(map[string]Point)}
+	b := &blocking{places: make(map[string]Point)}
 	top := b.reserve()
 	// The top of a program takes values the way a scope does. Nothing applies any to it — no
 	// transaction names it — so what it reads there is zeros, which is what reading past what
@@ -47,9 +47,6 @@ func PlacedBlocksOf(insts []Instruction) ([]Block, map[string]Point) {
 // that terminator is written before either arm is read.
 type blocking struct {
 	blocks []Block
-	// scopes answers, for the label an OpDefer left, the block its body became — so the
-	// binding that follows it can name a block instead of an instruction that is gone.
-	scopes map[string]BlockID
 	// places answers where each instruction ended up, by the label it leaves its value under.
 	places map[string]Point
 }
@@ -100,17 +97,13 @@ func (b *blocking) run(id BlockID, insts []Instruction, params []Label, tail end
 			body := insts[at+1 : at+1+length]
 			scope := b.reserve()
 			b.run(scope, opened(body), applied(feedsRead(body)), func() Terminator { return Ends(Nothing()) })
-			b.scopes[byteutil.ToHex(inst.GetLabel())] = scope
-			at += length
 
-		case OpIdent:
-			// A binding whose value was a scope names the block instead of an instruction
-			// that is no longer there.
-			if scope, ok := b.scopes[byteutil.ToHex(inst.GetRight().Bytes())]; ok {
-				inst = NewInstruction(
-					inst.GetLabel(), OpIdent, inst.GetLeft(), BlockOf(scope)).At(inst.GetOrigin())
-			}
-			held = append(held, inst)
+			// A scope is a value like any other, and what it is worth is the block its body
+			// became. Saying it as an ordinary instruction is what lets a scope nobody bound
+			// to a name still be worth something, and lets the binding that usually follows
+			// be an ordinary binding rather than a case of its own.
+			held = append(held, NewInstruction(inst.GetLabel(), OpSave, BlockOf(scope), Nothing()))
+			at += length
 
 		case OpReturn:
 			// Whatever this closes was taken off before it got here, so a return that

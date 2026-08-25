@@ -11,6 +11,7 @@ import (
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // runWithTapeSize compiles and evaluates source with the given tape size, returning the
@@ -30,7 +31,7 @@ func runWithTapeSize(t *testing.T, source string, tapeSize int) []byte {
 	if err != nil {
 		t.Fatalf("emitter: %v", err)
 	}
-	returns, err := New(NewEvaluatorOptions{TapeSize: tapeSize}).Evaluate(insts)
+	returns, err := New(NewEvaluatorOptions{TapeSize: tapeSize}).EvaluateBlocks(insts, ir.Point{}, nil, "")
 	if err != nil {
 		t.Fatalf("evaluator: %v", err)
 	}
@@ -64,7 +65,7 @@ func runAndError(t *testing.T, source string, tapeSize int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	returns, err := New(NewEvaluatorOptions{TapeSize: tapeSize}).Evaluate(insts)
+	returns, err := New(NewEvaluatorOptions{TapeSize: tapeSize}).EvaluateBlocks(insts, ir.Point{}, nil, "")
 	if err != nil {
 		return nil, err
 	}

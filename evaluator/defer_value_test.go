@@ -28,12 +28,13 @@ func TestDeferValueIsATape(t *testing.T) {
 	}
 }
 
-// The value is the index of the scope, so the first one is zero — the same tape as false
-// and as the number 0.
-func TestFirstDeferIsZero(t *testing.T) {
+// What a scope is worth is the block its body became, and block zero is the top of the
+// program — which nothing can be bound to. So a scope is never worth the neutral tape, and is
+// never mistaken for false or for the number 0.
+func TestAScopeIsNotWorthNothing(t *testing.T) {
 	got := runWithTapeSize(t, "defer {};", byteutil.DefaultTapeSize)
-	if want := byteutil.FalseTape(byteutil.DefaultTapeSize); !bytes.Equal(got, want) {
-		t.Errorf("got %v, want %v", got, want)
+	if neutral := byteutil.FalseTape(byteutil.DefaultTapeSize); bytes.Equal(got, neutral) {
+		t.Errorf("a scope is worth %v, which is what false is worth", got)
 	}
 }
 
@@ -91,8 +92,11 @@ func TestCallingSomethingThatIsNotADeferFails(t *testing.T) {
 		name   string
 		source string
 	}{
-		{name: "a number with no scope behind it", source: "ident a = 7;\na();"},
-		{name: "the value of a block", source: "ident a = { 1; };\na();"},
+		{name: "a number with no scope behind it", source: "ident a = 777;\na();"},
+		// The value of a block is a number like any other, so what makes it callable or not
+		// is whether it names a block — the same bargain as below. A block answering 1 is
+		// answering the number of a block, and calling it is calling that scope.
+		{name: "the value of a block that names none", source: "ident a = { 777; };\na();"},
 	}
 
 	for _, tc := range cases {
@@ -108,16 +112,19 @@ func TestCallingSomethingThatIsNotADeferFails(t *testing.T) {
 	}
 }
 
-// A reference is a tape holding an index, so a number equal to that index is that
-// reference — there is nothing in the bytes to tell them apart. This is the same bargain
-// the language already makes for true and 1, or for false and 0: an untyped language
-// cannot distinguish values that are the same bytes, and does not pretend to.
-func TestANumberEqualToAnIndexIsThatReference(t *testing.T) {
-	got := runWithTapeSize(t, "ident d = defer { 42; };\nident a = 0;\na();", byteutil.DefaultTapeSize)
+// A reference is a tape holding the number of a block, so a number equal to that is that
+// reference — there is nothing in the bytes to tell them apart. This is the same bargain the
+// language already makes for true and 1, or for false and 0: an untyped language cannot
+// distinguish values that are the same bytes, and does not pretend to.
+//
+// The first scope of a program is block one: block zero is the top of the program itself, and
+// nothing is bound to it.
+func TestANumberEqualToABlockIsThatReference(t *testing.T) {
+	got := runWithTapeSize(t, "ident d = defer { 42; };\nident a = 1;\na();", byteutil.DefaultTapeSize)
 
 	want := byteutil.PaddingTape([]byte{42}, byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, want) {
-		t.Errorf("got %v, want %v — a value equal to a scope's index calls that scope", got, want)
+		t.Errorf("got %v, want %v — a value equal to a scope's block calls that scope", got, want)
 	}
 }
 

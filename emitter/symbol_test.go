@@ -41,7 +41,7 @@ func TestSymbolComesFromTheNodeAndNotItsToken(t *testing.T) {
 	}
 
 	for _, opcode := range []byte{ir.OpIdent, ir.OpLoad, ir.OpCall} {
-		if got := symbolOf(t, insts, opcode); got != written {
+		if got := symbolOf(t, everyInstruction(insts), opcode); got != written {
 			t.Errorf("%s carries %q, want %q", ir.ResolveOpCode(opcode), got, written)
 		}
 	}
@@ -59,10 +59,10 @@ func TestANodeWithoutATokenStillCarriesItsName(t *testing.T) {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	if got := symbolOf(t, insts, ir.OpIdent); got != "a" {
+	if got := symbolOf(t, everyInstruction(insts), ir.OpIdent); got != "a" {
 		t.Errorf("OpIdent carries %q, want %q", got, "a")
 	}
-	if got := symbolOf(t, insts, ir.OpLoad); got != "a" {
+	if got := symbolOf(t, everyInstruction(insts), ir.OpLoad); got != "a" {
 		t.Errorf("OpLoad carries %q, want %q", got, "a")
 	}
 }
@@ -73,10 +73,10 @@ func TestANodeWithoutATokenStillCarriesItsName(t *testing.T) {
 func TestAnImportEmitsNoWork(t *testing.T) {
 	program := compile(t, "use a/b/c as x;")
 
-	if len(program.Instructions) != 1 {
-		t.Fatalf("an import emitted %d instructions, want 1", len(program.Instructions))
+	if len(everyInstruction(program.Blocks)) != 1 {
+		t.Fatalf("an import emitted %d instructions, want 1", len(everyInstruction(program.Blocks)))
 	}
-	if got := program.Instructions[0].GetOpCode(); got != ir.OpSave {
+	if got := everyInstruction(program.Blocks)[0].GetOpCode(); got != ir.OpSave {
 		t.Errorf("an import emitted %s, want OpSave of the neutral value", ir.ResolveOpCode(got))
 	}
 }

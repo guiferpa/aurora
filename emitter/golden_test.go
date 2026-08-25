@@ -49,7 +49,7 @@ func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	got := ir.Format(insts)
+	got := ir.FormatBlocks(insts)
 	if *update {
 		if err := os.WriteFile(filepath.Join(dir, "wide.ir"), []byte(got), 0o644); err != nil {
 			t.Fatalf("rewriting the golden: %v", err)

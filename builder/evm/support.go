@@ -83,7 +83,12 @@ var pending = map[byte]string{}
 // place the program used it. That place comes from the instruction: the emitter knows where
 // every node was written and now says so, where before this named a feature and left the
 // person to find it.
-func Warnings(insts []ir.Instruction) []diag.Warning {
+func Warnings(blocks []ir.Block) []diag.Warning {
+	insts := make([]ir.Instruction, 0)
+	for _, block := range blocks {
+		insts = append(insts, block.Insts...)
+	}
+
 	warnings := make([]diag.Warning, 0)
 	said := make(map[string]bool)
 

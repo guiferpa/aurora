@@ -233,7 +233,9 @@ func TestEvaluateOr_False(t *testing.T) {
 func TestEvaluateSave(t *testing.T) {
 	ev := New(NewEvaluatorOptions{})
 	val := byteutil.FromUint64(42)
-	if err := ev.EvaluateSave([]byte("00"), ir.RefTo(val), ir.Nothing()); err != nil {
+	// A save carries the value it writes down, so its operand is an immediate: a ref would
+	// name something another instruction left, which is the opposite of what a save is for.
+	if err := ev.EvaluateSave([]byte("00"), ir.ImmOf(val, byteutil.DefaultTapeSize), ir.Nothing()); err != nil {
 		t.Errorf("Error evaluating save: %v", err)
 		return
 	}
@@ -546,7 +548,7 @@ func runEvaluateCase(t *testing.T, cases []EvaluateCase, options RunEvaluateCase
 			}
 
 			ev := New(NewEvaluatorOptions{})
-			m, err := ev.Evaluate(program.Instructions)
+			m, err := ev.EvaluateBlocks(program.Blocks, ir.Point{}, nil, "")
 
 			if c.TestFn != nil {
 				c.TestFn(t, m, err)
@@ -1238,7 +1240,7 @@ func runAssertCase(t *testing.T, cases []AssertCase) {
 				// Assertions only run under a runner that asked for them.
 				Asserts: true,
 			})
-			if _, err := ev.Evaluate(insts); err != nil {
+			if _, err := ev.EvaluateBlocks(insts, ir.Point{}, nil, ""); err != nil {
 				t.Errorf("%v: %v", c.Name, err)
 				return
 			}

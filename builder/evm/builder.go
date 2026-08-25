@@ -94,15 +94,25 @@ func (b *Builder) PickScopes() []Dispatcher {
 	// Every block the program runs through, and not only the first: a program made of several
 	// files is one run through all of them, so a scope bound in the second is as reachable by
 	// a transaction as one bound in the first.
+	// A scope is worth the block its body became, and the binding that names it reads that
+	// value like any other. So finding one is finding the two together: what a scope is worth,
+	// and the name it was bound to.
+	scopes := make(map[string]ir.BlockID)
 	for _, id := range ir.Reaches(b.blocks, TOP_BLOCK) {
 		for _, inst := range b.blocks[id].Insts {
-			if inst.GetOpCode() != ir.OpIdent || inst.GetRight().Kind() != ir.KindBlock {
+			if inst.GetOpCode() == ir.OpSave && inst.GetLeft().Kind() == ir.KindBlock {
+				scopes[byteutil.ToHex(inst.GetLabel())] = inst.GetLeft().Block()
 				continue
 			}
-			dispatchers = append(dispatchers, Dispatcher{
-				Selector: inst.GetLeft().Bytes(),
-				Entry:    inst.GetRight().Block(),
-			})
+			if inst.GetOpCode() != ir.OpIdent {
+				continue
+			}
+			if entry, named := scopes[byteutil.ToHex(inst.GetRight().Bytes())]; named {
+				dispatchers = append(dispatchers, Dispatcher{
+					Selector: inst.GetLeft().Bytes(),
+					Entry:    entry,
+				})
+			}
 		}
 	}
 	return dispatchers

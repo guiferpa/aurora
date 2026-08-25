@@ -29,7 +29,7 @@ func build(t *testing.T, source string, tapeSize int) []byte {
 		t.Fatalf("emitter: %v", err)
 	}
 
-	bytecode, err := NewBuilder(ir.BlocksOf(insts), NewBuilderOptions{TapeSize: tapeSize}).Build()
+	bytecode, err := NewBuilder(insts, NewBuilderOptions{TapeSize: tapeSize}).Build()
 	if err != nil {
 		t.Fatalf("builder: %v", err)
 	}

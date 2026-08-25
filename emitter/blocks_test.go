@@ -4,8 +4,33 @@ import (
 	"testing"
 
 	"github.com/guiferpa/aurora/byteutil"
+	"github.com/guiferpa/aurora/lexer"
+	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/ir"
 )
+
+// listOf answers the instruction list the emitter builds on its way to the blocks. It is not
+// something a caller is given — the blocks are — and it exists here because what this file
+// checks is that the crossing between the two loses nothing.
+func listOf(t *testing.T, source string) []ir.Instruction {
+	t.Helper()
+
+	tokens, err := lexer.New().GetFilledTokens([]byte(source))
+	if err != nil {
+		t.Fatalf("lexer: %v", err)
+	}
+	tree, err := parser.New().Parse(parser.ParseInput{Filename: "main.ar", Tokens: tokens})
+	if err != nil {
+		t.Fatalf("parser: %v", err)
+	}
+
+	tc := 0
+	insts := make([]ir.Instruction, 0)
+	for _, node := range tree.Nodes {
+		EmitInstruction(&tc, &insts, node, 0)
+	}
+	return insts
+}
 
 // structure names the opcodes that do not survive the crossing: each of them said where
 // control goes or how far something reached, which is what a block and a terminator say now.
@@ -16,6 +41,11 @@ var structure = map[byte]bool{
 	ir.OpJump:       true,
 	ir.OpReturn:     true,
 }
+
+// A scope is the one of them that leaves something behind: it said how long its body was, and
+// that is gone, but a scope is a value like any other and what it is worth crosses over under
+// the same name.
+var leavesAValue = map[byte]bool{ir.OpDefer: true}
 
 // The blocks describe the same program: every instruction that computes a value is in exactly
 // one of them, and nothing else is.
@@ -32,11 +62,11 @@ printb head t 2;
 ident answer = defer { if feed(0) bigger 0 { area(p) + 1; } else { 0; }; };
 printd answer(1);`
 
-	insts := compile(t, source).Instructions
+	insts := listOf(t, source)
 
 	wanted := make(map[string]int)
 	for _, inst := range insts {
-		if !structure[inst.GetOpCode()] {
+		if !structure[inst.GetOpCode()] || leavesAValue[inst.GetOpCode()] {
 			wanted[byteutil.ToHex(inst.GetLabel())]++
 		}
 	}
@@ -71,7 +101,7 @@ func TestEveryTerminatorNamesBlocksThatExist(t *testing.T) {
 };
 printd sign(5);`
 
-	blocks := ir.BlocksOf(compile(t, source).Instructions)
+	blocks := compile(t, source).Blocks
 
 	wanted := map[ir.TermKind]int{ir.Ret: 0, ir.Br: 1, ir.BrIf: 2}
 	for _, block := range blocks {
@@ -93,7 +123,7 @@ printd sign(5);`
 func TestBothArmsHandTheirValueToTheSameBlock(t *testing.T) {
 	const source = `ident answer = defer { if feed(0) bigger 0 { 10; } else { 20; }; };`
 
-	blocks := ir.BlocksOf(compile(t, source).Instructions)
+	blocks := compile(t, source).Blocks
 
 	var chose *ir.Block
 	for at := range blocks {
@@ -141,7 +171,7 @@ func TestAScopeBlockTakesWhatItsBodyReads(t *testing.T) {
 ident none = defer { 7; };
 ident outer = defer { ident inner = defer { feed(0) + feed(1) + feed(2); }; feed(0); };`
 
-	blocks := ir.BlocksOf(compile(t, source).Instructions)
+	blocks := compile(t, source).Blocks
 
 	found := make(map[int]int)
 	for _, block := range blocks {

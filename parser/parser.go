@@ -50,7 +50,7 @@ type ParseInput struct {
 	//
 	// It arrives because a shape is resolved while parsing and a shape's name never leaves
 	// the file that declared it — so a scope of another module answering with one has to hand
-	// the fields over. Empty is a file that imports nothing, or one whose imports promised
+	// the fields over. Empty is a file that imports nothing, or one whose imports returned
 	// nothing, and it reads exactly as it did before any of this.
 	Imports map[string]ast.Offer
 	// Declarations carries what `shape` and `as` declared across parses of the same file.
@@ -709,10 +709,10 @@ func (p *pr) ParseBlockExpr() (ast.Node, error) {
 	return p.parseBlock()
 }
 
-// parseBlock reads `{ ... }` and the promise that may follow it.
+// parseBlock reads `{ ... }` and the `returns` that may follow it.
 //
 // A deferred scope is a block with a word in front of it, so it comes through here too — which
-// is what gives it the promise, and what keeps the braces from being read in two places.
+// is what gives it the `returns`, and what keeps the braces from being read in two places.
 func (p *pr) parseBlock() (ast.BlockExpression, error) {
 	if _, err := p.EatToken(token.O_CUR_BRK); err != nil {
 		return ast.BlockExpression{}, err
@@ -1043,7 +1043,7 @@ func (p pr) Parse(in ParseInput) (ast.AST, error) {
 		Filename:   p.filename,
 		Nodes:      nodes,
 		References: p.references,
-		Promises:   p.promises(nodes),
+		Returns:    p.returns(nodes),
 		Shapes:     p.shapes(nodes),
 	}, nil
 }

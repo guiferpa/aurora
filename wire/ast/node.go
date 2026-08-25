@@ -155,7 +155,7 @@ type BooleanExpression struct {
 
 type BlockExpression struct {
 	mark
-	// Returns is the shape this block promised to answer with, and empty when it promised
+	// Returns is the shape this block declared it returns, and empty when it declared
 	// nothing. It is checked where it is written and never reaches an instruction: like the
 	// declaration it names, it is read while compiling and dropped.
 	Returns string `json:"returns,omitempty"`
@@ -241,17 +241,17 @@ type AST struct {
 	// somewhere else. Only whoever holds the other modules can answer that, which is why the
 	// parse hands it over instead of deciding.
 	References []Reference `json:"references,omitempty"`
-	// Promises is what this file's top-level scopes said they answer with, and Shapes is every
-	// shape it declared. Both leave with the tree for whoever imports this file.
-	Promises []Promise `json:"promises,omitempty"`
-	Shapes   []Shape   `json:"shapes,omitempty"`
+	// Returns is what this file's top-level scopes return, and Shapes is every shape it
+	// declared. Both leave with the tree for whoever imports this file.
+	Returns []Returns `json:"returns,omitempty"`
+	Shapes  []Shape   `json:"shapes,omitempty"`
 }
 
 // An Offer is what a module hands whoever imports it, as far as shapes are concerned: the
-// shapes it declares, and what its scopes said they answer with.
+// shapes it declares, and what its scopes return.
 type Offer struct {
-	Shapes   []Shape   `json:"shapes,omitempty"`
-	Promises []Promise `json:"promises,omitempty"`
+	Shapes  []Shape   `json:"shapes,omitempty"`
+	Returns []Returns `json:"returns,omitempty"`
 }
 
 // A Shape is a shape a module declared, and what it is made of.
@@ -264,14 +264,17 @@ type Shape struct {
 	Fields []string `json:"fields"`
 }
 
-// A Promise is what one exported scope said it answers with, and what that shape is made
-// of.
+// Returns is what one exported scope returns, and what that shape is made of.
 //
-// It is the only thing about a shape that leaves the file that declared it. A shape's name
-// is read while a file is parsed and dropped, so a module that answers with one has to hand
-// over the fields as well — otherwise whoever imports it has a run of tapes and no way to
-// turn a name into an index.
-type Promise struct {
+// It is the only thing about a shape that leaves the file that declared it. A shape's name is
+// read while a file is parsed and dropped, so a module that returns one has to hand over the
+// fields as well — otherwise whoever imports it has a run of tapes and no way to turn a name
+// into an index.
+//
+// The name is plural because that is the word: a scope returns, and this is what it returns.
+// It used to be called a promise, which came from another tradition and said nothing this
+// language means — see "The words" in docs/contributing/architecture.md.
+type Returns struct {
 	// Scope is the name the scope is bound to, as the module's own file typed it.
 	Scope  string   `json:"scope"`
 	Shape  string   `json:"shape"`

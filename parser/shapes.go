@@ -36,8 +36,8 @@ type Declarations struct {
 	// Modules is what `use` declared: alias -> specifier. It belongs to the file that wrote
 	// it and to no other, which is the whole point of the alias being mandatory.
 	Modules map[string]string
-	// Returns is what `returns` promised: the name of a scope -> the shape that calling it
-	// answers with. It is not the shape of the name itself — a deferred scope is an index —
+	// Returns is the name of a scope -> the shape calling it returns. It is not the shape of
+	// the name itself — a deferred scope is an index —
 	// but the shape of what comes back from it.
 	Returns map[string]string
 }
@@ -51,21 +51,21 @@ func NewDeclarations() *Declarations {
 	}
 }
 
-// Import writes down what a module answers with, under names nobody can type.
+// Import writes down what a module returns, under names nobody can type.
 //
-// A promise crossing a module is the shape and its fields together, and both are written the
-// way an identifier of that module is: with the module in front. So two modules answering with
+// What a scope returns crosses a module as the shape and its fields together, and both are written the
+// way an identifier of that module is: with the module in front. So two modules returning
 // an Env each are two shapes, and neither can be confused with an Env declared here.
 func (d *Declarations) Import(specifier string, offer ast.Offer) {
 	for _, shape := range offer.Shapes {
 		d.Shapes[module.Qualify(module.ID(specifier), shape.Name)] = shape.Fields
 	}
-	for _, promise := range offer.Promises {
-		// A promise may name a shape of a third module, which this one never declared, so the
+	for _, returns := range offer.Returns {
+		// A scope may return a shape of a third module, which this one never declared, so the
 		// fields come with it rather than being looked up.
-		shape := module.Qualify(module.ID(specifier), promise.Shape)
-		d.Shapes[shape] = promise.Fields
-		d.Returns[module.Qualify(module.ID(specifier), promise.Scope)] = shape
+		shape := module.Qualify(module.ID(specifier), returns.Shape)
+		d.Shapes[shape] = returns.Fields
+		d.Returns[module.Qualify(module.ID(specifier), returns.Scope)] = shape
 	}
 }
 
@@ -273,7 +273,7 @@ func (p *pr) parseShape(expr ast.Node) (ast.Node, error) {
 // parseShapeName reads the name of a shape where one is expected: `Point`, or `m.Point` for
 // one another module declared.
 //
-// The qualified form is read the same way a qualified value is, and answers with the name the
+// The qualified form is read the same way a qualified value is, and gives the name the
 // tables know it by — which nobody can type, so a Point of this file and a Point of another
 // are two shapes and never one.
 func (p *pr) parseShapeName() (string, token.Token, error) {
@@ -307,11 +307,11 @@ func (p *pr) parseShapeName() (string, token.Token, error) {
 	return shape, name, nil
 }
 
-// shapeOf answers which shape a value is read as, or empty when nothing said. A field is
+// shapeOf says which shape an expression returns, or empty when nothing said. A field is
 // one tape wide, so reading a field of a field is never known.
 //
-// What it sees through is what a promise is worth: a block answers with its last expression,
-// and an if answers with whatever the arm that runs answers with — so both arms have to agree,
+// What it sees through is what makes a declaration worth checking: a block returns its last
+// expression, and an if returns whatever the arm that runs returns — so both arms have to agree,
 // and an if with no else agrees with nothing.
 func (p *pr) shapeOf(node ast.Node) string {
 	switch n := node.(type) {
@@ -328,7 +328,7 @@ func (p *pr) shapeOf(node ast.Node) string {
 		return p.shapeOfLast(n.Body)
 	case ast.CalleeLiteral:
 		// Not the shape of the name, which is a deferred scope, but of what calling it
-		// answers with — which is only known because the scope promised.
+		// returns — which is only known because the scope declared it.
 		return p.declarations.Returns[n.Id.Value]
 	case ast.IfExpression:
 		if n.Else == nil {
@@ -342,7 +342,7 @@ func (p *pr) shapeOf(node ast.Node) string {
 	return ""
 }
 
-// shapeOfLast answers for the expression a body ends with, which is what the body answers with.
+// shapeOfLast says which shape the expression a body ends with returns, which is what the body returns.
 func (p *pr) shapeOfLast(body []ast.Node) string {
 	if len(body) == 0 {
 		return ""
@@ -350,35 +350,35 @@ func (p *pr) shapeOfLast(body []ast.Node) string {
 	return p.shapeOf(body[len(body)-1])
 }
 
-// What `returns` promises, and how the promise is kept.
+// What `returns` declares, and how it is kept.
 //
 // `as` is a claim: the compiler believes it and has nothing to check it against, which is why
 // a wrong one reads the wrong tape and the program carries on. `returns` is the other end —
-// the block says what it answers with, and this refuses the block that does not.
+// the block says what it returns, and this refuses the block that does not.
 //
-// The promise is worth what shapeOf can see through, which is why that is the part that grew.
+// The check is worth what shapeOf can see through, which is why that is the part that grew.
 
-// promises is what the top-level scopes of this file said they answer with, with the fields
-// of each — the only thing about a shape that leaves the file that declared it.
+// returns is what the top-level scopes of this file return, with the fields of each — the only
+// thing about a shape that leaves the file that declared it.
 //
-// It is a join of two tables the parse already filled: which scope promised what, and what
-// each shape is made of. Whoever imports this file needs both halves, since a name is worth
-// nothing without the fields it stands for.
-func (p *pr) promises(nodes []ast.Node) []ast.Promise {
-	found := make([]ast.Promise, 0)
+// It is a join of two tables the parse already filled: what each scope returns, and what each
+// shape is made of. Whoever imports this file needs both halves, since a name is worth nothing
+// without the fields it stands for.
+func (p *pr) returns(nodes []ast.Node) []ast.Returns {
+	found := make([]ast.Returns, 0)
 	for _, node := range nodes {
 		binding, ok := node.(ast.IdentLiteral)
 		if !ok {
 			continue
 		}
-		promised, made := p.declarations.Returns[binding.Id]
-		if !made {
+		shape, known := p.declarations.Returns[binding.Id]
+		if !known {
 			continue
 		}
-		found = append(found, ast.Promise{
+		found = append(found, ast.Returns{
 			Scope:  p.bare(binding.Id),
-			Shape:  promised,
-			Fields: p.declarations.Shapes[promised],
+			Shape:  shape,
+			Fields: p.declarations.Shapes[shape],
 		})
 	}
 	return found
@@ -386,8 +386,8 @@ func (p *pr) promises(nodes []ast.Node) []ast.Promise {
 
 // shapes is every shape this file declared, with what each is made of.
 //
-// All of them cross, and not only the ones a promise names: a file that imports this one may
-// want to build one, or to name one with `as`, and neither goes through a promise.
+// All of them cross, and not only the ones a scope returns: a file that imports this one may
+// want to build one, or to name one with `as`, and neither goes through what a scope returns.
 func (p *pr) shapes(nodes []ast.Node) []ast.Shape {
 	found := make([]ast.Shape, 0)
 	for _, node := range nodes {
@@ -414,60 +414,60 @@ func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) 
 	if _, err := p.EatToken(token.RETURNS); err != nil {
 		return "", err
 	}
-	promised, _, err := p.parseShapeName()
+	declared, _, err := p.parseShapeName()
 	if err != nil {
 		return "", err
 	}
-	if err := p.answersWith(body, promised, "", closing); err != nil {
+	if err := p.returnsWhatItDeclared(body, declared, "", closing); err != nil {
 		return "", err
 	}
-	return promised, nil
+	return declared, nil
 }
 
-// answersWith refuses a body that ends with something other than what was promised.
+// returnsWhatItDeclared refuses a body that ends with something other than what was declared.
 //
-// A `where` names the arm being read, so a promise broken inside a branch says which one; the
+// A `where` names the arm being read, so a declaration broken inside a branch says which one; the
 // block itself has no name and simply ends.
-func (p *pr) answersWith(body []ast.Node, promised, where string, at token.Token) error {
+func (p *pr) returnsWhatItDeclared(body []ast.Node, declared, where string, at token.Token) error {
 	if len(body) == 0 {
-		return brokenPromise(at, promised, where, "nothing")
+		return brokenDeclaration(at, declared, where, "nothing")
 	}
 
 	last := body[len(body)-1]
-	// An if is looked through rather than at: it answers with whatever the arm that runs
-	// answers with, so every arm has to keep the promise. A branch is nested ifs by the time
+	// An if is looked through rather than at: it returns whatever the arm that runs
+	// returns, so every arm has to keep the declaration. A branch is nested ifs by the time
 	// anything reads the tree, so this covers it too.
 	if answer, ok := last.(ast.IfExpression); ok {
 		if answer.Else == nil {
-			return token.NewError(at, "this block answers with %s and its if has no else at line %d and column %d: one path answers with nothing",
-				promised, at.GetLine(), at.GetColumn())
+			return token.NewError(at, "this block returns %s and its if has no else at line %d and column %d: one path returns nothing",
+				declared, at.GetLine(), at.GetColumn())
 		}
-		if err := p.answersWith(answer.Body, promised, "the if", at); err != nil {
+		if err := p.returnsWhatItDeclared(answer.Body, declared, "the if", at); err != nil {
 			return err
 		}
-		return p.answersWith(answer.Else.Body, promised, "the else", at)
+		return p.returnsWhatItDeclared(answer.Else.Body, declared, "the else", at)
 	}
 
-	if p.shapeOf(last) == promised {
+	if p.shapeOf(last) == declared {
 		return nil
 	}
-	return brokenPromise(at, promised, where, describeAnswer(last))
+	return brokenDeclaration(at, declared, where, describeReturn(last))
 }
 
-// brokenPromise says what was promised and what is there instead.
-func brokenPromise(at token.Token, promised, where, answer string) error {
+// brokenDeclaration says what was declared and what is there instead.
+func brokenDeclaration(at token.Token, declared, where, returned string) error {
 	if where == "" {
-		return token.NewError(at, "this block answers with %s and ends with %s at line %d and column %d",
-			promised, answer, at.GetLine(), at.GetColumn())
+		return token.NewError(at, "this block returns %s and ends with %s at line %d and column %d",
+			declared, returned, at.GetLine(), at.GetColumn())
 	}
-	return token.NewError(at, "this block answers with %s and %s answers with %s at line %d and column %d",
-		promised, where, answer, at.GetLine(), at.GetColumn())
+	return token.NewError(at, "this block returns %s and %s returns %s at line %d and column %d",
+		declared, where, returned, at.GetLine(), at.GetColumn())
 }
 
-// describeAnswer names what a node answers with, for the message of a promise that was not
+// describeReturn names what a node returns, for the message of a declaration that was not
 // kept. It is the reader's words rather than the tree's: somebody reading the error is looking
 // at what they wrote, not at a node type.
-func describeAnswer(node ast.Node) string {
+func describeReturn(node ast.Node) string {
 	switch n := node.(type) {
 	case ast.NumberLiteral:
 		return "a number"

@@ -386,7 +386,7 @@ printd r.failed;   #- 0
 printd r.value;    #- 5
 ```
 
-Nothing about the scope says it answers with a `Result`, and nothing has to: the answer is a
+Nothing about the scope says it returns a `Result`, and nothing has to: what comes back is a
 run of two tapes, and `as` names what they are. The claim is the caller's, the same way it is
 on the way in.
 
@@ -433,7 +433,7 @@ innermost else, so its way out is always covered.
 A block that does not keep its promise does not compile:
 
 ```aurora
-#- fails: answers with Person and ends with a number
+#- fails: returns Person and ends with a number
 shape Person { name };
 
 {
@@ -442,7 +442,7 @@ shape Person { name };
 } returns Person;
 ```
 
-An `if` with no else promises nothing, since the path where the test fails answers with the
+An `if` with no else declares nothing, since the path where the test fails returns the
 neutral value:
 
 ```aurora
@@ -456,12 +456,12 @@ shape Person { name };
 
 **What it buys is the other end.** A call to a scope that promised has a shape, so `as`
 disappears from the place it was repeated once per call — and it stops being a claim, since
-the promise was checked. A scope that promises nothing is unchanged: it answers with a run of
+the declaration was checked. A scope that declares nothing is unchanged: it returns a run of
 tapes, and whoever reads its fields writes `as`.
 
 The promise is never required, and never will be. A scope has no signature — it does not
 declare how many values it receives or what they are — so requiring it to declare what it
-answers with would be declaring one end and not the other. `returns` is what you gain by
+returns would be declaring one end and not the other. `returns` is what you gain by
 promising, not a toll for writing a block.
 
 ### What is an error

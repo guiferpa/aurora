@@ -279,6 +279,11 @@ type Returns struct {
 	Scope  string   `json:"scope"`
 	Shape  string   `json:"shape"`
 	Fields []string `json:"fields"`
+	// Declared says whether the module's own file wrote the `returns`, or the compiler
+	// worked the shape out from what the scope ends with. The shape is the same fact
+	// either way and is used the same way; this only says who said it, which is what an
+	// editor shows and what a message about a mismatch can lean on.
+	Declared bool `json:"declared"`
 }
 
 // A Reference is one qualified name, and where it was written.

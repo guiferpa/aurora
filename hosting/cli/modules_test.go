@@ -225,15 +225,15 @@ func TestAShapeValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 		}
 	})
 
-	t.Run("and the field name has nowhere to be resolved", func(t *testing.T) {
+	t.Run("and the name of the shape is still not there", func(t *testing.T) {
 		reading := map[string]string{
 			"src/a/b.ar":  files["src/a/b.ar"],
-			"src/main.ar": "use a/b as x;\nident r = x.make();\nprintd r.value;",
+			"src/main.ar": "use a/b as x;\nident r = x.make() as Result;\nprintd r.value;",
 		}
 		projectOf(t, reading)
 		if _, err := run(t, "src/main.ar"); err == nil {
-			t.Fatal("the field was read without a shape")
-		} else if !strings.Contains(err.Error(), "nothing says which shape this value is") {
+			t.Fatal("a shape this file never declared was named")
+		} else if !strings.Contains(err.Error(), "Result is not a declared shape") {
 			t.Errorf("error = %q", err)
 		}
 	})
@@ -282,17 +282,36 @@ func TestAFieldThePromiseDoesNotHave(t *testing.T) {
 	}
 }
 
-// A scope that promised nothing hands over a run of tapes and no shape, which is what it did
-// before any of this: the reading file has to name one, and there is nothing to name.
-func TestAScopeThatPromisedNothingCrossesNothing(t *testing.T) {
+// A scope that wrote no `returns` crosses anyway, because the compiler read what its body
+// ends with — and what crosses is what a declaration would have sent: the shape and its
+// fields, so the reading file turns a field name into an index without naming anything.
+func TestAScopeThatDeclaredNothingCrossesWhatItReturns(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/os.ar":   "shape Env { found, value };\nident lookup = defer { Env{1, 42}; };",
+		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.value;",
+	})
+
+	printed, err := run(t, "src/main.ar")
+	if err != nil {
+		t.Fatalf("running: %v", err)
+	}
+	if strings.TrimSpace(printed) != "42" {
+		t.Errorf("printed %q, want the second tape of the run", printed)
+	}
+}
+
+// What still crosses as nothing is a scope whose shape nobody could work out: its body ends
+// with arithmetic, which is a tape and not a run. The reading file has to name a shape and
+// there is nothing to name — which is where `returns` earns its place.
+func TestAScopeWhoseShapeNothingSaysCrossesNothing(t *testing.T) {
+	projectOf(t, map[string]string{
+		"src/os.ar":   "shape Env { found, value };\nident lookup = defer { feed(0) * 2; };",
 		"src/main.ar": "use os as o;\nident r = o.lookup(1);\nprintd r.found;",
 	})
 
 	_, err := run(t, "src/main.ar")
 	if err == nil {
-		t.Fatal("a field was read off a scope that promised nothing")
+		t.Fatal("a field was read off a scope whose shape nothing says")
 	}
 	if !strings.Contains(err.Error(), "nothing says which shape this value is") {
 		t.Errorf("error = %q", err)

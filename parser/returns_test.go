@@ -171,10 +171,24 @@ func TestACallToAScopeThatPromisedHasAShape(t *testing.T) {
 	}
 }
 
-// A scope that promised nothing gives nothing away, and reading a field off it still asks for
-// the claim — which is the half of the rule that does not change.
-func TestACallToAScopeThatPromisedNothing(t *testing.T) {
+// A scope that wrote no `returns` is understood anyway, because the compiler reads what its
+// body ends with — which is the same walk that checks a `returns` when there is one.
+//
+// So the claim disappears from the caller without the scope having to make a promise. What
+// `returns` is for is what a walk cannot reach.
+func TestACallToAScopeThatDeclaredNothing(t *testing.T) {
 	const source = result + "ident divide = defer { Result{0, 5}; };\nident r = divide(10, 2);\nprintd r.value;"
+
+	if _, err := parseSource(t, source, "main.ar"); err != nil {
+		t.Errorf("parsing: %v", err)
+	}
+}
+
+// What is still not known is a body that ends with something that is not a shape, and reading
+// a field off it is refused where it was written — which is the half of the rule that does not
+// change, and the reason the message is still worth having.
+func TestACallToAScopeWhoseShapeNothingSays(t *testing.T) {
+	const source = result + "ident divide = defer { feed(0) / feed(1); };\nident r = divide(10, 2);\nprintd r.value;"
 
 	_, err := parseSource(t, source, "main.ar")
 	if err == nil {
@@ -189,5 +203,47 @@ func TestACallToAScopeThatPromisedNothing(t *testing.T) {
 func TestABlockBoundToANameCarriesItsPromise(t *testing.T) {
 	if _, err := parseSource(t, person+"ident p = { Person{\"Joana\"}; } returns Person;\nprintc p.name;", "main.ar"); err != nil {
 		t.Errorf("parsing: %v", err)
+	}
+}
+
+// What a scope returns says who worked it out, which is the only difference between the two
+// ways of knowing.
+//
+// It exists so somebody can be shown what the compiler knows and where it got it — an editor
+// telling a shape apart from a claim, a message about a `returns` that was not kept. The shape
+// itself is used the same either way, which is the point of inferring it.
+func TestWhatAScopeReturnsSaysWhoSaidIt(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		source   string
+		declared bool
+	}{
+		{
+			name:     "the file wrote it",
+			source:   person + "ident make = defer { Person{\"Joana\"}; } returns Person;",
+			declared: true,
+		},
+		{
+			name:     "the compiler read the body",
+			source:   person + "ident make = defer { Person{\"Joana\"}; };",
+			declared: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tree, err := parseSource(t, tc.source, "main.ar")
+			if err != nil {
+				t.Fatalf("parsing: %v", err)
+			}
+			if len(tree.Returns) != 1 {
+				t.Fatalf("the tree carries %d, want the one scope", len(tree.Returns))
+			}
+			returns := tree.Returns[0]
+			if returns.Scope != "make" || returns.Shape != "Person" {
+				t.Errorf("%s returns %q, want make returning Person", returns.Scope, returns.Shape)
+			}
+			if returns.Declared != tc.declared {
+				t.Errorf("declared = %v, want %v", returns.Declared, tc.declared)
+			}
+		})
 	}
 }

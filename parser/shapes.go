@@ -36,10 +36,10 @@ type Declarations struct {
 	// Modules is what `use` declared: alias -> specifier. It belongs to the file that wrote
 	// it and to no other, which is the whole point of the alias being mandatory.
 	Modules map[string]string
-	// Returns is the name of a scope -> the shape calling it returns. It is not the shape of
+	// Returns is the name of a scope -> what calling it returns. It is not the shape of
 	// the name itself — a deferred scope is an index —
 	// but the shape of what comes back from it.
-	Returns map[string]string
+	Returns map[string]Return
 }
 
 func NewDeclarations() *Declarations {
@@ -47,7 +47,7 @@ func NewDeclarations() *Declarations {
 		Shapes:  make(map[string][]string),
 		Reads:   make(map[string]string),
 		Modules: make(map[string]string),
-		Returns: make(map[string]string),
+		Returns: make(map[string]Return),
 	}
 }
 
@@ -65,7 +65,7 @@ func (d *Declarations) Import(specifier string, offer ast.Offer) {
 		// fields come with it rather than being looked up.
 		shape := module.Qualify(module.ID(specifier), returns.Shape)
 		d.Shapes[shape] = returns.Fields
-		d.Returns[module.Qualify(module.ID(specifier), returns.Scope)] = shape
+		d.Returns[module.Qualify(module.ID(specifier), returns.Scope)] = Return{Shape: shape, Declared: returns.Declared}
 	}
 }
 
@@ -328,8 +328,8 @@ func (p *pr) shapeOf(node ast.Node) string {
 		return p.shapeOfLast(n.Body)
 	case ast.CalleeLiteral:
 		// Not the shape of the name, which is a deferred scope, but of what calling it
-		// returns — which is only known because the scope declared it.
-		return p.declarations.Returns[n.Id.Value]
+		// returns — whether the scope declared it or the compiler worked it out.
+		return p.declarations.Returns[n.Id.Value].Shape
 	case ast.IfExpression:
 		if n.Else == nil {
 			return ""
@@ -371,14 +371,15 @@ func (p *pr) returns(nodes []ast.Node) []ast.Returns {
 		if !ok {
 			continue
 		}
-		shape, known := p.declarations.Returns[binding.Id]
+		returns, known := p.declarations.Returns[binding.Id]
 		if !known {
 			continue
 		}
 		found = append(found, ast.Returns{
-			Scope:  p.bare(binding.Id),
-			Shape:  shape,
-			Fields: p.declarations.Shapes[shape],
+			Scope:    p.bare(binding.Id),
+			Shape:    returns.Shape,
+			Fields:   p.declarations.Shapes[returns.Shape],
+			Declared: returns.Declared,
 		})
 	}
 	return found
@@ -510,4 +511,14 @@ func describeReturn(node ast.Node) string {
 		return "a comparison"
 	}
 	return "something no shape was named for"
+}
+
+// Return is what calling a scope gives back: which shape, and who said so.
+//
+// Both are one fact and are read the same way — a field is reached on a call whether the
+// shape was declared or worked out. Declared is there because the two are told apart when
+// somebody is being shown what the compiler knows, and when a `returns` has to be kept.
+type Return struct {
+	Shape    string
+	Declared bool
 }

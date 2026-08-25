@@ -821,10 +821,16 @@ func (p *pr) ParseIdent() (ast.Node, error) {
 	if shape := p.shapeOf(expr); shape != "" {
 		p.declarations.Reads[name] = shape
 	}
-	// A scope that promised is not itself a shape — its value is an index — so what is
-	// written down is what calling it answers with.
-	if scope, ok := expr.(ast.DeferExpression); ok && scope.Block.Returns != "" {
-		p.declarations.Returns[name] = scope.Block.Returns
+	// A scope is not itself a shape — its value is an index — so what is written down is
+	// what calling it returns. The `returns` says it when it is there, and when it is not
+	// the shape is worked out from what the body ends with, which is the same walk that
+	// checks the declaration. So a caller reads a field of what came back either way, and
+	// writing `returns` is a constraint the compiler keeps rather than the only way to be
+	// understood.
+	if scope, ok := expr.(ast.DeferExpression); ok {
+		if shape := p.shapeOf(scope.Block); shape != "" {
+			p.declarations.Returns[name] = Return{Shape: shape, Declared: scope.Block.Returns != ""}
+		}
 	}
 	return ast.IdentLiteral{Id: name, Token: id, Value: expr}, nil
 }

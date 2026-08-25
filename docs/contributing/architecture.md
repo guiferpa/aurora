@@ -171,6 +171,34 @@ that its parent never uses.
 The second signal: `build`, `run` and `test` are **functions inside `hosting/cli`**, not
 packages. The same argument that makes `cli/repl` would make `cli/build`.
 
+## The words
+
+One thing, one word. A concept with two names drifts: the two get used in different places,
+then in the same place, and then somebody adds a third because neither of the two seemed to fit.
+
+| word | what it names |
+|---|---|
+| **shape** | the declaration and the kind: `shape Point { x, y }` |
+| **run** | the value a shape builds: tapes laid end to end |
+| **field** | one tape of a run, by the name the shape gave it |
+| **returns** | what an expression gives. A scope returns a shape; the keyword declares it |
+| **tape** | a value: a fixed run of bytes, `tape_size` wide |
+| **scope** | a block of code that is applied to a vector of values |
+
+**`returns` is the verb, everywhere.** An expression returns a value; a scope returns a shape;
+`returns Point` declares what a scope returns and the compiler checks it. There is no second
+word for this — not "answers", not "promises". "Promise" in particular came from another
+tradition and never said anything this language means.
+
+**One exception, and it is a different thing.** A server *answers* a request. That is a
+protocol answering a client, not an expression giving a value, and `hosting/lsp` is full of it
+for a good reason. It stays.
+
+**Declared or worked out.** What a scope returns is known two ways: it was declared with
+`returns`, or it was worked out from the body. Both are the same fact and carry the same word;
+which of the two it is travels beside it, because an editor may want to show the difference and
+a warning may want to name it.
+
 ## Where a test goes
 
 **With the thing it tests**, which for an artefact means the artefact's own package. Before

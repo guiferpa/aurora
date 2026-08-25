@@ -94,6 +94,9 @@ be known by all. **A vital package is pure**: no I/O, nothing done that is not r
 **Errors are resolved in hosting**, which is also the only layer that touches the world, and
 **wiring happens only in `main`**. A sub-package has the kind of its parent.
 
+The words this project uses — one thing, one word — are in the same file, under **The words**.
+`returns` is the verb for what an expression gives, and there is no second word for it.
+
 Why each of those, what belongs where, and what the tree does not obey yet:
 **[docs/contributing/architecture.md](docs/contributing/architecture.md)**, which is the
 source of truth — this table is a pointer, not a copy.

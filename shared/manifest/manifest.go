@@ -98,9 +98,21 @@ type deploysFile struct {
 }
 
 // Load reads and parses the manifest from the given project root directory.
-// Deploy state is read from .aurora.deploys.toml when present; aurora.toml is not modified for deploys.
+//
+// What the manifest says may come from the environment: a value written as ${{ NAME }} is
+// read from the project's .env, or from the environment the command runs in when the file
+// does not have it. That is what lets a key stay out of a manifest a repository tracks.
+//
+// It happens after the manifest is parsed, on the values themselves. Doing it on the text
+// before would have been shorter and would have read a reference written inside a comment,
+// which is not a value — a manifest showing the form in a comment beside a setting would have
+// been asked to resolve the example.
+//
+// Deploy state is read from .aurora.deploys.toml when present; aurora.toml is not modified for
+// deploys.
 func Load(projectRoot string) (*Manifest, error) {
 	path := filepath.Join(projectRoot, Filename)
+
 	var m Manifest
 	md, err := toml.DecodeFile(path, &m)
 	if err != nil {
@@ -112,11 +124,39 @@ func Load(projectRoot string) (*Manifest, error) {
 	if m.Profiles == nil {
 		m.Profiles = make(map[string]Profile)
 	}
+	if err := m.readEnvironment(projectRoot, path); err != nil {
+		return nil, err
+	}
 	m.Deploys = loadDeploysFile(projectRoot)
 	if m.Deploys == nil {
 		m.Deploys = make(map[string]DeployState)
 	}
 	return &m, nil
+}
+
+// readEnvironment replaces every value that names the environment with what it names.
+//
+// The fields are written out rather than walked, because a value that may come from outside is
+// a decision about that value: a path is a path and a name is a name, and neither is a thing a
+// project would keep somewhere else. What is left is what a deploy needs and a manifest should
+// not hold.
+func (m *Manifest) readEnvironment(projectRoot, path string) error {
+	environment, err := LoadEnvironment(projectRoot)
+	if err != nil {
+		return err
+	}
+
+	for name, profile := range m.Profiles {
+		where := fmt.Sprintf("%s: profile %s", path, name)
+		if profile.RPC, err = environment.Expand(where, profile.RPC); err != nil {
+			return err
+		}
+		if profile.Privkey, err = environment.Expand(where, profile.Privkey); err != nil {
+			return err
+		}
+		m.Profiles[name] = profile
+	}
+	return nil
 }
 
 // loadDeploysFile reads .aurora.deploys.toml and returns the deploys map, or nil if the file is missing.

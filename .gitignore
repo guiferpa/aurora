@@ -8,6 +8,11 @@ graph.svg
 /aurora.toml
 /src/
 
+# What a project keeps out of its manifest, wherever the project is. A manifest is tracked and
+# a key is not, which is the whole reason a manifest may name the environment instead of
+# holding it.
+.env
+
 # What a deploy writes, wherever it was run from. It records the address and the transaction
 # of the last deploy per profile, which belongs to whoever deployed and not to the project —
 # and a project is not only at the root: examples/project is one, and so is anywhere somebody

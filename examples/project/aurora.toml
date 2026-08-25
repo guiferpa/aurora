@@ -18,6 +18,14 @@
   [profiles.main]
     source = "src/main.ar"
     binary = "bin/main"
+    # What deploy and call need, and what this file must not hold. A value written as
+    # ${{ NAME }} is read from .env beside this file, or from the environment the command
+    # runs in when .env does not have it — so a manifest can be tracked and a key cannot.
+    #
+    # A name nothing sets is refused rather than read as empty, so these are left commented
+    # out: this project is built and run by the test suite, and it deploys nowhere.
+    # rpc = "${{ AURORA_RPC }}"
+    # privkey = "${{ AURORA_PRIVKEY }}"
 
   # A project holds as many profiles as it has things to build. This one is a
   # second program with a binary of its own.

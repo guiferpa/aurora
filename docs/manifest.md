@@ -104,9 +104,44 @@ To **deploy**, you need a **wallet** (to sign the deploy transaction) and an **R
 **Why:**  
 - **`rpc`** and **`privkey`** (wallet key) keep deploy configuration in one place per profile (e.g. main, sepolia) instead of long CLI arguments.
 
-**Security:**  
-- If `aurora.toml` contains `privkey`, do not commit it. Add `aurora.toml` to `.gitignore` for sensitive profiles, or use env vars / a secrets manager for the key value.  
-- Prefer environment-specific values or env vars for `rpc` if the URL contains secrets.
+**Security: name the value instead of holding it.**
+
+A manifest is tracked and a key is not, so a value may be written as a reference to the
+environment and read at load time:
+
+```toml
+[profiles.main]
+  source = "src/main.ar"
+  binary = "bin/main"
+  rpc = "${{ AURORA_RPC }}"
+  privkey = "${{ AURORA_PRIVKEY }}"
+```
+
+Where it is read from, in order:
+
+1. **`.env` beside the manifest**, which is what a project keeps out of what it tracks. It
+   holds `NAME=value` a line at a time; `#` opens a comment, `export` in front is allowed, and
+   a value may be quoted when it means the spaces at its ends. Nothing else is interpreted — a
+   value here is a secret or an address, and both mean their own bytes.
+2. **The environment the command runs in**, when `.env` does not have the name.
+
+That order is what lets a project be cloned and run: the project says what it needs beside
+itself, and a machine that knows better — a build server holding the real key, someone running
+against another chain — still gets to say so for whatever the project did not write down.
+
+**A name nothing sets is refused**, not read as empty. An empty value reaches a deploy as a key
+that is not a key, and the failure that follows says nothing about the manifest that caused it.
+
+The braces are doubled on purpose: `${NAME}` and `$NAME` are left alone, so a manifest that
+passes through a shell is not quietly rewritten by it.
+
+**Only `rpc` and `privkey` are read this way.** A path is a path and a name is a name — neither
+is a thing a project would keep somewhere else — and a reference written anywhere else stays as
+it was written. A comment is not a value either, so a manifest may show the form beside the
+setting it explains without being asked to resolve the example.
+
+`.env` is in the repository's `.gitignore`. If you write a key straight into `aurora.toml`
+instead, do not commit that file.
 
 ---
 

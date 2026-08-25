@@ -11,7 +11,7 @@ import (
 // business: it walks up from the file, the way the CLI does. What it finds is handed to the
 // analysis, which knows nothing about manifests.
 
-// project writes a manifest and answers with the path of a source file beside it.
+// project writes a manifest and returns the path of a source file beside it.
 func project(t *testing.T, manifest string) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -87,7 +87,7 @@ func TestTapeSizeForFollowsTheManifestBeingEdited(t *testing.T) {
 	}
 }
 
-// timeAfter answers with a modification time later than the file's, so a rewrite is visible
+// timeAfter returns a modification time later than the file's, so a rewrite is visible
 // however coarse the filesystem's clock is.
 func timeAfter(t *testing.T, path string) time.Time {
 	t.Helper()

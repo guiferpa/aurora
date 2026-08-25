@@ -133,7 +133,7 @@ func TestALooseFileOutsideAProjectHasNoWidthOfItsOwn(t *testing.T) {
 	}
 }
 
-// A manifest that cannot be read is said out loud rather than answered with the default: a
+// A manifest that cannot be read is said out loud rather than returned the default: a
 // project pinned to one byte compiling at eight in silence is what this guards against.
 func TestALooseFileReportsABrokenManifest(t *testing.T) {
 	dir := t.TempDir()

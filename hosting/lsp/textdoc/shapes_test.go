@@ -181,7 +181,7 @@ func TestTheEditorReadsNoPromiseWhereThereIsNone(t *testing.T) {
 }
 
 // The body of a scope is another scope's business: a construction inside it says what that
-// scope answers with, not what the name being bound is.
+// scope returns, not what the name being bound is.
 func TestABodyDoesNotShapeTheNameItIsBoundTo(t *testing.T) {
 	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer { Result{1, 0}; };\n" +

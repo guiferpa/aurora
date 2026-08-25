@@ -46,7 +46,7 @@ type Emit func(ast.AST) (ir.Program, error)
 // build", which is after the writing is done and often after the deciding is done too.
 type Carries func([]ir.Block) []diag.Warning
 
-// Resolve answers with the modules a document imports, given the use lines it opens with.
+// Resolve returns the modules a document imports, given the use lines it opens with.
 //
 // It takes the declarations rather than a tree because a document being edited does not
 // parse, and what is inside a module is wanted exactly then — the moment a dot is typed.

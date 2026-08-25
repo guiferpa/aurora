@@ -86,7 +86,7 @@ func TestListenAnswersShutdownAndStopsOnExit(t *testing.T) {
 	})
 
 	if !strings.Contains(out.String(), `"result":null`) {
-		t.Errorf("shutdown must be answered with a null result, got %q", out.String())
+		t.Errorf("shutdown must be returned a null result, got %q", out.String())
 	}
 	if called != 0 {
 		t.Error("nothing may be handled after exit")

@@ -240,7 +240,7 @@ func apply(edit func(l *line), l *line) {
 	}
 }
 
-// end closes the line off on the terminal and answers with what it was.
+// end closes the line off on the terminal and returns what it was.
 func (e *editor) end(text string, err error) (string, error) {
 	_, _ = fmt.Fprint(e.out, "\r\n")
 	return text, err

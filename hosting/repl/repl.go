@@ -240,7 +240,7 @@ func (s *Session) load(tree ast.AST) error {
 			return err
 		}
 		s.loaded[each.ID] = each
-		// What it answers with is written down for the lines after this one: a session is a
+		// What it returns is written down for the lines after this one: a session is a
 		// file typed slowly, and the use line was already read when this module arrived.
 		s.declarations.Import(string(each.ID), ast.Offer{Shapes: each.Tree.Shapes, Returns: each.Tree.Returns})
 	}

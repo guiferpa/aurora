@@ -25,7 +25,7 @@ type DefinitionRequest struct {
 	Params DefinitionParams `json:"params"`
 }
 
-// DefinitionResponse answers with one location, which is one of the three forms the protocol
+// DefinitionResponse returns one location, which is one of the three forms the protocol
 // allows. A name is declared in one place in Aurora, so the list form would always hold one.
 type DefinitionResponse struct {
 	lsp.Response
@@ -49,7 +49,7 @@ func NewDefinitionResponse(id int, location lsp.Location) DefinitionResponse {
 
 // A Definition is where a name was declared: which file, and the range of the name inside it.
 //
-// The file is a path rather than a URI because this package answers with values and never
+// The file is a path rather than a URI because this package returns values and never
 // touches the world — which URI a path is depends on the host, and only the host knows.
 type Definition struct {
 	Filename string
@@ -61,7 +61,7 @@ type Definition struct {
 //
 // Four things are names here, and each is declared somewhere a token can be found: a value
 // bound with `ident`, a shape declared with `shape`, a field inside a shape's declaration,
-// and the declaration itself — asking about a name where it was written answers with itself,
+// and the declaration itself — asking about a name where it was written returns itself,
 // which is what tells "declared here" from "not declared at all".
 //
 // The file it lands in is this one or a module's, and the question does not change between
@@ -230,7 +230,7 @@ func ownerOf(tokens []token.Token, subject token.Token) token.Token {
 //
 // Nearest before, because that is the one the language would find: a name is bound before it
 // is used, and a second binding of the same name shadows the first from where it is written.
-// A binding that only appears later is answered with anyway — a deferred scope runs when it
+// A binding that only appears later is returned anyway — a deferred scope runs when it
 // is called, so a body can name something written under it, and a jump to the wrong end of a
 // file is a better answer than none.
 func bindingOf(tokens []token.Token, name string, at int) token.Token {

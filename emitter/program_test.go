@@ -118,7 +118,7 @@ func TestEmitProgramLabelsScopes(t *testing.T) {
 			expr := program.Expressions[0]
 
 			// The value of a scope reaches whoever reads it by being handed over: the block
-			// the run carries on into takes it, under the name the expression answers by.
+			// the run carries on into takes it, under the name the expression returns under.
 			taken := false
 			for _, block := range program.Blocks {
 				for _, param := range block.Params {
@@ -128,7 +128,7 @@ func TestEmitProgramLabelsScopes(t *testing.T) {
 				}
 			}
 			if !taken {
-				t.Errorf("no block takes %q, and that is the name the expression answers by", expr.Label)
+				t.Errorf("no block takes %q, and that is the name the expression returns under", expr.Label)
 			}
 		})
 	}

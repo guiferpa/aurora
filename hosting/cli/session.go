@@ -22,7 +22,7 @@ type Session struct {
 	lexer   *lexer.Lexer
 	parser  parser.Parser
 	emitter emitter.Emitter
-	// newEvaluator answers with a fresh one. An evaluator is per program, not per session: it
+	// newEvaluator returns a fresh one. An evaluator is per program, not per session: it
 	// holds the names a program bound, the scopes it deferred and the assertions that ran, and
 	// "aurora test" checks one file after another, each of which is its own program.
 	newEvaluator func() *evaluator.Evaluator
@@ -49,7 +49,7 @@ type NewSessionOptions struct {
 	Warnings io.Writer
 }
 
-// evaluator answers with a fresh evaluator, or says that the session was built without a way
+// evaluator returns a fresh evaluator, or says that the session was built without a way
 // of making one. A build needs none; a run and a test do, and printing nowhere by default
 // would hide the wiring mistake in the one place it shows.
 func (s *Session) evaluator() (*evaluator.Evaluator, error) {

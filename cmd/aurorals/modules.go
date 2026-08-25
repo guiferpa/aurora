@@ -23,7 +23,7 @@ import (
 // moved past — a name they just wrote would be underlined as missing, and one they just
 // deleted would go on resolving.
 
-// resolveModules answers with the modules a document imports, for a tree the server already
+// resolveModules returns the modules a document imports, for a tree the server already
 // parsed. It is the port textdoc is handed: everything about the world is on this side of it.
 func resolveModules(s *state.State) textdoc.Resolve {
 	lx := lexer.New()
@@ -57,7 +57,7 @@ func resolveModules(s *state.State) textdoc.Resolve {
 	}
 }
 
-// readThroughBuffers answers with what the editor is showing, and falls back to the disk.
+// readThroughBuffers returns what the editor is showing, and falls back to the disk.
 func readThroughBuffers(s *state.State) resolver.Read {
 	return func(path string) ([]byte, error) {
 		if text, open := openDocument(s, path); open {

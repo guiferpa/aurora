@@ -165,7 +165,7 @@ func exportedValue(found module.Module, name string) ast.Node {
 //
 // The order is the point. A name bound here can be read as a shape declared over there —
 // `ident s = g.new_square(1, 2);` — and the reader of the tokens only knows what that call
-// answers with if the promise is already written down when it walks past the call.
+// returns if the promise is already written down when it walks past the call.
 func shapesOf(analysis *Analysis, aliases moduleAliases) shapeTable {
 	return importedShapes(analysis, aliases).scan(analysis.Tokens)
 }

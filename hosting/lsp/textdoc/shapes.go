@@ -89,11 +89,11 @@ func readDeclaration(tokens []token.Token, i int) (string, []string, int) {
 }
 
 // readBinding reads what `ident name = ...` binds, up to the end of the statement: the shape
-// it is read as, the shape calling it will answer with, and the scope it was bound from.
+// it is read as, the shape calling it will return, and the scope it was bound from.
 //
 // Only what sits at the top of the value is read. A body between braces is another scope's
 // business — the semicolons in it do not end this statement, and a construction inside it says
-// what that scope answers with rather than what this name is.
+// what that scope returns rather than what this name is.
 func readBinding(tokens []token.Token, i int) (name, shape, promised, called string) {
 	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != token.ID || tokens[i+2].GetTag().Id != token.ASSIGN {
 		return "", "", "", ""
@@ -129,7 +129,7 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 				// A construction: the name of a shape in front of a brace.
 				shape = nameAt(tokens, j)
 			case token.O_PAREN:
-				// A call: what it answers with is known when that scope promised.
+				// A call: what it returns is known when that scope promised.
 				called = nameAt(tokens, j)
 			}
 		}

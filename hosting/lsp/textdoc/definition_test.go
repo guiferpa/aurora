@@ -35,7 +35,7 @@ func TestDefinitionInTheSameFile(t *testing.T) {
 			want: lsp.LineRange(1, 17, 18),
 		},
 		{
-			name: "a name asked about where it is declared answers with itself",
+			name: "a name asked about where it is declared returns itself",
 			at:   lsp.Position{Line: 0, Character: 6},
 			want: lsp.LineRange(0, 6, 11),
 		},

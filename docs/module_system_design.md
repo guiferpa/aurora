@@ -153,7 +153,7 @@ expressions, `ident` is *the* way to bind a name, and `ident area = defer { ... 
 precedent.
 
 It loses to the premise. **A name bound by `ident` holds a tape**, and a module has no bytes and
-no width. Worse, the form promises what it cannot give: bound that way, `m` should print, pass
+no width. Worse, the form claims what it cannot give: bound that way, `m` should print, pass
 to a `defer` and sit in a shape field, and each of those becomes a surprise rather than an
 ordinary error. The language already separates the two — `ident x = 10;` binds, `shape Point
 { x, y };` declares, and `Point` is a name you use and cannot print. **An import is the sibling

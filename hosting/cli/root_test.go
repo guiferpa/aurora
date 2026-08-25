@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// repoRoot answers with the directory holding go.mod, found by walking up from wherever the
+// repoRoot returns the directory holding go.mod, found by walking up from wherever the
 // test happens to run.
 //
 // The tests that read docs/ and examples/ used to count directories — "..", ".." — which is

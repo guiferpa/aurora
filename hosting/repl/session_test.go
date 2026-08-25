@@ -21,7 +21,7 @@ import (
 // took its writer. These go in the way a shell pipe does — lines in, everything the session
 // said out — so what is pinned here is the REPL as someone uses it, not its parts.
 
-// typed types the lines given and answers with everything the session wrote back. It puts the
+// typed types the lines given and returns everything the session wrote back. It puts the
 // session together the way cmd/aurora does, since that is now where a session is made.
 func typed(t *testing.T, lines string, tapeSize int) string {
 	t.Helper()

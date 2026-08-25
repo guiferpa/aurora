@@ -55,7 +55,7 @@ Three things follow, and each of them is what a module already meant:
 - **Two files are two scopes.** A test may bind a name the module it checks also binds; they
   are different names, and the module's is reached through the alias.
 
-A shape crosses the way it crosses anywhere: named through the alias, or carried by a promise.
+A shape crosses the way it crosses anywhere: named through the alias, or carried by what a scope returns.
 
 ```aurora
 #- src/point.ar

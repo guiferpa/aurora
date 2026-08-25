@@ -66,7 +66,7 @@ func (a *Analysis) module(specifier string) (module.Module, bool) {
 // The width is given rather than discovered because finding it is the host's business and
 // each host finds it differently: the language server walks up from the file to the project
 // manifest, and the playground reads the control on the page. This package takes values and
-// answers with values, which is also what lets it run where there is no filesystem at all.
+// returns values, which is also what lets it run where there is no filesystem at all.
 //
 // A zero width means the language's default.
 type Document struct {
@@ -115,7 +115,7 @@ func (s *Session) Analyze(doc Document) *Analysis {
 		analysis.ModuleErr = loader.Check(append(analysis.Modules, module.Module{ID: "", Tree: tree}))
 	}
 
-	// And what compiling it has to say. The emitter answers with warnings rather than
+	// And what compiling it has to say. The emitter returns warnings rather than
 	// refusing, so a document that parses can still be worth a word — and the editor is
 	// where that word is cheapest to hear.
 	//
@@ -175,7 +175,7 @@ func (a *Analysis) Diagnostics() Diagnostics {
 // warnings answers what compiling the document had to say, as things an editor underlines.
 //
 // They are warnings and not errors because none of them stops a program: a call applying
-// fewer values than a scope reads is legal, and what was not applied answers with zeros. That
+// fewer values than a scope reads is legal, and what was not applied returns zeros. That
 // answer is silent, which is the whole reason the compiler says anything at all — and an
 // editor is where it is heard soonest.
 //
@@ -272,7 +272,7 @@ func (s *Session) HoverInfo(doc Document, pos lsp.Position) string {
 			return info + describeExport(analysis, tk)
 		}
 		// A shape name or a field read out of one: the declaration is what says these are
-		// anything other than a name, so it is what hover has to answer with. The declaration
+		// anything other than a name, so it is what hover has to return. The declaration
 		// may be in another file, which is why the imports are read here too.
 		if shape, fields, index := shapesOf(analysis, aliases).shapeAt(analysis.Tokens, tk); shape != "" {
 			if index < 0 {

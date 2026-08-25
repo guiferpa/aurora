@@ -20,7 +20,7 @@ func projectOf(t *testing.T, files map[string]string) string {
 	return dir
 }
 
-// run compiles and evaluates the entry of a project, and answers with what it printed. The
+// run compiles and evaluates the entry of a project, and returns what it printed. The
 // entry is named the way somebody standing in the project would name it.
 func run(t *testing.T, entry string) (string, error) {
 	t.Helper()
@@ -205,7 +205,7 @@ func TestATestWhoseModuleIsNotThere(t *testing.T) {
 // What crosses a module and what does not, which is a sharper line than it looks.
 //
 // The value crosses whole: a shape is a run of tapes and nothing in it says a shape built
-// it, so a scope in another file answers with one and the bytes arrive intact. What does not
+// it, so a scope in another file returns one and the bytes arrive intact. What does not
 // cross is the declaration — the table that turns a field name into an index — because it is
 // read while a file is parsed and belongs to that file.
 func TestAShapeValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
@@ -243,7 +243,7 @@ func TestAShapeValueCrossesAModuleButItsDeclarationDoesNot(t *testing.T) {
 //
 // The shape is declared in one file and read in another, and nothing in the reading file
 // names it: what crossed is the promise the scope made, with the fields of the shape it
-// answers with — which is what turns a field name into the index of a tape.
+// returns — which is what turns a field name into the index of a tape.
 func TestAPromisedShapeCrossesAModule(t *testing.T) {
 	projectOf(t, map[string]string{
 		"src/os.ar": "shape Env { found, value };\n" +

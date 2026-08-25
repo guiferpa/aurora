@@ -14,7 +14,7 @@ import (
 	"github.com/guiferpa/aurora/parser"
 )
 
-// The page is a third client of the analyses the language server answers with, next to the
+// The page is a third client of the analyses the language server returns, next to the
 // editor plugin and the CLI's own use of the phases: the colours come from the lexer and the
 // marks from the parser.
 //
@@ -56,7 +56,7 @@ func positionFrom(args []js.Value) lsp.Position {
 	return pos
 }
 
-// marshal answers with JSON, which is what crosses to the page. A value that cannot be
+// marshal returns JSON, which is what crosses to the page. A value that cannot be
 // encoded answers as nothing rather than as a broken string: an editor that colours nothing
 // is a worse day than one that colours late, and neither is worth stopping the page for.
 func marshal(v any) any {

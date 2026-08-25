@@ -98,7 +98,7 @@ func TestCompletionAfterAModuleDot(t *testing.T) {
 	}
 }
 
-// A shape still answers with its fields after a dot, which is the other reader of the same
+// A shape still returns its fields after a dot, which is the other reader of the same
 // question.
 func TestCompletionAfterAShapeDotStillWorks(t *testing.T) {
 	source := "shape Point { x, y };\nident p = Point{1, 2};\nprintd p.\n"
@@ -137,7 +137,7 @@ func TestCompletionOffersTheModules(t *testing.T) {
 
 // From here on the editor reads the other files too, through the port it is handed. These
 // hand it a project in memory: what is on a disk is the server's business, and this package
-// answers with values whatever the world it is put in.
+// returns values whatever the world it is put in.
 func withModuleFiles(files map[string]string) *Session {
 	lx := lexer.New()
 	ps := parser.New()
@@ -324,7 +324,7 @@ func TestTheEditorOffersAModuleShapes(t *testing.T) {
 	}
 }
 
-// And a name whose shape came from another file answers with its fields after the dot, which
+// And a name whose shape came from another file returns its fields after the dot, which
 // is the whole point of the shape crossing: however the name got it — built here, claimed
 // with as, or promised by the scope that answered.
 func TestCompletionOnAShapeFromAnotherModule(t *testing.T) {

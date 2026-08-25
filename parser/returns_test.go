@@ -69,7 +69,7 @@ func TestWhatItReturnsIsOnTheBlock(t *testing.T) {
 		t.Fatalf("the second node is %T, want a block", nodes[1])
 	}
 	if block.Returns != "Person" {
-		t.Errorf("the block promises %q, want Person", block.Returns)
+		t.Errorf("the block returns %q, want Person", block.Returns)
 	}
 }
 
@@ -78,7 +78,7 @@ func TestABlockWithoutAPromiseIsUnchanged(t *testing.T) {
 	nodes := parse(t, person+"{ Person{\"Joana\"}; };")
 
 	if block := nodes[1].(ast.BlockExpression); block.Returns != "" {
-		t.Errorf("the block promises %q, want nothing", block.Returns)
+		t.Errorf("the block returns %q, want nothing", block.Returns)
 	}
 }
 

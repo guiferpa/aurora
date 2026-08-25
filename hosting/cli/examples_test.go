@@ -34,7 +34,7 @@ func exampleSources(t *testing.T) ([]string, error) {
 	return sources, err
 }
 
-// runFrom makes the directory an example is run from the current one, and answers with the
+// runFrom makes the directory an example is run from the current one, and returns the
 // path to name it by from there.
 func runFrom(t *testing.T, source string) string {
 	t.Helper()

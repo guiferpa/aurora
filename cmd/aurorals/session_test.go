@@ -276,7 +276,7 @@ func TestSessionDefinitionAnswersWithALocation(t *testing.T) {
 	}
 }
 
-// A position with no name under it is answered with null rather than with nothing. A request
+// A position with no name under it is returned null rather than with nothing. A request
 // carries an id and the client waits on it: silence is a client that waits forever.
 func TestSessionDefinitionOfNothingIsNull(t *testing.T) {
 	uri := "file:///tmp/main.ar"

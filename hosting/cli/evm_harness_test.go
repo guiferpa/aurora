@@ -135,7 +135,7 @@ ident multiply = defer { feed(0) * feed(1); };`
 	}
 }
 
-// A name the contract does not have reaches the no-match STOP, which answers with nothing —
+// A name the contract does not have reaches the no-match STOP, which returns nothing —
 // it does not run the first scope it finds.
 func TestAnUnknownNameAnswersWithNothing(t *testing.T) {
 	const source = `ident add = defer { feed(0) + feed(1); };`
@@ -191,7 +191,7 @@ func TestArithmeticWrapsAtTheTapeWidthOnBothSides(t *testing.T) {
 			// This is why every result is cut and not only the one that leaves: a sum, a
 			// difference and a product agree either way, because wrapping and adding can be
 			// done in either order. A division cannot. At one byte 255 + 1 is 0, and 0 / 2 is
-			// 0 — but 256 / 2 is 128, and cutting that afterwards still answers 128.
+			// 0 — but 256 / 2 is 128, and cutting that afterwards still returns 128.
 			name:     "a division after a sum that left the width",
 			source:   `ident half = defer { (feed(0) + feed(1)) / feed(2); };`,
 			function: "half", args: []string{"255", "1", "2"}, tapeSize: 1,
@@ -205,8 +205,8 @@ func TestArithmeticWrapsAtTheTapeWidthOnBothSides(t *testing.T) {
 	}
 }
 
-// Reading past the values applied to a scope is not an error — the read always answers with a
-// tape. What it answers with is the question, and today the two backends answer differently:
+// Reading past the values applied to a scope is not an error — the read always returns a
+// tape. What it returns is the question, and today the two backends answer differently:
 // the evaluator takes the index modulo the length of the vector, so a missing argument comes
 // back as the first one; the chain reads past the end of the calldata, which the EVM gives as
 // zeros.
@@ -347,7 +347,7 @@ func TestABranchAnswersTheSameOnChainAndOff(t *testing.T) {
 	}
 }
 
-// A comparison answers with a tape like any other value, and the EVM answers these with one or
+// A comparison returns a tape like any other value, and the EVM answers these with one or
 // zero, which is what a tape holding true or false is.
 //
 // The two that are not symmetric are the ones that say anything: the EVM reads its first
@@ -452,7 +452,7 @@ ident outer = defer { middle(feed(0)) + middle(1); };`
 
 // A shape reaches the chain. It is not a new kind of value: Point{10, 20} is two tapes laid
 // end to end, and on a chain that is one word with the first tape at the far end — the same
-// number the evaluator answers, which is what lets a scope hand a run back either way.
+// number the evaluator returns, which is what lets a scope hand a run back either way.
 //
 // Reading a field is counting back from the last tape, which is why the instruction says how
 // many the run has: nothing in the value marks where it ends.
@@ -502,7 +502,7 @@ ident build = defer { ident p = Point{twice(feed(0)), twice(feed(1))}; p.x + p.y
 	agree(t, source, "build", []string{"3", "4"}, 0)
 }
 
-// A scope answering a whole run answers the tapes laid end to end, with the first at the far
+// A scope returning a whole run answers the tapes laid end to end, with the first at the far
 // end — which is what makes the run a number the evaluator agrees with.
 //
 // This one cannot go through the harness's usual comparison: it compares what printd wrote,
@@ -622,7 +622,7 @@ func TestTapeOperationsAnswerTheSameOnChainAndOff(t *testing.T) {
 // A body is code that runs when the scope is called, and that is as true of a scope written
 // inside another as of one written at the top. Its body used to be written straight into the
 // outer one and run on the way past — its return firing in the middle of code that had not
-// asked for it — so the first of these answered 1 on chain where the program answers 2. It
+// asked for it — so the first of these answered 1 on chain where the program returns 2. It
 // compiled, it deployed, and it said nothing.
 func TestAScopeWrittenInsideAnotherDoesNotRunOnTheWayPast(t *testing.T) {
 	cases := []struct {
@@ -656,7 +656,7 @@ func TestAScopeWrittenInsideAnotherDoesNotRunOnTheWayPast(t *testing.T) {
 	}
 }
 
-// A position a scope reads and the call did not fill answers with zeros, which is what the
+// A position a scope reads and the call did not fill returns zeros, which is what the
 // language answers for reading past what was applied.
 //
 // On the way in from a transaction that is free: the calldata gives zeros past its end. A
@@ -799,7 +799,7 @@ func TestABlockInsideAnExpressionAnswersTheSameOnChainAndOff(t *testing.T) {
 			source: "ident f = defer { ident a = { feed(0) + 1; }; a * 10; };",
 		},
 		{
-			name:   "and the scope answers with something else entirely",
+			name:   "and the scope returns something else entirely",
 			source: "ident f = defer { ident a = { feed(0) + 1; }; feed(0) * 2; };",
 		},
 		{
@@ -835,7 +835,7 @@ func TestABlockInsideAnExpressionAnswersTheSameOnChainAndOff(t *testing.T) {
 // first time anything read what the print was worth.
 //
 // The evaluator prints as it goes and the chain does not, so what is compared here is only what
-// the scope answers with — the harness runs both and reads the last thing said.
+// the scope returns — the harness runs both and reads the last thing said.
 func TestAPrintIsTheValueItWasGivenOnChain(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -858,7 +858,7 @@ func TestAPrintIsTheValueItWasGivenOnChain(t *testing.T) {
 			want:   "26730",
 		},
 		{
-			name:   "and one whose value nobody reads still answers for the scope",
+			name:   "and one whose value nobody reads still returns for the scope",
 			source: "ident f = defer { printd feed(0); };",
 			want:   "3",
 		},
@@ -932,7 +932,7 @@ func TestEveryExampleDeploys(t *testing.T) {
 //	ident base = 30;
 //	ident show = defer { base * 2; };
 //
-// answered 0 on a chain where the program answers 60, and said nothing about it. What would
+// answered 0 on a chain where the program returns 60, and said nothing about it. What would
 // let it work is a static link, which is a design of its own and written down in
 // rfcs/if_and_call.md; until it exists, this is a refusal.
 func TestAScopeReadingANameFromAroundItIsRefused(t *testing.T) {

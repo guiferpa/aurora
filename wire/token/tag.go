@@ -97,7 +97,7 @@ var (
 	TagOr         = Tag{OR, "or", ""}
 	TagPull       = Tag{PULL, "pull", "Pull item in right to left"}
 	TagPush       = Tag{PUSH, "push", "Push item in left to right"}
-	TagReturns    = Tag{RETURNS, "returns", "Name the shape a block answers with"}
+	TagReturns    = Tag{RETURNS, "returns", "Name the shape a block returns"}
 	TagSemicolon  = Tag{SEMICOLON, ";", ""}
 	TagShape      = Tag{SHAPE, "shape", "Name the fields of a run of tapes"}
 	TagSmaller    = Tag{SMALLER, "smaller", ""}

@@ -920,3 +920,40 @@ func TestEveryExampleDeploys(t *testing.T) {
 		})
 	}
 }
+
+// A scope can only reach what it bound itself, and reading a name from around it is refused
+// rather than written.
+//
+// A name lives in the frame of the scope that bound it. A scope reading one from outside would
+// be reading its own frame at the place that name has in another — and the place a name nobody
+// here bound has is the first one, which is either a value applied to this scope or nothing at
+// all. So
+//
+//	ident base = 30;
+//	ident show = defer { base * 2; };
+//
+// answered 0 on a chain where the program answers 60, and said nothing about it. What would
+// let it work is a static link, which is a design of its own and written down in
+// rfcs/if_and_call.md; until it exists, this is a refusal.
+func TestAScopeReadingANameFromAroundItIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	path := writeAt(t, dir, "contract.ar", "ident base = 30;\nident show = defer { base * 2; };")
+
+	_, err := newSession(t, sessionOpts{}).Build(t.Context(), path, filepath.Join(dir, "c.bin"))
+	if err == nil {
+		t.Fatal("it wrote a contract that reads a frame nobody filled")
+	}
+	if !strings.Contains(err.Error(), "bound outside the scope that reads it") {
+		t.Errorf("it says %q, and never says the name belongs to another scope", err)
+	}
+}
+
+// And the same program with the binding moved inside the scope compiles and answers, which is
+// what the refusal is telling whoever wrote the other one to do.
+func TestAScopeThatBindsWhatItReadsAnswers(t *testing.T) {
+	const source = "ident show = defer { ident base = 30; base * 2; };"
+
+	if got := decimalOf(onChain(t, source, "show", []string{}, 0)); got != "60" {
+		t.Errorf("the chain answered %s, want 60", got)
+	}
+}

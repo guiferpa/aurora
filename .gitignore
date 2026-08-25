@@ -6,8 +6,13 @@ graph.svg
 # What 'aurora init' writes at the repository root, which is a scratch project rather
 # than part of the compiler. The examples are tracked; these are not.
 /aurora.toml
-/.aurora.deploys.toml
 /src/
+
+# What a deploy writes, wherever it was run from. It records the address and the transaction
+# of the last deploy per profile, which belongs to whoever deployed and not to the project —
+# and a project is not only at the root: examples/project is one, and so is anywhere somebody
+# points the command at.
+.aurora.deploys.toml
 
 # What aurorals writes where an editor happens to open a project.
 lsp.log

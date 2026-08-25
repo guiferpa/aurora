@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/hosting/lsp/state"
@@ -55,6 +56,7 @@ func main() {
 		Lexer:   lexer.New(),
 		Parser:  parser.New(),
 		Emit:    emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+		Carries: evm.Warnings,
 		Resolve: resolveModules(documents),
 	})}
 

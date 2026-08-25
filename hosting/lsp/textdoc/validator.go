@@ -118,9 +118,16 @@ func (s *Session) Analyze(doc Document) *Analysis {
 	// And what compiling it has to say. The emitter answers with warnings rather than
 	// refusing, so a document that parses can still be worth a word — and the editor is
 	// where that word is cheapest to hear.
+	//
+	// Then what a backend would not carry of it, which is a different question asked of a
+	// different phase: not what is wrong with the program, but what would be missing from the
+	// binary. Both are worth the same underline, and both point at a line.
 	if s.emit != nil {
 		if program, err := s.emit(tree); err == nil {
 			analysis.Warnings = program.Warnings
+			if s.carries != nil {
+				analysis.Warnings = append(analysis.Warnings, s.carries(program.Blocks)...)
+			}
 		}
 	}
 

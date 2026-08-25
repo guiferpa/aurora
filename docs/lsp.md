@@ -9,7 +9,7 @@
 | Capability | Method | What you get |
 |---|---|---|
 | **Semantic tokens** | `textDocument/semanticTokens/full` | Coloring for keywords, numbers, text, comments, operators, identifiers, calls, shapes and fields |
-| **Diagnostics** | `textDocument/publishDiagnostics` | Lexer and parser errors underlined where they happen, republished on every change |
+| **Diagnostics** | `textDocument/publishDiagnostics` | Lexer and parser errors underlined where they happen, and warnings: what the compiler has to say short of refusing, and what a chain would not carry — a print, a feature the backend does not write yet. Republished on every change |
 | **Hover** | `textDocument/hover` | The description of the keyword under the cursor, what an identifier was bound to, a shape's fields, or which tape a field reads |
 | **Completion** | `textDocument/completion` | Keywords as snippets, the identifiers and shapes declared in the document, and — right after a `.` — the fields of a shape or what a module offers |
 | **Go to definition** | `textDocument/definition` | Where the name under the cursor was declared, in this file or in the module it came from |

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/guiferpa/aurora/builder/evm"
 	"github.com/guiferpa/aurora/emitter"
 	"github.com/guiferpa/aurora/hosting/lsp"
 	"github.com/guiferpa/aurora/lexer"
@@ -234,4 +235,51 @@ func BenchmarkValidateCodeParseOnly(b *testing.B) {
 
 func BenchmarkValidateCodeWithTheEmitter(b *testing.B) {
 	benchmarkValidate(b, emitter.New(emitter.NewEmitterOptions{}).EmitProgram)
+}
+
+// The editor says what a chain would drop, too.
+//
+// It is a different question from the one the emitter answers — not what is wrong with the
+// program, but what would be missing from the binary — and it was only ever asked by "aurora
+// build", which is after the writing is done and often after the deciding is done too.
+func TestTheEditorSaysWhatABackendWouldNotCarry(t *testing.T) {
+	session := NewSession(NewSessionOptions{
+		Lexer:   lexer.New(),
+		Parser:  parser.New(),
+		Emit:    emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+		Carries: evm.Warnings,
+	})
+
+	source := "ident double = defer {\n  printd feed(0);\n  feed(0) * 2;\n};\n"
+	diagnostics := session.ValidateCode(Document{Filename: "main.ar", Source: source})
+
+	if len(diagnostics) != 1 {
+		t.Fatalf("expected one diagnostic, got %v", diagnostics)
+	}
+	if got := diagnostics[0].Severity; got != SeverityWarning {
+		t.Errorf("severity is %d, want a warning: the program is right, the binary is smaller", got)
+	}
+	if !strings.Contains(diagnostics[0].Message, "printd is ignored in compiled code") {
+		t.Errorf("message is %q, want it to say the log does not reach the chain", diagnostics[0].Message)
+	}
+	// Line 2 in the source, which the editor counts from zero.
+	if got := diagnostics[0].Range.Start.Line; got != 1 {
+		t.Errorf("it underlines line %d, want the line the print is on", got)
+	}
+}
+
+// Without the port the editor hears nothing about the binary. It is optional for the same
+// reason the emitter's port is: a host that only wants a document checked as far as it parses
+// should not have to carry a backend to get it.
+func TestWithoutTheBackendPortNothingIsSaidAboutTheBinary(t *testing.T) {
+	session := NewSession(NewSessionOptions{
+		Lexer:  lexer.New(),
+		Parser: parser.New(),
+		Emit:   emitter.New(emitter.NewEmitterOptions{}).EmitProgram,
+	})
+
+	source := "ident double = defer {\n  printd feed(0);\n  feed(0) * 2;\n};\n"
+	if diagnostics := session.ValidateCode(Document{Filename: "main.ar", Source: source}); len(diagnostics) != 0 {
+		t.Errorf("said %v without being given a backend to ask", diagnostics)
+	}
 }

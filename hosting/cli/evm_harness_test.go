@@ -872,3 +872,51 @@ func TestAPrintIsTheValueItWasGivenOnChain(t *testing.T) {
 		})
 	}
 }
+
+// Every example compiles to bytecode a chain will keep, and deploys.
+//
+// The examples are run by the evaluator elsewhere, and their declared output is compared there
+// too. This is the other half: the same sources through the backend, deployed to an EVM in
+// memory. It does not compare what they answer — an example is written to be read, so most of
+// them say what they do with print, and print is ignored in compiled code by decision — but a
+// contract that will not deploy is a contract that is wrong before anything answers.
+//
+// It is here rather than beside the other example tests because deploying is what the harness
+// does, and because what this guards is the backend rather than the language.
+func TestEveryExampleDeploys(t *testing.T) {
+	sources, err := exampleSources(t)
+	if err != nil {
+		t.Fatalf("walking examples: %v", err)
+	}
+	if len(sources) == 0 {
+		t.Fatal("no examples found")
+	}
+
+	for _, source := range sources {
+		t.Run(filepath.Base(source), func(t *testing.T) {
+			// A test file belongs to "aurora test" and holds assertions, which produce no
+			// bytecode by decision.
+			if strings.HasSuffix(source, ".test.ar") {
+				t.Skip("a test file is not built")
+			}
+
+			// From where a person would build it: the root of the project it belongs to,
+			// since that is what module names resolve from.
+			entry := runFrom(t, source)
+
+			binary := filepath.Join(t.TempDir(), "contract.bin")
+			if _, err := newSession(t, sessionOpts{}).Build(t.Context(), entry, binary); err != nil {
+				t.Fatalf("building: %v", err)
+			}
+			bytecode, err := os.ReadFile(binary)
+			if err != nil {
+				t.Fatalf("reading the binary: %v", err)
+			}
+
+			cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
+			if _, _, _, err := runtime.Create(bytecode, cfg); err != nil {
+				t.Fatalf("deploying: %v", err)
+			}
+		})
+	}
+}

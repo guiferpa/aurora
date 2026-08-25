@@ -182,20 +182,6 @@ func (e *Evaluator) EvaluateOr(label []byte, left, right ir.Operand) error {
 // The item contributes only its significant bytes (from its first non-zero byte on), so
 // pulling 4 into a tape moves it one byte, not a whole tape width.
 
-// EvaluatePull shifts the tape left and lets the item in at the right end.
-func (e *Evaluator) EvaluatePull(label []byte, left, right ir.Operand) error {
-	tape := byteutil.PaddingTape(e.value(left), e.tapeSize)
-	item := byteutil.ExtractSignificantBytes(e.value(right))
-
-	shifted := make([]byte, 0, len(tape)+len(item))
-	shifted = append(shifted, tape...)
-	shifted = append(shifted, item...)
-
-	// Keeping the last bytes drops what was shifted out on the left.
-	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(shifted, e.tapeSize))
-	return nil
-}
-
 // EvaluatePush shifts the tape right and lets the item in at the left end.
 func (e *Evaluator) EvaluatePush(label []byte, left, right ir.Operand) error {
 	tape := byteutil.PaddingTape(e.value(left), e.tapeSize)
@@ -247,18 +233,6 @@ func (e *Evaluator) EvaluatePullOver(label []byte, operands []ir.Operand) error 
 	}
 
 	e.environ.SetTemp(byteutil.ToHex(label), tape)
-	return nil
-}
-
-func (e *Evaluator) EvaluateJoin(label []byte, left, right ir.Operand) error {
-	run := e.value(left)
-	tape := byteutil.PaddingTape(e.value(right), e.tapeSize)
-
-	joined := make([]byte, 0, len(run)+len(tape))
-	joined = append(joined, run...)
-	joined = append(joined, tape...)
-
-	e.environ.SetTemp(byteutil.ToHex(label), joined)
 	return nil
 }
 
@@ -540,9 +514,7 @@ func init() {
 		ir.OpGetFeed: (*Evaluator).EvaluateGetArg,
 
 		// Tape operations
-		ir.OpPull:  (*Evaluator).EvaluatePull,
 		ir.OpPush:  (*Evaluator).EvaluatePush,
-		ir.OpJoin:  (*Evaluator).EvaluateJoin,
 		ir.OpField: (*Evaluator).EvaluateField,
 		ir.OpHead:  (*Evaluator).EvaluateHead,
 		ir.OpTail:  (*Evaluator).EvaluateTail,

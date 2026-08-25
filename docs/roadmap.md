@@ -121,6 +121,13 @@ as deep as it nests, shapes, and the tape operations.
 Nothing a program can write is missing from it any more. What a contract does not get is what
 was decided not to reach a chain, and two limits that are written down:
 
+- **A scope only reaches what it bound itself**, so everything a scope works on arrives as a
+  value applied to it. What would let a scope read a name from around it is a static link —
+  the frame carrying where the scope was written — and it is not built.
+- **A contract holds no state, says nothing, and does not know who called it.** There is no
+  storage, no event, no caller, and no way to refuse a transaction. Each of them is its own
+  decision, and each has the same question under it: what does it mean off a chain, where
+  there is no storage, no log, and nobody calling. `rfcs/` is where those are argued.
 - **A shape reaches the chain while its run fits a word.** A run is its tapes and nothing else,
   so a shape of five fields at the default tape of eight is forty bytes and is refused rather
   than written short. Four fields fill a word exactly.

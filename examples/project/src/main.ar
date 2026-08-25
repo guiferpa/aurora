@@ -19,6 +19,21 @@
 
 use geometry as g;
 
-ident s = g.new_square(30, 20);
+#- Everything the program does is inside a scope, and the last line applies it. That shape is
+#- what makes the file the same program either way it is reached:
+#-
+#-   aurora run          runs the last line, which applies main and prints what it answered
+#-   aurora call main    a transaction names main, and the contract answers the same value
+#-
+#- Nothing is arranged for one and not the other. A scope is what a transaction can reach by
+#- name, and applying it here is an ordinary call — so what the chain answers is what the last
+#- line printed, and there is one thing to read rather than two.
+#-
+#- What it multiplies is bound inside main, and it has to be: a name lives in the frame of the
+#- scope that bound it, so a scope reaches what it bound itself and nothing from around it.
+ident main = defer {
+  ident s = g.new_square(30, 20);
+  g.area(s.width, s.height);
+};
 
-printd g.area(s.width, s.height);
+printd main();

@@ -89,8 +89,29 @@ func WriteIdent(w io.Writer, names map[string]int, ident []byte) (int, error) {
 }
 
 // WriteLoad reads what a name holds.
+//
+// A name lives in the frame of the scope that bound it, so a scope can only read what it bound
+// itself. A name from around it is refused rather than written, because what would be written
+// is a read of this scope's own frame at the place that name has in another one — and the
+// place a name nobody here bound has is the first one, which is either a value applied to this
+// scope or nothing at all.
+//
+//	ident base = 30;
+//	ident show = defer { base * 2; };
+//
+// answered 0 on a chain where the program answers 60, and said nothing about it.
+//
+// What would let it work is a static link: the frame carrying where the scope was written, and
+// a name from outside read from there. That is a design of its own and it is written down in
+// rfcs/if_and_call.md; until it exists, this is a refusal rather than a silence.
 func WriteLoad(w io.Writer, names map[string]int, ident []byte) (int, error) {
-	if err := WriteFrameAddress(w, names[string(ident)]); err != nil {
+	offset, bound := names[string(ident)]
+	if !bound {
+		return 0, fmt.Errorf(
+			"%q is bound outside the scope that reads it, and a scope can only reach what it bound itself: a name lives in the frame of whoever bound it",
+			ident)
+	}
+	if err := WriteFrameAddress(w, offset); err != nil {
 		return 0, err
 	}
 	return w.Write([]byte{OpMemoryLoad})

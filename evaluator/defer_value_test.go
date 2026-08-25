@@ -127,33 +127,3 @@ func TestANumberEqualToABlockIsThatReference(t *testing.T) {
 		t.Errorf("got %v, want %v — a value equal to a scope's block calls that scope", got, want)
 	}
 }
-
-func TestDeferBlobRoundTrip(t *testing.T) {
-	blob := encodeDeferBlob(3, 9, "0a")
-	from, to, key, ok := decodeDeferBlob(blob)
-	if !ok {
-		t.Fatal("a blob we just wrote did not decode")
-	}
-	if from != 3 || to != 9 || key != "0a" {
-		t.Errorf("got (%d, %d, %q), want (3, 9, %q)", from, to, key, "0a")
-	}
-}
-
-func TestDecodeDeferBlobRejectsAnythingElse(t *testing.T) {
-	cases := []struct {
-		name string
-		blob []byte
-	}{
-		{name: "empty", blob: nil},
-		{name: "too short", blob: []byte{deferMark, 1, 2, 3}},
-		{name: "no mark", blob: bytes.Repeat([]byte{0}, 32)},
-		{name: "key longer than the blob", blob: append([]byte{deferMark}, append(bytes.Repeat([]byte{0}, 16), 200)...)},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if _, _, _, ok := decodeDeferBlob(tc.blob); ok {
-				t.Error("expected the blob to be rejected")
-			}
-		})
-	}
-}

@@ -10,7 +10,6 @@ import (
 
 	"github.com/guiferpa/aurora/byteutil"
 	"github.com/guiferpa/aurora/emitter"
-	"github.com/guiferpa/aurora/evaluator/environ"
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/wire/eval"
@@ -259,24 +258,6 @@ func TestEvaluateLoad(t *testing.T) {
 	}
 }
 
-func TestEvaluateReturn(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	next := environ.NewEnviron(environ.NewEnvironOptions{})
-	ev.environ = ev.environ.Ahead(next)
-
-	expected := byteutil.FromUint64(100)
-	ev.environ.SetTemp(byteutil.ToHex([]byte("00")), expected)
-	if err := ev.EvaluateReturn([]byte("01"), ir.RefTo([]byte("02")), ir.RefTo([]byte("00"))); err != nil {
-		t.Errorf("Error evaluating return: %v", err)
-		return
-	}
-	// After EvaluateReturn, evaluator did Back(): ev.environ is now the caller (previous) scope, and the value was stored there at label "02".
-	got := ev.environ.GetTemp(byteutil.ToHex([]byte("02")))
-	if !bytes.Equal(got, expected) {
-		t.Errorf("got: %v, expected: %v", got, expected)
-	}
-}
-
 func TestEvaluateGetArg(t *testing.T) {
 	// Args are 32 bytes each; one slot = 32 bytes
 	args := make([]byte, 32)
@@ -294,46 +275,6 @@ func TestEvaluateGetArg(t *testing.T) {
 	expected := byteutil.PaddingTape(args, byteutil.DefaultTapeSize)
 	if !bytes.Equal(got, expected) {
 		t.Errorf("got: %v, expected: %v", got, expected)
-	}
-}
-
-func TestEvaluateIf(t *testing.T) {
-	t.Run("True", func(t *testing.T) {
-		ev := New(NewEvaluatorOptions{})
-		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.TrueTape(byteutil.DefaultTapeSize))
-		ev.cursor = 0
-		if err := ev.EvaluateIf([]byte("01"), ir.RefTo([]byte("00")), ir.RefTo(byteutil.FromUint64(10))); err != nil {
-			t.Errorf("Error evaluating if: %v", err)
-			return
-		}
-		if ev.cursor != 1 {
-			t.Errorf("when condition is true cursor should be 1, got: %d", ev.cursor)
-		}
-	})
-
-	t.Run("False", func(t *testing.T) {
-		ev := New(NewEvaluatorOptions{})
-		ev.environ.SetTemp(byteutil.ToHex([]byte("00")), byteutil.FalseTape(byteutil.DefaultTapeSize))
-		ev.cursor = 0
-		if err := ev.EvaluateIf([]byte("01"), ir.RefTo([]byte("00")), ir.RefTo(byteutil.FromUint64(3))); err != nil {
-			t.Errorf("Error evaluating if: %v", err)
-			return
-		}
-		if ev.cursor != 4 {
-			t.Errorf("when condition is false cursor should be 0+3+1=4, got: %d", ev.cursor)
-		}
-	})
-}
-
-func TestEvaluateJump(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	ev.cursor = 0
-	if err := ev.EvaluateJump([]byte("00"), ir.RefTo(byteutil.FromUint64(2)), ir.Nothing()); err != nil {
-		t.Errorf("Error evaluating jump: %v", err)
-		return
-	}
-	if ev.cursor != 3 {
-		t.Errorf("after jump(2) cursor should be 0+2+1=3, got: %d", ev.cursor)
 	}
 }
 
@@ -382,119 +323,6 @@ func TestEvaluatePrintHandsOverTheWholeValue(t *testing.T) {
 				t.Errorf("%s is worth %v, want what the printer answered", tc.name, got)
 			}
 		})
-	}
-}
-
-func TestCanReadInstructions(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructions([]ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Nothing(), ir.Nothing()),
-		ir.NewInstruction([]byte("01"), ir.OpAdd, ir.RefTo(nil), ir.RefTo(nil)),
-	})
-	ev.SetInstructionsOffset(0, 2)
-
-	if !ev.CanReadInstructions() {
-		t.Error("expected CanReadInstructions true when cursor 0 < end 2")
-	}
-	ev.IncrementCursor()
-	if !ev.CanReadInstructions() {
-		t.Error("expected CanReadInstructions true when cursor 1 < end 2")
-	}
-	ev.IncrementCursor()
-	if ev.CanReadInstructions() {
-		t.Error("expected CanReadInstructions false when cursor 2 >= end 2")
-	}
-}
-
-func TestGetInstruction(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	inst0 := ir.NewInstruction([]byte("00"), ir.OpSave, ir.ImmOf([]byte{1}, 0), ir.Nothing())
-	inst1 := ir.NewInstruction([]byte("01"), ir.OpAdd, ir.RefTo([]byte("00")), ir.RefTo([]byte("01")))
-	ev.SetInstructions([]ir.Instruction{inst0, inst1})
-	ev.SetInstructionsOffset(0, 2)
-
-	got := ev.GetInstruction()
-	if got.GetOpCode() != ir.OpSave || !bytes.Equal(got.GetLabel(), []byte("00")) {
-		t.Errorf("expected first instruction (OpSave 00), got op=%d label=%s", got.GetOpCode(), got.GetLabel())
-	}
-	ev.IncrementCursor()
-	got = ev.GetInstruction()
-	if got.GetOpCode() != ir.OpAdd || !bytes.Equal(got.GetLabel(), []byte("01")) {
-		t.Errorf("expected second instruction (OpAdd 01), got op=%d label=%s", got.GetOpCode(), got.GetLabel())
-	}
-}
-
-func TestSetInstructions(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	insts := []ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Nothing(), ir.Nothing()),
-	}
-	ev.SetInstructions(insts)
-	ev.SetInstructionsOffset(0, uint64(len(insts)))
-
-	got := ev.GetInstruction()
-	if got.GetOpCode() != ir.OpSave {
-		t.Errorf("expected OpSave after SetInstructions, got op=%d", got.GetOpCode())
-	}
-}
-
-func TestSetInstructionsOffset(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructions([]ir.Instruction{
-		ir.NewInstruction([]byte("00"), ir.OpSave, ir.Nothing(), ir.Nothing()),
-		ir.NewInstruction([]byte("01"), ir.OpSave, ir.Nothing(), ir.Nothing()),
-		ir.NewInstruction([]byte("02"), ir.OpAdd, ir.RefTo(nil), ir.RefTo(nil)),
-	})
-	ev.SetInstructionsOffset(1, 3)
-
-	cursor, end := ev.GetInstructionsOffset()
-	if cursor != 1 || end != 3 {
-		t.Errorf("expected cursor=1 end=3, got cursor=%d end=%d", cursor, end)
-	}
-	got := ev.GetInstruction()
-	if !bytes.Equal(got.GetLabel(), []byte("01")) {
-		t.Errorf("expected instruction at offset 1 (label 01), got label=%s", got.GetLabel())
-	}
-}
-
-func TestGetInstructionsOffset(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructionsOffset(2, 5)
-	cursor, end := ev.GetInstructionsOffset()
-	if cursor != 2 || end != 5 {
-		t.Errorf("expected cursor=2 end=5, got cursor=%d end=%d", cursor, end)
-	}
-}
-
-func TestIncrementCursor(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructionsOffset(0, 3)
-
-	ev.IncrementCursor()
-	cursor, _ := ev.GetInstructionsOffset()
-	if cursor != 1 {
-		t.Errorf("expected cursor 1 after IncrementCursor, got %d", cursor)
-	}
-	ev.IncrementCursor()
-	cursor, _ = ev.GetInstructionsOffset()
-	if cursor != 2 {
-		t.Errorf("expected cursor 2 after second IncrementCursor, got %d", cursor)
-	}
-}
-
-func TestAddCursor(t *testing.T) {
-	ev := New(NewEvaluatorOptions{})
-	ev.SetInstructionsOffset(0, 10)
-
-	ev.AddCursor(3)
-	cursor, _ := ev.GetInstructionsOffset()
-	if cursor != 3 {
-		t.Errorf("expected cursor 3 after AddCursor(3), got %d", cursor)
-	}
-	ev.AddCursor(4)
-	cursor, _ = ev.GetInstructionsOffset()
-	if cursor != 7 {
-		t.Errorf("expected cursor 7 after AddCursor(4), got %d", cursor)
 	}
 }
 

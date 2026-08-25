@@ -485,3 +485,114 @@ func TestATapeLiteralIsOneShiftAndOneOr(t *testing.T) {
 		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
 }
+
+// How much of a value means something is worked out from the word itself, by halving: five
+// times over, the value is asked whether anything survives a shift of sixteen bytes, then
+// eight, four, two, one. Nothing branches, so the same run of instructions answers for every
+// word — and the last byte is added at the end and never asked about, which is what makes a
+// value of zero one byte long rather than none.
+func TestWriteSignificantLengthAsksFiveTimesAndNeverBranches(t *testing.T) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteSignificantLength(bs); err != nil {
+		t.Fatalf("writing the length: %v", err)
+	}
+
+	code := bs.Bytes()
+	for _, jump := range []byte{OpJump, OpJumpIf, OpJumpDestiny} {
+		if bytes.IndexByte(code, jump) >= 0 {
+			t.Errorf("it branches, and a run of instructions that branches is five jumps: %v",
+				byteutil.ToUpperHex(code))
+		}
+	}
+
+	// One shift asked about per step, and each is a whole number of bytes.
+	for _, step := range []byte{128, 64, 32, 16, 8} {
+		if !bytes.Contains(code, []byte{OpPush1, step, OpShiftRight}) {
+			t.Errorf("it never asks whether anything survives a shift of %d bits", step)
+		}
+	}
+	// And the byte that always counts.
+	if !bytes.Contains(code, []byte{OpPop, OpPush1, BYTE_SIZE, OpAdd}) {
+		t.Error("it does not add the byte that is never asked about")
+	}
+}
+
+// A tape literal collapses because the lengths of what enters it are known while compiling.
+// When they are not — a value the program works out — the length is worked out beside it, and
+// the tape and the value change places around it.
+func TestWriteTapePullWorksOutALengthItCannotKnow(t *testing.T) {
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpPull, ir.RefTo([]byte("01")), ir.RefTo([]byte("02")))
+
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapePull(bs, inst, 8); err != nil {
+		t.Fatalf("writing the pull: %v", err)
+	}
+
+	code := bs.Bytes()
+	if code[0] != OpDup1 {
+		t.Errorf("it opens with %v, want it keeping the value before measuring it",
+			byteutil.ToUpperHex(code[:1]))
+	}
+	if !bytes.Contains(code, []byte{OpShiftLeft, OpOr}) {
+		t.Errorf("it does not move the tape over and let the value in: %v", byteutil.ToUpperHex(code))
+	}
+}
+
+// Pushing lets a value in at the left, so the tape moves down by the value's own length and the
+// value moves up by what is left of the tape's width. A value is a tape, so it is never wider
+// than one and neither shift can run backwards.
+func TestWriteTapePushMovesBothWays(t *testing.T) {
+	written := ir.NewInstruction([]byte("00"), ir.OpPush, ir.RefTo([]byte("01")), ir.Imm(5, 8))
+
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapePush(bs, written, 8); err != nil {
+		t.Fatalf("writing the push: %v", err)
+	}
+	// One byte of value: the tape moves down eight bits, and the value goes in at the top.
+	if want := []byte{OpPush2, 0x00, 8, OpShiftRight}; !bytes.HasPrefix(bs.Bytes(), want) {
+		t.Errorf("it opens with %v, want %v", byteutil.ToUpperHex(bs.Bytes()[:4]), byteutil.ToUpperHex(want))
+	}
+
+	worked := ir.NewInstruction([]byte("00"), ir.OpPush, ir.RefTo([]byte("01")), ir.RefTo([]byte("02")))
+	bs = bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapePush(bs, worked, 8); err != nil {
+		t.Fatalf("writing the push: %v", err)
+	}
+	if !bytes.Contains(bs.Bytes(), []byte{OpSub, OpShiftLeft, OpOr}) {
+		t.Errorf("it does not take the value's length off the width: %v", byteutil.ToUpperHex(bs.Bytes()))
+	}
+}
+
+// head keeps the first bytes of what a tape says and tail drops them, and both count in
+// significant bytes — so both begin by asking how long the value is, and what is kept is
+// measured from the other end.
+func TestWriteTapeHeadAndTailCountFromTheEnd(t *testing.T) {
+	inst := ir.NewInstruction([]byte("00"), ir.OpHead, ir.RefTo([]byte("01")), ir.Const(2, 8))
+
+	head := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapeHead(head, inst, 8); err != nil {
+		t.Fatalf("writing the head: %v", err)
+	}
+	if got := head.Bytes(); got[len(got)-1] != OpShiftRight {
+		t.Errorf("keeping the first bytes does not end by moving the tape down: %v",
+			byteutil.ToUpperHex(got))
+	}
+
+	tail := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapeTail(tail, ir.NewInstruction([]byte("00"), ir.OpTail, ir.RefTo([]byte("01")), ir.Const(2, 8)), 8); err != nil {
+		t.Fatalf("writing the tail: %v", err)
+	}
+	if got := tail.Bytes(); got[len(got)-1] != OpAnd {
+		t.Errorf("dropping the first bytes does not end by keeping the rest: %v",
+			byteutil.ToUpperHex(got))
+	}
+
+	// An index of nothing keeps everything, and asks about no index at all.
+	whole := bytes.NewBuffer(make([]byte, 0))
+	if err := WriteTapeTail(whole, ir.NewInstruction([]byte("00"), ir.OpTail, ir.RefTo([]byte("01")), ir.Const(0, 8)), 8); err != nil {
+		t.Fatalf("writing the tail: %v", err)
+	}
+	if bytes.Contains(whole.Bytes(), []byte{OpGreaterThan}) {
+		t.Error("it holds an index of nothing to the value's length, and there is nothing to hold")
+	}
+}

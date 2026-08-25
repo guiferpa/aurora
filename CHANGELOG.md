@@ -4,7 +4,7 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
-## Unreleased
+## v0.8.0-alpha — 2026-08-25
 
 ### The EVM backend carries the whole language
 
@@ -71,6 +71,27 @@ wrong. Each of them used to compile and produce a contract that did something el
   `ident outer = defer { ident inner = defer { 1; }; 2; };` answered 1 where the program
   answers 2.
 
+- **A block written inside a scope could not read what the scope was called with.** An arm of
+  an `if` carried the applied values in with it and a block did not, so
+
+  ```
+  ident f = defer { ident a = { feed(0) + 1; }; a * 10; };
+  ```
+
+  answered as if `feed(0)` were zero. A block is not applied anything of its own — nothing
+  calls it, control walks into it — so the vector is still the enclosing scope's.
+
+- **A block written inside an expression ended the scope it was in.** Everything written after
+  it was dropped from a contract that still deployed.
+
+- **`defer {};` written on its own was worth nothing.** The binding that usually follows a
+  scope was what named it, so a scope nobody bound had no value — where `{ };` did.
+
+- **On a chain a print is the value it was given.** A print writes no bytecode, and it is worth
+  what it showed, so a print dropped into a working program does not change what that program
+  answers. It carried on by accident before, and only when another instruction had already
+  worked the value out: `ident a = printd 5; a + 10;` reverted with a stack underflow.
+
 - **A call short of what a scope reads read the last call's values.** Reading past what was
   applied answers zeros — free on the way in from a transaction, since the calldata gives zeros
   past its end, and not free in memory an earlier call already used.
@@ -85,12 +106,31 @@ wrong. Each of them used to compile and produce a contract that did something el
   had not been told about, which was harmless while the list of missing features was long and
   stops being harmless now that it is empty.
 
+### Changed
+
+- **The top of a program answers with what it computed.** It used to stop, throwing the value
+  away — and that stop was written at the end of every scope too, where it was unreachable.
+
+- **A scope is worth the number of its block.** It used to be worth an index into a list of
+  scopes counted from zero. A number equal to a reference is still that reference, which is the
+  bargain the language makes for `true` and `1`; what changed is which number.
+
 ### Inside
 
 - **The IR says how long a run is.** `OpField` carried only an index, which is enough for a
   reader that holds a run as a slice and counts from the left. It is not enough for one that
   keeps a run as a value of fixed width, and it is not something that reader can work out — the
   run arrives under a name, as a value applied to a scope, or as a field of another run.
+
+- **The IR is blocks with terminators, and the flat instruction list is gone from it.** Every
+  opcode the IR declares computes a value; where a program goes is what a block ends with.
+  Structure used to be counts written inside instructions — an `if` carrying how many to skip,
+  a scope's body how long it was — so every consumer worked the structure out again, each in
+  its own way, and two of the fixes above are what that cost.
+
+  Two documents were written for it: **`docs/contributing/ir.md`**, which is the whole contract
+  for anyone building a consumer of the IR, and **`docs/contributing/why-blocks.md`**, which is
+  what each form costs and what the change did and did not buy.
 
 - The differential harness (`hosting/cli/evm_harness_test.go`) compiles the same source,
   deploys it to an EVM in memory, calls it, and compares against the evaluator. Everything

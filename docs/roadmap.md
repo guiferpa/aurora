@@ -63,6 +63,30 @@ this.
 
 ---
 
+## Shapes
+
+Which shape a value is, is worked out while compiling. A call has a shape because the
+compiler reads what the scope's body ends with, looking through an `if` when both arms agree,
+so a field is reached off a call without anybody writing a word — across a module too, since
+what a scope returns is what crosses. `returns` is a declaration the compiler keeps, not the
+way to be understood, and `as` is for a value the program never says the shape of.
+
+Three places it stops, and each of them falls back on `as` or `returns`, which is what those
+are for:
+
+- **A scope written further down the file is not known yet.** `ident a = defer { b(); };`
+  before `b` is bound reads a table that has no `b` in it, so `a` returns nothing as far as
+  the compiler is concerned. Reading a file twice would answer it, and nothing reads a file
+  twice today.
+- **A scope that calls itself is not known either**, for the same reason and by the same
+  mechanism: the name is not in the table while its own body is being read. This is what
+  keeps the walk from being a recursion at all, so it is a limit bought on purpose.
+- **The editor still reads tokens, not the compiler.** The language server builds its own
+  table by matching patterns over the tokens, which recognises less than the compiler does —
+  no block, no `if` whose arms agree, no chain of bindings. It has to keep something like it,
+  because completing a name has to work in a document half-typed that does not parse; what it
+  does not have to do is use it when the parse succeeded.
+
 ## Modules
 
 A program is as many files as it needs. `use a/b/c as x;` reads `a/b/c.ar` from the source

@@ -221,6 +221,9 @@ is, and overrides `tape_size` from the manifest.
 
 Build, tests, coverage, lint and CI: **[docs/development.md](docs/development.md)**. How the
 compiler is put together: **[docs/contributing/architecture.md](docs/contributing/architecture.md)**.
+What the IR is and how to run it, for anyone writing a second backend:
+**[docs/contributing/ir.md](docs/contributing/ir.md)** — and why it is blocks rather than a list:
+**[docs/contributing/why-blocks.md](docs/contributing/why-blocks.md)**.
 
 ```sh
 go run ./cmd/aurora repl   # fast loop, no build needed

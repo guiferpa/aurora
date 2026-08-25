@@ -76,12 +76,12 @@ func Reaches(blocks []Block, from BlockID) []BlockID {
 // on to another.
 //
 // It is how one file follows another. Each is compiled as a program of its own and ends by
-// answering, and a program made of several runs them in the order their dependencies were
+// returning, and a program made of several runs them in the order their dependencies were
 // found — so every ending in the first is turned into going to the second, and only the last
-// file still answers.
+// file still returns.
 //
 // A scope is untouched by this: its blocks are not reached from the top of a file, because a
-// binding names a block and naming is not going. So a scope still ends by answering, which is
+// binding names a block and naming is not going. So a scope still ends by returning, which is
 // what a call needs it to do.
 func GoesOnTo(blocks []Block, from, next BlockID) []Block {
 	for _, id := range Reaches(blocks, from) {

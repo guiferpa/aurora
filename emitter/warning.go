@@ -79,7 +79,7 @@ func checkAsserts(nodes []ast.Node) []diag.Warning {
 // of it. But a body says how many positions it can address — the highest index it feeds, plus
 // one — and that number is known where the body is written.
 //
-// Applying fewer is not an error and will not become one. A position nobody wrote answers with
+// Applying fewer is not an error and will not become one. A position nobody wrote returns
 // a tape of zeros, which is a defined answer and a reasonable thing to want. It is also almost
 // always a mistake, and since that answer is silent, this is the only place it can be said out
 // loud.
@@ -108,13 +108,13 @@ func checkAppliedValues(nodes []ast.Node) []diag.Warning {
 	return warnings
 }
 
-// appliedValuesWarning names the first position that will answer with zeros, which is the one
+// appliedValuesWarning names the first position that will return zeros, which is the one
 // whoever wrote the call is least expecting. It points at the call rather than at the scope:
 // the scope is fine, and the call is what has to change.
 func appliedValuesWarning(call ast.CalleeLiteral, positions int) diag.Warning {
 	applied := len(call.Params)
 	warning := diag.Warning{Message: fmt.Sprintf(
-		"%s reads %d positions and %d were applied: feed(%d) answers with a tape of zeros",
+		"%s reads %d positions and %d were applied: feed(%d) returns a tape of zeros",
 		call.Id.Value, positions, applied, applied)}
 	if call.Id.Token != nil {
 		warning.Line = call.Id.Token.GetLine()

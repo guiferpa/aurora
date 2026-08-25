@@ -11,7 +11,7 @@ package ir
 // it was parsed from, and until now the emitter held that and let it go.
 //
 // Zero means the emitter had nothing to point at — a value it invented rather than one
-// somebody wrote, like the neutral tape a declaration answers with. Line and Column are
+// somebody wrote, like the neutral tape a declaration returns. Line and Column are
 // 1-based, matching diag.Warning and the token positions it comes from.
 type Origin struct {
 	Line   int

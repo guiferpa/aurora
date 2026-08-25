@@ -163,7 +163,7 @@ func TestTheWalkReachesEveryExpression(t *testing.T) {
 }
 
 // A scope has no arity, but a body says how many positions it can address: the highest index
-// it feeds, plus one. Applying fewer is not an error — what was not applied answers with a
+// it feeds, plus one. Applying fewer is not an error — what was not applied returns a
 // tape of zeros, which is a defined answer — but that answer is silent, so it is said here.
 func TestApplyingFewerValuesThanTheScopeReads(t *testing.T) {
 	source := "ident sum = defer { feed(0) + feed(1); };\nprintb sum(5);\n"

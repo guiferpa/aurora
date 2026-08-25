@@ -3,7 +3,7 @@ package ir
 import "github.com/guiferpa/aurora/wire/diag"
 
 // Expression is one top-level expression of a program: where it begins among the blocks, and
-// the label the value it answers with ends up under.
+// the label the value it returns ends up under.
 //
 // A caller that wants to report values in source order needs it. Reading what a program left
 // behind after the whole of it has run cannot give that order: what print wrote along the way

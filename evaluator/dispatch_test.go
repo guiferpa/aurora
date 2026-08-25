@@ -227,7 +227,7 @@ func TestExecuteInstructionDispatchesToTheRightOperation(t *testing.T) {
 	}
 }
 
-// recorder is a printer that keeps what it was asked to print and answers with what it was
+// recorder is a printer that keeps what it was asked to print and returns what it was
 // told to answer. The evaluator no longer knows how a tape is shown — a host says that — so
 // what a test here can check is which port an opcode reaches for, and what comes back.
 type recorder struct {
@@ -291,7 +291,7 @@ func TestExecuteInstructionDispatchesThePrints(t *testing.T) {
 	}
 }
 
-// A print is an expression, so it answers with a value like everything else in Aurora — the
+// A print is an expression, so it returns a value like everything else in Aurora — the
 // one the printer gives back. Answering with nothing would make "printd x + 1" mean nothing.
 func TestAPrintAnswersWithWhatThePrinterGaveBack(t *testing.T) {
 	printer := &recorder{says: byteutil.FromUint64(7)}
@@ -355,7 +355,7 @@ func TestExecuteInstructionDispatchesAnAssert(t *testing.T) {
 
 // An error raised by an operation comes back out of the dispatch rather than being swallowed
 // on the way. Both of these also prove the opcode reached the operation it names: nothing
-// else answers with these words.
+// else returns these words.
 func TestExecuteInstructionCarriesAnErrorBack(t *testing.T) {
 	cases := []struct {
 		name string

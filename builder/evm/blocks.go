@@ -123,9 +123,9 @@ func writeTerminator(bs io.Writer, term ir.Terminator, order []ir.BlockID, at ma
 				return err
 			}
 		}
-		write := WriteReturn
+		write := WriteReturnToCaller
 		if scope.Answers {
-			write = WriteAnswer
+			write = WriteReturnToChain
 		}
 		_, err := write(bs)
 		return err

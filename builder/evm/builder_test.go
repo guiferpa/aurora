@@ -101,7 +101,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				want.Write([]byte{OpJumpDestiny})
 				WriteIdent(want, map[string]int{"a": 0}, []byte("a"))
 				WritePush(want, nil, byteutil.DefaultTapeSize)
-				WriteAnswer(want)
+				WriteReturnToChain(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
 				}
@@ -121,7 +121,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				want.Write([]byte{OpJumpDestiny})
 				WriteIdent(want, map[string]int{"a": 0}, []byte("a"))
 				WritePush(want, nil, byteutil.DefaultTapeSize)
-				WriteAnswer(want)
+				WriteReturnToChain(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
 				}
@@ -144,7 +144,7 @@ func TestPickRuntimeCode(t *testing.T) {
 				want.Write([]byte{OpJumpDestiny})
 				WriteIdent(want, map[string]int{"a": 2 * MEMORY_SLOT_SIZE}, []byte("a"))
 				WritePush(want, nil, byteutil.DefaultTapeSize)
-				WriteAnswer(want)
+				WriteReturnToChain(want)
 				if !bytes.Equal(got, want.Bytes()) {
 					return fmt.Errorf("expected: %v, got: %v", byteutil.ToUpperHex(want.Bytes()), byteutil.ToUpperHex(got))
 				}

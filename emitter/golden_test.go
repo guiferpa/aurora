@@ -61,7 +61,7 @@ func TestEmittedProgramMatchesTheGolden(t *testing.T) {
 	}
 }
 
-// The golden has to be able to fail, or it pins nothing: an emitter that answered with an
+// The golden has to be able to fail, or it pins nothing: an emitter that returned an
 // empty program would pass a test that only checked it did not error.
 func TestGoldenIsNotEmpty(t *testing.T) {
 	want, err := os.ReadFile(filepath.Join("testdata", "wide.ir"))

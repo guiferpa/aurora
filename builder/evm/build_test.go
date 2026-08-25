@@ -130,7 +130,7 @@ func TestBuildWithoutCallables(t *testing.T) {
 	if runtime[0] == OpPush1 && len(runtime) > 2 && runtime[2] == OpCallDataLoad {
 		t.Error("no dispatcher should be emitted when there is no callable")
 	}
-	// The top of a program is a block, and a block answers with what it computed. It used to
+	// The top of a program is a block, and a block returns what it computed. It used to
 	// stop instead, throwing the value away and leaving a dead byte at the end of every scope.
 	if runtime[len(runtime)-1] != OpReturn {
 		t.Errorf("runtime should answer, got %#x", runtime[len(runtime)-1])
@@ -331,8 +331,8 @@ func TestBuildIsDeterministic(t *testing.T) {
 	}
 }
 
-// A block with nothing in it answers with the neutral value. The top of a program is a block
-// like any other, so a contract whose top does nothing still answers rather than falling off
+// A block with nothing in it returns the neutral value. The top of a program is a block
+// like any other, so a contract whose top does nothing still returns rather than falling off
 // the end of its own code.
 func TestAnEmptyBlockAnswersWithNothing(t *testing.T) {
 	buf := bytes.NewBuffer(nil)

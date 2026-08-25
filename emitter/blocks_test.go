@@ -156,9 +156,9 @@ func TestBothArmsHandTheirValueToTheSameBlock(t *testing.T) {
 		t.Errorf("the block they meet at takes %d values, want the one each arm hands it", len(meet.Params))
 	}
 	// It names the one it takes, and that name is what the value is known as after the branch:
-	// here the scope answers with it, without knowing which arm computed it.
+	// here the scope returns it, without knowing which arm computed it.
 	if len(meet.Params) == 1 && string(meet.Term.Value.Bytes()) != string(meet.Params[0]) {
-		t.Errorf("it answers with %q and takes %q, want them to be the same value",
+		t.Errorf("it returns %q and takes %q, want them to be the same value",
 			meet.Term.Value.Bytes(), meet.Params[0])
 	}
 }

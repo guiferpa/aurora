@@ -95,7 +95,7 @@ func TestShiftedMovesEverythingThatNamesABlock(t *testing.T) {
 }
 
 // One file carries on into the next, and a scope is untouched by that — it is named rather than
-// gone to, so it still ends by answering, which is what a call needs it to do.
+// gone to, so it still ends by returning, which is what a call needs it to do.
 func TestGoesOnToTurnsEndingsIntoGoings(t *testing.T) {
 	blocks := []Block{
 		{ID: 0, Insts: []Instruction{NewInstruction([]byte("a"), 1, BlockOf(2), Nothing())}, Term: Goes(1)},

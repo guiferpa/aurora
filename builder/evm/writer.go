@@ -99,7 +99,7 @@ func WriteIdent(w io.Writer, names map[string]int, ident []byte) (int, error) {
 //	ident base = 30;
 //	ident show = defer { base * 2; };
 //
-// answered 0 on a chain where the program answers 60, and said nothing about it.
+// answered 0 on a chain where the program returns 60, and said nothing about it.
 //
 // What would let it work is a static link: the frame carrying where the scope was written, and
 // a name from outside read from there. That is a design of its own and it is written down in
@@ -117,12 +117,12 @@ func WriteLoad(w io.Writer, names map[string]int, ident []byte) (int, error) {
 	return w.Write([]byte{OpMemoryLoad})
 }
 
-// WriteAnswer hands the value on the stack to the chain.
+// WriteReturnToChain hands the value on the stack to the chain.
 //
 // It goes through a slot of its own rather than through the first one, which holds where the
 // running scope's frame starts: writing the answer there would lose the frame in the act of
 // answering.
-func WriteAnswer(w io.Writer) (int, error) {
+func WriteReturnToChain(w io.Writer) (int, error) {
 	if _, err := w.Write([]byte{OpPush1, RETURN_SCRATCH}); err != nil {
 		return 0, err
 	}
@@ -132,14 +132,14 @@ func WriteAnswer(w io.Writer) (int, error) {
 	return w.Write([]byte{OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn})
 }
 
-// WriteReturn ends a scope: the value it answers with is on the stack, and the address to go
+// WriteReturn ends a scope: the value it returns is on the stack, and the address to go
 // back to is under it.
 //
 // It goes back to whoever called and never to the chain, even when the caller is the way in
 // from a transaction. That is what lets one body serve both: a scope called by another has to
 // hand its value over and let that one carry on, and only the way in from a transaction ends
 // the call — which it does in the epilogue, where it belongs.
-func WriteReturn(w io.Writer) (int, error) {
+func WriteReturnToCaller(w io.Writer) (int, error) {
 	return w.Write([]byte{OpSwap1, OpJump})
 }
 
@@ -171,7 +171,7 @@ func WriteFrameAddress(w io.Writer, offset int) error {
 //	           PUSH2 <internal>
 //	           JUMP
 //	epilogue:  JUMPDEST          <- the body comes back here, value on the stack
-//	           <answer the chain>
+//	           <return to the chain>
 //	internal:  JUMPDEST          <- another scope jumps here, having written the frame
 //	           <body>            feed(n) reads the frame, whoever filled it
 //	           SWAP1; JUMP       back to whoever called
@@ -191,7 +191,7 @@ func WriteFrameAddress(w io.Writer, offset int) error {
 // hand a contract a value its own language cannot hold.
 //
 // The body answers to whoever called it and never to the chain, even when the caller is the
-// prologue: answering the chain is what the epilogue does, and keeping it there is what lets
+// prologue: returning to the chain is what the epilogue does, and keeping it there is what lets
 // the same body serve a transaction and a scope.
 func WriteScopePrologue(w io.Writer, reads int, tapeSize int, epilogue, internal int) error {
 	for at := 0; at < reads; at++ {
@@ -223,13 +223,13 @@ func WriteScopePrologue(w io.Writer, reads int, tapeSize int, epilogue, internal
 }
 
 // WriteScopeEpilogue emits what a transaction's way in comes back to: the value the scope
-// answered with is on the stack, and it goes to the chain.
+// returned is on the stack, and it goes to the chain.
 //
 // It is here and not at the end of the body because the body does not know who called it. A
 // scope called by another has to hand its value back and let that one carry on; only the way
 // in from a transaction ends the call.
 func WriteScopeEpilogue(w io.Writer) error {
-	_, err := WriteAnswer(w)
+	_, err := WriteReturnToChain(w)
 	return err
 }
 
@@ -500,7 +500,7 @@ func writeRemainingLength(w io.Writer, inst ir.Instruction, tapeSize int) error 
 // the language says a shape is. So on a chain it is a word like every other value, with the
 // first tape at the far end and the last one at the bottom, which is where a tape sits inside
 // a word anyway. Point{10, 20} at a tape of eight bytes is 10 << 64 | 20, the same number the
-// evaluator answers, so a scope answering a run answers the same thing on both sides.
+// evaluator answers, so a scope returning a run answers the same thing on both sides.
 //
 // That is also the ceiling: a word is thirty-two bytes and a run is as many tapes as it has,
 // so a shape of five fields at the default tape does not fit, and the builder refuses it
@@ -661,7 +661,7 @@ func writeCallOut(w io.Writer, inst ir.Instruction, scope Scope, back int, calle
 		}
 	}
 
-	// A position the callee reads and this call did not fill has to answer with zeros, which
+	// A position the callee reads and this call did not fill has to return zeros, which
 	// is what the language answers for reading past what was applied. On the way in from a
 	// transaction that is free — the calldata gives zeros past its end — but a frame is
 	// memory an earlier activation already used, so what is left there is the last call's
@@ -725,7 +725,7 @@ func ScopeInternalAt(base, params, tapeSize int) (int, error) {
 	}
 	// The way in opens with a JUMPDEST the dispatcher lands on; the prologue follows; what it
 	// comes back to opens with one of its own, and the way in from another scope with a third.
-	return base + 1 + int(measured) + 1 + ANSWER_SIZE, nil
+	return base + 1 + int(measured) + 1 + RETURN_TO_CHAIN_SIZE, nil
 }
 
 // WriteScope emits a scope whole: the way in from a transaction, what that way comes back to,
@@ -742,7 +742,7 @@ func WriteScope(bs io.Writer, blocks []ir.Block, entry ir.BlockID, tapeSize, bas
 	if err != nil {
 		return err
 	}
-	epilogue := internal - 1 - ANSWER_SIZE
+	epilogue := internal - 1 - RETURN_TO_CHAIN_SIZE
 
 	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
 		return err
@@ -1212,7 +1212,7 @@ func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, s
 		}
 	}
 
-	// A comparison answers with a tape like any other value, and the EVM already answers
+	// A comparison returns a tape like any other value, and the EVM already answers
 	// these with one or zero, which is what a tape holding true or false is.
 	if compare, ok := comparisons[op]; ok {
 		if _, err := bs.Write(compare); err != nil {

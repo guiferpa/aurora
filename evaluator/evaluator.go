@@ -18,7 +18,7 @@ import (
 //
 // The evaluator does not know what printing is — whether it reaches a terminal, a page or
 // nothing at all — and it does not choose. It hands over the tape and keeps what comes back,
-// which is the value the expression answers with.
+// which is the value the expression returns.
 type Printer interface {
 	Print(value []byte) ([]byte, error)
 }
@@ -285,7 +285,7 @@ func (e *Evaluator) tapeSlice(left, right ir.Operand) ([]byte, int) {
 // The three print builtins read the same tape three ways, and the evaluator knows none of the
 // three: it hands the value to whoever was given for that reading and keeps what came back.
 //
-// What comes back is the value of the expression. Everything in Aurora answers with
+// What comes back is the value of the expression. Everything in Aurora returns
 // something, and a print used to be the exception — it left nothing under its label, which is
 // why a line of "printd 42" in the REPL showed no value at all.
 func (e *Evaluator) EvaluatePrintBytes(label []byte, left ir.Operand) error {
@@ -395,7 +395,7 @@ func (e *Evaluator) EvaluateCallOver(label []byte, operands []ir.Operand) error 
 
 	// A name bound to a scope holds the number of a block, and running the scope is running
 	// from there. A value that names no block is a value with no scope behind it — a number,
-	// or what a block answered with — and block zero is the top of the program, which nothing
+	// or what a block returned — and block zero is the top of the program, which nothing
 	// is bound to.
 	if int(index) >= len(e.blocks) || index == 0 {
 		return fmt.Errorf("call: value is not a deferred scope")
@@ -586,7 +586,7 @@ func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.Point, until func(ir.Po
 
 		term := block.Term
 		if term.Kind == ir.Ret {
-			return e.answered(term.Value), nil
+			return e.returned(term.Value), nil
 		}
 
 		target := term.Targets[0]
@@ -600,7 +600,7 @@ func (e *Evaluator) RunBlocks(blocks []ir.Block, from ir.Point, until func(ir.Po
 // answered reads what a terminator carries, and answers the neutral tape where there is
 // nothing to read. An empty block still has a value, and so does a scope whose last expression
 // bound a name rather than computing one.
-func (e *Evaluator) answered(operand ir.Operand) []byte {
+func (e *Evaluator) returned(operand ir.Operand) []byte {
 	if value := e.value(operand); value != nil {
 		return value
 	}
@@ -632,7 +632,7 @@ func (e *Evaluator) arrive(block ir.Block, target ir.Target) ir.BlockID {
 
 	values := make([][]byte, 0, len(target.Args))
 	for _, arg := range target.Args {
-		values = append(values, e.answered(arg))
+		values = append(values, e.returned(arg))
 	}
 
 	e.environ = e.environ.GetPrevious()
@@ -688,7 +688,7 @@ func (e *Evaluator) ExecuteInstruction(inst ir.Instruction) error {
 
 type NewEvaluatorOptions struct {
 	// A Printer per reading of a tape. What each one does with the value, and what it
-	// answers with, is the host's business: the evaluator only asks and keeps the answer.
+	// returns, is the host's business: the evaluator only asks and keeps the answer.
 	PrintBytes   Printer
 	PrintChars   Printer
 	PrintDecimal Printer

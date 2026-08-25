@@ -418,7 +418,7 @@ func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	if err := p.returnsWhatItDeclared(body, declared, "", closing); err != nil {
+	if err := p.returnsWhatItDeclared(body, declared, closing); err != nil {
 		return "", err
 	}
 	return declared, nil
@@ -426,9 +426,26 @@ func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) 
 
 // returnsWhatItDeclared refuses a body that ends with something other than what was declared.
 //
-// A `where` names the arm being read, so a declaration broken inside a branch says which one; the
-// block itself has no name and simply ends.
-func (p *pr) returnsWhatItDeclared(body []ast.Node, declared, where string, at token.Token) error {
+// What a body returns is worked out by shapeOfLast, and that is the only thing that decides
+// whether the declaration was kept. It used to be decided here instead, by a walk of its own
+// that went through the arms of an if the same way shapeOfLast does — two descriptions of one
+// traversal, which is how a compiler comes to accept in one place what it refuses in another.
+//
+// What is left below runs only when the declaration was broken, and it is about saying where.
+func (p *pr) returnsWhatItDeclared(body []ast.Node, declared string, at token.Token) error {
+	if p.shapeOfLast(body) == declared {
+		return nil
+	}
+	return p.whereItBroke(body, declared, "", at)
+}
+
+// whereItBroke names the place a declaration was not kept, for somebody reading the error.
+//
+// A `where` names the arm being read, so a declaration broken inside a branch says which one;
+// the block itself has no name and simply ends. It walks the same shape shapeOfLast walks, and
+// it may only do that because it never decides anything — by the time it runs, the answer is
+// already known and this is looking for the words.
+func (p *pr) whereItBroke(body []ast.Node, declared, where string, at token.Token) error {
 	if len(body) == 0 {
 		return brokenDeclaration(at, declared, where, "nothing")
 	}
@@ -442,10 +459,10 @@ func (p *pr) returnsWhatItDeclared(body []ast.Node, declared, where string, at t
 			return token.NewError(at, "this block returns %s and its if has no else at line %d and column %d: one path returns nothing",
 				declared, at.GetLine(), at.GetColumn())
 		}
-		if err := p.returnsWhatItDeclared(answer.Body, declared, "the if", at); err != nil {
+		if err := p.whereItBroke(answer.Body, declared, "the if", at); err != nil {
 			return err
 		}
-		return p.returnsWhatItDeclared(answer.Else.Body, declared, "the else", at)
+		return p.whereItBroke(answer.Else.Body, declared, "the else", at)
 	}
 
 	if p.shapeOf(last) == declared {

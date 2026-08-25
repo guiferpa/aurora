@@ -114,6 +114,14 @@ var brokenPromises = []struct {
 		want:   "the if returns a number",
 	},
 	{
+		// Deeper than one arm. What a body returns is decided in one place, and this is the
+		// other walk — the one that only runs once it is already broken, to say where. It has
+		// to keep descending, or a break far enough in would be reported as the whole if.
+		name:   "an arm of an inner if that returns something else",
+		source: person + "{ if true { if true { 0; } else { Person{\"Joana\"}; }; } else { Person{\"Joana\"}; }; } returns Person;",
+		want:   "the if returns a number",
+	},
+	{
 		name:   "a shape nobody declared",
 		source: "{ 10; } returns Person;",
 		want:   "Person is not a declared shape",

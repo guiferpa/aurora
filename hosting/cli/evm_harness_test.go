@@ -680,6 +680,101 @@ ident counted = defer { sstore 1 40; sstore 1 ((sload 1) + feed(0)); sload 1; };
 	}
 }
 
+// What one transaction keeps, the next one reads.
+//
+// Every other case here writes and reads inside one call, which proves the two opcodes and
+// nothing about what a chain is for. This deploys once and calls twice, so what the second
+// call sees is what the first left — which is the whole point of storage and the one thing
+// the harness had never asked.
+func TestWhatOneTransactionKeepsTheNextOneReads(t *testing.T) {
+	const source = `ident inc = defer { sstore 1 ((sload 1) + 1); };
+ident read = defer { sload 1; };`
+
+	dir := t.TempDir()
+	path := writeAt(t, dir, "contract.ar", source)
+	binary := filepath.Join(dir, "contract.bin")
+	if _, err := newSession(t, sessionOpts{}).Build(t.Context(), path, binary); err != nil {
+		t.Fatalf("building: %v", err)
+	}
+	bytecode, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatalf("reading the binary: %v", err)
+	}
+
+	// One EVM and one contract for the whole test, because two calls sharing state is the
+	// thing being asked about.
+	cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
+	_, address, _, err := runtime.Create(bytecode, cfg)
+	if err != nil {
+		t.Fatalf("deploying: %v", err)
+	}
+
+	reach := func(function string) string {
+		t.Helper()
+		returned, _, err := runtime.Call(address, EncodeSelector(function), cfg)
+		if err != nil {
+			t.Fatalf("calling %s: %v", function, err)
+		}
+		return decimalOf(returned)
+	}
+
+	if got := reach("read"); got != "0" {
+		t.Errorf("before anything was kept, read answered %s, want 0", got)
+	}
+	if got := reach("inc"); got != "1" {
+		t.Errorf("the first inc answered %s, want 1", got)
+	}
+	// The one that matters: a call of its own, after the transaction that wrote.
+	if got := reach("read"); got != "1" {
+		t.Errorf("after one inc, read answered %s, want 1 — what one transaction kept, the next did not read", got)
+	}
+	if got := reach("inc"); got != "2" {
+		t.Errorf("the second inc answered %s, want 2 — it did not see what the first left", got)
+	}
+	if got := reach("read"); got != "2" {
+		t.Errorf("after two, read answered %s, want 2", got)
+	}
+}
+
+// And the same through the standard library, which is what a program writes.
+func TestWhatTheStandardLibraryKeepsSurvivesTheTransaction(t *testing.T) {
+	const source = "use std/evm/storage as s;\n" +
+		"ident deposit = defer { s.set(1, s.get(1) + feed(0)); };\n" +
+		"ident balance = defer { s.get(1); };"
+
+	projectOf(t, map[string]string{"src/main.ar": source})
+	binary := filepath.Join(t.TempDir(), "contract.bin")
+	if _, err := newSession(t, sessionOpts{}).Build(t.Context(), filepath.Join("src", "main.ar"), binary); err != nil {
+		t.Fatalf("building: %v", err)
+	}
+	bytecode, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatalf("reading the binary: %v", err)
+	}
+
+	cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
+	_, address, _, err := runtime.Create(bytecode, cfg)
+	if err != nil {
+		t.Fatalf("deploying: %v", err)
+	}
+
+	reach := func(function string, args []string) string {
+		t.Helper()
+		calldata := append(EncodeSelector(function), ParseArgs(args)...)
+		returned, _, err := runtime.Call(address, calldata, cfg)
+		if err != nil {
+			t.Fatalf("calling %s: %v", function, err)
+		}
+		return decimalOf(returned)
+	}
+
+	reach("deposit", []string{"40"})
+	reach("deposit", []string{"2"})
+	if got := reach("balance", nil); got != "42" {
+		t.Errorf("after two deposits, balance answered %s, want 42", got)
+	}
+}
+
 // A write is worth what it wrote, on a chain as much as off one.
 //
 // SSTORE leaves nothing on the stack, so the value is copied before it is spent. Getting that

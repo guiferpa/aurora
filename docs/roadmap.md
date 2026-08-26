@@ -224,6 +224,12 @@ aurora call read      answered against the state as it is, costing nothing, keep
 aurora tx inc         sent, paid for, mined, and what it changed stays
 ```
 
+**A question answers the bytes that came back, and nothing else.** They go to stdout on their
+own, so `aurora call read | xxd` is a pipe and not something to undo first — it used to be a
+line saying "Result:" with the value as decimals inside brackets, which is readable and is not
+the answer. `--hex` writes `0x…` and a newline instead, for a person and for pasting into an
+explorer.
+
 Nothing decides between them from what a program looks like. What the compiler knows is used to
 refuse the wrong one: a scope that keeps something, asked as a question, is a write thrown away
 — it answers, looking right, and the chain is exactly as it was. That happened on a real chain

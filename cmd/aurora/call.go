@@ -17,6 +17,7 @@ var callCmd = &cobra.Command{
 
 func init() {
 	callCmd.Flags().Bool("pretend", false, "pretend/simulate the call (dry run)")
+	callCmd.Flags().Bool("hex", false, "write the answer as 0x-prefixed hex instead of the bytes themselves")
 	callCmd.Flags().StringP("profile", "p", "main", "profile to call")
 }
 
@@ -47,12 +48,17 @@ func runCall(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	asHex, err := cmd.Flags().GetBool("hex")
+	if err != nil {
+		return err
+	}
 	return cli.Call(cmd.Context(), cli.CallInput{
 		Function:        fn,
 		ContractAddress: d.ContractAddress,
 		RPC:             env.Profile.RPC,
 		Args:            args[1:],
 		Pretend:         pretend,
+		Hex:             asHex,
 		Blocks:          blocksOfProfile(profile),
 	})
 }

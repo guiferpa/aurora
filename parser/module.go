@@ -35,6 +35,11 @@ func typed(id ast.IdentifierLiteral) string {
 // everything downstream — a call, a load, the environ — goes on treating it as any other
 // name. The alias is gone by then: it belonged to this file and to nothing else.
 func (p *pr) parseMember(specifier, symbol string, at token.Token) (ast.Node, error) {
+	// Storage names no file, so nothing about it is looked up: what follows the dot is one of
+	// two things the language does, and the alias is only how this file spells it.
+	if isStorage(specifier) {
+		return p.parseStorage(p.aliasOf(specifier), symbol, at)
+	}
 	// A shape of that module is not a value there any more than a local one is here: it is
 	// built, or it names what a value is read as, and nothing else.
 	shape := module.Qualify(module.ID(specifier), symbol)
@@ -53,4 +58,15 @@ func (p *pr) parseMember(specifier, symbol string, at token.Token) (ast.Node, er
 		return p.ParseCallee(qualified)
 	}
 	return qualified, nil
+}
+
+// aliasOf answers what this file calls a specifier, for a message somebody reads. A specifier
+// with no alias here cannot be reached at all, so the specifier itself is the honest fallback.
+func (p *pr) aliasOf(specifier string) string {
+	for alias, named := range p.declarations.Modules {
+		if named == specifier {
+			return alias
+		}
+	}
+	return specifier
 }

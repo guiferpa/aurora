@@ -33,6 +33,18 @@ func TestTheLoweringMovesNothingItMayNotMove(t *testing.T) {
 		{name: "a shape and a field", source: `shape P { a, b };` + "\n" + `ident f = defer { ident p = P{feed(0), feed(1)}; p.a + p.b; };`},
 		{name: "the tape operations", source: "ident f = defer { ident x = feed(0); ident a = head x 1; ident b = tail x 1; a + b; };"},
 		{name: "a print over a name", source: `ident f = defer { ident x = feed(0); printd x; };`},
+		{
+			// The case the rule was written for. Nothing about the value either of these
+			// leaves says when it ran, and there is no data between them for the ordering to
+			// fall out of: a get moved in front of the set it follows reads what was there
+			// before, and the contract answers a number either way.
+			name:   "a write to storage and a read after it",
+			source: "use storage as s;\nident f = defer { s.set(1, feed(0)); s.get(1); };",
+		},
+		{
+			name:   "two writes to storage",
+			source: "use storage as s;\nident f = defer { s.set(1, feed(0)); s.set(1, 2); s.get(1); };",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()

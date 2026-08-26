@@ -341,6 +341,25 @@ type ShapedExpression struct {
 	Token      token.Token `json:"-"`
 }
 
+// StorageExpression reads or writes what the chain keeps between transactions.
+//
+// It is a node of its own rather than a call to something named "storage.set", because a
+// consumer that had to recognise it by a name would be matching a string to know what an
+// instruction does — and knowing what a thing is by looking at it is how this compiler has
+// been wrong before. The tree says which of the two it is, and the emitter reads it.
+//
+// Both are expressions, because everything is: a write returns what it wrote, so
+// `s.set("n", 1) + 1` is two.
+type StorageExpression struct {
+	mark
+	// Writes says which of the two this is: a set, or a get.
+	Writes bool        `json:"writes"`
+	Key    Node        `json:"key"`
+	Value  Node        `json:"value,omitempty"` // nil for a get
+	Alias  string      `json:"alias"`           // what the file called it, for a message a person reads
+	Token  token.Token `json:"-"`
+}
+
 // UseDeclaration brings a module in under an alias: `use a/b/c as x;`.
 //
 // It declares rather than binds. The alias names something only the compiler resolves — a

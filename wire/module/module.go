@@ -36,6 +36,17 @@ func (m Module) IsEntry() bool {
 	return m.ID == ""
 }
 
+// Storage is the one specifier that names no file.
+//
+// `use storage as s;` brings in what the chain keeps between transactions, which is not a
+// module of the program and has no source to read. It is written as an import because that is
+// what it is to somebody using it — something reached under an alias of their choosing — and
+// because giving it a keyword would spend one on it.
+//
+// A file may not be called this, and is refused where it is imported rather than quietly
+// shadowed.
+const Storage = "storage"
+
 // Separator is what stands between a module and a name inside it: a/b/c.add.
 //
 // It is a character no identifier can hold — the lexer takes letters, digits and _ - ? ! > <

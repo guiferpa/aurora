@@ -162,6 +162,12 @@ written down:
   storage, no event, no caller, and no way to refuse a transaction. Each of them is its own
   decision, and each has the same question under it: what does it mean off a chain, where
   there is no storage, no log, and nobody calling. `rfcs/` is where those are argued.
+- **Storage does not reach the bytecode yet.** `use storage as s;` runs off a chain, where it
+  is simulated by a map for one run of a program, so a contract using it compiles and keeps
+  nothing on chain. The builder says so under the feature's name rather than under an opcode.
+  What is left is `SSTORE` and `SLOAD`, and a case in the harness — the ordering it needs is
+  already written down, since a get and a set have no data between them and only their effects
+  keep them in the order they were written.
 - **Only a scope bound at the top of a program can be called.** A scope written inside another
   is not written at all: on a chain the name it was bound to holds the neutral value, and
   calling it is refused rather than written as a jump to an address no scope has.

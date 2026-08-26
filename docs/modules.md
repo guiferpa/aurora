@@ -189,6 +189,40 @@ What does not cross is a scope whose shape nothing says — one ending with arit
 a tape and not a run. It hands over the tapes and no shape, and the file reading it has to
 name one.
 
+### One import names no file
+
+`use storage as s;` brings in what a chain keeps between one transaction and the next. It is
+written as an import and is not one — there is no `src/storage.ar`, nothing is read, and
+nothing crosses — because what it is to whoever uses it is exactly an import: something
+reached under an alias they chose.
+
+```
+use storage as s;
+
+ident deposit = defer { s.set(1, s.get(1) + feed(0)); };
+ident balance = defer { s.get(1); };
+```
+
+Two things are reached through the alias, and there is no third:
+
+| written | is | answers |
+|---|---|---|
+| `s.set(key, value)` | keeps the value under the key | the value it wrote |
+| `s.get(key)` | reads what is kept under the key | it, or the neutral tape |
+
+A key is a tape and so is a value, and a key is anything a program works out — `s.get(k)` after
+`ident k = 3 * 4;` reads what `s.set(12, ...)` wrote. A key nothing was ever written under
+answers the neutral tape, the same as reading past the end of a run.
+
+`set` answers what it wrote because everything in Aurora is an expression, so
+`s.set("n", 1) + 1` is two.
+
+`storage` is the one word a module may not be called, and importing a file of that name is
+refused rather than quietly shadowed.
+
+Off a chain it is simulated for one run of a program: what a transaction sees. That is what
+`aurora run` and a test read, and what a second run starts without.
+
 ### And a shape can be named
 
 A shape's name belongs to the file that declared it, so elsewhere it is written as the

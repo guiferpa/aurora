@@ -71,6 +71,12 @@ var effects = map[byte]Effect{
 	OpIdent: Writes,
 	OpLoad:  Reads,
 
+	// Storage is state in the plainest sense: it outlives the transaction, and two of these
+	// in the other order is a different program. They are the reason the rule was written
+	// before there was anything for it to hold.
+	OpStorageGet: Reads,
+	OpStorageSet: Writes,
+
 	// A print says something, and when it says it is the whole of what it is for. It never
 	// reaches the backend that reorders — a chain has nowhere to put a log, by decision — so
 	// this costs nothing and is still the truth.

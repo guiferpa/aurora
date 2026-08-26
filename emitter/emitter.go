@@ -83,6 +83,8 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 		return emitUseDeclaration(tc, insts, n, tapeSize)
 	case ast.ShapeLiteral:
 		return emitShapeLiteral(tc, insts, n, tapeSize)
+	case ast.StorageExpression:
+		return emitStorageExpression(tc, insts, n, tapeSize)
 	case ast.FieldExpression:
 		return emitFieldExpression(tc, insts, n, tapeSize)
 	case ast.ShapedExpression:
@@ -260,6 +262,25 @@ func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, 
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
 	return l
 
+}
+
+// emitStorageExpression reads or writes what the chain keeps between transactions.
+//
+// A set leaves the value it wrote, so it is an expression like everything else and can stand
+// where any other value can. What it takes is a key and a value, both tapes, and the tree has
+// already said which of the two this is — nothing here matches a name to find out.
+func emitStorageExpression(tc *int, insts *[]ir.Instruction, n ast.StorageExpression, tapeSize int) ir.Label {
+	key := operandFor(tc, insts, n.Key, tapeSize)
+
+	l := GenerateLabel(tc)
+	if !n.Writes {
+		*insts = append(*insts, ir.NewInstruction(l, ir.OpStorageGet, key, ir.Nothing()).At(originOf(n.Token)))
+		return l
+	}
+
+	value := operandFor(tc, insts, n.Value, tapeSize)
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpStorageSet, key, value).At(originOf(n.Token)))
+	return l
 }
 
 // emitShapeLiteral lays one tape per field, end to end.

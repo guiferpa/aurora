@@ -168,6 +168,12 @@ func declarationsOf(tree ast.AST) []ast.UseDeclaration {
 // case, and it loads once — its body runs once, which is the whole premise of a module being
 // a file that executes.
 func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration) error {
+	// Storage names no file. It is written as an import because that is what it is to whoever
+	// uses it, and there is nothing here to find, order or read.
+	if declaration.Specifier == module.Storage {
+		return nil
+	}
+
 	id := module.ID(declaration.Specifier)
 	if state.found[id] {
 		return nil

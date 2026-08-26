@@ -55,7 +55,11 @@ func (p *pr) ParseUse() (ast.Node, error) {
 			alias, declared, name.GetLine(), name.GetColumn())
 	}
 	p.declarations.Modules[alias] = specifier
-	p.declarations.Import(specifier, p.imports[specifier])
+	// Storage has no file and offers no shapes, so there is nothing to import: what the alias
+	// reaches is written into the language rather than read from anywhere.
+	if !isStorage(specifier) {
+		p.declarations.Import(specifier, p.imports[specifier])
+	}
 
 	return ast.UseDeclaration{Specifier: specifier, Alias: alias, Token: tok}, nil
 }

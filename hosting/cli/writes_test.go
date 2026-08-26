@@ -20,7 +20,13 @@ func TestWhetherReachingAScopeChangesAnything(t *testing.T) {
 		"ident through = defer { keep(feed(0)); };\n" +
 		"ident deeper = defer { through(feed(0)); };\n" +
 		"ident sums = defer { feed(0) + feed(1); };\n" +
-		"ident raw = defer { sstore 1 feed(0); };\n"
+		"ident raw = defer { sstore 1 feed(0); };\n" +
+		// The two that were wrong. A binding writes the frame and a print writes a log, and
+		// neither is anything a chain keeps: a frame is gone when the scope is, and a print
+		// reaches no bytecode at all.
+		"ident binds = defer { ident x = feed(0); x * 2; };\n" +
+		"ident prints = defer { printd feed(0); };\n" +
+		"ident both = defer { ident x = feed(0); printd x; };\n"
 
 	projectOf(t, map[string]string{"src/main.ar": source})
 	blocks, err := newSession(t, sessionOpts{}).Blocks("src/main.ar")
@@ -34,6 +40,9 @@ func TestWhetherReachingAScopeChangesAnything(t *testing.T) {
 	}{
 		{name: "read", writes: false},
 		{name: "sums", writes: false},
+		{name: "binds", writes: false},
+		{name: "prints", writes: false},
+		{name: "both", writes: false},
 		{name: "raw", writes: true},
 		{name: "keep", writes: true},
 		// The two that matter: the write is not in this scope at all.

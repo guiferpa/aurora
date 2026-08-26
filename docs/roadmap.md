@@ -223,9 +223,16 @@ refuse the wrong one: a scope that keeps something, asked as a question, is a wr
 — it answers, looking right, and the chain is exactly as it was. That happened on a real chain
 before this existed, and a counter answered 1 every time.
 
-Which scopes keep something is read from the effect of the instructions they reach, following
-the scopes they call — because with a standard library the scope somebody writes holds no
-`sstore` at all: `s.set(...)` is a call, and the write is one file away.
+Which scopes keep something is read from the instructions they reach, following the scopes they
+call — because with a standard library the scope somebody writes holds no `sstore` at all:
+`s.set(...)` is a call, and the write is one file away.
+
+**What a chain keeps is narrower than what an instruction writes**, and the two were read as
+one for a while. A binding writes the frame, because a frame is memory and a load after a store
+must stay after it — and a frame is gone when the scope is, and nobody outside the program ever
+saw it. A print is sharper: its effect is a write, and it reaches no bytecode at all. So a scope
+that only computed was refused for changing the chain. What counts is storage, and events and
+an external call when they are written.
 
 What is missing:
 

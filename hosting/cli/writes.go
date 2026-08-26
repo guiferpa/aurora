@@ -21,7 +21,12 @@ type WritesInput struct {
 	Function string
 }
 
-// Writes says whether reaching this scope changes anything the chain keeps.
+// ScopeWrites says whether reaching this scope changes anything the chain keeps.
+//
+// What a chain keeps is a narrower thing than what an instruction writes, and reading the two
+// as one was a mistake: a scope that binds a name writes the frame, and a frame is gone when
+// the scope is. A scope that only computes was refused for changing the chain, which is how it
+// was found.
 //
 // It follows the scopes this one calls, because what a call does is part of what its caller
 // does — and once there is a standard library, the scope somebody writes holds no `sstore` at
@@ -35,7 +40,7 @@ func ScopeWrites(in WritesInput) (writes bool, found bool) {
 	if !bound {
 		return false, false
 	}
-	return ir.Does(in.Blocks, scope) >= ir.Writes, true
+	return ir.KeepsAnything(in.Blocks, scope), true
 }
 
 // refuseACallThatWrites is the message somebody gets for asking a question of something that

@@ -134,34 +134,63 @@ func Scopes(blocks []Block) map[string]BlockID {
 // still writes to a chain if it calls something that writes, which is exactly the shape a
 // program has once there is a standard library to call.
 func Does(blocks []Block, from BlockID) Effect {
+	most := Pure
+	reaching(blocks, from, func(inst Instruction) {
+		if effect := EffectOf(inst.GetOpCode()); effect > most {
+			most = effect
+		}
+	})
+	return most
+}
+
+// KeepsAnything answers whether running this scope changes something that outlives the program.
+//
+// It is the question a chain asks and the effect is not: a binding writes the frame and a frame
+// is gone when the scope is, and a print reaches no bytecode at all. What is left is storage,
+// and events and an external call when they are written.
+//
+// Like Does, it follows the scopes this one calls — with a standard library the scope somebody
+// writes holds no sstore at all, and the write is one file away.
+func KeepsAnything(blocks []Block, from BlockID) bool {
+	kept := false
+	reaching(blocks, from, func(inst Instruction) {
+		kept = kept || Keeps(inst.GetOpCode())
+	})
+	return kept
+}
+
+// reaching walks every instruction running this scope can run, following the branches inside it
+// and the scopes it calls, and hands each one to whoever asked.
+//
+// Reaches is not enough on its own and cannot be: it follows where control goes, and a call is
+// not that — control comes back. But what a call does is part of what its caller does, which is
+// the whole of why this exists.
+func reaching(blocks []Block, from BlockID, each func(Instruction)) {
 	scopes := Scopes(blocks)
 	seen := make(map[BlockID]bool, len(blocks))
 
-	var walk func(id BlockID) Effect
-	walk = func(id BlockID) Effect {
-		if seen[id] || int(id) >= len(blocks) || id < 0 {
-			return Pure
+	var walk func(id BlockID)
+	walk = func(id BlockID) {
+		if id < 0 || int(id) >= len(blocks) || seen[id] {
+			return
 		}
 		seen[id] = true
 
-		most := Pure
 		for _, block := range Reaches(blocks, id) {
+			if block != id && seen[block] {
+				continue
+			}
 			seen[block] = true
 			for _, inst := range blocks[block].Insts {
-				if effect := EffectOf(inst.GetOpCode()); effect > most {
-					most = effect
-				}
+				each(inst)
 				if inst.GetOpCode() != OpCall {
 					continue
 				}
 				if called, bound := scopes[string(inst.GetLeft().Bytes())]; bound {
-					if effect := walk(called); effect > most {
-						most = effect
-					}
+					walk(called)
 				}
 			}
 		}
-		return most
 	}
-	return walk(from)
+	walk(from)
 }

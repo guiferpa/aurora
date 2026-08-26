@@ -122,7 +122,17 @@ func WriteLoad(w io.Writer, names map[string]int, ident []byte) (int, error) {
 // It goes through a slot of its own rather than through the first one, which holds where the
 // running scope's frame starts: writing the answer there would lose the frame in the act of
 // answering.
-func WriteReturnToChain(w io.Writer) (int, error) {
+func WriteReturnToChain(w io.Writer, tapes, tapeSize int) (int, error) {
+	// A run is already in memory and what is on the stack is where it starts, so it is handed
+	// back from there, as the bytes it is. That is the same run the evaluator returns, byte for
+	// byte, which is stronger than the two agreeing on a number.
+	if tapes > 1 {
+		if _, err := WritePush2(w, tapes*byteutil.TapeSize(tapeSize)); err != nil {
+			return 0, err
+		}
+		return w.Write([]byte{OpSwap1, OpReturn})
+	}
+
 	if _, err := w.Write([]byte{OpPush1, RETURN_SCRATCH}); err != nil {
 		return 0, err
 	}
@@ -130,6 +140,19 @@ func WriteReturnToChain(w io.Writer) (int, error) {
 		return 0, err
 	}
 	return w.Write([]byte{OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn})
+}
+
+// ReturnToChainSize answers what handing a value to the chain measures, which depends on
+// whether the value is a run.
+//
+// It is measured rather than added up, for the reason every size here is: a table of sizes is
+// a second description of the same bytes, and two descriptions drift.
+func ReturnToChainSize(tapes, tapeSize int) (int, error) {
+	var measured counter
+	if _, err := WriteReturnToChain(&measured, tapes, tapeSize); err != nil {
+		return 0, err
+	}
+	return int(measured), nil
 }
 
 // WriteReturn ends a scope: the value it returns is on the stack, and the address to go
@@ -228,8 +251,8 @@ func WriteScopePrologue(w io.Writer, reads int, tapeSize int, epilogue, internal
 // It is here and not at the end of the body because the body does not know who called it. A
 // scope called by another has to hand its value back and let that one carry on; only the way
 // in from a transaction ends the call.
-func WriteScopeEpilogue(w io.Writer) error {
-	_, err := WriteReturnToChain(w)
+func WriteScopeEpilogue(w io.Writer, tapes, tapeSize int) error {
+	_, err := WriteReturnToChain(w, tapes, tapeSize)
 	return err
 }
 
@@ -494,92 +517,90 @@ func writeRemainingLength(w io.Writer, inst ir.Instruction, tapeSize int) error 
 	return err
 }
 
-// WriteJoin lays tapes end to end into one value.
+// WriteJoin lays a run in memory and leaves where it starts.
 //
-// A run has no header, no length and no tag — it is the tapes and nothing else, which is what
-// the language says a shape is. So on a chain it is a word like every other value, with the
-// first tape at the far end and the last one at the bottom, which is where a tape sits inside
-// a word anyway. Point{10, 20} at a tape of eight bytes is 10 << 64 | 20, the same number the
-// evaluator answers, so a scope returning a run answers the same thing on both sides.
+// A run is tapes end to end, and it does not go on the stack. A stack item is exactly a word,
+// which is four tapes of eight and one tape of thirty-two, and a shape wider than that used to
+// be refused rather than written — a program that ran off a chain and could not reach one,
+// which is the one thing this backend may not do.
 //
-// That is also the ceiling: a word is thirty-two bytes and a run is as many tapes as it has,
-// so a shape of five fields at the default tape does not fit, and the builder refuses it
-// rather than writing a value with the first field shifted off the end.
+// Nothing is on the stack even when it would fit. A run kept two ways is two things a consumer
+// has to tell apart, and telling things apart by looking is how this backend has been wrong
+// before.
 //
-// It is built from the last tape back, because that is the order the stack offers them. The
-// ones another instruction worked out are on it already, put there in field order by the
-// lowering, so the last of them is on top; the ones the program wrote down reach the stack
-// here. Either way what has been built so far sits under what comes next, which is why a tape
-// taken off the stack changes places with it and one pushed does not.
-func WriteJoin(w io.Writer, inst ir.Instruction, tapeSize int) error {
+// The tapes are laid in the order they were written, which is the order the evaluator lays
+// them, so what a contract hands back is the same bytes rather than the same number. Each one
+// is laid with MSTORE, which writes a word, so laying one writes past it — and the next one
+// written puts that right. What the last one writes past the end lands in the room RunRoom
+// gave it.
+func WriteJoin(w io.Writer, inst ir.Instruction, tapeSize, base int) error {
 	tapes := valueOperands(inst)
-	if run := len(tapes) * tapeSize; run > byteutil.MaxTapeSize {
-		return fmt.Errorf(
-			"a run of %d tapes is %d bytes and a word is %d: a shape this wide does not reach the bytecode",
-			len(tapes), run, byteutil.MaxTapeSize)
-	}
 
+	// Backwards, because that is the order the values are on the stack: whoever computed them
+	// went left to right, so the last one is on top.
 	for at := len(tapes) - 1; at >= 0; at-- {
-		tape := tapes[at]
-		switch {
-		case tape.Kind() == ir.KindImm:
+		if tape := tapes[at]; tape.Kind() == ir.KindImm {
 			if _, err := WritePush(w, tape.Bytes(), tapeSize); err != nil {
 				return err
 			}
-		case at < len(tapes)-1:
-			// It is under what has been built so far, and it is what the shift applies to.
-			if _, err := w.Write([]byte{OpSwap1}); err != nil {
-				return err
-			}
 		}
 
-		// A tape wider than the tape size is cut to it, which is what the evaluator does
-		// when it lays one into a run: a run of tapes holds tapes.
+		// A tape wider than the tape size is cut to it, which is what the evaluator does when
+		// it lays one into a run: a run of tapes holds tapes.
 		if _, err := WriteMask(w, tapeSize); err != nil {
 			return err
 		}
-
-		if bits := (len(tapes) - 1 - at) * tapeSize * BYTE_SIZE; bits > 0 {
-			if _, err := WritePush(w, byteutil.FromUint64(uint64(bits)), 1); err != nil {
-				return err
-			}
-			if _, err := w.Write([]byte{OpShiftLeft}); err != nil {
-				return err
-			}
+		// MSTORE writes a word and the tape is in the last bytes of one, so the word is put
+		// where its end is the tape's end. What that writes over in front is the tape before,
+		// which is laid next.
+		if err := WriteFrameAddress(w, base+(at+1)*byteutil.TapeSize(tapeSize)-MEMORY_SLOT_SIZE); err != nil {
+			return err
 		}
-
-		if at < len(tapes)-1 {
-			if _, err := w.Write([]byte{OpOr}); err != nil {
-				return err
-			}
+		if _, err := w.Write([]byte{OpMemoryStore}); err != nil {
+			return err
 		}
 	}
 
-	return nil
+	return WriteFrameAddress(w, base)
 }
 
-// WriteField takes one tape out of a run.
-//
-// The run is on the stack and the two numbers are the instruction's own: which tape, and how
-// many the run has. Both are needed because a run is counted from its first tape and kept from
-// its last — nothing in the value says where it ends, so the only way to the tape at index i
-// is to know there are n of them and count back.
-func WriteField(w io.Writer, inst ir.Instruction, tapeSize int) error {
-	operands := inst.GetOperands()
-	at := int(byteutil.ToUint64(operands[1].Bytes()))
-	tapes := int(byteutil.ToUint64(operands[2].Bytes()))
+// writeShift moves a value by a number of bits, in the direction the opcode says. Nothing is
+// written for a shift of none, which is what a tape as wide as a word asks for.
+func writeShift(w io.Writer, bits int, op byte) error {
+	if bits <= 0 {
+		return nil
+	}
+	if _, err := WritePush(w, byteutil.FromUint64(uint64(bits)), 1); err != nil {
+		return err
+	}
+	_, err := w.Write([]byte{op})
+	return err
+}
 
-	if bits := (tapes - 1 - at) * tapeSize * BYTE_SIZE; bits > 0 {
-		if _, err := WritePush(w, byteutil.FromUint64(uint64(bits)), 1); err != nil {
+// WriteField reads one tape out of a run, given where the run starts.
+//
+// The run is in memory and what is on the stack is where it starts, so a field is an address
+// and a read rather than a shift over a word. MLOAD answers the word beginning at the tape,
+// which is the tape and whatever follows it, and shifting that down to the bottom leaves the
+// tape and drops the rest — so there is no mask to write.
+//
+// Reading past the end of the run answers the neutral value, the way it does off a chain: what
+// is there is the room RunRoom left, and it was never written.
+func WriteField(w io.Writer, inst ir.Instruction, tapeSize int) error {
+	at := int(byteutil.ToUint64(inst.GetOperands()[1].Bytes()))
+
+	if at > 0 {
+		if _, err := WritePush2(w, at*byteutil.TapeSize(tapeSize)); err != nil {
 			return err
 		}
-		if _, err := w.Write([]byte{OpShiftRight}); err != nil {
+		if _, err := w.Write([]byte{OpAdd}); err != nil {
 			return err
 		}
 	}
-
-	_, err := WriteMask(w, tapeSize)
-	return err
+	if _, err := w.Write([]byte{OpMemoryLoad}); err != nil {
+		return err
+	}
+	return writeShift(w, (MEMORY_SLOT_SIZE-byteutil.TapeSize(tapeSize))*BYTE_SIZE, OpShiftRight)
 }
 
 // WriteCall enters another scope of this contract and comes back with what it answered.
@@ -718,14 +739,18 @@ func writeFrameMove(w io.Writer, by int, op byte) error {
 //
 // It is measured rather than added up from a table of sizes, for the reason every address here
 // is: a table is a second description of the same bytes, and two descriptions drift.
-func ScopeInternalAt(base, params, tapeSize int) (int, error) {
+func ScopeInternalAt(base, params, tapeSize, tapes int) (int, error) {
 	var measured counter
 	if err := WriteScopePrologue(&measured, params, tapeSize, 0, 0); err != nil {
 		return 0, err
 	}
+	returning, err := ReturnToChainSize(tapes, tapeSize)
+	if err != nil {
+		return 0, err
+	}
 	// The way in opens with a JUMPDEST the dispatcher lands on; the prologue follows; what it
 	// comes back to opens with one of its own, and the way in from another scope with a third.
-	return base + 1 + int(measured) + 1 + RETURN_TO_CHAIN_SIZE, nil
+	return base + 1 + int(measured) + 1 + returning, nil
 }
 
 // WriteScope emits a scope whole: the way in from a transaction, what that way comes back to,
@@ -738,11 +763,15 @@ func WriteScope(bs io.Writer, blocks []ir.Block, entry ir.BlockID, tapeSize, bas
 	order := layoutOf(blocks, entry)
 	scope := ScopeOf(blocks, order, tapeSize, entries, false)
 
-	internal, err := ScopeInternalAt(base, scope.Params, tapeSize)
+	internal, err := ScopeInternalAt(base, scope.Params, tapeSize, scope.Tapes)
 	if err != nil {
 		return err
 	}
-	epilogue := internal - 1 - RETURN_TO_CHAIN_SIZE
+	returning, err := ReturnToChainSize(scope.Tapes, tapeSize)
+	if err != nil {
+		return err
+	}
+	epilogue := internal - 1 - returning
 
 	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
 		return err
@@ -753,7 +782,7 @@ func WriteScope(bs io.Writer, blocks []ir.Block, entry ir.BlockID, tapeSize, bas
 	if _, err := bs.Write([]byte{OpJumpDestiny}); err != nil {
 		return err
 	}
-	if err := WriteScopeEpilogue(bs); err != nil {
+	if err := WriteScopeEpilogue(bs, scope.Tapes, tapeSize); err != nil {
 		return err
 	}
 
@@ -1030,6 +1059,17 @@ type Scope struct {
 	Params int
 	// Names answers where in the frame each name this scope binds is kept.
 	Names map[string]int
+	// Tapes is how many tapes the value this scope returns is made of, which is one for an
+	// ordinary value and more for a run. It decides how much a return hands to the chain.
+	Tapes int
+	// Runs answers where in the frame each construction of a run lays its tapes, by the label
+	// the construction leaves its value under.
+	//
+	// A run is tapes end to end, and on a chain that is memory rather than a stack item: a
+	// stack item is exactly a word, and four tapes of eight fill one. Where each one goes is
+	// decided here rather than while the program runs, because both things it takes are known
+	// now — how many constructions a scope has, and how wide each one is.
+	Runs map[string]int
 	// Frame is how much memory this scope keeps: the values applied to it, then its names. A
 	// call puts the frame of whoever it calls right after this one.
 	Frame int
@@ -1057,24 +1097,31 @@ type Entry struct {
 // of it is what makes that possible, and it is the thing an instruction list could not offer —
 // there, a name in a block that had not been reached yet was a name nobody knew about.
 func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[string]Entry, answers bool) Scope {
-	params := 0
+	params, tapes := 0, 0
 	if len(order) > 0 {
 		params = len(blocks[order[0]].Params)
+		tapes = blocks[order[0]].Tapes
 	}
 
 	names := make(map[string]int)
+	runs := make(map[string]int)
 	offset := params * MEMORY_SLOT_SIZE
 	for _, id := range order {
 		for _, inst := range blocks[id].Insts {
-			if inst.GetOpCode() != ir.OpIdent {
-				continue
+			switch inst.GetOpCode() {
+			case ir.OpIdent:
+				name := string(inst.GetLeft().Bytes())
+				if _, bound := names[name]; bound {
+					continue
+				}
+				names[name] = offset
+				offset += MEMORY_SLOT_SIZE
+			case ir.OpJoin:
+				// The run starts past the room in front of it, and that is the address
+				// everything else means when it means the run.
+				runs[byteutil.ToHex(inst.GetLabel())] = offset + RunLeadIn(tapeSize)
+				offset += RunRoom(len(valueOperands(inst)), tapeSize)
 			}
-			name := string(inst.GetLeft().Bytes())
-			if _, bound := names[name]; bound {
-				continue
-			}
-			names[name] = offset
-			offset += MEMORY_SLOT_SIZE
 		}
 	}
 
@@ -1082,7 +1129,9 @@ func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[st
 		TapeSize: tapeSize,
 		Answers:  answers,
 		Params:   params,
+		Tapes:    tapes,
 		Names:    names,
+		Runs:     runs,
 		Frame:    offset,
 		Entries:  entries,
 	}
@@ -1195,7 +1244,7 @@ func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, s
 	}
 
 	if op == ir.OpJoin {
-		if err := WriteJoin(bs, inst, scope.TapeSize); err != nil {
+		if err := WriteJoin(bs, inst, scope.TapeSize, scope.Runs[byteutil.ToHex(inst.GetLabel())]); err != nil {
 			return err
 		}
 	}
@@ -1230,4 +1279,23 @@ func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, s
 	}
 
 	return nil
+}
+
+// RunRoom answers how much memory a run of this many tapes takes: the tapes, and a word less
+// a tape of room in front of them.
+//
+// That room is not a margin. A tape is laid with MSTORE, which writes a whole word — the tape
+// in the last bytes of it and zeros before — so laying one writes over what is in front of it.
+// The tapes are laid last to first, so each of those is a tape laid again straight after, and
+// the room is where the first one writes over nothing.
+//
+// It has to be in front rather than behind because the order is not a choice: the values are
+// on the stack with the last one on top.
+func RunRoom(tapes, tapeSize int) int {
+	return RunLeadIn(tapeSize) + tapes*byteutil.TapeSize(tapeSize)
+}
+
+// RunLeadIn is the room in front of a run, which is what a word has over a tape.
+func RunLeadIn(tapeSize int) int {
+	return MEMORY_SLOT_SIZE - byteutil.TapeSize(tapeSize)
 }

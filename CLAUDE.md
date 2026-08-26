@@ -40,10 +40,13 @@ finds the frame written. The convention is in [rfcs/if_and_call.md](rfcs/if_and_
 One limit is worth knowing: only a scope bound at the top of a program can be called, and
 anything else is refused rather than written.
 
-`shape` is written too. A run is its tapes and nothing else, so it is one word with the first
-tape at the far end — the same number the evaluator answers — and a field is a shift and a
-mask. That is also its ceiling: a run past thirty-two bytes is refused rather than written
-short, which is four fields at the default tape.
+`shape` is written too, and it has no ceiling. A run is its tapes and nothing else, and it
+lives in **memory** rather than on the stack: laid tape after tape in the order it was written,
+which is the order the evaluator lays them, so a contract hands back the same bytes rather than
+the same number. A field is an address and a read. It used to be one word, which is four tapes
+at the default and a ceiling nobody chose — a run past thirty-two bytes was refused rather than
+written short, so a program ran off a chain and could not reach one. Nothing goes on the stack
+even when it fits: a run kept two ways is two things a consumer has to tell apart.
 
 The tape operations are written too, and with them **the backend carries every feature a
 program can use**. All four rest on one thing: how much of a value means something, which off

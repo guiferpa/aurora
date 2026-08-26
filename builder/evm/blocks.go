@@ -123,11 +123,11 @@ func writeTerminator(bs io.Writer, term ir.Terminator, order []ir.BlockID, at ma
 				return err
 			}
 		}
-		write := WriteReturnToCaller
 		if scope.Answers {
-			write = WriteReturnToChain
+			_, err := WriteReturnToChain(bs, scope.Tapes, scope.TapeSize)
+			return err
 		}
-		_, err := write(bs)
+		_, err := WriteReturnToCaller(bs)
 		return err
 
 	case ir.Br:

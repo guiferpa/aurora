@@ -143,8 +143,17 @@ tape width — a result that leaves the width is cut back to it, the way the eva
 names bound inside a scope, branches, the comparisons and `and`/`or`, a scope calling another
 as deep as it nests, shapes, and the tape operations.
 
-Nothing a program can write is missing from it any more. What a contract does not get is what
-was decided not to reach a chain, and two limits that are written down:
+Nothing a program can write is missing from it any more, and a shape is no longer the
+exception it used to be: **a run of any width reaches a chain**. It lives in memory rather than
+on the stack, laid tape after tape in the order it was written, so what a contract hands back
+is the same bytes the evaluator does rather than the same number. A stack item is exactly a
+word, which is four tapes of eight, and a shape wider than that used to be refused rather than
+written — a program that ran off a chain and could not reach one. Nothing goes on the stack
+even when it would fit, because a run kept two ways is two things every consumer has to tell
+apart.
+
+What a contract does not get is what was decided not to reach a chain, and two limits that are
+written down:
 
 - **A scope only reaches what it bound itself**, so everything a scope works on arrives as a
   value applied to it. What would let a scope read a name from around it is a static link —
@@ -153,9 +162,6 @@ was decided not to reach a chain, and two limits that are written down:
   storage, no event, no caller, and no way to refuse a transaction. Each of them is its own
   decision, and each has the same question under it: what does it mean off a chain, where
   there is no storage, no log, and nobody calling. `rfcs/` is where those are argued.
-- **A shape reaches the chain while its run fits a word.** A run is its tapes and nothing else,
-  so a shape of five fields at the default tape of eight is forty bytes and is refused rather
-  than written short. Four fields fill a word exactly.
 - **Only a scope bound at the top of a program can be called.** A scope written inside another
   is not written at all: on a chain the name it was bound to holds the neutral value, and
   calling it is refused rather than written as a jump to an address no scope has.

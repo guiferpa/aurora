@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"os"
@@ -451,11 +452,12 @@ ident outer = defer { middle(feed(0)) + middle(1); };`
 }
 
 // A shape reaches the chain. It is not a new kind of value: Point{10, 20} is two tapes laid
-// end to end, and on a chain that is one word with the first tape at the far end — the same
-// number the evaluator returns, which is what lets a scope hand a run back either way.
+// end to end, and on a chain that is memory — the tapes in the order they were written, which
+// is the order the evaluator lays them, so the two hand back the same bytes.
 //
-// Reading a field is counting back from the last tape, which is why the instruction says how
-// many the run has: nothing in the value marks where it ends.
+// A shape never goes on the stack, not even when it would fit. A stack item is exactly a word
+// and a run kept two ways is two things a consumer has to tell apart, which is how this
+// backend has been wrong before.
 func TestAShapeAnswersTheSameOnChainAndOff(t *testing.T) {
 	const source = `shape Point { x, y };
 ident first = defer { ident p = Point{feed(0), 20}; p.x; };
@@ -488,6 +490,71 @@ ident first = defer { ident l = Line{1, 2, feed(0)}; l.a; };`
 		t.Run(name, func(t *testing.T) {
 			agree(t, source, name, []string{"9"}, 1)
 		})
+	}
+}
+
+// A shape wider than a word, which is what this was all for.
+//
+// Five tapes of eight is forty bytes and a word is thirty-two, so this program ran off a chain
+// and was refused by it — "a shape this wide does not reach the bytecode". Nothing about it is
+// special now: the run is in memory, and forty bytes of memory is the same kind of thing as
+// eight.
+func TestAShapeWiderThanAWordAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `shape Five { a, b, c, d, e };
+ident last = defer { ident f = Five{1, 2, 3, 4, feed(0)}; f.e; };
+ident first = defer { ident f = Five{feed(0), 2, 3, 4, 5}; f.a; };
+ident fourth = defer { ident f = Five{1, 2, 3, feed(0), 5}; f.d; };`
+
+	for _, name := range []string{"last", "first", "fourth"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source, name, []string{"42"}, 0)
+		})
+	}
+}
+
+// Twice as wide again, so that five is not the number that happens to work.
+func TestAShapeOfEightFieldsAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `shape Eight { a, b, c, d, e, f, g, h };
+ident seventh = defer { ident v = Eight{1, 2, 3, 4, 5, 6, feed(0), 8}; v.g; };`
+
+	agree(t, source, "seventh", []string{"77"}, 0)
+}
+
+// A shape at the widest tape, where a run of two is already twice a word.
+//
+// This was the sharpest edge of the old ceiling: at a tape of thirty-two, a shape of two
+// fields did not reach a chain at all, so `shape` was unusable in that dialect.
+func TestAShapeAtTheWidestTapeAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `shape Pair { a, b };
+ident second = defer { ident p = Pair{1, feed(0)}; p.b; };`
+
+	agree(t, source, "second", []string{"5"}, 32)
+}
+
+// A whole run handed back, rather than a field of one — and compared as bytes.
+//
+// Every other case here compares what came back as a number, which is enough for a field
+// because a field is a tape. A run is not a number: the evaluator hands back its bytes, and
+// the point of putting it in memory is that the chain hands back the same ones. So this is the
+// case that says so, and it says it byte for byte.
+func TestAWholeWideRunIsTheSameBytesOnChainAndOff(t *testing.T) {
+	const source = `shape Five { a, b, c, d, e };
+ident build = defer { Five{1, 2, 3, 4, feed(0)}; };`
+
+	// Five tapes of eight, in the order they were written: forty bytes, where a word is
+	// thirty-two. This is what used to be refused.
+	want := make([]byte, 0, 40)
+	for _, tape := range []byte{1, 2, 3, 4, 9} {
+		want = append(want, 0, 0, 0, 0, 0, 0, 0, tape)
+	}
+
+	if got := onChain(t, source, "build", []string{"9"}, 0); !bytes.Equal(got, want) {
+		t.Errorf("the chain handed back %x, want %x", got, want)
+	}
+
+	// And the evaluator reads those same bytes as the five tapes they are.
+	if printed := strings.TrimSpace(offChain(t, source, "build", []string{"9"}, 0)); printed != "1 2 3 4 9" {
+		t.Errorf("the evaluator answered %q, want the five tapes", printed)
 	}
 }
 

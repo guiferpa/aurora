@@ -180,8 +180,15 @@ Isso é a RFC seguinte, não esta.
    Vale dizer de onde vem: o emitter lê `tree.Returns`, que é o que a `shape_inference` acabou
    de encher. Antes dela isso valeria só para os escopos que escreveram `returns`; agora vale
    para quase todos, sem o arquivo dizer nada.
-4. **O run vai para a memória**, e o teto de 32 bytes sai — com o harness diferencial provando
-   um shape de cinco campos e um de oito.
+4. **O run vai para a memória**, e um campo é lido de lá. O teto continua onde está e nada
+   muda de comportamento: o que muda é onde a run mora. O harness é o juiz — tudo que passa
+   hoje tem que continuar passando.
+5. **O teto sai.** O retorno passa a devolver `Tapes * tape_size` bytes em vez de uma palavra,
+   a recusa do `WriteJoin` some, e o harness prova um shape de cinco campos e um de oito.
+
+O 4 e o 5 eram um só, e são dois porque o primeiro é uma troca de mecanismo com prova pronta
+(todo shape que já funciona continua funcionando) e o segundo é o que muda o que a linguagem
+alcança. Um de cada vez é o que deixa o harness dizer qual dos dois quebrou.
 
 Um a um, cada um passando `make check` sozinho.
 
@@ -227,15 +234,57 @@ duas. Esse guarda já pegou um caso meu que não provava nada.
 
 ---
 
-## Em aberto
+## Onde a run vai morar
 
-1. **Onde na memória.** Um frame já tem `FRAME_POINTER`, `RETURN_SCRATCH` e `FRAME_BASE`, e um
-   run de um escopo que já voltou não pode ser lido depois — o mesmo problema de tempo de vida
-   que qualquer alocação tem. A resposta mais barata é o run viver no frame de quem o
-   construiu, e um run retornado ser copiado para o frame de quem chamou, que é o que a
-   convenção de chamada da [if_and_call.md](if_and_call.md) já faz com valores.
-2. **O que um run que atravessa a chain é.** Hoje um shape retornado é uma palavra e o teste
-   compara número com número. Passando a ser bytes, o `RETURN_TO_CHAIN` muda, e o harness
-   junto.
-3. ~~Se `OpLoad` e `OpSave` viram `Reads`/`Writes`.~~ **Decidido: o frame é estado, e a regra
-   os prende também.** Ver abaixo.
+As duas primeiras questões em aberto eram esta, e a resposta é uma só. Ela vai escrita antes
+de qualquer byte porque o `CLAUDE.md` diz que a vez do `builder/evm` se discute antes.
+
+**Onde ela mora: no frame de quem a construiu, empacotada.** `tape_size` bytes por tape e não
+uma palavra por tape — uma palavra por tape seria mais fácil de escrever e devolveria bytes
+diferentes dos que o evaluator devolve, que é a única coisa que este backend não pode fazer.
+
+**Quanto espaço: reservado estaticamente, como um nome.** Quantos `OpJoin` um escopo tem e a
+largura de cada um são as duas coisas sabidas na hora de escrever — a largura é o número de
+operandos do próprio join. Então cada join ganha a sua região no frame, o `Scope.Frame` cresce
+pela soma, e não existe alocador, nem liberação, nem nada em tempo de execução decidindo
+endereço. Uma run é uma alocação estática do mesmo naipe que um nome ligado.
+
+**O que o valor vira: o endereço da região.** E nada na palavra da pilha distingue isso de um
+tape — nem precisa. Quem sabe é o IR, estaticamente: o valor de um join é uma run porque o
+join é um join, e o valor que volta de uma chamada é uma run porque `ir.Block.Tapes` diz. Foi
+para isso que o passo 3 existiu.
+
+**Tempo de vida: quem chamou copia.** Uma run só sobrevive ao escopo que a construiu sendo
+retornada, e aí quem chamou copia `Tapes * tape_size` bytes para o frame dele **antes** de
+mover o ponteiro de frame de volta. Isso é o que a convenção de chamada da
+[if_and_call.md](if_and_call.md) já faz com valor, com a diferença de que agora tem tamanho,
+e o tamanho está no bloco do chamado — que quem chama já resolve estaticamente pelo `Entry`.
+
+**Atravessando a chain: `RETURN` de `Tapes * tape_size` bytes** a partir do endereço da run,
+em vez de uma palavra do `RETURN_SCRATCH`. E o harness continua valendo sem ser mexido, o que
+vale explicar porque não é óbvio: ele lê o que voltou com `SetBytes`, ou seja, como um número.
+Hoje uma run de três tapes volta como uma palavra de 32 bytes com 24 bytes úteis no fim, e o
+evaluator devolve os 24 — mesmo número. Devolvendo `Tapes * tape_size`, os bytes passam a ser
+**os mesmos**, e não apenas o mesmo número. A comparação fica mais forte do que era.
+
+---
+
+## O que ficou decidido, e onde
+
+Nada ficou em aberto. As três perguntas com que esta RFC abriu foram respondidas, duas delas
+por medição e não por opinião:
+
+| pergunta | resposta | onde |
+|---|---|---|
+| onde a run mora, e por quanto tempo | no frame de quem construiu, empacotada, e quem chama copia | acima, "Onde a run vai morar" |
+| o que uma run que atravessa a chain é | `RETURN` de `Tapes * tape_size` bytes, os mesmos que o evaluator devolve | idem |
+| se `OpLoad` e `OpIdent` são `Reads`/`Writes` | são: o frame é estado | acima, "O frame é estado" |
+
+E duas coisas mudaram no caminho por terem sido medidas em vez de assumidas:
+
+- **A regra era estrita demais.** Rodada sobre programas reais, ela recusava `a - b`, onde a
+  lowering troca dois `Reads` de lugar porque a pilha da EVM quer os operandos assim. Duas
+  leituras do frame comutam; era a regra que estava errada, não a lowering.
+- **O passo 3 estava com a forma errada.** "O IR diz quantos tapes um operando tem" — mas a
+  largura já viajava em dois dos três lugares, e o que faltava era fato do bloco. Virou
+  `ir.Block.Tapes`.

@@ -4,6 +4,131 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.10.0-alpha — 2026-08-26
+
+### The compiler works out which shape, and `returns` becomes a promise it keeps
+
+```aurora
+shape Square { width, height };
+
+ident new_square = defer { Square{feed(0), feed(1)}; };
+
+ident s = new_square(30, 20);
+printd s.width;    #- 30
+```
+
+That did not compile. Without `returns Square` on the scope, a call had no shape, so every
+caller had to write `as Square` again — the claim the declaration existed to remove, handed
+back one call at a time.
+
+The shape is read from the body now, by the same walk that checks a `returns` when there is
+one: a block returns its last expression, and an `if` returns whatever the arm that runs
+returns, so both arms have to agree. It crosses a module the same way, and neither file writes
+a word.
+
+So `returns` is a **constraint the compiler keeps**, never the source of the fact and never
+required. What it is for is being held to it: a body that stops returning what it declared is
+refused in the file that made the mistake rather than at a call in another one.
+
+What is still unknown stays unknown and is still refused — a body ending in arithmetic is a
+tape, not a run — and three places it stops are named in the roadmap rather than met by
+surprise.
+
+**The editor reads what the compiler knows.** It used to build its own table by matching
+patterns over the tokens, which recognised less: no block, no `if` whose arms agree, no chain
+of bindings. It reads the compiler's now, and the table is filled as the file is read — so a
+parse that broke on the line being typed still leaves every line above it understood. The walk
+over tokens stays underneath, for the document that breaks before the parser reads anything at
+all.
+
+### A shape has no ceiling
+
+A run used to be a stack item, and a stack item is exactly a word. Four tapes of eight fill
+one, and a fifth was refused rather than written short:
+
+```
+a run of 5 tapes is 40 bytes and a word is 32: a shape this wide does not reach the bytecode
+```
+
+So a program ran off a chain and could not reach one, which is the one thing this backend may
+not do. At a tape of thirty-two a shape of **two** fields was already past it, so `shape` was
+unusable in that dialect.
+
+Nobody decided that ceiling; it fell out of every value living on the stack. A run lives in
+memory now, laid tape after tape in the order it was written — which is the order the evaluator
+lays them, so a contract hands back the same bytes rather than the same number, and the harness
+compares them as bytes. Nothing goes on the stack even when it would fit: a run kept two ways
+is two things every consumer has to tell apart.
+
+### A contract keeps things
+
+```aurora
+use std/evm/storage as s;
+
+ident deposit = defer { s.set(1, s.get(1) + feed(0)); };
+ident balance = defer { s.get(1); };
+```
+
+That outlives the transaction, on a chain, and the differential harness says the evaluator
+agrees. A key nothing was written under reads as the neutral tape — what a slot never written
+answers on a chain, and what reading past the end of a run answers off one.
+
+**And the standard library begins here.** `std/evm/storage` is real Aurora, read from
+`$AURORA_ROOT/lib` — or `$HOME/.aurora/lib` when nothing says otherwise — and it is two scopes:
+
+```aurora
+ident set = defer { sstore feed(0) feed(1); };
+ident get = defer { sload feed(0); };
+```
+
+`sload` and `sstore` are the machine's own instructions, the way inline assembly is in C, and
+the wrapper is the point: how a key becomes a slot is decided in one file and can change
+without a single program that keeps something changing with it.
+
+The second segment of the name is the target. `std/evm` is written over the EVM's instructions
+and means nothing anywhere else, so a module that cannot cross says so in its name rather than
+being found out at the far end. One directory and no search, which is also the whole of the
+versioning story: what answers `use std/evm/storage` is what the `aurora` on this machine
+shipped with.
+
+`make install-std` puts it there. A release does not yet, and that is written down.
+
+### A program that does not say what it means gets no bytecode
+
+`ir.Verify` asserts five things about a program before any consumer touches it: every reference
+names a value something left, every target names a block that exists, every branch hands over
+what the target takes, every way of ending names as many blocks as it has, and no value is left
+twice under one name. `aurora build` refuses rather than writing.
+
+It found one the day it was written. An empty block handed on a reference to a label nothing
+carried, and answered zeros anyway — because a consumer that looks a name up and finds nothing
+gets zeros. Working by accident is what a check is for.
+
+It also found an older one, through storage. A value nothing takes was left on the stack, so a
+scope with a line written for what it does — `sstore 1 42;`, a `printd`, a call whose answer
+nobody wanted — returned to the wrong place and the contract reverted. Nobody had met it,
+because nobody writes an arithmetic line for its effect; `sstore 1 42;` on its own line is an
+ordinary way to write a program.
+
+### The IR says what an instruction does besides leaving a value
+
+`Pure`, `Reads`, `Writes`, `Escapes` — read from the opcode, and one rule: two instructions
+swap unless one of them changes something the other would notice. It replaces three lists of
+opcodes kept in agreement by somebody remembering, which is how this compiler has been wrong
+before.
+
+It is not a value and not a type: it exists while compiling and reaches no bytecode. What it
+buys is the storage above — a read and a write share no value, so nothing about what they leave
+says which ran first, and a contract answers a number either way.
+
+### One word for one thing
+
+The same fact was called an answer, a promise and a return in different files. It is `returns`
+everywhere now — in the tree, the pipeline, the messages a person reads and the documentation —
+and `docs/contributing/architecture.md` says so under **The words**, where the next one goes.
+
+---
+
 ## v0.9.0-alpha — 2026-08-25
 
 ### A manifest can name a value instead of holding it

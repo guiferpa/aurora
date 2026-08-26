@@ -245,19 +245,18 @@ and answers from the evaluator, the same way the chain would.
 
 ---
 
-## What the IR does not assert yet
+## What the IR asserts
 
-`ir.Verify` asserts five of the six things the IR was reshaped to make assertable, and
-`builder/evm` refuses a program that fails any of them rather than writing bytes for it.
+`ir.Verify` asserts all six things the IR was reshaped to make assertable, and `builder/evm`
+refuses a program that fails any of them rather than writing bytes for it.
 
-The sixth is **that every operand has the `Kind` its opcode expects**. What it needs first is
-each opcode's operands written down as something a program can read — they are comments beside
-the opcodes today, which is a description kept in agreement by somebody remembering, and this
-file has a long list of what that costs.
-
-Nothing else about a program is asserted, and two things stay deliberately unasserted: what a
-call hands over, because a scope has no arity; and anything about a stack, a frame or an
+Two things stay deliberately unasserted: what a call hands over, because a scope has no arity —
+running one is applying a vector of values to it; and anything about a stack, a frame or an
 address, because those mean something on one target and nothing on another.
+
+What is left is not about the IR: **`Scope.Names` is name resolution done again.** The emitter
+knows where every name lives and does not say, so `builder/evm` works it out a second time —
+the third of the six costs `rfcs/ir.md` named, and the only one still open.
 
 ## Seeing what a phase produced
 

@@ -77,6 +77,11 @@ func verifyBlock(blocks []Block, block Block) []Problem {
 			}
 		}
 
+		// And that each operand is the kind its opcode takes, which is the other half of a
+		// consumer never guessing: one half is which operand names a value, and this is what
+		// the bytes under it mean.
+		found = append(found, verifyTakes(block.ID, at, inst)...)
+
 		label := byteutil.ToHex(inst.GetLabel())
 		if defined[label] {
 			found = append(found, Problem{Block: block.ID, At: at,

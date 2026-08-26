@@ -376,9 +376,29 @@ with leaves nothing on a stack, so `builder/evm` writes a push under that same n
 for it. Two values under one name is what the check refuses, and it is right to — of the IR. Of
 a schedule it is not a question.
 
-What is not asserted yet is the sixth: that every operand has the `Kind` its opcode expects.
-That one needs each opcode's operands written down as something a program can read rather than
-as the comment beside it in `wire/ir/opcodes.go`.
+And a sixth: **every operand is what its opcode takes**. What each one accepts is written in
+`wire/ir/takes.go`, as something a program reads rather than as the comment beside it —
+
+```go
+OpIdent: {Slots: []Slot{AName, AValue}}
+OpField: {Slots: []Slot{AValue, ANumber, ANumber}}
+OpCall:  {Slots: []Slot{AName, AValue}, Repeats: true}
+```
+
+— because a comment cannot be checked, and this is the disease that cost twice. A slot is a
+class of kinds rather than one: a value is a value whether the program computed it or wrote it
+down, and a consumer that cared about the difference would be one for whom folding a literal
+changed the program.
+
+`Repeats` says the last slot stands for any number of operands. A call is why: a scope has no
+arity, so a name comes first and as many values as were applied follow.
+
+Writing it down found one immediately. The comment beside `OpSave` said it takes an `Imm`, and
+it takes the number of a block too — that is how a name reaches the scope it was bound to, and
+it had been true for as long as the comment had been wrong.
+
+An opcode nobody has described is said nothing about, which is the honest answer and the reason
+this file is worth keeping in agreement.
 
 ## Why it is not a list
 

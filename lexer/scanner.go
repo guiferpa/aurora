@@ -23,6 +23,10 @@ var keywordTags = []token.Tag{
 	token.TagTail,
 	token.TagPush,
 	token.TagPull,
+	// Before the identifiers, like every other word: what makes a word a keyword is being
+	// looked for first.
+	token.TagSload,
+	token.TagSstore,
 	token.TagFeed,
 	token.TagAssert,
 	token.TagShape,

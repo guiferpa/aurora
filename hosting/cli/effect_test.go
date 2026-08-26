@@ -33,6 +33,18 @@ func TestTheLoweringMovesNothingItMayNotMove(t *testing.T) {
 		{name: "a shape and a field", source: `shape P { a, b };` + "\n" + `ident f = defer { ident p = P{feed(0), feed(1)}; p.a + p.b; };`},
 		{name: "the tape operations", source: "ident f = defer { ident x = feed(0); ident a = head x 1; ident b = tail x 1; a + b; };"},
 		{name: "a print over a name", source: `ident f = defer { ident x = feed(0); printd x; };`},
+		{
+			// The case the rule was written for, and the first one to reach it. These two
+			// share no value, so nothing about what they leave says which ran first — and a
+			// read moved in front of the write it follows reads what was there before, while
+			// the contract answers a number either way.
+			name:   "a write to the chain and a read after it",
+			source: "ident f = defer { sstore 1 feed(0); sload 1; };",
+		},
+		{
+			name:   "two writes to the chain",
+			source: "ident f = defer { sstore 1 feed(0); sstore 1 2; sload 1; };",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()

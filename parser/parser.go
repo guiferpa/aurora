@@ -879,6 +879,12 @@ func (p *pr) ParseExpr() (ast.Node, error) {
 	if lookahead.GetTag().Id == token.PUSH {
 		return p.ParsePush()
 	}
+	if lookahead.GetTag().Id == token.SLOAD {
+		return p.ParseSload()
+	}
+	if lookahead.GetTag().Id == token.SSTORE {
+		return p.ParseSstore()
+	}
 	return p.ParseBoolExpr()
 }
 

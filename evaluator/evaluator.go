@@ -34,7 +34,10 @@ type Evaluator struct {
 	printChars    Printer
 	printDecimal  Printer
 	environ       *environ.Environ
-	tapeSize      int
+	// storage is what a chain keeps between transactions, kept here for one run of a program.
+	// It is by the key as bytes, because a key is a tape and a tape is not a map key.
+	storage  map[string][]byte
+	tapeSize int
 }
 
 // TapeSize is the width, in bytes, of every value this evaluator handles.
@@ -519,6 +522,10 @@ func init() {
 		ir.OpHead:  (*Evaluator).EvaluateHead,
 		ir.OpTail:  (*Evaluator).EvaluateTail,
 
+		// Storage
+		ir.OpStorageGet: (*Evaluator).EvaluateStorageGet,
+		ir.OpStorageSet: (*Evaluator).EvaluateStorageSet,
+
 		// Assertions
 		ir.OpAssert: (*Evaluator).EvaluateAssert,
 	}
@@ -703,6 +710,7 @@ func New(options NewEvaluatorOptions) *Evaluator {
 	return &Evaluator{
 		assertResults: make([]eval.AssertResult, 0),
 		asserts:       options.Asserts,
+		storage:       make(map[string][]byte),
 		printBytes:    options.PrintBytes,
 		printChars:    options.PrintChars,
 		printDecimal:  options.PrintDecimal,

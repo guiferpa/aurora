@@ -62,12 +62,13 @@ var offChain = map[byte]string{
 // the IR names it. Instructions that come from one feature share a name, so a feature is one
 // warning rather than one per opcode it lowers to.
 //
-// It is empty. Every instruction the emitter produces reaches the bytecode now, which is the
-// news — and it is also what makes the entry below matter more than it did: an opcode in
-// neither list is warned about under the name the IR gives it, rather than passed over. A gap
-// nobody remembered to write down here is still a gap, and the point of this file is that a
-// gap is never silent.
-var pending = map[byte]string{}
+// An opcode in neither list is warned about under the name the IR gives it rather than passed
+// over: a gap nobody remembered to write down here is still a gap, and the point of this file
+// is that a gap is never silent.
+var pending = map[byte]string{
+	ir.OpStorageGet: "sload does not reach the bytecode yet: a contract using it compiles, and reads the neutral tape on chain",
+	ir.OpStorageSet: "sstore does not reach the bytecode yet: a contract using it compiles, and keeps nothing on chain",
+}
 
 // Warnings reports what a program uses that does not reach the bytecode.
 //

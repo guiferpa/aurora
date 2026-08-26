@@ -506,6 +506,57 @@ func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLit
 
 }
 
+// widened says how many tapes each block returns, for the scopes the file said something
+// about.
+//
+// The tree already knows: what a scope returns crosses a module with the fields of the shape,
+// and since the compiler works that out rather than waiting for a `returns`, it knows it for
+// most scopes rather than the few that declared. This is that fact reaching the blocks, where
+// a backend can read it.
+//
+// The way from a name to a block is two steps, because that is how a scope is bound: a save
+// carries the block under a label, and a binding carries the name and a ref to that label.
+func widened(blocks []ir.Block, returns []ast.Returns) []ir.Block {
+	tapes := make(map[string]int, len(returns))
+	for _, each := range returns {
+		tapes[each.Scope] = len(each.Fields)
+	}
+	if len(tapes) == 0 {
+		return blocks
+	}
+
+	for _, block := range blocks {
+		for name, id := range scopesBoundIn(block) {
+			if wide, said := tapes[name]; said && int(id) < len(blocks) {
+				blocks[id].Tapes = wide
+			}
+		}
+	}
+	return blocks
+}
+
+// scopesBoundIn answers which block each name in this block was bound to, for the names bound
+// to a scope. A name bound to anything else is not here, and neither is a block nobody named.
+func scopesBoundIn(block ir.Block) map[string]ir.BlockID {
+	held := make(map[string]ir.BlockID)
+	for _, inst := range block.Insts {
+		if inst.GetOpCode() == ir.OpSave && inst.GetLeft().Kind() == ir.KindBlock {
+			held[byteutil.ToHex(inst.GetLabel())] = inst.GetLeft().Block()
+		}
+	}
+
+	bound := make(map[string]ir.BlockID)
+	for _, inst := range block.Insts {
+		if inst.GetOpCode() != ir.OpIdent || inst.GetRight().Kind() != ir.KindRef {
+			continue
+		}
+		if id, isScope := held[byteutil.ToHex(inst.GetRight().Bytes())]; isScope {
+			bound[string(inst.GetLeft().Bytes())] = id
+		}
+	}
+	return bound
+}
+
 func (e *emt) Emit(tree ast.AST) ([]ir.Block, error) {
 	program, err := e.EmitProgram(tree)
 	if err != nil {
@@ -568,6 +619,7 @@ func (e *emt) EmitProgram(tree ast.AST) (ir.Program, error) {
 	warnings = append(warnings, checkAppliedValues(tree.Nodes)...)
 
 	blocks, places := placedBlocksOf(insts)
+	blocks = widened(blocks, tree.Returns)
 
 	return ir.Program{
 		Blocks:      blocks,

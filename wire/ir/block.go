@@ -42,6 +42,18 @@ type Block struct {
 	Insts  []Instruction
 	Term   Terminator
 	Origin Origin
+	// Tapes is how many tapes the value this block returns is made of.
+	//
+	// One is a tape, which is every ordinary value; more than one is a run, which is what a
+	// shape is. Zero says nothing worked it out, and a consumer that does not care reads all
+	// three the same way — the value is bytes either way.
+	//
+	// It is here rather than on the instruction because it is the one place the width was
+	// missing. A construction says it by having that many operands, and a field read carries
+	// the width of the run it reads from; what nothing said is how wide the value coming back
+	// from a call is, and that is a fact about the scope rather than about any instruction in
+	// it. A target that keeps a run as bytes somewhere has to know how many to copy back.
+	Tapes int
 }
 
 // A TermKind is how a block ends. There are three, and there is no fourth: a block either

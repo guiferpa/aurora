@@ -169,7 +169,17 @@ Isso é a RFC seguinte, não esta.
    produz hoje, para todo programa do corpus, e diz o que ela recusaria. Ele é o que decide se
    o item 1 foi aditivo, e continua valendo depois como o teste que prova que a regra é
    cumprida — sem ele, o item 1 é uma anotação em que ninguém confia.
-3. **O IR diz quantos tapes um operando tem**, quando ele é um run.
+3. ~~O IR diz quantos tapes um operando tem, quando ele é um run.~~ **O bloco diz quantos
+   tapes ele retorna.** A forma estava errada, e escrever mostrou por quê: a largura já viaja
+   em dois dos três lugares. Uma construção diz a dela por **ter aquele tanto de operandos**, e
+   uma leitura de campo carrega a largura da run de onde ela sai — é o terceiro operando do
+   `OpField`, e ele existe exatamente por isto. O único lugar em que nada dizia é **o valor que
+   volta de uma chamada**, e isso é fato do escopo, não de nenhuma instrução dentro dele. Então
+   é `ir.Block.Tapes`, e não um operando.
+
+   Vale dizer de onde vem: o emitter lê `tree.Returns`, que é o que a `shape_inference` acabou
+   de encher. Antes dela isso valeria só para os escopos que escreveram `returns`; agora vale
+   para quase todos, sem o arquivo dizer nada.
 4. **O run vai para a memória**, e o teto de 32 bytes sai — com o harness diferencial provando
    um shape de cinco campos e um de oito.
 

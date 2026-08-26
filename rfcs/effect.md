@@ -64,21 +64,42 @@ const (
 )
 ```
 
-**A regra é uma linha:** duas instruções só trocam de lugar se pelo menos uma for `Pure`.
+**A regra é uma linha:** duas instruções trocam de lugar a menos que uma delas mude algo que
+a outra perceberia.
 
-Uma escada de quatro degraus com uma regra que só pergunta "é `Pure`?" parece três degraus
-a mais do que a regra precisa, e é — de propósito, e o preço está medido:
+Ela começou mais estrita — *só trocam se pelo menos uma for `Pure`* — e a medição descrita
+mais abaixo disse que estrita demais. Uma subtração de dois nomes, `a - b`, põe as duas
+leituras na pilha na ordem que a subtração quer, o que troca dois `Reads` de lugar. Isso é
+seguro (duas leituras do frame comutam) e a regra estrita recusava, no programa mais ordinário
+que existe.
 
-- A regra é conservadora e custa **nada hoje**. O builder só move instrução para pôr operando
-  na ordem da pilha; ele nunca teve motivo para trocar duas leituras de lugar. Uma regra mais
-  fina é uma matriz de quatro por quatro que um mantenedor tem que segurar na cabeça, e a
-  compra quando alguém medir que ela paga.
-- Os outros três degraus não são para a regra, são para **o que um backend tem que dizer**.
-  Um `Escapes` é o que faz o backend precisar de reentrância; um `Reads` é o que o evaluator
-  tem que simular para a promessa se manter. Um backend que não carrega um efeito recusa
-  nomeando ele, do jeito que `builder/evm/support.go` já recusa nomeando um opcode.
-- Fixar os quatro agora é o que evita renomear `Ordered` para `Writes` quando o storage
-  chegar. É o custo que a ir.md nomeou.
+Então os dezesseis pares **saem** de duas perguntas em vez de serem listados:
+
+```go
+func MayCross(a, b Effect) bool { return !disturbs(a, b) && !disturbs(b, a) }
+
+func disturbs(a, b Effect) bool { return changes(a) && notices(b) }
+
+func changes(e Effect) bool { return e == Writes || e == Escapes }
+func notices(e Effect) bool { return e != Pure }
+```
+
+Custa quatro linhas a mais que a versão estrita e responde toda célula, inclusive as que nada
+alcança ainda. Uma matriz de quatro por quatro escrita à mão é que seria cara: um mantenedor
+tem que segurar dezesseis casos na cabeça, e ninguém confere se eles concordam entre si.
+
+Os outros degraus não são para a regra, são para **o que um backend tem que dizer**. Um
+`Escapes` é o que faz o backend precisar de reentrância; um `Reads` é o que o evaluator tem
+que simular para a promessa se manter. Um backend que não carrega um efeito recusa nomeando
+ele, do jeito que `builder/evm/support.go` já recusa nomeando um opcode. E fixar os quatro
+agora é o que evita renomear `Ordered` para `Writes` quando o storage chegar — o custo que a
+ir.md nomeou.
+
+**O efeito é do opcode, não da instrução.** A ir.md tinha posto um campo em `Instruction`.
+Um campo é preenchido por quem constrói a instrução, então pode ser preenchido errado e nada
+percebe; um opcode tem um efeito onde quer que ele apareça. Dizer uma vez é menos linha para
+ler e é a única versão que não pode discordar de si mesma. No dia em que o efeito de uma
+instrução depender de mais que o opcode dela, o campo chega e tem motivo.
 
 `require` **não entra**. Ele não é instrução: é controle, e controle já mora fora das
 instruções desde que o bloco tem terminador. Um `require` é um `BrIf` para um bloco que
@@ -182,10 +203,17 @@ RFC que não dá para decidir lendo o código, porque depende de qual ordem cada
 produz.
 
 Por isso a entrega é nesta ordem, e não em outra: o item 2 existe para **medir antes de
-prender**. Ele anota os efeitos, roda a regra sobre o corpus de testes que já existe, e diz o
-que ela recusaria. Se a resposta for "nada", prender é aditivo e o item 1 fecha. Se for
-alguma coisa, o que ela recusa é um lugar onde a lowering move o que não podia mover — o
-buraco desta RFC, com um programa em cima —, e aí a correção é da lowering, não da regra.
+prender**.
+
+**A medição foi feita, e a resposta foi "uma coisa".** A lowering troca dois `OpLoad` de lugar
+numa subtração de dois nomes, e essa é a ordem certa — a pilha da EVM quer os operandos
+assim. Não era a lowering que estava errada: era a regra estrita, que proibia dois `Reads` de
+comutarem. Com a regra derivada acima, todo programa do corpus passa, e o item 1 **é** aditivo.
+
+O teste ficou (`hosting/cli/effect_test.go`), e agora prova a regra em vez de medi-la. Ele
+carrega um guarda que vale registrar: um caso cujo programa só tem instrução `Pure` passaria
+sem nunca perguntar nada à regra, então ele conta quantas não são e falha se forem menos de
+duas. Esse guarda já pegou um caso meu que não provava nada.
 
 ---
 

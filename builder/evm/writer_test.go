@@ -211,15 +211,45 @@ func TestWriteReturnToCaller(t *testing.T) {
 // of answering.
 func TestWriteReturnToChain(t *testing.T) {
 	bs := bytes.NewBuffer(make([]byte, 0))
-	if _, err := WriteReturnToChain(bs); err != nil {
+	if _, err := WriteReturnToChain(bs, 0, 8); err != nil {
 		t.Fatalf("writing the answer: %v", err)
 	}
 	expected := []byte{OpPush1, RETURN_SCRATCH, OpMemoryStore, OpPush1, 0x20, OpPush1, RETURN_SCRATCH, OpReturn}
 	if got := bs.Bytes(); !bytes.Equal(got, expected) {
 		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
 	}
-	if bs.Len() != RETURN_TO_CHAIN_SIZE {
-		t.Errorf("it measures %d and says it measures %d", bs.Len(), RETURN_TO_CHAIN_SIZE)
+}
+
+// A run does not go through that slot, because it is not in one: it is already in memory, and
+// what is on the stack is where it starts. So it is handed back from there, as many bytes as
+// it has tapes — the same run the evaluator returns, byte for byte.
+func TestAReturnOfARunHandsBackTheRunItself(t *testing.T) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	if _, err := WriteReturnToChain(bs, 5, 8); err != nil {
+		t.Fatalf("writing the answer: %v", err)
+	}
+	// Forty bytes, which is more than a word — the size that used to be refused.
+	expected := []byte{OpPush2, 0x00, 40, OpSwap1, OpReturn}
+	if got := bs.Bytes(); !bytes.Equal(got, expected) {
+		t.Errorf("got %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(expected))
+	}
+}
+
+// What a return measures is what it writes, for the reason every size here is measured: a
+// table of sizes is a second description of the same bytes.
+func TestWhatAReturnMeasuresIsWhatItWrites(t *testing.T) {
+	for _, tapes := range []int{0, 1, 2, 5, 8} {
+		var bs bytes.Buffer
+		if _, err := WriteReturnToChain(&bs, tapes, 8); err != nil {
+			t.Fatalf("writing for %d tapes: %v", tapes, err)
+		}
+		measured, err := ReturnToChainSize(tapes, 8)
+		if err != nil {
+			t.Fatalf("measuring for %d tapes: %v", tapes, err)
+		}
+		if measured != bs.Len() {
+			t.Errorf("%d tapes: it writes %d bytes and says %d", tapes, bs.Len(), measured)
+		}
 	}
 }
 
@@ -389,46 +419,65 @@ func TestACallToSomethingThatIsNotAScopeIsRefused(t *testing.T) {
 	}
 }
 
-// A run is its tapes and nothing else, so how wide it is follows from how many it has. A word
-// is thirty-two bytes, so five tapes of eight do not fit — and a shape that wide is refused
-// rather than written with its first field shifted off the end.
-func TestARunWiderThanAWordIsRefused(t *testing.T) {
-	tapes := make([]ir.Operand, 0, 5)
-	for at := 0; at < 5; at++ {
+// A run wider than a word reaches the bytecode, because it never goes in a word.
+//
+// Five tapes of eight is forty bytes, and that used to be refused rather than written — a
+// program that ran off a chain and could not reach one, which is the one thing this backend
+// may not do. The tapes are in memory now, so how many there are is only a question of how
+// much room the run gets.
+func TestARunWiderThanAWordIsWritten(t *testing.T) {
+	tapes := make([]ir.Operand, 0, 8)
+	for at := 0; at < 8; at++ {
 		tapes = append(tapes, ir.Imm(uint64(at), 8))
 	}
 
-	err := WriteJoin(io.Discard, ir.NewInstructionOver([]byte("00"), ir.OpJoin, tapes...), 8)
-	if err == nil {
-		t.Fatal("it wrote a run of forty bytes into a word of thirty-two")
-	}
-	if !strings.Contains(err.Error(), "40") {
-		t.Errorf("it says %q, and never says how wide the run was", err)
-	}
-
-	// Four of them is exactly a word, which is the widest that does fit.
-	if err := WriteJoin(io.Discard, ir.NewInstructionOver([]byte("00"), ir.OpJoin, tapes[:4]...), 8); err != nil {
-		t.Errorf("it refused a run that fills a word exactly: %v", err)
+	for _, count := range []int{1, 4, 5, 8} {
+		inst := ir.NewInstructionOver([]byte("00"), ir.OpJoin, tapes[:count]...)
+		if err := WriteJoin(io.Discard, inst, 8, RunLeadIn(8)); err != nil {
+			t.Errorf("a run of %d tapes: %v", count, err)
+		}
 	}
 }
 
-// A field counts back from the last tape of the run, so where it reads depends on how many
-// tapes the run has and not only on the index. The first field of a run of two is shifted down
-// by one tape; the last field of any run is not shifted at all.
-func TestAFieldCountsBackFromTheEndOfTheRun(t *testing.T) {
-	cases := []struct {
+// The room a run takes is its tapes, and what a word has over a tape in front of them.
+func TestHowMuchRoomARunTakes(t *testing.T) {
+	for _, tc := range []struct {
+		tapes, tapeSize, want int
+	}{
+		{tapes: 1, tapeSize: 8, want: 24 + 8},
+		{tapes: 4, tapeSize: 8, want: 24 + 32},
+		{tapes: 5, tapeSize: 8, want: 24 + 40},
+		// A tape as wide as a word needs no room in front: the word is the tape.
+		{tapes: 2, tapeSize: 32, want: 64},
+	} {
+		if got := RunRoom(tc.tapes, tc.tapeSize); got != tc.want {
+			t.Errorf("%d tapes of %d take %d, want %d", tc.tapes, tc.tapeSize, got, tc.want)
+		}
+	}
+}
+
+// A field counts forward from where the run starts, and how many tapes the run has does not
+// come into it.
+//
+// It used to count back from the end, because the run was a word and a field was a shift: the
+// first of two was shifted down by a tape, the first of three by two, so the same index read a
+// different place depending on how long the run was. In memory it is an address — the index
+// times a tape from the start — and the run's length is only about where it ends.
+func TestAFieldCountsForwardFromTheStartOfTheRun(t *testing.T) {
+	for _, tc := range []struct {
 		name  string
 		at    uint64
 		tapes uint64
 		want  []byte
 	}{
-		{name: "the first of two", at: 0, tapes: 2, want: []byte{OpPush1, 64, OpShiftRight}},
-		{name: "the last of two", at: 1, tapes: 2, want: nil},
-		{name: "the middle of three", at: 1, tapes: 3, want: []byte{OpPush1, 64, OpShiftRight}},
-		{name: "the first of three", at: 0, tapes: 3, want: []byte{OpPush1, 128, OpShiftRight}},
-	}
-
-	for _, tc := range cases {
+		{name: "the first of two", at: 0, tapes: 2, want: []byte{OpMemoryLoad, OpPush1, 192, OpShiftRight}},
+		{name: "the last of two", at: 1, tapes: 2, want: []byte{OpPush2, 0, 8, OpAdd, OpMemoryLoad, OpPush1, 192, OpShiftRight}},
+		// The same index of a longer run reads the same place, which is the whole difference.
+		{name: "the middle of three", at: 1, tapes: 3, want: []byte{OpPush2, 0, 8, OpAdd, OpMemoryLoad, OpPush1, 192, OpShiftRight}},
+		{name: "the last of three", at: 2, tapes: 3, want: []byte{OpPush2, 0, 16, OpAdd, OpMemoryLoad, OpPush1, 192, OpShiftRight}},
+		// Past four tapes, which is where a run stopped reaching the bytecode at all.
+		{name: "the seventh of eight", at: 6, tapes: 8, want: []byte{OpPush2, 0, 48, OpAdd, OpMemoryLoad, OpPush1, 192, OpShiftRight}},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			bs := bytes.NewBuffer(make([]byte, 0))
 			inst := ir.NewInstructionOver([]byte("00"), ir.OpField,
@@ -436,14 +485,24 @@ func TestAFieldCountsBackFromTheEndOfTheRun(t *testing.T) {
 			if err := WriteField(bs, inst, 8); err != nil {
 				t.Fatalf("writing the field: %v", err)
 			}
-
-			// The mask follows the shift and is the same for every case, so what is compared
-			// is the shift alone.
-			shift := bs.Bytes()[:len(tc.want)]
-			if !bytes.Equal(shift, tc.want) {
-				t.Errorf("it shifts by %v, want %v", byteutil.ToUpperHex(shift), byteutil.ToUpperHex(tc.want))
+			if got := bs.Bytes(); !bytes.Equal(got, tc.want) {
+				t.Errorf("it writes %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(tc.want))
 			}
 		})
+	}
+}
+
+// A tape as wide as a word is the word, so a field of it is a read and nothing after it.
+func TestAFieldOfAWordWideTapeIsJustTheRead(t *testing.T) {
+	bs := bytes.NewBuffer(make([]byte, 0))
+	inst := ir.NewInstructionOver([]byte("00"), ir.OpField,
+		ir.RefTo([]byte("01")), ir.Const(1, 32), ir.Const(2, 32))
+	if err := WriteField(bs, inst, 32); err != nil {
+		t.Fatalf("writing the field: %v", err)
+	}
+	want := []byte{OpPush2, 0, 32, OpAdd, OpMemoryLoad}
+	if got := bs.Bytes(); !bytes.Equal(got, want) {
+		t.Errorf("it writes %v, want %v", byteutil.ToUpperHex(got), byteutil.ToUpperHex(want))
 	}
 }
 

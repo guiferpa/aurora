@@ -105,7 +105,7 @@ func exportCompletions(analysis *Analysis, specifier string) []CompletionItem {
 			Kind:   Variable,
 		})
 	}
-	// The shapes a module declares can be written now — built, claimed with as, promised
+	// The shapes a module declares can be written now — built, claimed with as, declared
 	// with returns — so they are offered, and offering them is telling the truth.
 	for _, shape := range found.Tree.Shapes {
 		items = append(items, CompletionItem{
@@ -161,13 +161,22 @@ func exportedValue(found module.Module, name string) ast.Node {
 }
 
 // shapesOf is everything the editor knows about shapes while a document is being edited:
-// what the modules it imports offer, and then what the document itself says on top.
+// what the modules it imports offer, what a walk of the tokens could make out, and then what
+// the compiler worked out on top of both.
 //
-// The order is the point. A name bound here can be read as a shape declared over there —
-// `ident s = g.new_square(1, 2);` — and the reader of the tokens only knows what that call
-// returns if the promise is already written down when it walks past the call.
+// The order is the point, and each step is there because the one before it cannot do
+// everything. The imports come first because a name bound here can be read as a shape
+// declared over there — `ident s = g.new_square(1, 2);` — and the walk of the tokens only
+// knows what that call returns if it is already written down when it walks past the call.
+// The compiler comes last because when it has an answer, it is the answer: it reads a block,
+// an if whose arms agree, and a chain of bindings, none of which a walk of the tokens can
+// follow.
+//
+// The walk stays because completion is wanted exactly when the document does not parse — the
+// moment somebody types `p.` there is no field name yet — and then the compiler has nothing
+// to say about the rest of the file.
 func shapesOf(analysis *Analysis, aliases moduleAliases) shapeTable {
-	return importedShapes(analysis, aliases).scan(analysis.Tokens)
+	return importedShapes(analysis, aliases).scan(analysis.Tokens).adopt(analysis.Declarations, aliases)
 }
 
 // importedShapes is what the modules a document imports offer, written the way this document
@@ -175,9 +184,9 @@ func shapesOf(analysis *Analysis, aliases moduleAliases) shapeTable {
 // through the alias or not at all.
 //
 // It is the parser's own Import with the alias in front instead of the specifier — the same
-// two halves, read for the same reason. The shapes say what a construction is made of; the
-// returns say what a call gives back, which is the only shape a name bound from another
-// module's scope ever has.
+// two halves, read for the same reason. The shapes say what a construction is made of; what
+// a scope returns says what a call gives back, which is the only shape a name bound from
+// another module's scope ever has.
 func importedShapes(analysis *Analysis, aliases moduleAliases) shapeTable {
 	shapes := newShapeTable()
 	for alias, specifier := range aliases {

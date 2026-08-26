@@ -47,6 +47,14 @@ type Analysis struct {
 	// a word that a parse cannot see, because they are about the whole of a tree rather
 	// than about a token.
 	Warnings []diag.Warning
+	// Declarations is what the parser worked out while reading this document: which shape
+	// each name is, and which shape calling each scope returns.
+	//
+	// It is here because the compiler is better at this than anything the editor could do
+	// on its own — it reads a block, an if whose arms agree, a chain of bindings — and
+	// because it is filled as the file is read, so a parse that failed in the middle still
+	// leaves what it understood before that.
+	Declarations *parser.Declarations
 }
 
 // module answers the module of a specifier among the ones this document imports.
@@ -96,13 +104,19 @@ func (s *Session) Analyze(doc Document) *Analysis {
 
 	// How wide a value is decides what fits in one, so the document is read in the dialect it
 	// belongs to rather than in the default.
+	//
+	// Declarations is handed in rather than left nil so it can be read back afterwards: the
+	// parser fills it as it goes, which means it is worth reading even when the parse ends
+	// in an error.
+	analysis.Declarations = parser.NewDeclarations()
 	tree, err := s.parser.Parse(parser.ParseInput{
 		Filename: doc.Filename,
 		Tokens:   tokens,
 		TapeSize: doc.TapeSize,
-		// What the modules it imports promised, which the resolution above just found: a
+		// What the modules it imports offer, which the resolution above just found: a
 		// shape is resolved while parsing, so it has to be in hand by now.
-		Imports: resolver.OffersOf(analysis.Modules),
+		Imports:      resolver.OffersOf(analysis.Modules),
+		Declarations: analysis.Declarations,
 	})
 	if err != nil {
 		analysis.Err = err

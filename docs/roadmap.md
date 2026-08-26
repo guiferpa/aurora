@@ -81,11 +81,12 @@ are for:
 - **A scope that calls itself is not known either**, for the same reason and by the same
   mechanism: the name is not in the table while its own body is being read. This is what
   keeps the walk from being a recursion at all, so it is a limit bought on purpose.
-- **The editor still reads tokens, not the compiler.** The language server builds its own
-  table by matching patterns over the tokens, which recognises less than the compiler does —
-  no block, no `if` whose arms agree, no chain of bindings. It has to keep something like it,
-  because completing a name has to work in a document half-typed that does not parse; what it
-  does not have to do is use it when the parse succeeded.
+- **The editor knows what the compiler knows, and reads tokens where it did not get there.**
+  The language server hands the parser its table and reads it back, so what the compiler
+  worked out is what the editor offers — and because the table is filled as the file is read,
+  a parse that broke on the line being typed still leaves everything above it understood. The
+  walk of the tokens stays underneath, matching patterns, for the document that breaks before
+  the parser reads anything at all. It recognises less, and less is all it has to be.
 
 ## Modules
 

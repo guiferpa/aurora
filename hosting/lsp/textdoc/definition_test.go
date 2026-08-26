@@ -198,7 +198,7 @@ func TestDefinitionInsideAModule(t *testing.T) {
 	}
 }
 
-// A shape written as the module's — built, claimed or promised — is declared over there too.
+// A shape written as the module's — built, claimed or declared — is declared over there too.
 func TestDefinitionOfAShapeNamedThroughItsModule(t *testing.T) {
 	session := withModuleFiles(map[string]string{"src/geometry.ar": "shape Square { width, height };\n"})
 	found, ok := session.DefinitionFor(Document{

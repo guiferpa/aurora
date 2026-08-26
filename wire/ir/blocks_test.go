@@ -167,3 +167,76 @@ func TestOriginIsKnownOnlyWhenItPointsSomewhere(t *testing.T) {
 		t.Error("an origin at the first line says it points nowhere")
 	}
 }
+
+// A label is unique in its block and not in the program, so which name is which block is
+// worked out one block at a time.
+//
+// Read together, the save of one block answers for the binding of another: two names come out
+// pointing at one block, and a caller asking what a scope does is told what a different scope
+// does. That shipped — `aurora call read` was refused for writing, because read had been given
+// the block of something that writes.
+func TestTwoBlocksMayUseOneLabelForTwoThings(t *testing.T) {
+	// Both blocks leave a value under "01" and bind a name to it, and the two are different
+	// scopes. Nothing about that is unusual: labels are numbered from the start in each block.
+	blocks := []Block{
+		{
+			ID: 0,
+			Insts: []Instruction{
+				NewInstruction([]byte("01"), OpSave, BlockOf(7), Nothing()),
+				NewInstruction([]byte("02"), OpIdent, NameOf("here"), RefTo([]byte("01"))),
+			},
+			Term: Ends(Nothing()),
+		},
+		{
+			ID: 1,
+			Insts: []Instruction{
+				NewInstruction([]byte("01"), OpSave, BlockOf(9), Nothing()),
+				NewInstruction([]byte("02"), OpIdent, NameOf("there"), RefTo([]byte("01"))),
+			},
+			Term: Ends(Nothing()),
+		},
+	}
+
+	bound := Scopes(blocks)
+	if got := bound["here"]; got != 7 {
+		t.Errorf("here is block %d, want 7", got)
+	}
+	if got := bound["there"]; got != 9 {
+		t.Errorf("there is block %d, want 9", got)
+	}
+}
+
+// And what a scope does follows the scopes it calls, which is what the resolution above is for.
+func TestWhatAScopeDoesFollowsWhatItCalls(t *testing.T) {
+	// Block 0 binds "writer" to block 2 and "caller" to block 1; block 1 calls writer; block 2
+	// writes. So caller writes, one call away.
+	blocks := []Block{
+		{
+			ID: 0,
+			Insts: []Instruction{
+				NewInstruction([]byte("01"), OpSave, BlockOf(2), Nothing()),
+				NewInstruction([]byte("02"), OpIdent, NameOf("writer"), RefTo([]byte("01"))),
+				NewInstruction([]byte("03"), OpSave, BlockOf(1), Nothing()),
+				NewInstruction([]byte("04"), OpIdent, NameOf("caller"), RefTo([]byte("03"))),
+			},
+			Term: Ends(Nothing()),
+		},
+		{
+			ID:    1,
+			Insts: []Instruction{NewInstructionOver([]byte("01"), OpCall, NameOf("writer"))},
+			Term:  Ends(RefTo([]byte("01"))),
+		},
+		{
+			ID:    2,
+			Insts: []Instruction{NewInstruction([]byte("01"), OpStorageSet, Imm(1, 8), Imm(2, 8))},
+			Term:  Ends(RefTo([]byte("01"))),
+		},
+	}
+
+	if got := Does(blocks, 1); got != Writes {
+		t.Errorf("the caller does %d, want it to write like what it calls", got)
+	}
+	if got := Does(blocks, 2); got != Writes {
+		t.Errorf("the writer does %d, want Writes", got)
+	}
+}

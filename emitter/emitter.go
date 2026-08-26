@@ -551,8 +551,9 @@ func emitIdentifierLiteral(tc *int, insts *[]ir.Instruction, n ast.IdentifierLit
 // most scopes rather than the few that declared. This is that fact reaching the blocks, where
 // a backend can read it.
 //
-// The way from a name to a block is two steps, because that is how a scope is bound: a save
-// carries the block under a label, and a binding carries the name and a ref to that label.
+// Which name is which block is ir.Scopes, which is the one description of it: the emitter kept
+// a copy of that walk for a while, and the copy and the original did not agree about whether a
+// label is unique in its block or in the program.
 func widened(blocks []ir.Block, returns []ast.Returns) []ir.Block {
 	tapes := make(map[string]int, len(returns))
 	for _, each := range returns {
@@ -562,36 +563,12 @@ func widened(blocks []ir.Block, returns []ast.Returns) []ir.Block {
 		return blocks
 	}
 
-	for _, block := range blocks {
-		for name, id := range scopesBoundIn(block) {
-			if wide, said := tapes[name]; said && int(id) < len(blocks) {
-				blocks[id].Tapes = wide
-			}
+	for name, id := range ir.Scopes(blocks) {
+		if wide, said := tapes[name]; said && int(id) < len(blocks) {
+			blocks[id].Tapes = wide
 		}
 	}
 	return blocks
-}
-
-// scopesBoundIn answers which block each name in this block was bound to, for the names bound
-// to a scope. A name bound to anything else is not here, and neither is a block nobody named.
-func scopesBoundIn(block ir.Block) map[string]ir.BlockID {
-	held := make(map[string]ir.BlockID)
-	for _, inst := range block.Insts {
-		if inst.GetOpCode() == ir.OpSave && inst.GetLeft().Kind() == ir.KindBlock {
-			held[byteutil.ToHex(inst.GetLabel())] = inst.GetLeft().Block()
-		}
-	}
-
-	bound := make(map[string]ir.BlockID)
-	for _, inst := range block.Insts {
-		if inst.GetOpCode() != ir.OpIdent || inst.GetRight().Kind() != ir.KindRef {
-			continue
-		}
-		if id, isScope := held[byteutil.ToHex(inst.GetRight().Bytes())]; isScope {
-			bound[string(inst.GetLeft().Bytes())] = id
-		}
-	}
-	return bound
 }
 
 func (e *emt) Emit(tree ast.AST) ([]ir.Block, error) {

@@ -16,8 +16,10 @@
 #-
 #- Output:
 #-   600
+#-   2
 
 use geometry as g;
+use std/evm/storage as s;
 
 #- Everything the program does is inside a scope, and the last line applies it. That shape is
 #- what makes the file the same program either way it is reached:
@@ -32,8 +34,35 @@ use geometry as g;
 #- What it multiplies is bound inside main, and it has to be: a name lives in the frame of the
 #- scope that bound it, so a scope reaches what it bound itself and nothing from around it.
 ident main = defer {
-  ident s = g.new_square(30, 20);
-  g.area(s.width, s.height);
+  ident sq = g.new_square(30, 20);
+  g.area(sq.width, sq.height);
+};
+
+#- And a scope that keeps something, which is what a chain is for.
+#-
+#- The two words mean what they mean everywhere else a chain is spoken to:
+#-
+#-   aurora call read    a question, answered against the state as it is, costing nothing
+#-   aurora tx inc       a change, sent, paid for, and kept
+#-
+#- Asking inc as a question would answer 1 every time. It would read what is kept, add one,
+#- and be thrown away with the rest of the simulation — so the chain stays exactly as it was
+#- and the next question starts from the same place. The compiler knows inc keeps something,
+#- so "aurora call inc" is refused rather than answered.
+#-
+#- Off a chain there is no such split: the lines below run in order and the storage lives for
+#- this one run. That is what a single transaction sees, which is what simulating a call off a
+#- chain is for — a second "aurora run" starts from nothing, and a chain does not.
+ident inc = defer {
+  s.set("x", s.get("x") + 1);
+};
+
+ident read = defer {
+  s.get("x");
 };
 
 printd main();
+
+inc();
+inc();
+printd read();

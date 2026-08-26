@@ -10,6 +10,7 @@ import (
 	"github.com/guiferpa/aurora/loader"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/resolver"
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // A Session is one use of the command line: the phases it was handed, how wide a value is,
@@ -64,6 +65,20 @@ func (s *Session) evaluator() (*evaluator.Evaluator, error) {
 //
 // It is what every command that runs Aurora goes through. A file that imports nothing comes
 // out of it as a program of one module, which is the shape everything already had.
+// Blocks answers the program a source compiles to, for whoever needs to know what it does
+// rather than to run it.
+//
+// It exists for the two commands that speak to a chain: what a scope does decides whether
+// reaching it is a question or a change, and that is the compiler's to answer rather than
+// somebody's to remember.
+func (s *Session) Blocks(source string) ([]ir.Block, error) {
+	program, err := s.compile(source)
+	if err != nil {
+		return nil, err
+	}
+	return program.Blocks, nil
+}
+
 func (s *Session) compile(source string) (loader.Program, error) {
 	if s.resolver == nil {
 		return loader.Program{}, errors.New("no resolver was given to this session")

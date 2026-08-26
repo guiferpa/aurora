@@ -3,6 +3,8 @@ package cli
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/guiferpa/aurora/emitter"
@@ -30,8 +32,9 @@ type sessionOpts struct {
 	// asserts turns assertions on and sends what a program prints nowhere, which is what
 	// "aurora test" does: a test says what held, not what was printed on the way.
 	asserts bool
-	// stdRoot is where the modules that come with the language are read from. Empty is a
-	// toolchain with none installed, which is what most of these tests are.
+	// stdRoot is where the modules that come with the language are read from. Empty means the
+	// repository's own lib, which is what `make install-std` copies — so a test reads the
+	// standard library where it is written rather than a copy somebody installed months ago.
 	stdRoot string
 }
 
@@ -81,11 +84,16 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 	}
 	size := o.tapeSize
 
+	stdRoot := o.stdRoot
+	if stdRoot == "" {
+		stdRoot = repositoryLib(t)
+	}
+
 	return NewSession(NewSessionOptions{
 		Lexer:    lexer.New(),
 		Parser:   parser.New(),
 		Emitter:  emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
-		Resolver: newTestResolver(size, o.stdRoot),
+		Resolver: newTestResolver(size, stdRoot),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{
 				PrintBytes:   printer.Bytes(printed, size),
@@ -114,4 +122,19 @@ func tested(t *testing.T, target string, o sessionOpts) (TestReport, error) {
 	o.asserts = true
 
 	return newSession(t, o).Test(t.Context(), files)
+}
+
+// repositoryLib answers this repository's own lib, which is where the standard library is
+// written and what `make install-std` copies somewhere else.
+//
+// It is worked out from where this file is rather than from the working directory, because a
+// test that builds a project changes the working directory — and a relative path then answers
+// a lib inside somebody's temporary directory, which is a standard library of no files.
+func repositoryLib(t *testing.T) string {
+	t.Helper()
+	_, here, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("finding the standard library: this file does not know where it is")
+	}
+	return filepath.Join(filepath.Dir(here), "..", "..", "lib")
 }

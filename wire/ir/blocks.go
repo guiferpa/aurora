@@ -1,5 +1,7 @@
 package ir
 
+import "github.com/guiferpa/aurora/byteutil"
+
 // Operations over blocks. They are here and not with whoever joins programs because they are
 // arithmetic over the IR and nothing else — and getting any of them wrong is quiet.
 
@@ -90,4 +92,75 @@ func GoesOnTo(blocks []Block, from, next BlockID) []Block {
 		}
 	}
 	return blocks
+}
+
+// Scopes answers which block each name was bound to, for the names bound to a scope.
+//
+// Binding one is two instructions: a save carries the block under a label, and a binding
+// carries the name and a reference to that label. Reading them together is how a name becomes
+// a block, and it is here because more than one consumer needs it — a backend resolving a
+// call, and anybody asking what running a scope does.
+func Scopes(blocks []Block) map[string]BlockID {
+	held := make(map[string]BlockID)
+	for _, block := range blocks {
+		for _, inst := range block.Insts {
+			if inst.GetOpCode() == OpSave && inst.GetLeft().Kind() == KindBlock {
+				held[byteutil.ToHex(inst.GetLabel())] = inst.GetLeft().Block()
+			}
+		}
+	}
+
+	bound := make(map[string]BlockID)
+	for _, block := range blocks {
+		for _, inst := range block.Insts {
+			if inst.GetOpCode() != OpIdent || inst.GetRight().Kind() != KindRef {
+				continue
+			}
+			if id, isScope := held[byteutil.ToHex(inst.GetRight().Bytes())]; isScope {
+				bound[string(inst.GetLeft().Bytes())] = id
+			}
+		}
+	}
+	return bound
+}
+
+// Does answers the most it can be said running this scope does, following the branches inside
+// it and the scopes it calls.
+//
+// Reaches is not enough for this and cannot be: it follows where control goes, and a call is
+// not that — control comes back. But what a call does is part of what its caller does, and
+// that is the whole of why this exists. A scope whose own blocks hold nothing but arithmetic
+// still writes to a chain if it calls something that writes, which is exactly the shape a
+// program has once there is a standard library to call.
+func Does(blocks []Block, from BlockID) Effect {
+	scopes := Scopes(blocks)
+	seen := make(map[BlockID]bool, len(blocks))
+
+	var walk func(id BlockID) Effect
+	walk = func(id BlockID) Effect {
+		if seen[id] || int(id) >= len(blocks) || id < 0 {
+			return Pure
+		}
+		seen[id] = true
+
+		most := Pure
+		for _, block := range Reaches(blocks, id) {
+			seen[block] = true
+			for _, inst := range blocks[block].Insts {
+				if effect := EffectOf(inst.GetOpCode()); effect > most {
+					most = effect
+				}
+				if inst.GetOpCode() != OpCall {
+					continue
+				}
+				if called, bound := scopes[string(inst.GetLeft().Bytes())]; bound {
+					if effect := walk(called); effect > most {
+						most = effect
+					}
+				}
+			}
+		}
+		return most
+	}
+	return walk(from)
 }

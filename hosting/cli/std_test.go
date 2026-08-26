@@ -91,14 +91,9 @@ func runWithStd(t *testing.T, entry, stdRoot string) (string, error) {
 	return stdout.String(), err
 }
 
-// stdRootOf answers the repository's own lib, so the test reads the same files `make
-// install-std` copies. Reading them where they are written is what keeps this from passing
-// against a stale copy somebody installed months ago.
+// stdRootOf answers the repository's own lib, which is where a session reads it from by
+// default. It is spelled out here because these tests are about that path being the one used.
 func stdRootOf(t *testing.T) string {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", "lib"))
-	if err != nil {
-		t.Fatalf("finding the standard library: %v", err)
-	}
-	return root
+	return repositoryLib(t)
 }

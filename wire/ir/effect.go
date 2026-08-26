@@ -85,6 +85,31 @@ var effects = map[byte]Effect{
 	OpPrintDecimal: Writes,
 }
 
+// keeps names the instructions whose work outlives the program that did it.
+//
+// It is a different question from the effect, and reading them as one is a mistake worth
+// naming here so nobody makes it twice. An effect answers whether two instructions may swap,
+// and by that measure a binding writes: the frame is memory, and a load after a store must
+// stay after it. But a frame is gone when the scope is, and nothing outside the program ever
+// saw it — so a scope that binds a name changes nothing anybody can come back and read.
+//
+// A print is the sharper case: its effect is Writes, because when it says something matters,
+// and it reaches no bytecode at all. On a chain it is the identity.
+//
+// So this is the short list, and it is short because there is one thing a program can do today
+// that survives it. Events and an external call join it when they are written.
+var keeps = map[byte]bool{
+	OpStorageSet: true,
+}
+
+// Keeps says whether what an instruction does outlives the program that did it.
+//
+// It is what tells a question from a change: a scope that only computes can be asked, against
+// the state as it is, for nothing; a scope that keeps something has to be sent.
+func Keeps(op byte) bool {
+	return keeps[op]
+}
+
 // EffectOf answers what an opcode does beside leaving a value.
 //
 // It is a function of the opcode rather than a field on the instruction, which is where the

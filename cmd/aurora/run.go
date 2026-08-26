@@ -32,9 +32,19 @@ Anything after the target is passed to the program and read with feed(n).`,
 
 func init() {
 	runCmd.Flags().IntP("tape-size", "t", 0, "bytes per value (1-32, default 8; overrides tape_size from aurora.toml)")
+	runCmd.Flags().String("value", "0", "wei the program is told the transaction carried, which is what callvalue reads")
 }
 
 func runRun(cmd *cobra.Command, args []string) error {
+	written, err := cmd.Flags().GetString("value")
+	if err != nil {
+		return err
+	}
+	carried, err := cli.ParseCallValue(written)
+	if err != nil {
+		return err
+	}
+
 	var arg string
 	var programArgs []string
 	if len(args) > 0 {
@@ -64,7 +74,12 @@ func runRun(cmd *cobra.Command, args []string) error {
 				PrintChars:   printer.Chars(out, size),
 				PrintDecimal: printer.Decimal(out, size),
 				Args:         cli.ParseArgs(programArgs),
-				TapeSize:     size,
+				// What the transaction carried, off a chain: whoever runs the program says
+				// so, the way they say what is applied to it. Without that, a program that
+				// reads it could not be simulated at all — and the whole point of this
+				// backend is that the same program answers the same thing either way.
+				CallValue: carried,
+				TapeSize:  size,
 			})
 		},
 		TapeSize: size,

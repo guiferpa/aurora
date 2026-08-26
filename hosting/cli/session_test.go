@@ -32,6 +32,9 @@ type sessionOpts struct {
 	// asserts turns assertions on and sends what a program prints nowhere, which is what
 	// "aurora test" does: a test says what held, not what was printed on the way.
 	asserts bool
+	// callValue is what the program is told the transaction carried, which is what callvalue
+	// reads. Nothing said is nothing carried.
+	callValue []byte
 	// stdRoot is where the modules that come with the language are read from. Empty means the
 	// repository's own lib, which is what `make install-std` copies — so a test reads the
 	// standard library where it is written rather than a copy somebody installed months ago.
@@ -100,6 +103,7 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 				PrintChars:   printer.Chars(printed, size),
 				PrintDecimal: printer.Decimal(printed, size),
 				Args:         ParseArgs(o.args),
+				CallValue:    o.callValue,
 				TapeSize:     size,
 				Asserts:      o.asserts,
 			})

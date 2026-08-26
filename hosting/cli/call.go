@@ -2,7 +2,8 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"io"
+	"os"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,6 +27,8 @@ type CallInput struct {
 	//
 	// Empty is a call with no program in hand, which asks the question and says nothing.
 	Blocks []ir.Block
+	// Out is where it says what it is doing. Nil is stdout.
+	Out io.Writer
 }
 
 func EncodeSelector(selector string) []byte {
@@ -43,16 +46,21 @@ func Call(ctx context.Context, in CallInput) error {
 		return refuseACallThatWrites(in.Function)
 	}
 
+	out := in.Out
+	if out == nil {
+		out = os.Stdout
+	}
+
 	selector := EncodeSelector(in.Function)
 	args := ParseArgs(in.Args)
 	contract := common.HexToAddress(in.ContractAddress)
 	data := append(selector, args...)
 
 	if in.Pretend {
-		fmt.Printf("Contract:   0x%x (%d bytes)\n", contract, len(contract.Bytes()))
-		fmt.Printf("Function:   0x%x (%d bytes)\n", selector, len(selector))
-		fmt.Printf("Arguments:  0x%x (%d bytes)\n", args, len(args))
-		fmt.Printf("Data:       %s\n", byteutil.ToHexPretty(data))
+		say(out, "Contract:   0x%x (%d bytes)\n", contract, len(contract.Bytes()))
+		say(out, "Function:   0x%x (%d bytes)\n", selector, len(selector))
+		say(out, "Arguments:  0x%x (%d bytes)\n", args, len(args))
+		say(out, "Data:       %s\n", byteutil.ToHexPretty(data))
 		return nil
 	}
 
@@ -71,6 +79,6 @@ func Call(ctx context.Context, in CallInput) error {
 		return err
 	}
 
-	fmt.Printf("Result: %v\n", result)
+	say(out, "Result: %v\n", result)
 	return nil
 }

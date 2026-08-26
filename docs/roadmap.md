@@ -200,6 +200,12 @@ written down:
 
 - **`printb`, `printc` and `printd` are logs and do not compile**, by decision. What a program
   says on the way is for whoever is watching it run, not for the chain.
+- **Ether goes in and does not come out.** A transaction can carry value and a program can read
+  it with `callvalue`, so a contract can be paid and can count what it was paid. Nothing sends
+  any back: there is no `CALL`, no `DELEGATECALL` and no `SELFDESTRUCT` in the opcode table, so
+  what arrives stays. What it needs is an external call, which is the first thing that would
+  leave the program while it runs — the `Escapes` effect was named for it and nothing uses it
+  yet.
 - **Events are missing entirely.** `LOG0`–`LOG4` (`0xA0`–`0xA4`) are not in the opcode table.
   On chain they are the only way a contract says anything, and they are the honest target for
   whatever Aurora ends up calling logging.

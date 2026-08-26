@@ -58,7 +58,7 @@ ident inc = defer {
 };
 
 ident read = defer {
-  s.get("x");
+  s.get("x") + feed(0);
 };
 
 printd main();

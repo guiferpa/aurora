@@ -42,6 +42,7 @@ var handled = map[byte]bool{
 	ir.OpPush:        true,
 	ir.OpHead:        true,
 	ir.OpTail:        true,
+	ir.OpCallValue:   true,
 	ir.OpStorageGet:  true,
 	ir.OpStorageSet:  true,
 }

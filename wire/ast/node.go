@@ -364,6 +364,16 @@ type SstoreExpression struct {
 	Token token.Token `json:"-"`
 }
 
+// CallValueExpression is how much the transaction that reached this scope carried: `callvalue`.
+//
+// It takes nothing, because it is not about the program — it is about how the program was
+// reached. Off a chain it is what the command was told to carry, the way feed is what the
+// command applied.
+type CallValueExpression struct {
+	mark
+	Token token.Token `json:"-"`
+}
+
 // UseDeclaration brings a module in under an alias: `use a/b/c as x;`.
 //
 // It declares rather than binds. The alias names something only the compiler resolves — a

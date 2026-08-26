@@ -192,6 +192,14 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 
 	source, err := r.read(filename)
 	if err != nil {
+		// A module of the language missing and a module of the program missing are two
+		// different things to have happened, and telling them apart is most of what somebody
+		// needs: one is a name typed wrong, the other is a toolchain that was never finished
+		// being installed.
+		if module.IsStd(id) {
+			return token.NewError(declaration.Token, "module %s comes with the language and is not installed at line %d and column %d: no %s",
+				id, declaration.Token.GetLine(), declaration.Token.GetColumn(), filename)
+		}
 		return token.NewError(declaration.Token, "module %s is not there at line %d and column %d: no %s",
 			id, declaration.Token.GetLine(), declaration.Token.GetColumn(), filename)
 	}

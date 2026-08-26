@@ -131,9 +131,22 @@ What it does not do yet:
   does. What would close it is embedding the same files in the binary and reading the directory
   over them when it is there — one source, two ways to reach it — and it waits until somebody
   wants the standard library in the playground.
-- **Nothing installs the standard library but `make install-std`.** A release ships a binary
-  and not the files beside it, so somebody who downloads one has the language and not its
-  library. What that needs is the release carrying both, and a first run that says so.
+- **Nothing installs the standard library but `make install-std`.** A release ships binaries
+  and not the files beside them, so somebody who downloads one has the language and not its
+  library, until they clone this repository and run that.
+
+  **Carrying it inside the binary was tried and refused.** It works, it costs 33 KB, and it
+  makes a second copy that can disagree with the first: install the library with one version,
+  upgrade the binary, forget to write it out again, and the toolchain is one version while its
+  library is another — silently, which is what one directory was chosen to prevent. Go does not
+  do it either; its library is files in `$GOROOT/src`, shipped in the same archive as the
+  binary, and upgrading replaces the whole tree.
+
+  So the shape of the answer is that one: the release archive carries `std/` beside the
+  binaries, and the toolchain finds it. What that costs is a place to look that is not one
+  place — a `.deb` puts the binary in `/usr/bin`, Homebrew reaches it through a symlink, and a
+  tarball lands wherever it was unpacked — and that is the search path this design set out to
+  avoid. It waits until somebody is stopped by it.
 
 Two things are decided against rather than missing. **An import is not passed on**: if `main`
 uses `a` and `a` uses `b`, `main` writes its own line for `b`, so a name used in a file has

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -27,7 +28,11 @@ type CallInput struct {
 	//
 	// Empty is a call with no program in hand, which asks the question and says nothing.
 	Blocks []ir.Block
-	// Out is where it says what it is doing. Nil is stdout.
+	// Hex writes the answer as 0x-prefixed hex and a newline, rather than as the bytes
+	// themselves. It is for a person and for pasting into an explorer; the bytes are for
+	// everything else.
+	Hex bool
+	// Out is where the answer goes. Nil is stdout.
 	Out io.Writer
 }
 
@@ -79,6 +84,24 @@ func Call(ctx context.Context, in CallInput) error {
 		return err
 	}
 
-	say(out, "Result: %v\n", result)
-	return nil
+	return writeAnswer(out, result, in.Hex)
+}
+
+// writeAnswer hands back what the contract answered, and nothing else.
+//
+// The bytes themselves, because that is what came back: a question asked of a chain is worth
+// piping somewhere, and a line that says "Result:" in front of them is a line whoever reads
+// this has to undo. It used to say that, and the value came out as a list of decimals inside
+// brackets — readable, and not the answer.
+//
+// So stdout carries the answer alone. Hex is for a person, and it is a flag rather than the
+// default for the same reason: it is a reading of the bytes, and the bytes are the thing.
+func writeAnswer(out io.Writer, answer []byte, asHex bool) error {
+	if asHex {
+		_, err := fmt.Fprintf(out, "0x%x\n", answer)
+		return err
+	}
+	// No newline: the bytes are the bytes, and a byte nobody sent is not part of the answer.
+	_, err := out.Write(answer)
+	return err
 }

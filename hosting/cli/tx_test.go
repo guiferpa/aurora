@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -73,4 +74,54 @@ func dataOf(printed string) string {
 		}
 	}
 	return ""
+}
+
+// What a question answers is the bytes that came back, and nothing else.
+//
+// It used to be a line saying "Result:" with the value as decimals inside brackets — readable,
+// and not the answer. Anybody piping it somewhere had to undo it first.
+func TestWhatAQuestionAnswers(t *testing.T) {
+	answer := []byte{0, 0, 0, 0, 0, 0, 0, 42}
+
+	t.Run("the bytes themselves", func(t *testing.T) {
+		var out bytes.Buffer
+		if err := writeAnswer(&out, answer, false); err != nil {
+			t.Fatalf("writing: %v", err)
+		}
+		if !bytes.Equal(out.Bytes(), answer) {
+			t.Errorf("it wrote %v, want the eight bytes that came back", out.Bytes())
+		}
+	})
+
+	t.Run("and nothing around them", func(t *testing.T) {
+		var out bytes.Buffer
+		if err := writeAnswer(&out, answer, false); err != nil {
+			t.Fatalf("writing: %v", err)
+		}
+		// Not even a newline: a byte nobody sent is not part of the answer, and one more at
+		// the end is one more to strip.
+		if out.Len() != len(answer) {
+			t.Errorf("it wrote %d bytes for an answer of %d", out.Len(), len(answer))
+		}
+	})
+
+	t.Run("as hex, for a person", func(t *testing.T) {
+		var out bytes.Buffer
+		if err := writeAnswer(&out, answer, true); err != nil {
+			t.Fatalf("writing: %v", err)
+		}
+		if got := out.String(); got != "0x000000000000002a\n" {
+			t.Errorf("it wrote %q, want the hex and a newline", got)
+		}
+	})
+
+	t.Run("an answer of nothing", func(t *testing.T) {
+		var out bytes.Buffer
+		if err := writeAnswer(&out, nil, false); err != nil {
+			t.Fatalf("writing: %v", err)
+		}
+		if out.Len() != 0 {
+			t.Errorf("it wrote %q for a contract that answered nothing", out.String())
+		}
+	})
 }

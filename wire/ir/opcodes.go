@@ -22,8 +22,9 @@ const (
 
 	// Names and values.
 	OpIdent // Name, Ref -> binds the name to the value, and leaves the neutral tape
-	OpSave  // Imm -> the bytes themselves, which is how a literal reaches the program
-	OpLoad  // Name -> what the name is bound to, looked up where the program is running
+	OpSave  // Imm or Block -> the bytes themselves, which is how a literal reaches the program,
+	//            and how a name reaches the scope it was bound to
+	OpLoad // Name -> what the name is bound to, looked up where the program is running
 
 	// Comparison. What it returns is a tape like any other: false is all zeros.
 	OpDiff    // Ref, Ref -> whether the two differ

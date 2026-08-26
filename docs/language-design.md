@@ -496,6 +496,41 @@ fail, and would give up the only thing the declaration does.
 
 See [examples/shapes.ar](../examples/shapes.ar).
 
+## What the chain keeps
+
+Two instructions reach what a chain keeps between one transaction and the next:
+
+```
+sstore 1 42;      #- keeps 42 under the key 1, and is worth 42
+sload 1;          #- 42
+```
+
+A key is a tape and so is a value, and a key is anything a program works out — `sload k` after
+`ident k = 3 * 4;` reads what `sstore 12 ...` kept. A key nothing was ever kept under reads as
+the neutral tape, the same as reading past the end of a run, and the same as a slot never
+written on a chain.
+
+`sstore` is worth what it kept, because everything here is an expression and a write is no
+exception.
+
+Both take what follows them the way `printd` does — as much of it as is an expression — so
+`sload 1 + 2` reads the key three. Adding to what was read is written with the read closed
+first:
+
+```
+sstore 1 ((sload 1) + 2);
+```
+
+**These are the machine's instructions and not a library.** They are the two EVM opcodes under
+the names they have there, the way inline assembly is in C, and a program is not meant to write
+them directly: what it uses is a module written over them, where how a key becomes a slot is
+decided in one place and can change without every program that keeps something changing with
+it.
+
+Off a chain they are simulated by a map, for one run of a program — what a single transaction
+sees. A second run starts empty and a chain does not, which is the honest limit of simulating a
+call off a chain.
+
 ## Arithmetic Operations
 
 Arithmetic reads a tape as an unsigned big-endian integer and writes the result back as a tape, wrapping at the tape width.

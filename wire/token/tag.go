@@ -47,6 +47,8 @@ const (
 	SUB          = "SUB"       // -
 	SUM          = "SUM"       // +
 	TAIL         = "TAIL"      // tail
+	SLOAD        = "SLOAD"     // sload
+	SSTORE       = "SSTORE"    // sstore
 	TRUE         = "TRUE"      // true
 	USE          = "USE"       // use - brings a module in under an alias
 	WHITESPACE   = "WHITESPACE"
@@ -105,6 +107,8 @@ var (
 	TagSub        = Tag{SUB, "-", ""}
 	TagSum        = Tag{SUM, "+", ""}
 	TagTail       = Tag{TAIL, "tail", "Get right to left nth items from a tape"}
+	TagSload      = Tag{SLOAD, "sload", "Read what the chain keeps under a key"}
+	TagSstore     = Tag{SSTORE, "sstore", "Keep a value under a key, between transactions"}
 	TagTrue       = Tag{TRUE, "true", ""}
 	TagUse        = Tag{USE, "use", "Bring a module in under an alias"}
 	TagWhitespace = Tag{WHITESPACE, " ", ""}
@@ -125,6 +129,8 @@ var processableTags = []Tag{
 	TagTail,
 	TagPush,
 	TagPull,
+	TagSload,
+	TagSstore,
 	TagShape,
 	TagAs,
 	TagUse,

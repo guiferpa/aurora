@@ -162,6 +162,11 @@ written down:
   storage, no event, no caller, and no way to refuse a transaction. Each of them is its own
   decision, and each has the same question under it: what does it mean off a chain, where
   there is no storage, no log, and nobody calling. `rfcs/` is where those are argued.
+- **`sload` and `sstore` do not reach the bytecode yet.** They run off a chain, where a map
+  simulates what one transaction sees, so a contract using them compiles and keeps nothing on
+  chain — said out loud at build time, under the names the source used. What is left is the two
+  EVM opcodes and a case in the harness. The ordering they need is already written down: they
+  share no value, so only their effects keep them in the order they were written.
 - **Only a scope bound at the top of a program can be called.** A scope written inside another
   is not written at all: on a chain the name it was bound to holds the neutral value, and
   calling it is refused rather than written as a jump to an address no scope has.

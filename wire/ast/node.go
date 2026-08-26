@@ -341,6 +341,29 @@ type ShapedExpression struct {
 	Token      token.Token `json:"-"`
 }
 
+// SloadExpression reads what the chain keeps under a key: `sload k`.
+//
+// It is an instruction of the machine and not a library, the way inline assembly is in C. What
+// makes it usable is a module written over it — the standard library's storage is two scopes
+// wrapping these two — and the wrapper is what lets how a key becomes a slot change without
+// every program that stores something changing with it.
+type SloadExpression struct {
+	mark
+	Key   Node        `json:"key"`
+	Token token.Token `json:"-"`
+}
+
+// SstoreExpression keeps a value under a key: `sstore k v`.
+//
+// It returns the value it kept, because everything in Aurora is an expression and a write is
+// no exception.
+type SstoreExpression struct {
+	mark
+	Key   Node        `json:"key"`
+	Value Node        `json:"value"`
+	Token token.Token `json:"-"`
+}
+
 // UseDeclaration brings a module in under an alias: `use a/b/c as x;`.
 //
 // It declares rather than binds. The alias names something only the compiler resolves — a

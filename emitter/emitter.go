@@ -83,6 +83,10 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 		return emitUseDeclaration(tc, insts, n, tapeSize)
 	case ast.ShapeLiteral:
 		return emitShapeLiteral(tc, insts, n, tapeSize)
+	case ast.SloadExpression:
+		return emitSload(tc, insts, n, tapeSize)
+	case ast.SstoreExpression:
+		return emitSstore(tc, insts, n, tapeSize)
 	case ast.FieldExpression:
 		return emitFieldExpression(tc, insts, n, tapeSize)
 	case ast.ShapedExpression:
@@ -260,6 +264,29 @@ func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, 
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
 	return l
 
+}
+
+// emitSload reads what the chain keeps under a key.
+func emitSload(tc *int, insts *[]ir.Instruction, n ast.SloadExpression, tapeSize int) ir.Label {
+	key := operandFor(tc, insts, n.Key, tapeSize)
+
+	l := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpStorageGet, key, ir.Nothing()).At(originOf(n.Token)))
+	return l
+}
+
+// emitSstore keeps a value under a key, and leaves the value.
+//
+// The key is emitted before the value, which is the order they were written: two instructions
+// that compute them cannot be told apart by this one, and reading them in the order the line
+// has is what keeps a message about either pointing at the right half.
+func emitSstore(tc *int, insts *[]ir.Instruction, n ast.SstoreExpression, tapeSize int) ir.Label {
+	key := operandFor(tc, insts, n.Key, tapeSize)
+	value := operandFor(tc, insts, n.Value, tapeSize)
+
+	l := GenerateLabel(tc)
+	*insts = append(*insts, ir.NewInstruction(l, ir.OpStorageSet, key, value).At(originOf(n.Token)))
+	return l
 }
 
 // emitShapeLiteral lays one tape per field, end to end.

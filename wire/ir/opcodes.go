@@ -62,4 +62,15 @@ const (
 	// Reading past the end gives the neutral value rather than failing.
 	OpJoin  // Ref, Ref -> the run with one more tape at its end
 	OpField // Ref, Const, Const -> the tape at that index of a run of that many tapes
+
+	// Storage, which is what a chain keeps between one transaction and the next. A key is a
+	// tape and so is a value, and a key nothing was ever written under reads as the neutral
+	// tape — the same answer reading past the end of anything else gives.
+	//
+	// These are the first instructions whose order is the program. Nothing about the value
+	// either of them leaves says when it ran, and they share no value between them, so what
+	// keeps a read from being written before the write it follows is their effect and nothing
+	// else.
+	OpStorageGet // Ref -> what is kept under that key
+	OpStorageSet // Ref, Ref -> keeps the value under the key, and leaves the value
 )

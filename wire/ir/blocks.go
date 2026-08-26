@@ -101,17 +101,18 @@ func GoesOnTo(blocks []Block, from, next BlockID) []Block {
 // a block, and it is here because more than one consumer needs it — a backend resolving a
 // call, and anybody asking what running a scope does.
 func Scopes(blocks []Block) map[string]BlockID {
-	held := make(map[string]BlockID)
+	bound := make(map[string]BlockID)
 	for _, block := range blocks {
+		// One block at a time, because a label is unique in its block and not in the program.
+		// Read together, the label of one block's save answers for another block's binding —
+		// so a name resolves to whichever block was walked last, and a caller asking what a
+		// scope does is told what a different scope does.
+		held := make(map[string]BlockID)
 		for _, inst := range block.Insts {
 			if inst.GetOpCode() == OpSave && inst.GetLeft().Kind() == KindBlock {
 				held[byteutil.ToHex(inst.GetLabel())] = inst.GetLeft().Block()
 			}
 		}
-	}
-
-	bound := make(map[string]BlockID)
-	for _, block := range blocks {
 		for _, inst := range block.Insts {
 			if inst.GetOpCode() != OpIdent || inst.GetRight().Kind() != KindRef {
 				continue

@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/guiferpa/aurora/wire/ir"
 )
 
 // Whether reaching a scope changes anything the chain keeps, which is what decides between a
@@ -48,6 +50,20 @@ func TestWhetherReachingAScopeChangesAnything(t *testing.T) {
 			}
 		})
 	}
+
+	// The one that shipped broken. Which name is which block is worked out one block at a
+	// time, because a label is unique in its block and not in the program — read together, a
+	// scope of the standard library and a scope of the program came out sharing one block, and
+	// `aurora call read` was refused for writing.
+	t.Run("a scope of the program and one of the library keep their own blocks", func(t *testing.T) {
+		bound := ir.Scopes(blocks)
+		if bound["read"] == bound["std/evm/storage.set"] {
+			t.Errorf("read is block %d, and so is the library's set", bound["read"])
+		}
+		if bound["keep"] == bound["std/evm/storage.get"] {
+			t.Errorf("keep is block %d, and so is the library's get", bound["keep"])
+		}
+	})
 
 	t.Run("a name the program does not bind", func(t *testing.T) {
 		if _, found := ScopeWrites(WritesInput{Blocks: blocks, Function: "nothing"}); found {

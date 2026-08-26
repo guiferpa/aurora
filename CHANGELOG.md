@@ -4,6 +4,103 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.11.0-alpha — 2026-08-26
+
+### Asking and changing are two commands
+
+```
+aurora call balance      answered against the state as it is, costing nothing, keeping nothing
+aurora tx deposit        sent, paid for, mined, and what it changed stays
+```
+
+Before this there was only `call`, and it did an `eth_call` — a simulation. So a scope that
+kept something **could not**, by any path the tool had: the write ran and was thrown away. On a
+real chain a counter answered 1 every time and a read answered 0, and nothing was wrong with
+the bytecode.
+
+Nothing decides between them from what a program looks like, and no gas is spent because a name
+looked like it wanted it. What the compiler knows is used to refuse the wrong one:
+
+```
+$ aurora call deposit
+deposit changes what the chain keeps, and a call is a question: it would answer, cost
+nothing, and leave the chain exactly as it was — send it with 'aurora tx deposit' instead
+```
+
+Which scopes keep something follows the scopes they call, because with a standard library the
+scope somebody writes holds no `sstore` at all — `s.set(...)` is a call, and the write is one
+file away.
+
+### A transaction carries value, and a program can read it
+
+```
+aurora tx deposit --value 1000000000000000
+```
+
+```aurora
+ident deposit = defer { sstore 1 ((sload 1) + callvalue); };
+```
+
+`callvalue` takes nothing, because it is not about the program but about how the program was
+reached — so it is a term like any other, and `callvalue + feed(0)` is a sum. Off a chain there
+is no transaction, so `aurora run --value` says what one would have carried, the way arguments
+say what was applied; without that half a program that reads it could not be simulated at all.
+
+Wei, and a whole number: ether is a decimal, and a decimal is a rounding waiting to happen.
+
+**Nothing in Aurora sends ether back.** There is no external call and no self-destruct, so what
+arrives at a contract can be counted, kept and read, and cannot be moved. The command that
+carries it says so before it sends.
+
+### A question answers the bytes that came back
+
+```
+$ aurora call read | xxd
+00000000: 0000 0000 0000 002a                      .......*
+
+$ aurora call read --hex
+0x000000000000002a
+```
+
+It used to print `Result: [0 0 0 0 0 0 0 42]`, which is readable and is not the answer —
+anybody piping it somewhere had to undo it first. Stdout carries what came back and nothing
+else, not even a newline. `--hex` is for a person and for pasting into an explorer.
+
+### The IR asserts everything it was reshaped to assert
+
+The sixth and last: **every operand is what its opcode takes**, written in `wire/ir/takes.go`
+as something a program reads rather than as the comment beside it. A comment cannot be checked,
+and this is the failure that cost this compiler twice.
+
+Writing it down found one immediately. The comment beside `OpSave` said it takes a written-down
+value; it takes the number of a block too, which is how a name reaches the scope it was bound
+to, and it had been true for as long as the comment had been wrong.
+
+### Two that shipped broken, and were found on a real chain
+
+Both were in deciding whether a scope changes anything, and both refused a question that should
+have been answered.
+
+**A label is unique in its block, not in the program.** Which name was bound to which block was
+worked out over every block at once, so the save of one block answered for the binding of
+another — in the example project, a scope of the program and one of the standard library came
+out sharing a block. The emitter had the right walk and this was a copy of it that flattened
+the loop: two descriptions of one thing, which is what this compiler spends its time removing.
+
+**What a chain keeps is narrower than what an instruction writes.** A binding writes the frame,
+because a frame is memory and a load after a store must stay after it — and a frame is gone
+when the scope is. A print is sharper still: its effect is a write and it reaches no bytecode
+at all. So a scope that only multiplied two numbers was refused for changing the chain.
+
+### Smaller
+
+- **A module of the language that is not installed says so**, rather than reading like a name
+  typed wrong. They are two different things to have happened.
+- **The harness proves storage across transactions.** Every case wrote and read inside one call,
+  which proves two opcodes and nothing about what a chain is for.
+
+---
+
 ## v0.10.0-alpha — 2026-08-26
 
 ### The compiler works out which shape, and `returns` becomes a promise it keeps

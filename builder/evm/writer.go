@@ -1062,6 +1062,18 @@ type Scope struct {
 	// Tapes is how many tapes the value this scope returns is made of, which is one for an
 	// ordinary value and more for a run. It decides how much a return hands to the chain.
 	Tapes int
+	// Stranded answers which labels leave a value on the stack that nothing ever takes.
+	//
+	// An expression written for what it does rather than for what it is worth leaves one:
+	// `sstore 1 42;` on its own line keeps something and its value goes nowhere. So does
+	// `printd x;`, and so does an arithmetic line somebody wrote and stopped using. Off a
+	// chain the value is a name in a map and is simply never read; on one it sits on the
+	// stack, under everything written after it, and the return that expected to find the
+	// address it came from finds that instead.
+	//
+	// It is worked out here, over the whole scope, because a value left by one block can be
+	// taken by another.
+	Stranded map[string]bool
 	// Runs answers where in the frame each construction of a run lays its tapes, by the label
 	// the construction leaves its value under.
 	//
@@ -1105,6 +1117,7 @@ func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[st
 
 	names := make(map[string]int)
 	runs := make(map[string]int)
+	stranded := strandedIn(blocks, order)
 	offset := params * MEMORY_SLOT_SIZE
 	for _, id := range order {
 		for _, inst := range blocks[id].Insts {
@@ -1132,6 +1145,7 @@ func ScopeOf(blocks []ir.Block, order []ir.BlockID, tapeSize int, entries map[st
 		Tapes:    tapes,
 		Names:    names,
 		Runs:     runs,
+		Stranded: stranded,
 		Frame:    offset,
 		Entries:  entries,
 	}
@@ -1243,6 +1257,18 @@ func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, s
 		}
 	}
 
+	if op == ir.OpStorageGet {
+		if _, err := WriteStorageGet(bs); err != nil {
+			return err
+		}
+	}
+
+	if op == ir.OpStorageSet {
+		if _, err := WriteStorageSet(bs); err != nil {
+			return err
+		}
+	}
+
 	if op == ir.OpJoin {
 		if err := WriteJoin(bs, inst, scope.TapeSize, scope.Runs[byteutil.ToHex(inst.GetLabel())]); err != nil {
 			return err
@@ -1298,4 +1324,80 @@ func RunRoom(tapes, tapeSize int) int {
 // RunLeadIn is the room in front of a run, which is what a word has over a tape.
 func RunLeadIn(tapeSize int) int {
 	return MEMORY_SLOT_SIZE - byteutil.TapeSize(tapeSize)
+}
+
+// WriteStorageGet reads what the chain keeps under a key.
+//
+// The key is on the stack and SLOAD leaves what is kept in its place, so there is nothing to
+// arrange. A slot never written answers zeros, which is the neutral tape — the same answer the
+// evaluator gives, without either being told to agree.
+func WriteStorageGet(w io.Writer) (int, error) {
+	return w.Write([]byte{OpStorageLoad})
+}
+
+// WriteStorageSet keeps a value under a key, and leaves the value.
+//
+// It leaves it because a write is an expression here like everything else, and SSTORE leaves
+// nothing — so the value is copied before it is spent.
+//
+// The stack arrives with the value on top and the key under it, which is the order the two
+// were written. SSTORE wants the key on top and the value under, and wants both gone. So:
+//
+//	value key          the two operands, as they arrive
+//	value value key    DUP1, the copy that survives
+//	key value value    SWAP2, which brings the key up and leaves a copy at the bottom
+//	value              SSTORE, having taken the key and one of the two values
+func WriteStorageSet(w io.Writer) (int, error) {
+	return w.Write([]byte{OpDup1, OpSwap2, OpStorageStore})
+}
+
+// strandedIn answers the labels of the values nothing in this scope ever takes.
+//
+// Everything that could take one is read: the operands of every instruction, and what each
+// terminator carries — the value a block returns, the value a branch chooses on, and the
+// values handed to a block that is gone to. A label under none of those is a value computed
+// and left where nobody looks.
+func strandedIn(blocks []ir.Block, order []ir.BlockID) map[string]bool {
+	taken := make(map[string]bool)
+	for _, id := range order {
+		for _, inst := range blocks[id].Insts {
+			for _, operand := range consumes(inst) {
+				taken[byteutil.ToHex(operand.Bytes())] = true
+			}
+		}
+		for _, operand := range terminatorTakes(blocks[id].Term) {
+			if operand.Kind() == ir.KindRef {
+				taken[byteutil.ToHex(operand.Bytes())] = true
+			}
+		}
+	}
+
+	stranded := make(map[string]bool)
+	for _, id := range order {
+		for _, inst := range blocks[id].Insts {
+			if label := byteutil.ToHex(inst.GetLabel()); leavesAValue(inst.GetOpCode()) && !taken[label] {
+				stranded[label] = true
+			}
+		}
+	}
+	return stranded
+}
+
+// leavesAValue answers whether an instruction leaves something on the stack.
+//
+// It is not the same question as produces, which is about whether an instruction can be held
+// back and emitted next to whoever takes its value. A call leaves a value and cannot be held —
+// it is a jump, and where it sits is where it happens — so it is here and not there, and
+// reading the two as one is how a call written for what it does left something behind.
+func leavesAValue(op byte) bool {
+	return produces(op) || op == ir.OpCall
+}
+
+// terminatorTakes answers every value a terminator reads, whichever of the three it is.
+func terminatorTakes(term ir.Terminator) []ir.Operand {
+	taken := []ir.Operand{term.Cond, term.Value}
+	for _, target := range term.Targets {
+		taken = append(taken, target.Args...)
+	}
+	return taken
 }

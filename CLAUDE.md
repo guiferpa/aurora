@@ -48,6 +48,15 @@ at the default and a ceiling nobody chose — a run past thirty-two bytes was re
 written short, so a program ran off a chain and could not reach one. Nothing goes on the stack
 even when it fits: a run kept two ways is two things a consumer has to tell apart.
 
+Storage is written, and with it a contract keeps things. `sload` and `sstore` are the two EVM
+opcodes under the names they have there, and `std/evm/storage` is two scopes over them — which
+is where the standard library begins: real Aurora, read from `$AURORA_ROOT/lib`, so how a key
+becomes a slot is decided in one file rather than in every program that keeps something.
+Writing it found an older bug the harness had never covered: a value nothing takes was left on
+the stack, so a scope with a line written for what it does — `sstore 1 42;`, a `printd`, a call
+whose answer nobody wanted — returned to the wrong place and the contract reverted. It is
+dropped where it was computed now.
+
 The tape operations are written too, and with them **the backend carries every feature a
 program can use**. All four rest on one thing: how much of a value means something, which off
 a chain is the length of a slice and on one is worked out from the word by halving, five times,

@@ -1,6 +1,7 @@
 package evm
 
 import (
+	"github.com/guiferpa/aurora/byteutil"
 	"io"
 
 	"github.com/guiferpa/aurora/wire/ir"
@@ -97,6 +98,14 @@ func writeBlock(bs io.Writer, block ir.Block, order []ir.BlockID, at map[ir.Bloc
 	for _, inst := range block.Insts {
 		if err := WriteInstruction(here, scope.Names, inst, scope, here.at); err != nil {
 			return err
+		}
+		// A value nothing takes is dropped where it was computed, or it stays under everything
+		// written after it — and the return that expected the address it came from finds it
+		// instead, which is a jump to nowhere rather than a wrong answer.
+		if scope.Stranded[byteutil.ToHex(inst.GetLabel())] {
+			if _, err := here.Write([]byte{OpPop}); err != nil {
+				return err
+			}
 		}
 	}
 

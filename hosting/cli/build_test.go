@@ -163,18 +163,6 @@ func TestBuildSaysWhatTheBackendDoesNotCarry(t *testing.T) {
 			source: "ident show = defer { printd feed(0); };\n",
 			want:   "printd is ignored in compiled code",
 		},
-		{
-			// Said under the name the source used, and not under the one the IR uses: whoever
-			// reads this wrote sload, and has never heard of an OpStorageGet.
-			name:   "a read of what the chain keeps",
-			source: "ident kept = defer { sload feed(0); };\n",
-			want:   "sload does not reach the bytecode yet",
-		},
-		{
-			name:   "a write of it",
-			source: "ident keep = defer { sstore feed(0) feed(1); };\n",
-			want:   "sstore does not reach the bytecode yet",
-		},
 	}
 
 	for _, tc := range cases {

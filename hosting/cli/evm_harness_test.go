@@ -41,6 +41,17 @@ func onChain(t *testing.T, source, function string, args []string, tapeSize int)
 		t.Fatalf("reading the binary: %v", err)
 	}
 
+	return calledOnChain(t, bytecode, function, args, tapeSize)
+}
+
+// calledOnChain deploys a contract to an EVM in memory and calls one of its scopes by name.
+//
+// It is apart from the building so that a program of several files can be deployed too: how a
+// contract is assembled depends on how many files it is, and what happens after it is
+// assembled does not.
+func calledOnChain(t *testing.T, bytecode []byte, function string, args []string, tapeSize int) []byte {
+	t.Helper()
+
 	cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
 	_, address, _, err := runtime.Create(bytecode, cfg)
 	if err != nil {
@@ -83,6 +94,48 @@ func offChain(t *testing.T, source, function string, args []string, tapeSize int
 		t.Fatalf("running: %v", err)
 	}
 	return strings.TrimSpace(out.String())
+}
+
+// agreeThroughTheStandardLibrary runs the same call through both backends, for a program that
+// imports what comes with the language.
+//
+// It needs a project rather than one file, because a module is found from a source root, and a
+// standard library to find — so the two ways in are built here rather than in the helpers
+// above, which know about one file and nothing else.
+func agreeThroughTheStandardLibrary(t *testing.T, source, function string, args []string, tapeSize int) {
+	t.Helper()
+
+	opts := sessionOpts{tapeSize: tapeSize, stdRoot: stdRootOf(t)}
+	entry := filepath.Join("src", "main.ar")
+
+	projectOf(t, map[string]string{"src/main.ar": source})
+	binary := filepath.Join(t.TempDir(), "contract.bin")
+	if _, err := newSession(t, opts).Build(t.Context(), entry, binary); err != nil {
+		t.Fatalf("building: %v", err)
+	}
+	bytecode, err := os.ReadFile(binary)
+	if err != nil {
+		t.Fatalf("reading the binary: %v", err)
+	}
+
+	feeds := make([]string, 0, len(args))
+	for i := range args {
+		feeds = append(feeds, fmt.Sprintf("feed(%d)", i))
+	}
+	printed := &strings.Builder{}
+	ran := opts
+	ran.stdout, ran.args = printed, args
+
+	projectOf(t, map[string]string{
+		"src/main.ar": source + "\n" + fmt.Sprintf("printd %s(%s);", function, strings.Join(feeds, ", ")) + "\n",
+	})
+	if err := newSession(t, ran).Run(t.Context(), entry); err != nil {
+		t.Fatalf("running: %v", err)
+	}
+
+	if got := decimalOf(calledOnChain(t, bytecode, function, args, tapeSize)); got != strings.TrimSpace(printed.String()) {
+		t.Errorf("the chain answered %s and the evaluator %s", got, strings.TrimSpace(printed.String()))
+	}
 }
 
 // agree runs the same call through both backends and reports when they answer differently.
@@ -556,6 +609,103 @@ ident build = defer { Five{1, 2, 3, 4, feed(0)}; };`
 	if printed := strings.TrimSpace(offChain(t, source, "build", []string{"9"}, 0)); printed != "1 2 3 4 9" {
 		t.Errorf("the evaluator answered %q, want the five tapes", printed)
 	}
+}
+
+// A value nothing takes is dropped, rather than left under everything written after it.
+//
+// A line written for what it does and not for what it is worth leaves one: `sstore 1 42;` on
+// its own, a `printd`, a call whose answer nobody wanted, or an arithmetic line somebody
+// stopped using. Off a chain it is a name in a map that is never read; on one it sat on the
+// stack, and the return that expected the address it came from found it instead — a jump to
+// nowhere, so the contract reverted rather than answering wrongly.
+//
+// It was true before anything here kept state, and nothing made it likely to be written until
+// something did: nobody writes an arithmetic line for its effect, and `sstore 1 42;` is an
+// ordinary way to write a program.
+func TestAValueNothingTakesIsDropped(t *testing.T) {
+	for _, tc := range []struct{ name, source, args string }{
+		{
+			name:   "an arithmetic line nobody uses",
+			source: `ident f = defer { feed(0) + 1; feed(0) + 2; };`,
+			args:   "5",
+		},
+		{
+			name:   "a write kept for what it does",
+			source: `ident f = defer { sstore 1 feed(0); 7; };`,
+			args:   "42",
+		},
+		{
+			name: "a call whose answer nobody wanted",
+			source: `ident g = defer { feed(0) * 2; };
+ident f = defer { g(feed(0)); 7; };`,
+			args: "42",
+		},
+		{
+			name:   "several of them in a row",
+			source: `ident f = defer { feed(0) + 1; feed(0) + 2; feed(0) + 3; feed(0) + 4; };`,
+			args:   "5",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, tc.source, "f", []string{tc.args}, 0)
+		})
+	}
+}
+
+// What the chain keeps, kept and read back inside one transaction.
+//
+// It is the first thing here that is not a computation: what SSTORE leaves behind outlives the
+// call, and what the evaluator answers comes out of a map. The two agree because they were
+// written to mean the same thing, and this is what says they do.
+func TestWhatTheChainKeepsAnswersTheSameOnChainAndOff(t *testing.T) {
+	const source = `ident keep = defer { sstore 1 feed(0); sload 1; };
+ident over = defer { sstore 1 feed(0); sstore 1 7; sload 1; };
+ident missing = defer { sstore 1 feed(0); sload 2; };
+ident counted = defer { sstore 1 40; sstore 1 ((sload 1) + feed(0)); sload 1; };`
+
+	for _, tc := range []struct{ name, want string }{
+		{name: "keep", want: "42"},
+		{name: "over", want: "7"},
+		// A slot never written is zeros on a chain and the neutral tape off one, and neither
+		// was told to agree with the other.
+		{name: "missing", want: "0"},
+		{name: "counted", want: "42"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			agree(t, source, tc.name, []string{"42"}, 0)
+			if tc.want == "" {
+				t.Skip()
+			}
+		})
+	}
+}
+
+// A write is worth what it wrote, on a chain as much as off one.
+//
+// SSTORE leaves nothing on the stack, so the value is copied before it is spent. Getting that
+// wrong is not a crash: the contract answers whatever was underneath, and a number came back
+// either way.
+func TestAWriteToTheChainIsWorthWhatItWrote(t *testing.T) {
+	const source = `ident kept = defer { sstore 1 feed(0); };
+ident plus = defer { (sstore 1 feed(0)) + 1; };`
+
+	for _, name := range []string{"kept", "plus"} {
+		t.Run(name, func(t *testing.T) {
+			agree(t, source, name, []string{"41"}, 0)
+		})
+	}
+}
+
+// And through the standard library, which is what a program actually writes.
+//
+// The two scopes of std/evm/storage are ordinary scopes, so this is also a call reaching a
+// module reaching the machine — every piece of the language at once.
+func TestTheStandardLibraryKeepsOnChainToo(t *testing.T) {
+	const source = "use std/evm/storage as s;\n" +
+		"ident deposit = defer { s.set(1, s.get(1) + feed(0)); };\n" +
+		"ident balance = defer { s.set(1, 40); deposit(2); s.get(1); };"
+
+	agreeThroughTheStandardLibrary(t, source, "balance", []string{"0"}, 0)
 }
 
 // A run laid out of what a call answered, and a field read out of it. The two features meet

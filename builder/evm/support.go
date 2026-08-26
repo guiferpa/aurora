@@ -42,6 +42,8 @@ var handled = map[byte]bool{
 	ir.OpPush:        true,
 	ir.OpHead:        true,
 	ir.OpTail:        true,
+	ir.OpStorageGet:  true,
+	ir.OpStorageSet:  true,
 }
 
 // offChain is what is meant to be absent from a chain. Saying so is still worth a line: a
@@ -65,10 +67,11 @@ var offChain = map[byte]string{
 // An opcode in neither list is warned about under the name the IR gives it rather than passed
 // over: a gap nobody remembered to write down here is still a gap, and the point of this file
 // is that a gap is never silent.
-var pending = map[byte]string{
-	ir.OpStorageGet: "sload does not reach the bytecode yet: a contract using it compiles, and reads the neutral tape on chain",
-	ir.OpStorageSet: "sstore does not reach the bytecode yet: a contract using it compiles, and keeps nothing on chain",
-}
+// It is empty again. Every instruction the emitter produces reaches the bytecode, and that is
+// what makes this file matter more rather than less: an opcode in neither list is warned about
+// under the name the IR gives it, rather than passed over. A gap nobody remembered to write
+// down here is still a gap, and the point of this file is that a gap is never silent.
+var pending = map[byte]string{}
 
 // Warnings reports what a program uses that does not reach the bytecode.
 //

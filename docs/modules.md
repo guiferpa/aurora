@@ -189,6 +189,53 @@ What does not cross is a scope whose shape nothing says — one ending with arit
 a tape and not a run. It hands over the tapes and no shape, and the file reading it has to
 name one.
 
+### What comes with the language
+
+A module whose name starts with `std/` is read from where the toolchain installed it, not from
+under the program:
+
+```
+use std/evm/storage as s;
+
+ident deposit = defer { s.set(1, s.get(1) + feed(0)); };
+ident balance = defer { s.get(1); };
+```
+
+The prefix is the whole of what says so, and everything after that is the same: it is an
+ordinary Aurora file, parsed the same way, offering what it binds at the top the same way, and
+reached under an alias the importing file chose.
+
+**The second segment names the target.** `std/evm` is written over the EVM's own instructions
+and means nothing anywhere else, so a module that cannot cross is marked as not crossing rather
+than found out at the far end. Another machine gets its own `std/<target>/storage` offering the
+same two names, and what a program writes stays the same.
+
+Where it is installed is `$AURORA_ROOT/lib`, or `$HOME/.aurora/lib` when `AURORA_ROOT` says
+nothing — so `std/evm/storage` reads `$HOME/.aurora/lib/std/evm/storage.ar`. One directory and
+no search: a list of places to look is how a machine ends up running the standard library of a
+toolchain that was uninstalled a year ago. `make install-std` puts it there.
+
+That is also the whole of the versioning story, and it is the same one C has: what answers
+`use std/evm/storage` is what the `aurora` on this machine shipped with, and there is no way
+for a program to ask for another.
+
+A module of the language that is not installed is refused where it was imported, naming the
+file it looked for — which says the toolchain is half installed rather than that the name was
+typed wrong.
+
+#### What `std/evm/storage` is
+
+Two scopes over the two instructions, and it is worth reading because it is short:
+
+```
+ident set = defer { sstore feed(0) feed(1); };
+ident get = defer { sload feed(0); };
+```
+
+That is the point of it. `sload` and `sstore` are the machine's, and how a key becomes a slot
+is decided in this one file — so it can change without a single program that keeps something
+changing with it. A program that wrote `sstore` directly would have to change.
+
 ### And a shape can be named
 
 A shape's name belongs to the file that declared it, so elsewhere it is written as the

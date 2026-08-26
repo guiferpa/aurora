@@ -6,6 +6,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/resolver"
+	"github.com/guiferpa/aurora/shared/fileutil"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/module"
 )
@@ -23,7 +24,10 @@ func newResolver(tapeSize int, sourceRoot string) *resolver.Resolver {
 
 	return resolver.New(resolver.Options{
 		SourceRoot: sourceRoot,
-		Read:       os.ReadFile,
+		// Where what comes with the language was installed, read here because reading the
+		// environment is touching the world and a phase does not do that.
+		StdRoot: fileutil.StdRoot(),
+		Read:    os.ReadFile,
 		Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 			tokens, err := lx.GetFilledTokens(source)
 			if err != nil {

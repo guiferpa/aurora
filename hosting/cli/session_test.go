@@ -30,16 +30,20 @@ type sessionOpts struct {
 	// asserts turns assertions on and sends what a program prints nowhere, which is what
 	// "aurora test" does: a test says what held, not what was printed on the way.
 	asserts bool
+	// stdRoot is where the modules that come with the language are read from. Empty is a
+	// toolchain with none installed, which is what most of these tests are.
+	stdRoot string
 }
 
 // newTestResolver puts the front of the pipeline together the way cmd/aurora does: a test
 // wires what main wires, since a host is handed its phases rather than building them.
-func newTestResolver(tapeSize int) *resolver.Resolver {
+func newTestResolver(tapeSize int, stdRoot string) *resolver.Resolver {
 	lx := lexer.New()
 	ps := parser.New()
 
 	return resolver.New(resolver.Options{
 		SourceRoot: manifest.DefaultSourceRoot,
+		StdRoot:    stdRoot,
 		Read:       os.ReadFile,
 		Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 			tokens, err := lx.GetFilledTokens(source)
@@ -81,7 +85,7 @@ func newSession(t *testing.T, o sessionOpts) *Session {
 		Lexer:    lexer.New(),
 		Parser:   parser.New(),
 		Emitter:  emitter.New(emitter.NewEmitterOptions{TapeSize: size}),
-		Resolver: newTestResolver(size),
+		Resolver: newTestResolver(size, o.stdRoot),
 		NewEvaluator: func() *evaluator.Evaluator {
 			return evaluator.New(evaluator.NewEvaluatorOptions{
 				PrintBytes:   printer.Bytes(printed, size),

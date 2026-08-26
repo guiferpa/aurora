@@ -36,6 +36,22 @@ func (m Module) IsEntry() bool {
 	return m.ID == ""
 }
 
+// StdPrefix marks a module that comes with the language rather than with the program.
+//
+// `use std/evm/storage as s;` reads a file the toolchain installed, not one under the
+// program's source root, and the prefix is the whole of what says so — the same way Go tells
+// its standard library from everything else by what the import path looks like.
+//
+// The second segment names the target the module is written for. `std/evm` is written over the
+// EVM's own instructions and means nothing anywhere else, so a module that cannot cross is
+// marked as not crossing rather than found out at the far end.
+const StdPrefix = "std/"
+
+// IsStd says whether a module comes with the language.
+func IsStd(id ID) bool {
+	return strings.HasPrefix(string(id), StdPrefix)
+}
+
 // Separator is what stands between a module and a name inside it: a/b/c.add.
 //
 // It is a character no identifier can hold — the lexer takes letters, digits and _ - ? ! > <

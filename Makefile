@@ -37,6 +37,23 @@ wasm:
 
 build-force: clean aurora aurorals
 
+# What comes with the language, put where the binary looks for it.
+#
+# AURORA_ROOT is where somebody chose to keep it, and $HOME/.aurora is where the binary looks
+# when nobody chose — the same two the binary itself reads, so building and running agree
+# without either being told what the other did.
+#
+# It copies rather than links because a link into a working tree makes the installed standard
+# library change when a branch is checked out, which is a way to debug the wrong thing for an
+# afternoon.
+AURORA_ROOT ?= $(HOME)/.aurora
+
+install-std:
+	@rm -rf $(AURORA_ROOT)/lib/std
+	@mkdir -p $(AURORA_ROOT)/lib
+	@cp -R lib/std $(AURORA_ROOT)/lib/std
+	@echo "the standard library is in $(AURORA_ROOT)/lib/std"
+
 aurora: $(BIN)/aurora
 
 $(BIN)/aurora: $(SOURCES)
@@ -109,4 +126,4 @@ $(GODEPGRAPH_BIN):
 	@echo "==> Installing godepgraph..."
 	@go install github.com/kisielk/godepgraph@latest
 
-.PHONY: all check build wasm build-force aurora aurorals test bench lint complexity act cover-html clean depgraph
+.PHONY: all check build wasm build-force install-std aurora aurorals test bench lint complexity act cover-html clean depgraph

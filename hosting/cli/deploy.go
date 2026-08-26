@@ -108,47 +108,10 @@ func Deploy(ctx context.Context, in DeployInput) (address string, deployTxHash s
 		return "", "", time.Time{}, err
 	}
 
-	// EIP-1559 (DynamicFeeTx) for Sepolia and other modern chains.
-	// Use minimum fees so the tx is included (allow override via DeployInput for bad RPCs).
-	gwei := big.NewInt(1e9)
-	minTipGwei := MIN_GAS_TIP_CAP_GWEI
-	if in.MinTipGwei > 0 {
-		minTipGwei = in.MinTipGwei
-	}
-	minFeeGwei := MIN_GAS_FEE_CAP_GWEI
-	if in.MinMaxFeeGwei > 0 {
-		minFeeGwei = in.MinMaxFeeGwei
-	}
-	minTipCap := new(big.Int).Mul(big.NewInt(int64(minTipGwei)), gwei)
-	minFeeCap := new(big.Int).Mul(big.NewInt(int64(minFeeGwei)), gwei)
-
-	gasTipCap, err := client.SuggestGasTipCap(ctx)
+	gasTipCap, gasFeeCap, err := suggestFees(ctx, client, in.MinTipGwei, in.MinMaxFeeGwei)
 	if err != nil {
-		return "", "", time.Time{}, fmt.Errorf("suggest gas tip: %w", err)
+		return "", "", time.Time{}, err
 	}
-	if gasTipCap == nil || gasTipCap.Cmp(minTipCap) < 0 {
-		gasTipCap = minTipCap
-	}
-
-	head, err := client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return "", "", time.Time{}, fmt.Errorf("latest block: %w", err)
-	}
-	baseFee := head.BaseFee
-	if baseFee == nil {
-		baseFee = big.NewInt(0)
-	}
-	// maxFeePerGas = baseFee*2 + tip, but at least minFeeCap so tx is included on testnets
-	gasFeeCap := new(big.Int).Mul(baseFee, big.NewInt(2))
-	gasFeeCap.Add(gasFeeCap, gasTipCap)
-	if gasFeeCap.Cmp(minFeeCap) < 0 {
-		gasFeeCap = minFeeCap
-	}
-
-	// Log gas fees so user can verify on explorer (helps debug "pending forever").
-	tipGwei := new(big.Int).Div(gasTipCap, gwei)
-	feeCapGwei := new(big.Int).Div(gasFeeCap, gwei)
-	fmt.Printf("Gas: tip=%s Gwei, maxFee=%s Gwei (min %d/%d Gwei for inclusion)\n", tipGwei.String(), feeCapGwei.String(), minTipGwei, minFeeGwei)
 
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   chainID,
@@ -210,4 +173,51 @@ func Deploy(ctx context.Context, in DeployInput) (address string, deployTxHash s
 		"deploy tx not mined within %v (tx may still be pending). Check tx %s on explorer; contract will be at %s once confirmed",
 		RECEIPT_POLL_TIMEOUT, txHash.Hex(), expectedContract.Hex(),
 	)
+}
+
+// suggestFees answers what one transaction should offer: what the network suggests, with the
+// floors under it that a testnet needs before it will include one at all.
+//
+// It is here rather than beside either caller because a deploy and a call to a scope are the
+// same transaction with a different destination, and two descriptions of what a transaction
+// costs is one of them going stale.
+func suggestFees(ctx context.Context, client *ethclient.Client, minTip, minFee int) (*big.Int, *big.Int, error) {
+	gwei := big.NewInt(1e9)
+	if minTip <= 0 {
+		minTip = MIN_GAS_TIP_CAP_GWEI
+	}
+	if minFee <= 0 {
+		minFee = MIN_GAS_FEE_CAP_GWEI
+	}
+	minTipCap := new(big.Int).Mul(big.NewInt(int64(minTip)), gwei)
+	minFeeCap := new(big.Int).Mul(big.NewInt(int64(minFee)), gwei)
+
+	tip, err := client.SuggestGasTipCap(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("suggest gas tip: %w", err)
+	}
+	if tip == nil || tip.Cmp(minTipCap) < 0 {
+		tip = minTipCap
+	}
+
+	head, err := client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("latest block: %w", err)
+	}
+	baseFee := head.BaseFee
+	if baseFee == nil {
+		baseFee = big.NewInt(0)
+	}
+	// maxFeePerGas = baseFee*2 + tip, and never under the floor a testnet wants.
+	fee := new(big.Int).Mul(baseFee, big.NewInt(2))
+	fee.Add(fee, tip)
+	if fee.Cmp(minFeeCap) < 0 {
+		fee = minFeeCap
+	}
+
+	// Said out loud so somebody can check it on an explorer, which is what "pending forever"
+	// sends them to do.
+	fmt.Printf("Gas: tip=%s Gwei, maxFee=%s Gwei (min %d/%d Gwei for inclusion)\n",
+		new(big.Int).Div(tip, gwei), new(big.Int).Div(fee, gwei), minTip, minFee)
+	return tip, fee, nil
 }

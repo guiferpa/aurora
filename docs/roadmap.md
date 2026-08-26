@@ -193,6 +193,35 @@ written down:
 program uses it, and names the line the program first used it on — so a binary that does less
 than the source said is announced, in the form an editor follows.
 
+## Asking and changing
+
+A call is a question and a transaction is a change, and they are two commands because they are
+two things:
+
+```
+aurora call read      answered against the state as it is, costing nothing, keeping nothing
+aurora tx inc         sent, paid for, mined, and what it changed stays
+```
+
+Nothing decides between them from what a program looks like. What the compiler knows is used to
+refuse the wrong one: a scope that keeps something, asked as a question, is a write thrown away
+— it answers, looking right, and the chain is exactly as it was. That happened on a real chain
+before this existed, and a counter answered 1 every time.
+
+Which scopes keep something is read from the effect of the instructions they reach, following
+the scopes they call — because with a standard library the scope somebody writes holds no
+`sstore` at all: `s.set(...)` is a call, and the write is one file away.
+
+What is missing:
+
+- **A transaction has one gas limit for every scope.** It is 500,000, which is enough for
+  anything a program can write today and nothing decides it per call. What would replace it is
+  asking the network to estimate, which is a round trip somebody has to want.
+- **Nothing reads what a transaction answered.** A scope returns a value, and a mined
+  transaction keeps it nowhere a caller can see — only logs and storage cross that line, and
+  logs do not reach a chain by decision. So `aurora tx` says what it spent and where it landed,
+  and what the scope returned is read with a `call` afterwards.
+
 ## Simulating a call off the chain
 
 `aurora call` speaks to a network and nothing else, so there is no way to ask for one scope by

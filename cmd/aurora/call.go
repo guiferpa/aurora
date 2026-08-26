@@ -53,5 +53,6 @@ func runCall(cmd *cobra.Command, args []string) error {
 		RPC:             env.Profile.RPC,
 		Args:            args[1:],
 		Pretend:         pretend,
+		Blocks:          blocksOfProfile(profile),
 	})
 }

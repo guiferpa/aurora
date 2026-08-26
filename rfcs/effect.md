@@ -144,13 +144,48 @@ Isso é a RFC seguinte, não esta.
    nada muda de comportamento porque nada que não é `Pure` chega ao backend hoje. O que muda é
    que a lowering passa a perguntar o efeito em vez de consultar lista, e as três listas de
    opcodes de `builder/evm` encolhem para o que é de fato sobre a pilha.
-2. **Um teste que prova a regra**, com uma instrução `Writes` de mentira que o backend aceite,
-   provando que ela não é movida. Sem isso o item 1 é uma anotação em que ninguém confia.
+2. **A regra, medida antes de prender.** Um teste que roda a regra sobre o que a lowering
+   produz hoje, para todo programa do corpus, e diz o que ela recusaria. Ele é o que decide se
+   o item 1 foi aditivo, e continua valendo depois como o teste que prova que a regra é
+   cumprida — sem ele, o item 1 é uma anotação em que ninguém confia.
 3. **O IR diz quantos tapes um operando tem**, quando ele é um run.
 4. **O run vai para a memória**, e o teto de 32 bytes sai — com o harness diferencial provando
    um shape de cinco campos e um de oito.
 
 Um a um, cada um passando `make check` sozinho.
+
+---
+
+## O frame é estado
+
+A pergunta foi feita com um dos nomes errados, e a resposta corrige junto. `OpSave` não mexe
+no frame: ele é `Imm -> the bytes themselves`, que é como um literal chega ao programa, e isso
+é `Pure`. Quem escreve no frame é o `OpIdent` — `Name, Ref -> binds the name to the value`.
+
+Então, decidido:
+
+| opcode | efeito | porquê |
+|---|---|---|
+| `OpIdent` | `Writes` | escreve o frame com um `MSTORE` |
+| `OpLoad` | `Reads` | lê o frame com um `MLOAD` |
+| `OpSave` | `Pure` | é um literal, e não toca em nada |
+
+**E isso pode custar alguma coisa, ao contrário dos `print`.** Um `print` nunca chega ao
+backend que reordena, então prendê-lo é grátis. Um `OpIdent` e um `OpLoad` chegam, e os dois
+são movidos hoje: o `OpLoad` porque `produces(op)` o segura para soltar ao lado de quem
+consome, e o `OpIdent` porque a lowering o segura quando ele é a última expressão de um
+escopo.
+
+A regra de uma linha proíbe trocar um `Reads` com um `Writes`. Se a lowering hoje faz isso em
+algum programa, o item 1 da entrega **deixa de ser aditivo** — e essa é a única parte desta
+RFC que não dá para decidir lendo o código, porque depende de qual ordem cada programa real
+produz.
+
+Por isso a entrega é nesta ordem, e não em outra: o item 2 existe para **medir antes de
+prender**. Ele anota os efeitos, roda a regra sobre o corpus de testes que já existe, e diz o
+que ela recusaria. Se a resposta for "nada", prender é aditivo e o item 1 fecha. Se for
+alguma coisa, o que ela recusa é um lugar onde a lowering move o que não podia mover — o
+buraco desta RFC, com um programa em cima —, e aí a correção é da lowering, não da regra.
 
 ---
 
@@ -164,7 +199,5 @@ Um a um, cada um passando `make check` sozinho.
 2. **O que um run que atravessa a chain é.** Hoje um shape retornado é uma palavra e o teste
    compara número com número. Passando a ser bytes, o `RETURN_TO_CHAIN` muda, e o harness
    junto.
-3. **Se `OpLoad` e `OpSave` viram `Reads`/`Writes`.** Eles mexem no frame, que é memória. Hoje
-   nada os move de forma errada porque a lowering só move quem produz valor, mas a resposta
-   honesta pode ser que o frame também é estado, e aí a regra de uma linha os prende também.
-   Vale medir se prender custa alguma coisa antes de decidir.
+3. ~~Se `OpLoad` e `OpSave` viram `Reads`/`Writes`.~~ **Decidido: o frame é estado, e a regra
+   os prende também.** Ver abaixo.

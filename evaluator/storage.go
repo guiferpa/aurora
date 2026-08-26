@@ -49,3 +49,13 @@ func (e *Evaluator) EvaluateStorageSet(label []byte, left, right ir.Operand) err
 func (e *Evaluator) slot(operand ir.Operand) []byte {
 	return byteutil.PaddingTape(e.value(operand), e.tapeSize)
 }
+
+// EvaluateCallValue answers how much the transaction that reached this scope carried.
+//
+// Off a chain there is no transaction, so it is what the command was told to carry — the same
+// way feed is what the command applied. Nothing was carried unless somebody said so, which is
+// the neutral tape, and that is what a call of no value answers on a chain too.
+func (e *Evaluator) EvaluateCallValue(label []byte, left, right ir.Operand) error {
+	e.environ.SetTemp(byteutil.ToHex(label), byteutil.PaddingTape(e.callValue, e.tapeSize))
+	return nil
+}

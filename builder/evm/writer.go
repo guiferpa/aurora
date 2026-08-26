@@ -1257,6 +1257,18 @@ func WriteInstruction(bs io.Writer, names map[string]int, inst ir.Instruction, s
 		}
 	}
 
+	if op == ir.OpCallValue {
+		if _, err := bs.Write([]byte{OpCallValue}); err != nil {
+			return err
+		}
+		// Cut to the tape width, the way every value here is: what a transaction carried is a
+		// word on a chain and a tape in a program, and a program that could see more of it
+		// than it can hold would answer one thing here and another there.
+		if _, err := WriteMask(bs, scope.TapeSize); err != nil {
+			return err
+		}
+	}
+
 	if op == ir.OpStorageGet {
 		if _, err := WriteStorageGet(bs); err != nil {
 			return err

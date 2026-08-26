@@ -77,6 +77,11 @@ var effects = map[byte]Effect{
 	OpStorageGet: Reads,
 	OpStorageSet: Writes,
 
+	// What a transaction carried is not here, and Pure is right rather than lenient: it is
+	// fixed for the whole of one call, so two reads of it in either order are the same two
+	// reads. Nothing in the program can change it, and nothing outside can change it while
+	// the program runs.
+
 	// A print says something, and when it says it is the whole of what it is for. It never
 	// reaches the backend that reorders — a chain has nowhere to put a log, by decision — so
 	// this costs nothing and is still the truth.

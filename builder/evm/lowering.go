@@ -87,7 +87,7 @@ func produces(op byte) bool {
 		ir.OpJoin, ir.OpField, ir.OpPull, ir.OpPush, ir.OpHead, ir.OpTail,
 		// A read leaves what it read, and a write leaves what it wrote: both are expressions
 		// like everything else here.
-		ir.OpStorageGet, ir.OpStorageSet,
+		ir.OpStorageGet, ir.OpStorageSet, ir.OpCallValue,
 		// A print writes nothing on a chain and is worth what it was given, so it leaves a
 		// value like anything else — the same value, under a name of its own.
 		ir.OpPrintBytes, ir.OpPrintChars, ir.OpPrintDecimal:

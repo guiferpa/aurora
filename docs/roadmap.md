@@ -186,10 +186,12 @@ written down:
 - **A scope only reaches what it bound itself**, so everything a scope works on arrives as a
   value applied to it. What would let a scope read a name from around it is a static link —
   the frame carrying where the scope was written — and it is not built.
-- **A contract holds no state, says nothing, and does not know who called it.** There is no
-  storage, no event, no caller, and no way to refuse a transaction. Each of them is its own
-  decision, and each has the same question under it: what does it mean off a chain, where
-  there is no storage, no log, and nobody calling. `rfcs/` is where those are argued.
+- **A contract keeps things, and still says nothing and does not know who called it.** Storage
+  is written — `sload` and `sstore`, with `std/evm/storage` over them — and it answers the same
+  off a chain, where a map stands in for what one transaction sees. What is left of that list is
+  an event, a caller, and a way to refuse a transaction. Each is its own decision, and each has
+  the same question under it: what does it mean off a chain, where there is no log and nobody
+  calling. `rfcs/` is where those are argued.
 - **Only a scope bound at the top of a program can be called.** A scope written inside another
   is not written at all: on a chain the name it was bound to holds the neutral value, and
   calling it is refused rather than written as a jump to an address no scope has.
@@ -244,6 +246,30 @@ is exactly the shape of what is missing: a local call that takes a function and 
 and answers from the evaluator, the same way the chain would.
 
 ---
+
+## Name resolution is done twice
+
+The emitter knows where every name lives and does not say, so `builder/evm` works it out again
+in `Scope.Names`. It is the third of the six costs `rfcs/ir.md` named and the only one still
+open, and it is open because it is the only one whose price is higher than what it returns.
+
+The other five each paid in a bug found. This one pays in gas and bytes, and buys nothing
+somebody writing Aurora would notice.
+
+There are two ways out and both cost more than the line in the RFC suggests:
+
+- **A local becomes a numbered slot**, decided by the emitter, and the backend does arithmetic
+  rather than keeping a table. It closes the cost — the name never reaches the backend — but
+  only for a scope's own names: the top of a program keeps names, because a module offers what
+  it binds by name and the REPL keeps one evaluator for a session, so what a line binds the next
+  line sees. Two mechanisms for one thing, which is what this compiler spends its time removing.
+- **A local becomes a value and stops being memory.** It is what an immutable binding already
+  is, and `OpIdent` and `OpLoad` would go entirely. On the EVM a value read deep in the stack
+  needs a DUP, and past sixteen it needs memory anyway — so the backend would need a stack
+  allocator with spilling, which is the thing putting every bound name in memory was avoiding.
+
+So it waits for somebody to measure gas and be bothered by it. That is the trigger, and it is
+written here so the next person does not rediscover the argument.
 
 ## What the IR asserts
 

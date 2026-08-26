@@ -25,8 +25,18 @@ Toda RFC abre dizendo em que estado está:
 | [if_and_call.md](if_and_call.md) | proposta | como `if` e `call` viram bytecode, e a recursão que sai do segundo |
 | [ir.md](ir.md) | proposta | o IR é a fita do evaluator, e devia descrever o programa — pré-requisito da anterior |
 | [folding_literals.md](folding_literals.md) | proposta | um terço do IR existe para nomear números já conhecidos, e o que dobrar isso exige |
+| [effect.md](effect.md) | proposta | o IR não diz o que uma instrução faz além de deixar um valor, e o builder move instrução |
 
-A última foi `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
+A última foi `shape_inference.md` — a linguagem descobre qual shape um escopo retorna, e o
+`returns` vira uma restrição que o compilador cumpre em vez de ser a única fonte. Foi
+implementada em cinco pull requests: três de vocabulário, porque a mesma coisa estava sendo
+chamada de três nomes e isso teve que ser resolvido antes de escrever mais sobre ela, e dois
+de comportamento. O que ficou decidido está em
+[docs/language-design.md](../docs/language-design.md), na seção "Declaring a shape with
+`returns`", e os três lugares onde a descoberta para estão no
+[roadmap](../docs/roadmap.md), na seção "Shapes".
+
+Antes dela, `crossing_shapes.md` — a forma de um struct atravessa módulo, e o nome dele é
 escrito como o do módulo. Foi implementada em dois pull requests, e o que ficou decidido está
 em [docs/modules.md](../docs/modules.md). O que ela decidiu antes de tudo foi **em que ordem
 ler os arquivos**: dependência primeiro, como Go e Rust, e não parseia-tudo-resolve-depois como

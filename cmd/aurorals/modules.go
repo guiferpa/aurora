@@ -10,6 +10,7 @@ import (
 	"github.com/guiferpa/aurora/lexer"
 	"github.com/guiferpa/aurora/parser"
 	"github.com/guiferpa/aurora/resolver"
+	"github.com/guiferpa/aurora/shared/fileutil"
 	"github.com/guiferpa/aurora/wire/ast"
 	"github.com/guiferpa/aurora/wire/module"
 )
@@ -32,7 +33,10 @@ func resolveModules(s *state.State) textdoc.Resolve {
 	return func(doc textdoc.Document, uses []ast.UseDeclaration) ([]module.Module, error) {
 		return resolver.New(resolver.Options{
 			SourceRoot: sourceRootFor(doc.Filename),
-			Read:       readThroughBuffers(s),
+			// The editor reaches the language's own modules the same way a build does, so a
+			// name inside one is offered after the dot and jumps to where it was written.
+			StdRoot: fileutil.StdRoot(),
+			Read:    readThroughBuffers(s),
 			Parse: func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error) {
 				tokens, err := lx.GetFilledTokens(source)
 				if err != nil {

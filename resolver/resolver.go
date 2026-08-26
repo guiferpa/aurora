@@ -45,20 +45,28 @@ type Options struct {
 	// SourceRoot is the directory module names resolve from, and `a/b/c` under it is
 	// a/b/c.ar. Empty means the caller's own directory.
 	SourceRoot string
-	Read       Read
-	Parse      Parse
-	Header     Header
+	// StdRoot is where the modules that come with the language are installed, and `std/evm/x`
+	// under it is std/evm/x.ar — the prefix stays in the path, because it is part of the name.
+	//
+	// It is given rather than found because finding it means reading the environment, and a
+	// vital package does not touch the world. Empty is a toolchain with none installed, and a
+	// program importing one is refused where it wrote the import.
+	StdRoot string
+	Read    Read
+	Parse   Parse
+	Header  Header
 }
 
 type Resolver struct {
 	sourceRoot string
+	stdRoot    string
 	read       Read
 	parse      Parse
 	header     Header
 }
 
 func New(opts Options) *Resolver {
-	return &Resolver{sourceRoot: opts.SourceRoot, read: opts.Read, parse: opts.Parse, header: opts.Header}
+	return &Resolver{sourceRoot: opts.SourceRoot, stdRoot: opts.StdRoot, read: opts.Read, parse: opts.Parse, header: opts.Header}
 }
 
 // resolution is one call to Resolve: what has been found, what is being looked at right now,
@@ -216,8 +224,16 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 }
 
 // Filename is the file a module name reads: a/b/c under the source root, with the extension
-// back on.
+// back on — or under the root the language's own modules were installed in, when the name says
+// it is one of those.
+//
+// Which root a name reads from is the only thing the prefix decides. Everything after that is
+// the same: a module of the standard library is an ordinary Aurora file, parsed the same way,
+// offering what it binds at the top the same way.
 func (r *Resolver) Filename(id module.ID) string {
+	if module.IsStd(id) {
+		return path.Join(r.stdRoot, string(id)+Extension)
+	}
 	return path.Join(r.sourceRoot, string(id)+Extension)
 }
 

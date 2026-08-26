@@ -1,0 +1,32 @@
+#- What a chain keeps between one transaction and the next, as a map.
+#-
+#- This is the standard library, which is why it is written in Aurora rather than in the
+#- compiler: sload and sstore are the machine's own instructions, and everything a program
+#- should write sits on this side of them.
+#-
+#- That is the whole point of the wrapper. How a key becomes a slot is decided here, in one
+#- place, so it can change — hashed, prefixed, packed — without a single program that keeps
+#- something changing with it. A program that wrote sstore directly would have to change.
+#-
+#- It is under std/evm because it is written over the EVM's instructions and means nothing
+#- anywhere else. A backend for another machine gets its own std/<target>/storage, offering
+#- the same two names, so what a program writes stays the same.
+#-
+#- Output:
+#-   (nothing: a module of declarations does its work when somebody imports it)
+
+#- Keeps a value under a key, and returns the value it kept.
+#-
+#- It returns it because everything in Aurora is an expression, so `s.set(1, 41) + 1` is
+#- forty-two, and because a scope that answered nothing would be the only one here that does.
+ident set = defer {
+  sstore feed(0) feed(1);
+};
+
+#- Reads what is kept under a key.
+#-
+#- A key nothing was ever kept under reads as the neutral tape, which is what a slot never
+#- written answers on a chain and what reading past the end of a run answers off one.
+ident get = defer {
+  sload feed(0);
+};

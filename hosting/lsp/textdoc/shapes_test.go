@@ -138,10 +138,14 @@ func TestSemanticTokensForShapes(t *testing.T) {
 	}
 }
 
-// A promise reaches the editor too, and it reaches it from the tokens: a document being
-// edited does not parse, and the moment somebody types a dot is the moment they want to be
-// told what is there.
-func TestTheEditorReadsAPromise(t *testing.T) {
+// What a scope returns reaches the editor, and it reaches it from the compiler — even here,
+// where the document does not parse.
+//
+// That is the point of handing the parser its table rather than letting it keep its own: it
+// is filled as the file is read, so the three lines before the broken one are understood and
+// only the broken one is lost. A document being edited is broken most of the time, and the
+// moment somebody types a dot is the moment they want to be told what is there.
+func TestTheEditorReadsWhatAScopeReturns(t *testing.T) {
 	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer {\n" +
 		"  if feed(1) equals 0 { Result{1, 0}; } else { Result{0, 1}; };\n" +
@@ -162,9 +166,12 @@ func TestTheEditorReadsAPromise(t *testing.T) {
 	}
 }
 
-// And a scope that promised nothing gives the editor nothing, the same way it gives the
-// compiler nothing.
-func TestTheEditorReadsNoPromiseWhereThereIsNone(t *testing.T) {
+// A scope that wrote no `returns` is understood too, because the editor reads what the
+// compiler worked out and the compiler reads what the body ends with.
+//
+// The walk of the tokens never could: it matches `returns Result` and nothing else. This is
+// the whole reason for asking the compiler first.
+func TestTheEditorReadsAScopeThatDeclaredNothing(t *testing.T) {
 	const source = "shape Result { failed, value };\n" +
 		"ident divide = defer { Result{1, 0}; };\n" +
 		"ident r = divide(10, 2);\n" +
@@ -173,9 +180,44 @@ func TestTheEditorReadsNoPromiseWhereThereIsNone(t *testing.T) {
 	document := Document{Filename: "main.ar", Source: source}
 	items := session().CompletionItemsFor(document, lsp.Position{Line: 3, Character: 9}, false)
 
-	for _, item := range items {
-		if item.Label == "failed" || item.Label == "value" {
-			t.Errorf("offered %q for a scope that promised nothing", item.Label)
+	if len(items) != 2 {
+		t.Fatalf("offered %d items after the dot, want the two fields: %+v", len(items), items)
+	}
+	for i, want := range []string{"failed", "value"} {
+		if items[i].Label != want {
+			t.Errorf("offered %q, want %q", items[i].Label, want)
+		}
+	}
+}
+
+// And the walk of the tokens still answers where the compiler never arrived.
+//
+// The first line here is broken, so the parser reads nothing at all and its table is empty —
+// which is the case the walk exists for. It knows less than the compiler does, and less is
+// the whole of what it has to beat: completing a name has to work in a document that does
+// not parse, which is most of them while somebody is typing.
+func TestTheEditorFallsBackToTheTokens(t *testing.T) {
+	const source = "ident broken = ;\n" +
+		"shape Point { x, y };\n" +
+		"ident p = feed(0) as Point;\n" +
+		"printd p."
+
+	document := Document{Filename: "main.ar", Source: source}
+
+	// Said out loud, or the test passes for the wrong reason: both sources would offer x and
+	// y here, and this is the one that has to.
+	if left := session().Analyze(document).Declarations; len(left.Shapes) != 0 || len(left.Reads) != 0 {
+		t.Fatalf("the parser got somewhere after all: %v %v", left.Shapes, left.Reads)
+	}
+
+	items := session().CompletionItemsFor(document, lsp.Position{Line: 3, Character: 9}, false)
+
+	if len(items) != 2 {
+		t.Fatalf("offered %d items after the dot, want the two fields: %+v", len(items), items)
+	}
+	for i, want := range []string{"x", "y"} {
+		if items[i].Label != want {
+			t.Errorf("offered %q, want %q", items[i].Label, want)
 		}
 	}
 }

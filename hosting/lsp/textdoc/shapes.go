@@ -4,6 +4,10 @@ import (
 	"slices"
 	"strconv"
 
+	"strings"
+
+	"github.com/guiferpa/aurora/parser"
+	"github.com/guiferpa/aurora/wire/module"
 	"github.com/guiferpa/aurora/wire/token"
 )
 
@@ -48,7 +52,7 @@ func (found shapeTable) scan(tokens []token.Token) shapeTable {
 			}
 		case token.IDENT:
 			// `ident p = Point{`, `ident p = <anything> as Point` and a call to a scope that
-			// promised all say what p is; `ident f = defer { ... } returns Point` says what
+			// declared all say what p is; `ident f = defer { ... } returns Point` says what
 			// calling f will.
 			name, shape, declared, called := readBinding(tokens, i)
 			if declared != "" {
@@ -64,6 +68,57 @@ func (found shapeTable) scan(tokens []token.Token) shapeTable {
 	}
 
 	return found
+}
+
+// adopt writes what the compiler worked out over what the tokens suggested.
+//
+// The compiler wins wherever it has something to say, and says nothing where it did not get
+// that far — a parse that failed halfway leaves what it read up to there, and the walk of the
+// tokens keeps answering for the rest. Nothing is removed, because a table with less in it
+// than a keystroke ago is an editor that forgets.
+//
+// A shape of another module arrives under the specifier the import named, and goes back under
+// the alias, because that is the only way the document can write it and the name is shown to
+// somebody. Everything else is already written the way it was typed: the language server
+// parses with no module of its own, so nothing local is qualified.
+func (found shapeTable) adopt(known *parser.Declarations, aliases moduleAliases) shapeTable {
+	if known == nil {
+		return found
+	}
+	written := writtenAs(aliases)
+	for name, fields := range known.Shapes {
+		found.fields[written(name)] = fields
+	}
+	for name, shape := range known.Reads {
+		found.reads[written(name)] = written(shape)
+	}
+	for name, returns := range known.Returns {
+		found.returns[written(name)] = written(returns.Shape)
+	}
+	return found
+}
+
+// writtenAs turns a name the parser qualified by specifier into the one the document typed.
+//
+// A name of this document comes back untouched, and so does one of a module the document
+// does not import — there is no way to write that one at all, and inventing one would offer
+// a completion that cannot be accepted.
+func writtenAs(aliases moduleAliases) func(string) string {
+	bySpecifier := make(map[string]string, len(aliases))
+	for alias, specifier := range aliases {
+		bySpecifier[specifier] = alias
+	}
+	return func(name string) string {
+		index := strings.LastIndex(name, module.Separator)
+		if index < 0 {
+			return name
+		}
+		alias, imported := bySpecifier[name[:index]]
+		if !imported {
+			return name
+		}
+		return alias + module.Separator + name[index:][1:]
+	}
 }
 
 // readDeclaration reads `shape Name { a, b }` starting at the shape token.
@@ -94,7 +149,7 @@ func readDeclaration(tokens []token.Token, i int) (string, []string, int) {
 // Only what sits at the top of the value is read. A body between braces is another scope's
 // business — the semicolons in it do not end this statement, and a construction inside it says
 // what that scope returns rather than what this name is.
-func readBinding(tokens []token.Token, i int) (name, shape, promised, called string) {
+func readBinding(tokens []token.Token, i int) (name, shape, declared, called string) {
 	if i+2 >= len(tokens) || tokens[i+1].GetTag().Id != token.ID || tokens[i+2].GetTag().Id != token.ASSIGN {
 		return "", "", "", ""
 	}
@@ -109,11 +164,11 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 			depth--
 		case token.SEMICOLON:
 			if depth <= 0 {
-				return name, shape, promised, called
+				return name, shape, declared, called
 			}
 		case token.RETURNS:
 			if claimed := claimedAt(tokens, j+1); depth == 0 && claimed != "" {
-				promised = claimed
+				declared = claimed
 			}
 		case token.AS:
 			// The nearest `as` wins, which is the one the value ends up with.
@@ -129,12 +184,12 @@ func readBinding(tokens []token.Token, i int) (name, shape, promised, called str
 				// A construction: the name of a shape in front of a brace.
 				shape = nameAt(tokens, j)
 			case token.O_PAREN:
-				// A call: what it returns is known when that scope promised.
+				// A call: what it returns is known when that scope declared.
 				called = nameAt(tokens, j)
 			}
 		}
 	}
-	return name, shape, promised, called
+	return name, shape, declared, called
 }
 
 // nameAt reads the name at this position the way the document wrote it: `Square`, or

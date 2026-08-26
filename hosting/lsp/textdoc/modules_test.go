@@ -295,7 +295,7 @@ func TestWithoutThePortNothingIsResolved(t *testing.T) {
 }
 
 // A module's shapes are offered after the dot too, now that they can be written: built,
-// claimed with as, or promised with returns.
+// claimed with as, or declared with returns.
 func TestTheEditorOffersAModuleShapes(t *testing.T) {
 	session := withModuleFiles(map[string]string{
 		"src/geometry.ar": "shape Square { width, height };\nident area = defer { feed(0); };",
@@ -326,7 +326,7 @@ func TestTheEditorOffersAModuleShapes(t *testing.T) {
 
 // And a name whose shape came from another file returns its fields after the dot, which
 // is the whole point of the shape crossing: however the name got it — built here, claimed
-// with as, or promised by the scope that answered.
+// with as, or read from the scope that returned it.
 func TestCompletionOnAShapeFromAnotherModule(t *testing.T) {
 	const geometry = "shape Square { width, height };\n" +
 		"ident new_square = defer { Square{feed(0), feed(1)}; } returns Square;\n" +
@@ -341,7 +341,7 @@ func TestCompletionOnAShapeFromAnotherModule(t *testing.T) {
 			source: "use geometry as g;\nident s = g.Square{4, 5};\nprintd s.",
 		},
 		{
-			name:   "answered by a scope that promised",
+			name:   "returned by a scope that declared",
 			source: "use geometry as g;\nident s = g.new_square(4, 5);\nprintd s.",
 		},
 		{
@@ -349,7 +349,7 @@ func TestCompletionOnAShapeFromAnotherModule(t *testing.T) {
 			source: "use geometry as g;\nident s = feed(0) as g.Square;\nprintd s.",
 		},
 		{
-			name:   "promised by a scope written here",
+			name:   "declared by a scope written here",
 			source: "use geometry as g;\nident make = defer { g.Square{1, 2}; } returns g.Square;\nident s = make();\nprintd s.",
 		},
 	} {

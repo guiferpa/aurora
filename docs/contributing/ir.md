@@ -343,6 +343,43 @@ And one warning worth its own line: **anything you derive rather than read is a 
 description of the same program, and two descriptions drift.** Every silent bug this compiler
 has had came from one consumer counting something a different way from another.
 
+## A program can be refused
+
+```go
+ir.Verify(blocks) []ir.Problem   // everything wrong with it, and nothing when it is sound
+```
+
+Five things are asserted, before any consumer touches anything:
+
+- every `Ref` names a value left earlier in the same block, or one of its params;
+- every target names a block that exists;
+- every branch hands over exactly as many values as the target block takes;
+- every way of ending names as many blocks as that way of ending has — one, two, or none;
+- no value is left twice under one name.
+
+A call is not checked for how many values it hands over, and that is the language rather than
+an omission: a scope has no arity. Running one is applying a vector of values to it, and `feed`
+reads a position of that vector, so there is nothing to count.
+
+It answers all of them rather than the first, because a program that is wrong is usually wrong
+in several places and stopping at one turns fixing it into a loop.
+
+**`builder/evm` refuses rather than warns**, and the measurement is why: every program the
+compiler produces verifies clean, so refusing costs nothing today and catches the next mistake
+on the day it is made. It found one the day it was written — an empty block handed on a
+reference to a label nothing carried, and answered zeros anyway, because a consumer that looks
+a name up and finds nothing gets zeros. Working by accident is what a check is for.
+
+**It runs on the IR as it arrives, not on what the lowering makes of it.** That is not
+pedantry. What comes out of a lowering is a schedule for one machine: a binding a scope ends
+with leaves nothing on a stack, so `builder/evm` writes a push under that same name to stand in
+for it. Two values under one name is what the check refuses, and it is right to — of the IR. Of
+a schedule it is not a question.
+
+What is not asserted yet is the sixth: that every operand has the `Kind` its opcode expects.
+That one needs each opcode's operands written down as something a program can read rather than
+as the comment beside it in `wire/ir/opcodes.go`.
+
 ## Why it is not a list
 
 It was, until it was not. That is [why-blocks.md](why-blocks.md).

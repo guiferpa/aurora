@@ -145,6 +145,16 @@ func emitBlockExpression(tc *int, insts *[]ir.Instruction, n ast.BlockExpression
 		l = EmitInstruction(tc, &body, ins, tapeSize)
 	}
 
+	// An empty block is worth the neutral tape, and that has to be a value like any other.
+	// It used to be a reference to a label nothing carried, which read as a value nobody
+	// left — and it answered zeros anyway, because a consumer that looked the name up found
+	// nothing and nothing is zeros. Working by accident is what a check is for.
+	if l == nil {
+		l = GenerateLabel(tc)
+		body = append(body, ir.NewInstruction(l, ir.OpSave,
+			ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
+	}
+
 	lsc := GenerateLabel(tc)
 	*insts = append(*insts, ir.NewInstruction(lsc, opBeginScope, ir.Nothing(), ir.Nothing()))
 

@@ -203,6 +203,20 @@ and answers from the evaluator, the same way the chain would.
 
 ---
 
+## What the IR does not assert yet
+
+`ir.Verify` asserts five of the six things the IR was reshaped to make assertable, and
+`builder/evm` refuses a program that fails any of them rather than writing bytes for it.
+
+The sixth is **that every operand has the `Kind` its opcode expects**. What it needs first is
+each opcode's operands written down as something a program can read — they are comments beside
+the opcodes today, which is a description kept in agreement by somebody remembering, and this
+file has a long list of what that costs.
+
+Nothing else about a program is asserted, and two things stay deliberately unasserted: what a
+call hands over, because a scope has no arity; and anything about a stack, a frame or an
+address, because those mean something on one target and nothing on another.
+
 ## Seeing what a phase produced
 
 `-l lexer,parser,emitter` used to print what each phase made, and it is gone. It went in two

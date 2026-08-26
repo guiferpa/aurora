@@ -76,6 +76,9 @@ type RuntimeCode struct {
 type Builder struct {
 	tapeSize int
 	blocks   []ir.Block
+	// problems is what was wrong with the IR it was given, kept from when it arrived so the
+	// answer does not depend on what the lowering made of it.
+	problems []ir.Problem
 }
 
 // PickScopes answers the scopes a transaction can reach, and the block that is the top of the
@@ -212,6 +215,10 @@ func (b *Builder) WriteRuntimeBlock(bs io.Writer, rc *RuntimeCode) (int, error) 
 // back, and deciding where bytecode lands — a file, a deployment, a test — belongs to
 // whoever asked for it.
 func (b *Builder) Build() ([]byte, error) {
+	if len(b.problems) > 0 {
+		return nil, fmt.Errorf("this program does not say what it means, and no bytecode was written: %w", b.problems[0])
+	}
+
 	rc, err := b.PickRuntimeCode()
 	if err != nil {
 		return nil, err
@@ -243,6 +250,18 @@ type NewBuilderOptions struct {
 func NewBuilder(blocks []ir.Block, options NewBuilderOptions) *Builder {
 	tapeSize := byteutil.TapeSize(options.TapeSize)
 
+	// Checked as it arrives, before anything here touches it. The whole failure mode of this
+	// backend was a binary that came out, deployed, answered and was quietly wrong, and what
+	// kept that from happening was somebody keeping a list of opcodes in agreement with the
+	// emitter — which is not an assertion.
+	//
+	// It is the IR that is checked and not what the lowering makes of it. What comes out of
+	// the lowering is stack-scheduled and no longer a plain program: a binding that a scope
+	// ends with leaves nothing on the stack, so the lowering writes a push under that same
+	// name to stand in for it. Two values under one name is exactly what Verify refuses, and
+	// it is right to — of the IR. Of a schedule for one machine it is not a question.
+	problems := ir.Verify(blocks)
+
 	// Every block is put in the order the stack needs before any of it is written. It used to
 	// be done a scope at a time, as each was found, which was the same work spread out — and
 	// it had to be, because a scope was a stretch of a list and the list was walked once.
@@ -251,5 +270,5 @@ func NewBuilder(blocks []ir.Block, options NewBuilderOptions) *Builder {
 		lowered[at] = LowerBlock(block, tapeSize)
 	}
 
-	return &Builder{tapeSize: tapeSize, blocks: lowered}
+	return &Builder{tapeSize: tapeSize, blocks: lowered, problems: problems}
 }

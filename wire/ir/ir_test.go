@@ -8,7 +8,7 @@ import (
 // The IR is what the phases agree on, and until it moved here it had no tests of its own: the
 // emitter and the builder each tested what they made of it, and nobody tested the thing
 // itself. What follows is the contract — that an instruction never holds nothing where it
-// promised bytes, that every opcode answers to a name, and that a program written down reads
+// bytes it says, that every opcode answers to a name, and that a program written down reads
 // the same way every time.
 
 // An instruction is handed to a builder and to an evaluator, and both index into its

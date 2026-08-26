@@ -73,8 +73,8 @@ func TestWhatItReturnsIsOnTheBlock(t *testing.T) {
 	}
 }
 
-// A block that promises nothing is a block, and answers with a run of tapes as it always did.
-func TestABlockWithoutAPromiseIsUnchanged(t *testing.T) {
+// A block that declares nothing is a block, and returns a run of tapes as it always did.
+func TestABlockWithoutADeclarationIsUnchanged(t *testing.T) {
 	nodes := parse(t, person+"{ Person{\"Joana\"}; };")
 
 	if block := nodes[1].(ast.BlockExpression); block.Returns != "" {
@@ -82,8 +82,8 @@ func TestABlockWithoutAPromiseIsUnchanged(t *testing.T) {
 	}
 }
 
-// Every way of breaking the promise, and what it says.
-var brokenPromises = []struct {
+// Every way of breaking a declaration, and what it says.
+var brokenDeclarations = []struct {
 	name   string
 	source string
 	want   string
@@ -114,6 +114,14 @@ var brokenPromises = []struct {
 		want:   "the if returns a number",
 	},
 	{
+		// Deeper than one arm. What a body returns is decided in one place, and this is the
+		// other walk — the one that only runs once it is already broken, to say where. It has
+		// to keep descending, or a break far enough in would be reported as the whole if.
+		name:   "an arm of an inner if that returns something else",
+		source: person + "{ if true { if true { 0; } else { Person{\"Joana\"}; }; } else { Person{\"Joana\"}; }; } returns Person;",
+		want:   "the if returns a number",
+	},
+	{
 		name:   "a shape nobody declared",
 		source: "{ 10; } returns Person;",
 		want:   "Person is not a declared shape",
@@ -126,7 +134,7 @@ var brokenPromises = []struct {
 }
 
 func TestABlockThatDoesNotKeepItsDeclaration(t *testing.T) {
-	for _, tc := range brokenPromises {
+	for _, tc := range brokenDeclarations {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseSource(t, tc.source, "main.ar")
 			if err == nil {
@@ -143,9 +151,9 @@ func TestABlockThatDoesNotKeepItsDeclaration(t *testing.T) {
 	}
 }
 
-// A scope that promised gives its callers a shape, so the claim disappears from the place it
+// A scope that declared gives its callers a shape, so the claim disappears from the place it
 // used to be repeated once per call.
-func TestACallToAScopeThatPromisedHasAShape(t *testing.T) {
+func TestACallToAScopeThatDeclaredHasAShape(t *testing.T) {
 	const source = result +
 		"ident divide = defer {\n" +
 		"if feed(1) equals 0 { Result{1, 0}; } else { Result{0, feed(0) / feed(1)}; };\n" +
@@ -163,10 +171,24 @@ func TestACallToAScopeThatPromisedHasAShape(t *testing.T) {
 	}
 }
 
-// A scope that promised nothing gives nothing away, and reading a field off it still asks for
-// the claim — which is the half of the rule that does not change.
-func TestACallToAScopeThatPromisedNothing(t *testing.T) {
+// A scope that wrote no `returns` is understood anyway, because the compiler reads what its
+// body ends with — which is the same walk that checks a `returns` when there is one.
+//
+// So the claim disappears from the caller without the scope having to declare anything. What
+// `returns` is for is what a walk cannot reach.
+func TestACallToAScopeThatDeclaredNothing(t *testing.T) {
 	const source = result + "ident divide = defer { Result{0, 5}; };\nident r = divide(10, 2);\nprintd r.value;"
+
+	if _, err := parseSource(t, source, "main.ar"); err != nil {
+		t.Errorf("parsing: %v", err)
+	}
+}
+
+// What is still not known is a body that ends with something that is not a shape, and reading
+// a field off it is refused where it was written — which is the half of the rule that does not
+// change, and the reason the message is still worth having.
+func TestACallToAScopeWhoseShapeNothingSays(t *testing.T) {
+	const source = result + "ident divide = defer { feed(0) / feed(1); };\nident r = divide(10, 2);\nprintd r.value;"
 
 	_, err := parseSource(t, source, "main.ar")
 	if err == nil {
@@ -177,9 +199,51 @@ func TestACallToAScopeThatPromisedNothing(t *testing.T) {
 	}
 }
 
-// A block bound to a name is the run of tapes itself, so the promise is the name's own shape.
-func TestABlockBoundToANameCarriesItsPromise(t *testing.T) {
+// A block bound to a name is the run of tapes itself, so what it returns is the name's own shape.
+func TestABlockBoundToANameCarriesWhatItReturns(t *testing.T) {
 	if _, err := parseSource(t, person+"ident p = { Person{\"Joana\"}; } returns Person;\nprintc p.name;", "main.ar"); err != nil {
 		t.Errorf("parsing: %v", err)
+	}
+}
+
+// What a scope returns says who worked it out, which is the only difference between the two
+// ways of knowing.
+//
+// It exists so somebody can be shown what the compiler knows and where it got it — an editor
+// telling a shape apart from a claim, a message about a `returns` that was not kept. The shape
+// itself is used the same either way, which is the point of inferring it.
+func TestWhatAScopeReturnsSaysWhoSaidIt(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		source   string
+		declared bool
+	}{
+		{
+			name:     "the file wrote it",
+			source:   person + "ident make = defer { Person{\"Joana\"}; } returns Person;",
+			declared: true,
+		},
+		{
+			name:     "the compiler read the body",
+			source:   person + "ident make = defer { Person{\"Joana\"}; };",
+			declared: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tree, err := parseSource(t, tc.source, "main.ar")
+			if err != nil {
+				t.Fatalf("parsing: %v", err)
+			}
+			if len(tree.Returns) != 1 {
+				t.Fatalf("the tree carries %d, want the one scope", len(tree.Returns))
+			}
+			returns := tree.Returns[0]
+			if returns.Scope != "make" || returns.Shape != "Person" {
+				t.Errorf("%s returns %q, want make returning Person", returns.Scope, returns.Shape)
+			}
+			if returns.Declared != tc.declared {
+				t.Errorf("declared = %v, want %v", returns.Declared, tc.declared)
+			}
+		})
 	}
 }

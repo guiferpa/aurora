@@ -29,14 +29,14 @@ type Read func(path string) ([]byte, error)
 
 // Parse turns one module's source into a tree. Filename is where it came from, which is what
 // positions and file-scoped rules are about; ID is the module the names inside belong to; and
-// imports is what the modules it names promised, which it needs while parsing because a shape
+// imports is what the modules it names offer, which it needs while parsing because a shape
 // is resolved there and a shape's name never leaves the file that declared it.
 type Parse func(filename string, id module.ID, source []byte, imports map[string]ast.Offer) (ast.AST, error)
 
 // Header answers what a source imports, without parsing it.
 //
 // It exists because a module has to be read before whoever imports it — the parse of a file
-// needs what its dependencies promised — and knowing what to read first cannot itself require
+// needs what its dependencies offer — and knowing what to read first cannot itself require
 // a parse. The declarations are the top of the file, so reading the top is enough.
 type Header func(source []byte) ([]ast.UseDeclaration, error)
 
@@ -193,7 +193,7 @@ func (r *Resolver) resolveOne(state *resolution, declaration ast.UseDeclaration)
 	}
 
 	// Everything this module names is read before it is, which is what lets its parse be
-	// handed what they promised.
+	// handed what they offer.
 	state.open = append(state.open, id)
 	for _, use := range uses {
 		if err := r.resolveOne(state, use); err != nil {

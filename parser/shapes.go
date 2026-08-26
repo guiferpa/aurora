@@ -36,10 +36,10 @@ type Declarations struct {
 	// Modules is what `use` declared: alias -> specifier. It belongs to the file that wrote
 	// it and to no other, which is the whole point of the alias being mandatory.
 	Modules map[string]string
-	// Returns is the name of a scope -> the shape calling it returns. It is not the shape of
+	// Returns is the name of a scope -> what calling it returns. It is not the shape of
 	// the name itself — a deferred scope is an index —
 	// but the shape of what comes back from it.
-	Returns map[string]string
+	Returns map[string]Return
 }
 
 func NewDeclarations() *Declarations {
@@ -47,7 +47,7 @@ func NewDeclarations() *Declarations {
 		Shapes:  make(map[string][]string),
 		Reads:   make(map[string]string),
 		Modules: make(map[string]string),
-		Returns: make(map[string]string),
+		Returns: make(map[string]Return),
 	}
 }
 
@@ -65,7 +65,7 @@ func (d *Declarations) Import(specifier string, offer ast.Offer) {
 		// fields come with it rather than being looked up.
 		shape := module.Qualify(module.ID(specifier), returns.Shape)
 		d.Shapes[shape] = returns.Fields
-		d.Returns[module.Qualify(module.ID(specifier), returns.Scope)] = shape
+		d.Returns[module.Qualify(module.ID(specifier), returns.Scope)] = Return{Shape: shape, Declared: returns.Declared}
 	}
 }
 
@@ -328,8 +328,8 @@ func (p *pr) shapeOf(node ast.Node) string {
 		return p.shapeOfLast(n.Body)
 	case ast.CalleeLiteral:
 		// Not the shape of the name, which is a deferred scope, but of what calling it
-		// returns — which is only known because the scope declared it.
-		return p.declarations.Returns[n.Id.Value]
+		// returns — whether the scope declared it or the compiler worked it out.
+		return p.declarations.Returns[n.Id.Value].Shape
 	case ast.IfExpression:
 		if n.Else == nil {
 			return ""
@@ -371,14 +371,15 @@ func (p *pr) returns(nodes []ast.Node) []ast.Returns {
 		if !ok {
 			continue
 		}
-		shape, known := p.declarations.Returns[binding.Id]
+		returns, known := p.declarations.Returns[binding.Id]
 		if !known {
 			continue
 		}
 		found = append(found, ast.Returns{
-			Scope:  p.bare(binding.Id),
-			Shape:  shape,
-			Fields: p.declarations.Shapes[shape],
+			Scope:    p.bare(binding.Id),
+			Shape:    returns.Shape,
+			Fields:   p.declarations.Shapes[returns.Shape],
+			Declared: returns.Declared,
 		})
 	}
 	return found
@@ -418,7 +419,7 @@ func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	if err := p.returnsWhatItDeclared(body, declared, "", closing); err != nil {
+	if err := p.returnsWhatItDeclared(body, declared, closing); err != nil {
 		return "", err
 	}
 	return declared, nil
@@ -426,9 +427,26 @@ func (p *pr) parseReturns(body []ast.Node, closing token.Token) (string, error) 
 
 // returnsWhatItDeclared refuses a body that ends with something other than what was declared.
 //
-// A `where` names the arm being read, so a declaration broken inside a branch says which one; the
-// block itself has no name and simply ends.
-func (p *pr) returnsWhatItDeclared(body []ast.Node, declared, where string, at token.Token) error {
+// What a body returns is worked out by shapeOfLast, and that is the only thing that decides
+// whether the declaration was kept. It used to be decided here instead, by a walk of its own
+// that went through the arms of an if the same way shapeOfLast does — two descriptions of one
+// traversal, which is how a compiler comes to accept in one place what it refuses in another.
+//
+// What is left below runs only when the declaration was broken, and it is about saying where.
+func (p *pr) returnsWhatItDeclared(body []ast.Node, declared string, at token.Token) error {
+	if p.shapeOfLast(body) == declared {
+		return nil
+	}
+	return p.whereItBroke(body, declared, "", at)
+}
+
+// whereItBroke names the place a declaration was not kept, for somebody reading the error.
+//
+// A `where` names the arm being read, so a declaration broken inside a branch says which one;
+// the block itself has no name and simply ends. It walks the same shape shapeOfLast walks, and
+// it may only do that because it never decides anything — by the time it runs, the answer is
+// already known and this is looking for the words.
+func (p *pr) whereItBroke(body []ast.Node, declared, where string, at token.Token) error {
 	if len(body) == 0 {
 		return brokenDeclaration(at, declared, where, "nothing")
 	}
@@ -442,10 +460,10 @@ func (p *pr) returnsWhatItDeclared(body []ast.Node, declared, where string, at t
 			return token.NewError(at, "this block returns %s and its if has no else at line %d and column %d: one path returns nothing",
 				declared, at.GetLine(), at.GetColumn())
 		}
-		if err := p.returnsWhatItDeclared(answer.Body, declared, "the if", at); err != nil {
+		if err := p.whereItBroke(answer.Body, declared, "the if", at); err != nil {
 			return err
 		}
-		return p.returnsWhatItDeclared(answer.Else.Body, declared, "the else", at)
+		return p.whereItBroke(answer.Else.Body, declared, "the else", at)
 	}
 
 	if p.shapeOf(last) == declared {
@@ -493,4 +511,14 @@ func describeReturn(node ast.Node) string {
 		return "a comparison"
 	}
 	return "something no shape was named for"
+}
+
+// Return is what calling a scope gives back: which shape, and who said so.
+//
+// Both are one fact and are read the same way — a field is reached on a call whether the
+// shape was declared or worked out. Declared is there because the two are told apart when
+// somebody is being shown what the compiler knows, and when a `returns` has to be kept.
+type Return struct {
+	Shape    string
+	Declared bool
 }

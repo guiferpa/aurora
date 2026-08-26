@@ -146,7 +146,7 @@ func runSnippet(t *testing.T, doc string, s snippet) {
 		}
 		return
 	}
-	// The block says it fails, so passing is the failure — and the message it promises has
+	// The block says it fails, so passing is the failure — and the message it declares has
 	// to be the message it gets.
 	if err == nil {
 		t.Errorf("%s:%d says it fails with %q, and it ran\n%s", doc, s.line, s.wantErr, s.code)

@@ -284,9 +284,9 @@ func TestASessionWithoutAResolverRefusesToPretend(t *testing.T) {
 	}
 }
 
-// A shape crosses into a session with the promise that names it, so a field is read off an
+// A shape crosses into a session with the scope that returns it, so a field is read off an
 // imported scope without anybody naming the shape.
-func TestASessionReadsAPromisedShape(t *testing.T) {
+func TestASessionReadsAReturnedShape(t *testing.T) {
 	dir := withModule(t, "shape Env { found, value };\nident lookup = defer { Env{1, 42}; } returns Env;")
 	got := typedIn(t, dir, "use geometry as g;\nident r = g.lookup(0);\nprintd r.value;\n", 0)
 

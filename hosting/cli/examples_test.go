@@ -148,7 +148,7 @@ func declaredOutput(t *testing.T, source string) []string {
 }
 
 // Every example says what it prints, and that block is pasted from a real run. This is what
-// keeps the promise: the header is compared against the output, so an example cannot drift
+// keeps them honest: the header is compared against the output, so an example cannot drift
 // from the language without the suite noticing.
 //
 // It caught three of them the day text stopped being a reel, which is exactly the drift it

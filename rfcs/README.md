@@ -34,8 +34,8 @@ Java e TypeScript — porque os dois adiam para um alvo que carrega nomes, e a E
 
 Antes dela, `returns.md` — um bloco promete a forma que responde, e o compilador recusa o
 bloco que não cumpre. Foi implementada no mesmo dia em que foi escrita, e o que ficou decidido
-está em [docs/language-design.md](../docs/language-design.md), na seção "Promising a shape with
-`returns`" — incluindo o que ela decidiu **contra**: a promessa não é exigida, e não será nunca,
+está em [docs/language-design.md](../docs/language-design.md), na seção "Declaring a shape with
+`returns`" — incluindo o que ela decidiu **contra**: o `returns` não é exigido, e não será nunca,
 porque um escopo não tem assinatura e exigir que ele declare o que responde seria declarar uma
 ponta e não a outra.
 

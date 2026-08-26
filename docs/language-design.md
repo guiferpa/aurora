@@ -400,13 +400,18 @@ printd make() as Result.value;   #- 42
 ```
 
 A shape's **name** belongs to the file that declared it: another file writes it as the
-module's, `g.Point`, and a promise carries the shape where nothing names it at all. See
+module's, `g.Point`, and what a scope returns carries the shape where nothing names it at all. See
 [modules.md](modules.md).
 
-### Promising a shape with `returns`
+### Declaring a shape with `returns`
 
-`as` is what whoever reads a value claims about it, and the compiler believes it. `returns` is
-the other end: what a block promises about itself, checked where it is written.
+The compiler already knows what a block returns: it reads what the block ends with. `as` is
+for the other case — a value whose shape nothing in the program says, which the reader
+claims and the compiler believes.
+
+`returns` is neither. It is a block saying what it returns, at the place it is written, and
+the compiler keeping it — so a mistake is caught where it was made rather than where it
+arrives.
 
 ```aurora
 shape Result { failed, value };
@@ -426,11 +431,11 @@ printd r.value;    #- 5
 
 The word comes after the brace that closes the block, and that is the only place it goes — a
 block, or a deferred scope, which is a block with a word in front of it. An `if` never takes
-one; it is looked *through*, which is why the example above compiles: both arms answer with a
+one; it is looked *through*, which is why the example above compiles: both arms return a
 `Result`. A `branch` is nested ifs by the time anything reads it, and its last item is the
 innermost else, so its way out is always covered.
 
-A block that does not keep its promise does not compile:
+A block that does not keep its declaration does not compile:
 
 ```aurora
 #- fails: returns Person and ends with a number
@@ -454,15 +459,27 @@ shape Person { name };
 } returns Person;
 ```
 
-**What it buys is the other end.** A call to a scope that promised has a shape, so `as`
-disappears from the place it was repeated once per call — and it stops being a claim, since
-the declaration was checked. A scope that declares nothing is unchanged: it returns a run of
-tapes, and whoever reads its fields writes `as`.
+**A call has a shape whether or not the scope declared one.** The compiler reads what the
+body ends with, so `as` does not appear at the call either way:
 
-The promise is never required, and never will be. A scope has no signature — it does not
+```aurora
+shape Square { width, height };
+
+ident new_square = defer { Square{feed(0), feed(1)}; };
+
+ident s = new_square(30, 20);
+printd s.width;    #- 30
+```
+
+What is left unknown is a body the walk cannot resolve — one that ends with arithmetic, which
+is a tape and not a run, or with a call to a scope written further down the file. There, and
+only there, whoever reads a field writes `as`, and `returns` is what removes the need to.
+
+So `returns` is never required, and never will be. A scope has no signature — it does not
 declare how many values it receives or what they are — so requiring it to declare what it
-returns would be declaring one end and not the other. `returns` is what you gain by
-promising, not a toll for writing a block.
+returns would be declaring one end and not the other. What it is for is being held to it:
+a block that changes what it ends with and no longer returns what it said is refused where
+it was written, and every caller is spared finding out.
 
 ### What is an error
 

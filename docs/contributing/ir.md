@@ -59,6 +59,92 @@ consumer never has to recognise that a run of instructions was one thing.
 
 Every opcode `wire/ir` declares computes a value. There is no opcode for control.
 
+### An effect says what else it does
+
+An instruction computes a value. Some of them also **do** something, and that is a different
+fact about the same instruction:
+
+```go
+ir.EffectOf(op)   // Pure, Reads, Writes or Escapes
+ir.MayCross(a, b) // whether two instructions may be put in the other order
+```
+
+| effect | means | what has it |
+|---|---|---|
+| `Pure` | the value it leaves is all it does | arithmetic, comparison, logic, the tape operations, a literal, a call |
+| `Reads` | depends on state something else can change | `OpLoad`, which reads the frame |
+| `Writes` | changes that state, or says something whose order matters | `OpIdent`, which writes the frame; the three prints |
+| `Escapes` | leaves the program: another contract runs, and may come back in | nothing yet |
+
+**An effect is not a value.** It is not a tape, not a run, it reaches no bytecode, and a
+program cannot name it — the language has no types and this does not add one under the floor.
+It exists while compiling, to answer one question, and then it is gone. It is metadata about
+the instruction, of the same kind as the `Origin` that says which line it came from.
+
+#### Why it exists
+
+Because a consumer is allowed to move instructions, and until it was written down, nothing
+said which ones. `builder/evm` holds an instruction back and emits it next to whoever takes
+its value, because the EVM wants operands on the stack in an order the program was not written
+in. That is sound for an instruction whose value is the whole of what it does. For one that
+writes, it is a different program:
+
+```
+printd a;
+printd b;
+```
+
+What kept that from happening was three lists of opcodes inside `builder/evm`, and **a list of
+opcodes is how this project has been wrong before**: the lowering once decided which operands
+named values by a list of the four arithmetic instructions, so a name bound inside a scope was
+not on it, and `ident x = feed(0); x + feed(1);` answered 4 on a chain where the program
+answers 7. Whoever writes the next opcode has to remember every list, and nothing reminds
+them. An effect is the same fact said once, next to the opcode, where forgetting it is
+visible.
+
+#### What it buys somebody writing Aurora
+
+Nothing they can see today, and that is worth being honest about: the only instruction whose
+order matters right now is the print, and a print does not reach a chain by decision. Nobody
+has been bitten.
+
+It buys the next thing. The moment a program can touch state that outlives one expression —
+
+```
+s.set("balance", 100);
+s.get("balance");
+```
+
+— the order those two run **is** the program, and there is no way to notice afterwards that a
+backend swapped them: the contract answers a number either way. This is exactly the class of
+failure Aurora exists to remove, since the whole point of the backend is that the same program
+answers the same thing on a chain and off it. So the rule lands before storage does, rather
+than after the first program gets it wrong.
+
+#### The rule
+
+Two instructions may swap unless one of them changes something the other would notice. The
+sixteen pairs are derived from that rather than listed:
+
+```go
+func MayCross(a, b Effect) bool { return !disturbs(a, b) && !disturbs(b, a) }
+func disturbs(a, b Effect) bool { return changes(a) && notices(b) }
+```
+
+It started stricter — swap only if one of them is `Pure` — and a measurement over real
+programs said stricter was wrong. `a - b` puts the two loads on the stack in the order the
+subtraction wants, which swaps two `Reads`, which is safe. Two reads of the frame commute; the
+strict rule refused them, in the most ordinary program there is.
+
+The effect is a function of the opcode, not a field on the instruction. A field is filled by
+whoever builds the instruction, so it can be filled wrong and nothing notices; an opcode has
+one effect wherever it appears. The day an instruction's effect depends on more than its
+opcode, the field arrives then and has a reason to.
+
+`require` is not an effect and will not become one. It does not compute and it does not
+annotate — it **branches**, to a block that reverts, and control has lived outside the
+instructions since a block gained a terminator.
+
 ### Operands say what they are
 
 This is the part that most repays reading. The same bytes mean different things, and the kind
@@ -250,6 +336,8 @@ The shortest honest list:
 4. For a call, resolve the name to a block number and run it.
 5. If you keep values under names, follow the open/close rule above. If you keep them on a
    stack, you do not need it.
+6. If you move an instruction — and you will, if you emit for a stack — ask `ir.MayCross`
+   first. Never keep your own list of which opcodes are safe to move.
 
 And one warning worth its own line: **anything you derive rather than read is a second
 description of the same program, and two descriptions drift.** Every silent bug this compiler

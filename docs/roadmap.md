@@ -131,9 +131,9 @@ What it does not do yet:
   does. What would close it is embedding the same files in the binary and reading the directory
   over them when it is there — one source, two ways to reach it — and it waits until somebody
   wants the standard library in the playground.
-- **Nothing installs the standard library but `make install-std`.** A release ships a binary
-  and not the files beside it, so somebody who downloads one has the language and not its
-  library. What that needs is the release carrying both, and a first run that says so.
+- **Nothing installs the standard library on its own.** `aurora install-std` writes it, out of
+  the binary, and until somebody runs it a module named `std/...` is not there. What would
+  close it is a first run that notices and offers, and nothing today notices a first run.
 
 Two things are decided against rather than missing. **An import is not passed on**: if `main`
 uses `a` and `a` uses `b`, `main` writes its own line for `b`, so a name used in a file has

@@ -25,7 +25,7 @@ var rootCmd = &cobra.Command{
 // decided here, where the process is, and nowhere else. Diagnostics go to stderr, so a
 // pipeline reading a program's output does not swallow them.
 func main() {
-	rootCmd.AddCommand(versionCmd, runCmd, testCmd, replCmd, buildCmd, deployCmd, callCmd, txCmd, initCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, testCmd, replCmd, buildCmd, deployCmd, callCmd, txCmd, initCmd, installStdCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprint(os.Stderr, logger.CommandError(err))

@@ -213,7 +213,21 @@ same two names, and what a program writes stays the same.
 Where it is installed is `$AURORA_ROOT/lib`, or `$HOME/.aurora/lib` when `AURORA_ROOT` says
 nothing — so `std/evm/storage` reads `$HOME/.aurora/lib/std/evm/storage.ar`. One directory and
 no search: a list of places to look is how a machine ends up running the standard library of a
-toolchain that was uninstalled a year ago. `make install-std` puts it there.
+toolchain that was uninstalled a year ago.
+
+**`aurora install-std` puts it there**, out of the binary. The binary carries a copy and writes
+it to disk, and what a program imports is always the disk — so the files stay ordinary Aurora
+that somebody can open, read and patch, and a toolchain that was downloaded is still complete.
+One already there is left alone and said so, because somebody may have patched a module;
+`--force` replaces it. (`make install-std` does the same from a working tree, which is what
+somebody developing here wants.)
+
+A module of the language that is not installed says exactly that, rather than reading like a
+name typed wrong:
+
+```
+module std/evm/storage comes with the language and is not installed at line 1 and column 1
+```
 
 That is also the whole of the versioning story, and it is the same one C has: what answers
 `use std/evm/storage` is what the `aurora` on this machine shipped with, and there is no way

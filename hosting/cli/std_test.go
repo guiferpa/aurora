@@ -80,6 +80,11 @@ func TestAModuleOfTheLanguageThatIsNotInstalled(t *testing.T) {
 	if !strings.Contains(err.Error(), "std/evm/nothing") {
 		t.Errorf("error = %q, want it to name the module", err)
 	}
+	// A module of the language missing and a module of the program missing are two different
+	// things to have happened, and which one it was is most of what somebody needs.
+	if !strings.Contains(err.Error(), "comes with the language and is not installed") {
+		t.Errorf("error = %q, and reads like a name typed wrong", err)
+	}
 }
 
 // runWithStd runs a program that can reach what comes with the language.

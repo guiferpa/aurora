@@ -124,8 +124,8 @@ func tested(t *testing.T, target string, o sessionOpts) (TestReport, error) {
 	return newSession(t, o).Test(t.Context(), files)
 }
 
-// repositoryLib answers this repository's own lib, which is where the standard library is
-// written and what `make install-std` copies somewhere else.
+// repositoryLib answers this repository's own stdlib, which is where the standard library is
+// written, what the binary embeds, and what both install steps copy somewhere else.
 //
 // It is worked out from where this file is rather than from the working directory, because a
 // test that builds a project changes the working directory — and a relative path then answers
@@ -136,5 +136,5 @@ func repositoryLib(t *testing.T) string {
 	if !ok {
 		t.Fatal("finding the standard library: this file does not know where it is")
 	}
-	return filepath.Join(filepath.Dir(here), "..", "..", "lib")
+	return filepath.Join(filepath.Dir(here), "..", "..", "stdlib")
 }

@@ -46,12 +46,16 @@ build-force: clean aurora aurorals
 # It copies rather than links because a link into a working tree makes the installed standard
 # library change when a branch is checked out, which is a way to debug the wrong thing for an
 # afternoon.
+#
+# It copies from the working tree, which is what somebody developing here wants. "aurora
+# install-std" writes the same files out of the binary, which is what somebody who downloaded
+# one wants — the same tree either way, because the binary embeds this directory.
 AURORA_ROOT ?= $(HOME)/.aurora
 
 install-std:
 	@rm -rf $(AURORA_ROOT)/lib/std
 	@mkdir -p $(AURORA_ROOT)/lib
-	@cp -R lib/std $(AURORA_ROOT)/lib/std
+	@cp -R stdlib/std $(AURORA_ROOT)/lib/std
 	@echo "the standard library is in $(AURORA_ROOT)/lib/std"
 
 aurora: $(BIN)/aurora

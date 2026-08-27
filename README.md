@@ -311,7 +311,7 @@ list: **[docs/contributing/why-blocks.md](docs/contributing/why-blocks.md)**.
 
 ```sh
 go run ./cmd/aurora repl   # fast loop, no build needed
-make aurora                # the binary, into target/bin
+make build                 # the binaries, into target/bin
 make check                 # build, wasm, test, lint — what CI runs
 make install-std           # the standard library, into $AURORA_ROOT/lib
 ```

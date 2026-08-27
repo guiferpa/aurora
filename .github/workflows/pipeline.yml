@@ -59,7 +59,7 @@ jobs:
 
       # Through the Makefile, so CI and a laptop run the same thing.
       - name: Compile every package
-        run: make build
+        run: make compile
 
       # The playground is the only target that does not come out of `go build ./...`, and
       # the only one that breaks without anything noticing.

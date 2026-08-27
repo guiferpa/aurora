@@ -36,12 +36,8 @@ type Evaluator struct {
 	environ       *environ.Environ
 	// storage is what a chain keeps between transactions, kept here for one run of a program.
 	// It is by the key as bytes, because a key is a tape and a tape is not a map key.
-	storage map[string][]byte
-	// callValue is what the transaction reaching this program carried, as a tape. Off a chain
-	// there is no transaction, so it is what whoever ran the program said it carried — and
-	// nothing said is nothing carried.
-	callValue []byte
-	tapeSize  int
+	storage  map[string][]byte
+	tapeSize int
 }
 
 // TapeSize is the width, in bytes, of every value this evaluator handles.
@@ -527,7 +523,6 @@ func init() {
 		ir.OpTail:  (*Evaluator).EvaluateTail,
 
 		// Storage
-		ir.OpCallValue:  (*Evaluator).EvaluateCallValue,
 		ir.OpStorageGet: (*Evaluator).EvaluateStorageGet,
 		ir.OpStorageSet: (*Evaluator).EvaluateStorageSet,
 
@@ -705,10 +700,6 @@ type NewEvaluatorOptions struct {
 	PrintChars   Printer
 	PrintDecimal Printer
 	Args         []byte
-	// CallValue is what the transaction reaching this program carried. Off a chain there is
-	// no transaction, so it is what whoever ran the program said it carried, and nothing said
-	// is nothing carried — which is what a call of no value answers on a chain too.
-	CallValue []byte
 	// TapeSize is the width in bytes of every value. Zero means the default (8).
 	TapeSize int
 	// Asserts turns assertions on. Only "aurora test" does.
@@ -720,7 +711,6 @@ func New(options NewEvaluatorOptions) *Evaluator {
 		assertResults: make([]eval.AssertResult, 0),
 		asserts:       options.Asserts,
 		storage:       make(map[string][]byte),
-		callValue:     options.CallValue,
 		printBytes:    options.PrintBytes,
 		printChars:    options.PrintChars,
 		printDecimal:  options.PrintDecimal,

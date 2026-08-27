@@ -256,19 +256,6 @@ The selector is the whole hash of the name rather than the four bytes an ABI use
 value takes a word after it. Neither of those is a choice a program makes — they are what a
 scope with no signature looks like from outside.
 
-Separately from the arguments, a transaction can carry **value** — ether — which a program
-reads with `callvalue`:
-
-```sh
-aurora tx deposit --value 1000000000000000
-aurora run --value 1000000000000000     # what it would have carried, off a chain
-```
-
-In wei and a whole number, because ether is a decimal and a decimal is a rounding waiting to
-happen. **Nothing in Aurora sends ether back** — there is no external call — so what arrives
-at a contract can be counted and kept, and cannot be moved. The command says so before it
-sends.
-
 ## Testing
 
 ```sh

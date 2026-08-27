@@ -531,35 +531,6 @@ Off a chain they are simulated by a map, for one run of a program — what a sin
 sees. A second run starts empty and a chain does not, which is the honest limit of simulating a
 call off a chain.
 
-## What the transaction carried
-
-```
-callvalue;        #- how much came with the call, as a tape
-```
-
-It takes nothing, because it is not about the program — it is about how the program was
-reached. So it is a term like any other: `callvalue + feed(0)` is a sum, and
-`sstore 1 callvalue` keeps it.
-
-On a chain that is the value on the transaction. Off one there is no transaction, so it is what
-whoever ran the program said it was:
-
-```
-aurora run --value 1000        the program reads 1000
-aurora tx deposit --value 1000 the transaction carries 1000, and the program reads it
-```
-
-Both in **wei**, and a whole number: ether is a decimal, and a decimal is a rounding waiting to
-happen. This is money.
-
-A tape holds what a tape holds, so a value wider than one is cut to it the same way every other
-value is — at the default eight bytes that is about eighteen ether, and a program that needs
-more of it needs a wider tape.
-
-**Nothing in Aurora sends ether.** There is no external call and no self-destruct, so what
-arrives at a contract stays there: it can be counted, kept in storage, and read back, and it
-cannot be moved. `aurora tx --value` says so before it sends.
-
 ## Arithmetic Operations
 
 Arithmetic reads a tape as an unsigned big-endian integer and writes the result back as a tape, wrapping at the tape width.

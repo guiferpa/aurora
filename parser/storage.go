@@ -49,15 +49,3 @@ func (p *pr) ParseSstore() (ast.Node, error) {
 	}
 	return ast.SstoreExpression{Key: key, Value: value, Token: at}, nil
 }
-
-// ParseCallValue reads `callvalue`, which takes nothing.
-//
-// It is not about the program but about how the program was reached, which is why it has no
-// operand: there is one transaction reaching this scope and it carried what it carried.
-func (p *pr) ParseCallValue() (ast.Node, error) {
-	at, err := p.EatToken(token.CALLVALUE)
-	if err != nil {
-		return nil, err
-	}
-	return ast.CallValueExpression{Token: at}, nil
-}

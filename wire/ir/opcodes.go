@@ -74,7 +74,4 @@ const (
 	// else.
 	OpStorageGet // Ref -> what is kept under that key
 	OpStorageSet // Ref, Ref -> keeps the value under the key, and leaves the value
-
-	// How the program was reached, rather than anything it did.
-	OpCallValue // -> how much the transaction that reached this scope carried
 )

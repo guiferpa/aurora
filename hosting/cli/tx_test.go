@@ -36,36 +36,6 @@ func TestATransactionCarriesTheSameCalldataAsAQuestion(t *testing.T) {
 	}
 }
 
-// And what it carries in wei is read as a whole number, because ether is a decimal and a
-// decimal is a rounding waiting to happen. This is money.
-func TestWhatATransactionCarriesIsWholeWei(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		written string
-		refused bool
-	}{
-		{name: "nothing", written: "0"},
-		{name: "a thousandth of an ether", written: "1000000000000000"},
-		{name: "more than a word would hold as a decimal", written: "115792089237316195423570985008687907853269984665640564039457584007913129639935"},
-		{name: "a fraction", written: "0.001", refused: true},
-		{name: "less than nothing", written: "-1", refused: true},
-		{name: "not a number", written: "one ether", refused: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := ParseCallValue(tc.written)
-			if tc.refused && err == nil {
-				t.Errorf("%q was read as an amount", tc.written)
-			}
-			if !tc.refused && err != nil {
-				t.Errorf("%q was refused: %v", tc.written, err)
-			}
-			if tc.refused && err != nil && !strings.Contains(err.Error(), "wei") {
-				t.Errorf("it says %q, and never says what it wanted", err)
-			}
-		})
-	}
-}
-
 // dataOf reads the calldata line out of what a pretended command printed.
 func dataOf(printed string) string {
 	for _, line := range strings.Split(printed, "\n") {

@@ -27,7 +27,6 @@ var keywordTags = []token.Tag{
 	// looked for first.
 	token.TagSload,
 	token.TagSstore,
-	token.TagCallValue,
 	token.TagFeed,
 	token.TagAssert,
 	token.TagShape,

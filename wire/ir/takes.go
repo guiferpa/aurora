@@ -91,8 +91,6 @@ var takes = map[byte]Shape{
 	OpJoin:  {Slots: []Slot{AValue}, Repeats: true},
 	OpField: {Slots: []Slot{AValue, ANumber, ANumber}},
 
-	// It takes nothing at all: what it answers is about how the program was reached.
-	OpCallValue:  {Slots: []Slot{ANothing, ANothing}},
 	OpStorageGet: {Slots: []Slot{AValue, ANothing}},
 	OpStorageSet: {Slots: []Slot{AValue, AValue}},
 }

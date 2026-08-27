@@ -83,8 +83,6 @@ func EmitInstruction(tc *int, insts *[]ir.Instruction, expr ast.Node, tapeSize i
 		return emitUseDeclaration(tc, insts, n, tapeSize)
 	case ast.ShapeLiteral:
 		return emitShapeLiteral(tc, insts, n, tapeSize)
-	case ast.CallValueExpression:
-		return emitCallValue(tc, insts, n)
 	case ast.SloadExpression:
 		return emitSload(tc, insts, n, tapeSize)
 	case ast.SstoreExpression:
@@ -276,13 +274,6 @@ func emitUseDeclaration(tc *int, insts *[]ir.Instruction, _ ast.UseDeclaration, 
 	*insts = append(*insts, ir.NewInstruction(l, ir.OpSave, ir.ImmOf(byteutil.FalseTape(tapeSize), tapeSize), ir.Nothing()))
 	return l
 
-}
-
-// emitCallValue reads how much the transaction that reached this scope carried.
-func emitCallValue(tc *int, insts *[]ir.Instruction, n ast.CallValueExpression) ir.Label {
-	l := GenerateLabel(tc)
-	*insts = append(*insts, ir.NewInstruction(l, ir.OpCallValue, ir.Nothing(), ir.Nothing()).At(originOf(n.Token)))
-	return l
 }
 
 // emitSload reads what the chain keeps under a key.

@@ -224,12 +224,6 @@ func (p *pr) parsePrimaryExpr() (ast.Node, error) {
 	if lookahead.GetTag().Id == token.FEED {
 		return p.ParseFeed()
 	}
-	// It takes nothing, so it is a term and not a form: `callvalue + 1` is a sum, the way
-	// `feed(0) + 1` is. The two that take what follows them — sload and sstore — are read
-	// where an expression begins, and this one is read where a value is.
-	if lookahead.GetTag().Id == token.CALLVALUE {
-		return p.ParseCallValue()
-	}
 	if lookahead.GetTag().Id == token.O_PAREN {
 		if _, err := p.EatToken(token.O_PAREN); err != nil {
 			return nil, err

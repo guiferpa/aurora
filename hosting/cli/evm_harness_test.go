@@ -854,6 +854,35 @@ func agreeCarrying(t *testing.T, source, function string, args []string, value *
 	}
 }
 
+// A scope reads as many values as were applied to it, however many that is.
+//
+// The eighth was where it stopped. Each value has a word of calldata after the selector, so the
+// eighth sits at 256 — and the offset was written in one byte, where 256 is zero. So the eighth
+// read the selector, the ninth read the first, and the contract answered a number rather than
+// failing: a wrong answer on a chain, which is the one kind of wrong this backend may not be.
+func TestAScopeReadsEveryValueAppliedToIt(t *testing.T) {
+	for _, count := range []int{1, 2, 7, 8, 9, 16, 24} {
+		t.Run(fmt.Sprintf("%d of them", count), func(t *testing.T) {
+			// Each one is worth its own position, so a value read from the wrong place is a
+			// wrong answer rather than the same answer by luck.
+			feeds := make([]string, 0, count)
+			args := make([]string, 0, count)
+			for at := 0; at < count; at++ {
+				feeds = append(feeds, fmt.Sprintf("feed(%d)", at))
+				args = append(args, fmt.Sprint(at+1))
+			}
+
+			// The last one on its own says where it was read from; the sum says every one of
+			// them was.
+			last := fmt.Sprintf("ident last = defer { %s; };", feeds[count-1])
+			all := fmt.Sprintf("ident all = defer { %s; };", strings.Join(feeds, " + "))
+
+			agree(t, last, "last", args, 0)
+			agree(t, all, "all", args, 0)
+		})
+	}
+}
+
 // A write is worth what it wrote, on a chain as much as off one.
 //
 // SSTORE leaves nothing on the stack, so the value is copied before it is spent. Getting that

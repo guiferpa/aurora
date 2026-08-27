@@ -218,7 +218,9 @@ func WriteFrameAddress(w io.Writer, offset int) error {
 // the same body serve a transaction and a scope.
 func WriteScopePrologue(w io.Writer, reads int, tapeSize int, epilogue, internal int) error {
 	for at := 0; at < reads; at++ {
-		if _, err := w.Write([]byte{OpPush1, GetCalldataArgsOffset(uint64(at))}); err != nil {
+		// In two bytes, because the eighth value sits at 256 and one byte holds 255. The
+		// prologue is measured rather than added up, so it costs nothing to say that here.
+		if _, err := WritePush2(w, GetCalldataArgsOffset(uint64(at))); err != nil {
 			return err
 		}
 		if _, err := w.Write([]byte{OpCallDataLoad}); err != nil {

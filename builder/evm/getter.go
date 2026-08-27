@@ -16,8 +16,13 @@ func GetRuntimeCodeLength(rc *RuntimeCode) int {
 	return l
 }
 
-// GetCalldataArgsOffset returns the calldata byte offset for the Nth argument (0-based).
-// ABI layout: selector at 0, then each arg in a 32-byte slot: arg0 at 0x20, arg1 at 0x40, arg2 at 0x60, ...
-func GetCalldataArgsOffset(index uint64) byte {
-	return byte(CALLDATA_SLOT_READABLE * (index + 1))
+// GetCalldataArgsOffset answers where the Nth value applied to a scope sits in the calldata,
+// counting from zero.
+//
+// The selector is first and each value has a word after it, so the eighth sits at 256 — which
+// is why this answers a number and not a byte. It used to answer a byte, and 256 in a byte is
+// zero: the eighth value read the selector, the ninth read the first, and the contract answered
+// something rather than failing.
+func GetCalldataArgsOffset(index uint64) int {
+	return CALLDATA_SLOT_READABLE * int(index+1)
 }

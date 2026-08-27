@@ -34,25 +34,26 @@
 ```aurora
 use std/evm/storage as s;
 
-ident deposit = defer { s.set(1, s.get(1) + callvalue); };
+ident deposit = defer { s.set(1, s.get(1) + feed(0)); };
 ident balance = defer { s.get(1); };
 
-deposit();
+deposit(10);
 printd balance();
 ```
 
-On a chain, that is two ways in:
+On a chain, that is two ways in, and what follows the name is the calldata a scope reads with
+`feed`:
 
 ```sh
-aurora tx deposit --value 1000    # a change: sent, paid for, and what it kept stays
-aurora call balance               # a question: answered for nothing, and 1000 comes back
+aurora tx deposit 10     # a change: feed(0) is the 10, sent, and what it kept stays
+aurora call balance      # a question: answered for nothing, and 10 comes back
 ```
 
 Off one, it is the last two lines, and the answer is the same:
 
 ```sh
-$ aurora run --value 1000
-1000
+$ aurora run
+10
 ```
 
 An **untyped, expression-only** language. Every value is a **tape**: a fixed run of bytes,
@@ -240,7 +241,7 @@ aurora call balance | xxd
 aurora call balance --hex     # 0x000000000000002a, for reading and for an explorer
 ```
 
-### Passing values
+### Passing arguments
 
 Both take arguments after the name, and both encode them the same way — a scope has no
 signature, so `feed(0)` reads the first, `feed(1)` the second, and a position nothing was
@@ -265,7 +266,8 @@ The selector is the whole hash of the name rather than the four bytes an ABI use
 value takes a word after it. Neither of those is a choice a program makes — they are what a
 scope with no signature looks like from outside.
 
-A transaction can also carry value, which a program reads with `callvalue`:
+Separately from the arguments, a transaction can carry **value** — ether — which a program
+reads with `callvalue`:
 
 ```sh
 aurora tx deposit --value 1000000000000000

@@ -33,10 +33,15 @@ go run ./cmd/aurora repl
 
 ```sh
 go build -o /tmp/aurora ./cmd/aurora   # plain, fast
-make aurora                            # ./target/bin/aurora, rebuilt whenever sources change
-make aurorals                          # ./target/bin/aurorals, the language server
+make build                             # both, into ./target/bin, whenever sources change
+make aurora                            # only the CLI
+make aurorals                          # only the language server
 make build-force                       # clean + rebuild both from scratch
 ```
+
+`make build` used to be `go build ./...`, which compiles every package and writes nothing — so
+it looked like it had rebuilt the binary and had not, and the old one kept answering. That
+check is `make compile` now, which is what `make check` and CI run.
 
 The project ships **two binaries**: `aurora` (CLI) and `aurorals` (language server, see [lsp.md](lsp.md)). Both are declared in `.goreleaser.yaml`, so a missing one breaks the release build.
 

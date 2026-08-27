@@ -25,15 +25,23 @@ all: test lint build-force
 #
 # The wasm build is in here because the playground is the one target that does not come out
 # of `go build ./...`, and it is the one that breaks silently — nothing else compiles for it.
-check: build wasm test lint
+check: compile wasm test lint
 
-# Compile every package, without producing binaries.
-build:
+# Compile every package, and write nothing. It is the check that everything still builds, and
+# it is not what somebody means by building.
+compile:
 	@go build ./...
 
 # Compile for the browser, which is what the playground runs on.
 wasm:
 	@GOOS=js GOARCH=wasm go build ./...
+
+# The binaries, into target/bin. This is what "build" means to whoever types it.
+#
+# It used to be the target above, which compiles every package and produces nothing — so
+# `make build` looked like it had rebuilt the binary and had not, and the old one kept
+# answering. That is a way to debug something that was fixed an hour ago.
+build: aurora aurorals
 
 build-force: clean aurora aurorals
 
@@ -126,4 +134,4 @@ $(GODEPGRAPH_BIN):
 	@echo "==> Installing godepgraph..."
 	@go install github.com/kisielk/godepgraph@latest
 
-.PHONY: all check build wasm build-force install-std aurora aurorals test bench lint complexity act cover-html clean depgraph
+.PHONY: all check compile build wasm build-force install-std aurora aurorals test bench lint complexity act cover-html clean depgraph

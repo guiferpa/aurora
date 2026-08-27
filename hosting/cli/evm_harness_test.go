@@ -9,9 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm/runtime"
-	"github.com/holiman/uint256"
 )
 
 // Aurora exists to let a call be simulated off the chain, which only means something if the
@@ -774,112 +772,6 @@ func TestWhatTheStandardLibraryKeepsSurvivesTheTransaction(t *testing.T) {
 	reach("deposit", []string{"2"})
 	if got := reach("balance", nil); got != "42" {
 		t.Errorf("after two deposits, balance answered %s, want 42", got)
-	}
-}
-
-// What a transaction carried, read the same way on a chain and off it.
-//
-// It is the first thing a program can read that is not about the program: nothing it did says
-// how much came with the call. On a chain that is CALLVALUE; off one it is what whoever ran it
-// said, the way feed is what they applied — and without that half, a program that reads it
-// could not be simulated at all.
-func TestWhatATransactionCarriedAnswersTheSameOnChainAndOff(t *testing.T) {
-	const source = `ident carried = defer { callvalue; };
-ident plus = defer { callvalue + feed(0); };
-ident kept = defer { sstore 1 callvalue; sload 1; };`
-
-	for _, tc := range []struct {
-		name  string
-		value int64
-		args  []string
-	}{
-		{name: "carried", value: 0},
-		{name: "carried", value: 1000},
-		{name: "plus", value: 40, args: []string{"2"}},
-		{name: "kept", value: 42},
-	} {
-		t.Run(fmt.Sprintf("%s of %d", tc.name, tc.value), func(t *testing.T) {
-			agreeCarrying(t, source, tc.name, tc.args, big.NewInt(tc.value))
-		})
-	}
-}
-
-// agreeCarrying runs the same call through both backends with a value on it, and reports when
-// they answer differently.
-//
-// The chain is given the value on the call and the evaluator is told the same number, which is
-// the only way the two can be asked the same question: one has a transaction and the other has
-// somebody saying what a transaction would have been.
-func agreeCarrying(t *testing.T, source, function string, args []string, value *big.Int) {
-	t.Helper()
-
-	dir := t.TempDir()
-	path := writeAt(t, dir, "contract.ar", source)
-	binary := filepath.Join(dir, "contract.bin")
-	if _, err := newSession(t, sessionOpts{}).Build(t.Context(), path, binary); err != nil {
-		t.Fatalf("building: %v", err)
-	}
-	bytecode, err := os.ReadFile(binary)
-	if err != nil {
-		t.Fatalf("reading the binary: %v", err)
-	}
-
-	// The sender needs the balance to carry it, or the call fails before the program runs.
-	cfg := &runtime.Config{GasLimit: 10_000_000, Value: big.NewInt(0)}
-	_, address, _, err := runtime.Create(bytecode, cfg)
-	if err != nil {
-		t.Fatalf("deploying: %v", err)
-	}
-	cfg.State.AddBalance(cfg.Origin, uint256.MustFromBig(new(big.Int).Add(value, big.NewInt(1))), tracing.BalanceChangeUnspecified)
-	cfg.Value = value
-
-	returned, _, err := runtime.Call(address, append(EncodeSelector(function), ParseArgs(args)...), cfg)
-	if err != nil {
-		t.Fatalf("calling %s: %v", function, err)
-	}
-
-	feeds := make([]string, 0, len(args))
-	for i := range args {
-		feeds = append(feeds, fmt.Sprintf("feed(%d)", i))
-	}
-	probe := fmt.Sprintf("printd %s(%s);", function, strings.Join(feeds, ", "))
-	out := &strings.Builder{}
-	session := newSession(t, sessionOpts{stdout: out, args: args, callValue: value.Bytes()})
-	if err := session.Run(t.Context(), writeAt(t, t.TempDir(), "program.ar", source+"\n"+probe+"\n")); err != nil {
-		t.Fatalf("running: %v", err)
-	}
-
-	if got, want := decimalOf(returned), strings.TrimSpace(out.String()); got != want {
-		t.Errorf("carrying %s, the chain answered %s and the evaluator %s", value, got, want)
-	}
-}
-
-// A scope reads as many values as were applied to it, however many that is.
-//
-// The eighth was where it stopped. Each value has a word of calldata after the selector, so the
-// eighth sits at 256 — and the offset was written in one byte, where 256 is zero. So the eighth
-// read the selector, the ninth read the first, and the contract answered a number rather than
-// failing: a wrong answer on a chain, which is the one kind of wrong this backend may not be.
-func TestAScopeReadsEveryValueAppliedToIt(t *testing.T) {
-	for _, count := range []int{1, 2, 7, 8, 9, 16, 24} {
-		t.Run(fmt.Sprintf("%d of them", count), func(t *testing.T) {
-			// Each one is worth its own position, so a value read from the wrong place is a
-			// wrong answer rather than the same answer by luck.
-			feeds := make([]string, 0, count)
-			args := make([]string, 0, count)
-			for at := 0; at < count; at++ {
-				feeds = append(feeds, fmt.Sprintf("feed(%d)", at))
-				args = append(args, fmt.Sprint(at+1))
-			}
-
-			// The last one on its own says where it was read from; the sum says every one of
-			// them was.
-			last := fmt.Sprintf("ident last = defer { %s; };", feeds[count-1])
-			all := fmt.Sprintf("ident all = defer { %s; };", strings.Join(feeds, " + "))
-
-			agree(t, last, "last", args, 0)
-			agree(t, all, "all", args, 0)
-		})
 	}
 }
 

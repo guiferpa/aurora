@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/spf13/cobra"
 
@@ -26,7 +25,6 @@ and leaves the chain exactly as it was.`,
 
 func init() {
 	txCmd.Flags().Bool("pretend", false, "show what would be sent, and send nothing")
-	txCmd.Flags().String("value", "0", "wei to carry with the transaction; nothing in Aurora sends ether back")
 	txCmd.Flags().StringP("profile", "p", "main", "profile to send through")
 }
 
@@ -54,17 +52,6 @@ func runTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	written, err := cmd.Flags().GetString("value")
-	if err != nil {
-		return err
-	}
-	// The same reading `aurora run --value` gets, so what a program is told off a chain and
-	// what it is sent on one are one description.
-	bytes, err := cli.ParseCallValue(written)
-	if err != nil {
-		return err
-	}
-	carried := new(big.Int).SetBytes(bytes)
 
 	return cli.Tx(cmd.Context(), cli.TxInput{
 		Function:        fn,
@@ -73,7 +60,6 @@ func runTx(cmd *cobra.Command, args []string) error {
 		Privkey:         env.Profile.Privkey,
 		Args:            args[1:],
 		Pretend:         pretend,
-		Value:           carried,
 		Blocks:          blocksOfProfile(profile),
 	})
 }

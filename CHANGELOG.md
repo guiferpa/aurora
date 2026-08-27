@@ -4,7 +4,9 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
-## Unreleased
+## v0.12.0-alpha — 2026-08-27
+
+A word leaves the language, which is why the middle number moves rather than the last one.
 
 ### `callvalue` and `aurora tx --value` come back out
 
@@ -21,6 +23,16 @@ cannot see is worse than not sending it. Both come back when a contract can send
 It was `go build ./...`, which compiles every package and writes no binary — so it looked like
 it had rebuilt one and had not, and the old binary kept answering. `make compile` is that check
 now, and it is what `make check` and CI run.
+
+### A README that says what the language does now
+
+Restructured, and every claim checked rather than carried over — the shell transcripts are
+captured from running the commands, and the Aurora in it is executed by the test suite. Some of
+what was there had stopped being true: the REPL transcript said `a + 1;` answers `= 2`, and it
+answers `= [0 0 0 0 0 0 0 2]`; the table of what reaches a chain said `shape` reaches it while
+the run fits a word, which stopped being true two releases before.
+
+It opens with a contract now, and the first thing after it is the two ways a chain has in.
 
 ---
 

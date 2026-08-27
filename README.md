@@ -20,7 +20,7 @@
 ## What Aurora is
 
 An **untyped, expression-only** language. Every value is a **tape**: a fixed run of bytes,
-eight wide by default. Numbers, booleans, text and arrays are all the same kind of thing —
+eight wide by default. Numbers, booleans, text and shapes are all the same kind of thing —
 there is nothing else.
 
 It runs on its own evaluator, and it assembles to EVM bytecode. The point of having both is
@@ -36,9 +36,9 @@ and compares the answer against the evaluator, so the sentence is checked rather
 > tribute to her. It is also why a new project says `Abidu abide` — it is what she was saying
 > at one year old, and it seemed like the right first thing for the language to say.
 
-## Install
+## Get started
 
-Full options, including the macOS Gatekeeper workaround: **[docs/install.md](docs/install.md)**
+### Install
 
 | Platform | Command |
 |---|---|
@@ -47,9 +47,15 @@ Full options, including the macOS Gatekeeper workaround: **[docs/install.md](doc
 | **Other** | [Releases](https://github.com/guiferpa/aurora/releases) — unpack the archive for your OS and arch |
 | **From source** | `go install -v github.com/guiferpa/aurora/cmd/aurora@HEAD` |
 
-## Thirty seconds
+Full options, including the macOS Gatekeeper workaround: **[docs/install.md](docs/install.md)**.
 
-No project, no files:
+Nothing to install, if you would rather not: the **[playground](https://guiferpa.github.io/aurora)**
+runs the language in the browser. It has no standard library — that is a directory on disk and
+a browser has none — so `use std/...` is the one thing it cannot do.
+
+### First lines
+
+No project and no files:
 
 ```sh
 aurora repl
@@ -57,95 +63,25 @@ aurora repl
 
 ```java
 >> ident a = 1;
+= [0 0 0 0 0 0 0 0]
 >> a + 1;
-= 2
->> ident b = true;
->> printb b;
-[0 0 0 0 0 0 0 1]
+= [0 0 0 0 0 0 0 2]
+>> printd a + 1;
+2
+= [0 0 0 0 0 0 0 2]
 ```
+
+A binding answers the neutral tape, because everything is an expression and a binding has
+nothing of its own to give. A value answers as its bytes; `printd` reads those bytes as a
+number, `printc` reads them as text, and `printb` shows them as they are.
 
 `Ctrl+D` exits, `Ctrl+C` clears the line. `↑`/`↓` walk the history, which is shared by every
 project in `~/.aurora/history`.
 
-Or in the browser, with nothing installed: **[playground](https://guiferpa.github.io/aurora)**.
-
-<img width="942" alt="Playground demo" src="https://raw.githubusercontent.com/guiferpa/aurora/refs/heads/main/docs/images/playground_demo.gif" />
-
-## The language, in one page
-
-Every block below runs. They are executed by the test suite, so they cannot say what the
-language used to do.
-
-**A value is a tape, and printing is three readings of one.**
-
-```aurora
-ident a = 10;
-printb a;        #- the bytes:  [0 0 0 0 0 0 0 10]
-printd a;        #- the number: 10
-printc 44;       #- those bytes as text: ,
-```
-
-**Everything is an expression**, including `if`, so it answers with a value.
-
-```aurora
-ident answer = if 10 bigger 9 { 42; } else { 0; };
-printd answer;
-```
-
-**A scope is delayed with `defer` and applied to a vector of values.** There is no signature
-and no arity: `feed(n)` reads the nth value applied, and a position nothing was applied to
-answers with zeros.
-
-```aurora
-ident double = defer { feed(0) * 2; };
-printd double(21);
-```
-
-**Tapes are shift registers.** `pull` shifts left with the value entering at the right, `push`
-shifts right, and `head`/`tail` slice the significant bytes.
-
-```aurora
-ident t = [1, 2, 3];
-printb pull t 4;
-printb head t 2;
-```
-
-**Text is one more way of writing a tape.** `"hi"` is the tape holding its bytes, so comparing
-text is comparing bytes and how much fits is how wide a tape is.
-
-```aurora
-printc "hi";
-```
-
-**Shapes name the tapes of a run.** The names are a compile-time directive: nothing about the
-declaration reaches the binary.
-
-```aurora
-shape Point { x, y };
-ident p = Point{10, 20};
-printd p.x + p.y;
-```
-
-**A file is a module**, and `use` brings one in under a name you choose.
-
-```aurora
-#- geometry.ar
-ident area = defer { feed(0) * feed(1); };
-```
-
-```aurora
-#- main.ar
-use geometry as g;
-printd g.area(30, 20);
-```
-
-**There are no negative numbers.** A byte runs from 0 to 255 and no bit marks a value
-negative, so `-x` is x taken away from zero and wrapped. Signed arithmetic is a convention you
-write yourself, and the language treats it as what it is: a reading of bytes.
-
-Full reference: **[docs/language-design.md](docs/language-design.md)** ·
-grammar: **[docs/grammar.md](docs/grammar.md)** · more to paste:
-**[examples/](examples/)**
+**The language itself**, in order of how much you want: the commented
+**[examples/](examples/)**, which the test suite runs and compares against the output each one
+declares · the reference, **[docs/language-design.md](docs/language-design.md)** · the grammar,
+**[docs/grammar.md](docs/grammar.md)**.
 
 ## A project
 
@@ -154,80 +90,199 @@ mkdir my-project && cd my-project
 aurora init
 ```
 
-That writes the manifest and the layout it describes:
+```
+✨ dawn has broken on your project.
+   aurora.toml
+   src/main.ar
+   src/main.test.ar
 
+Run it with 'aurora run', test it with 'aurora test'.
 ```
-aurora.toml
-src/main.ar        a program to run
-src/main.test.ar   its tests
-```
+
+`src/main.ar` is a program with one scope in it, and `src/main.test.ar` names that file and
+checks what the scope says. Both are commented, and reading them is the shortest tour of the
+language there is.
 
 ```sh
-aurora run     # Abidu abide
-aurora test    # 1 passed, 0 failed in 1 file
-aurora build   # src/main.ar → bin/main
+$ aurora run
+Abidu abide
+
+$ aurora test
+src/main.test.ar
+  ok    greet says its piece
+
+1 passed, 0 failed in 1 file
 ```
 
-`aurora.toml` names profiles so you stop repeating paths. `run` and `build` take a profile
-name, or a path ending in `.ar`, or nothing at all — a path never needs a manifest. `deploy`
-and `call` always need one, since they read `rpc` and `privkey` from a profile.
+### Profiles
 
-Manifest reference: **[docs/manifest.md](docs/manifest.md)** · tests and `assert`:
-**[docs/testing.md](docs/testing.md)** · editor support:
-**[docs/lsp.md](docs/lsp.md)**
+`aurora.toml` names profiles, so paths are written once:
 
-## What reaches the chain today
+```toml
+[project]
+name = "my-project"
+version = "0.1.0"
+tape_size = 16
 
-The evaluator runs the whole language, and the EVM backend carries all of it — everything
-except what is meant to be absent. `aurora build` still **says what it could not carry**, once
-per feature, at the line that used it: a binary that does less than the source said is
-announced rather than silent.
-
-| | on a chain |
-|---|---|
-| arithmetic, and a scope called from a transaction | **yes**, at any tape width |
-| a name bound inside a scope | **yes** |
-| a value written down, wherever it is used | **yes** |
-| a branch, and the value it answers with | **yes** |
-| calling a scope from another | **yes**, nested as deep as it goes |
-| comparisons, `and`/`or`, `^` | **yes** |
-| `shape` | **yes**, while the run fits a word |
-| `pull` / `push` / `head` / `tail` | **yes**, at any tape width |
-| `printb` / `printd` / `printc` | **by decision** — a log has nowhere to go on a chain |
-| `assert` | **by decision** — it belongs to `aurora test` |
-
-What each of those would take: **[docs/roadmap.md](docs/roadmap.md)**. What is being decided
-now: **[rfcs/](rfcs/)**.
-
-## Commands
-
-```
-build       Build binary from source code
-call        Call program on a blockchain
-completion  Generate the autocompletion script for the specified shell
-deploy      Deploy program to a blockchain
-help        Help about any command
-init        Start an Aurora project in the current directory
-repl        Enter in Read-Eval-Print Loop mode
-run         Run program directly from source code
-test        Run the test files of a project
-version     Show toolbox version
+[profiles.main]
+source = "src/main.ar"
+binary = "bin/main"
 ```
 
-`aurora <command> --help` for the flags of one. `--tape-size` (1 to 32) sets how wide a value
-is, and overrides `tape_size` from the manifest.
+`run` and `build` take a profile name, a path ending in `.ar`, or nothing at all — nothing at
+all is the `main` profile, and a path never needs a manifest:
+
+```sh
+aurora run              # the main profile
+aurora run dev          # another profile
+aurora run one.ar       # that file, no manifest involved
+```
+
+A second profile is how one project reaches two chains, or two tape widths. `deploy`, `call`
+and `tx` always need one, since they read `rpc` and `privkey` from it — and a key belongs in
+the environment rather than in the file:
+
+```toml
+[profiles.sepolia]
+source  = "src/main.ar"
+binary  = "bin/main"
+rpc     = "${{ AURORA_RPC }}"
+privkey = "${{ AURORA_PRIVKEY }}"
+```
+
+Read from the project's `.env` first, then from the environment the command runs in. A name
+nothing sets is refused rather than read as empty.
+
+Manifest reference: **[docs/manifest.md](docs/manifest.md)** · editor support:
+**[docs/lsp.md](docs/lsp.md)**.
+
+## On a chain
+
+```sh
+aurora build            # src/main.ar → bin/main
+aurora deploy -p sepolia
+```
+
+`build` says what it could not carry, at the line that used it:
+
+```
+src/main.ar:14:1: warning: printc is ignored in compiled code, by decision: a chain has
+nowhere to put a log, and the value it was given carries on
+```
+
+That is the shape of the whole promise: a binary that does less than the source said is
+announced rather than silent. Everything a program can write reaches the bytecode today — the
+prints and `assert` are the two exceptions, and both are decisions rather than gaps.
+**[docs/roadmap.md](docs/roadmap.md)** lists what a contract still cannot do.
+
+### Asking and changing
+
+A chain has two ways in, and Aurora has one command for each:
+
+```sh
+aurora call balance     # a question: answered against the state as it is, and costs nothing
+aurora tx deposit       # a change: sent, paid for, mined, and what it changed stays
+```
+
+Nothing guesses between them. What the compiler knows is used to refuse the wrong one, because
+a scope that keeps something, asked as a question, answers and leaves the chain exactly as it
+was:
+
+```
+$ aurora call deposit
+deposit changes what the chain keeps, and a call is a question: it would answer, cost
+nothing, and leave the chain exactly as it was — send it with 'aurora tx deposit' instead
+```
+
+A question answers the bytes that came back, on their own, so it pipes:
+
+```sh
+aurora call balance | xxd
+aurora call balance --hex     # 0x000000000000002a, for reading and for an explorer
+```
+
+### Passing values
+
+Both take arguments after the name, and both encode them the same way — a scope has no
+signature, so `feed(0)` reads the first, `feed(1)` the second, and a position nothing was
+applied to reads as zeros:
+
+```sh
+aurora call sum 30 20
+aurora tx deposit 5
+```
+
+Add `--pretend` to either and it shows what would be sent without sending it, which is the
+honest way to see the calldata:
+
+```
+$ aurora call sum 30 20 --pretend
+Contract:   0x7e769d0a39ae98fb7b363c41466951e481323a7d (20 bytes)
+Function:   0x0fdbd160736e9b9b51ea9a79a8ed86f427a62e0e377d60335d2ec895c27025bb (32 bytes)
+Arguments:  0x00…001e00…0014 (64 bytes)
+```
+
+The selector is the whole hash of the name rather than the four bytes an ABI uses, and each
+value takes a word after it. Neither of those is a choice a program makes — they are what a
+scope with no signature looks like from outside.
+
+A transaction can also carry value, which a program reads with `callvalue`:
+
+```sh
+aurora tx deposit --value 1000000000000000
+aurora run --value 1000000000000000     # what it would have carried, off a chain
+```
+
+In wei and a whole number, because ether is a decimal and a decimal is a rounding waiting to
+happen. **Nothing in Aurora sends ether back** — there is no external call — so what arrives
+at a contract can be counted and kept, and cannot be moved. The command says so before it
+sends.
+
+## Testing
+
+```sh
+aurora test
+```
+
+A test file is a file like any other. It imports what it checks and says what should hold:
+
+```aurora
+#- src/calc.ar
+ident double = defer { feed(0) * 2; };
+```
+
+```aurora
+#- src/calc.test.ar
+use calc as c;
+
+assert(c.double(21) equals 42, "double doubles");
+```
+
+There is no node to start, no second language, and no fixture: it is the same language, run by
+the same evaluator, in the time a process takes to open. That is where it differs from the
+usual way of testing for the EVM, where a test is written in another language and run against
+a simulated chain you have to keep.
+
+And it is worth something because of the sentence at the top. A test that passes off a chain is
+evidence about a chain, since the compiler's own suite compiles each program, deploys it to an
+EVM in memory, calls it, and compares the answer against the evaluator. Where the two disagree,
+that is a bug in the compiler rather than a surprise in your contract.
+
+Tests and `assert`: **[docs/testing.md](docs/testing.md)**.
 
 ## Contributing
 
 Build, tests, coverage, lint and CI: **[docs/development.md](docs/development.md)**. How the
 compiler is put together: **[docs/contributing/architecture.md](docs/contributing/architecture.md)**.
 What the IR is and how to run it, for anyone writing a second backend:
-**[docs/contributing/ir.md](docs/contributing/ir.md)** — and why it is blocks rather than a list:
-**[docs/contributing/why-blocks.md](docs/contributing/why-blocks.md)**.
+**[docs/contributing/ir.md](docs/contributing/ir.md)** — and why it is blocks rather than a
+list: **[docs/contributing/why-blocks.md](docs/contributing/why-blocks.md)**.
 
 ```sh
 go run ./cmd/aurora repl   # fast loop, no build needed
+make aurora                # the binary, into target/bin
 make check                 # build, wasm, test, lint — what CI runs
+make install-std           # the standard library, into $AURORA_ROOT/lib
 ```
 
 Releases are built with [GoReleaser](https://goreleaser.com/) on tag push:

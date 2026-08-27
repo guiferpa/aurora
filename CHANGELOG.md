@@ -4,6 +4,31 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## v0.11.1-alpha — 2026-08-27
+
+### A scope reads every value applied to it, not the first seven
+
+```
+aurora call sum 1 2 3 4 5 6 7 8
+```
+
+The eighth was read from the wrong place, and so was everything after it. The selector comes
+first in the calldata and each value takes a word after it, so the eighth sits at 256 — and
+where that offset was written, 256 in a byte is zero. The eighth value read the selector, the
+ninth read the first, and the contract answered a number rather than failing.
+
+At eight arguments the chain answered a piece of the selector where the evaluator answered 42;
+at twelve it answered the fourth argument's value. A wrong answer on a chain, which is the one
+kind of wrong this backend may not be.
+
+Two bytes now, like the other ceilings of its kind before it. Seven sizes in the differential
+harness, from one argument to twenty-four, each asked twice: the last value alone, which says
+where it was read from, and the sum of all of them, which says every one was.
+
+Nothing else changed.
+
+---
+
 ## v0.11.0-alpha — 2026-08-26
 
 ### Asking and changing are two commands

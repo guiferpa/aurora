@@ -36,24 +36,14 @@ use std/evm/storage as s;
 
 ident deposit = defer { s.set(1, s.get(1) + feed(0)); };
 ident balance = defer { s.get(1); };
-
-deposit(10);
-printd balance();
 ```
 
-On a chain, that is two ways in, and what follows the name is the calldata a scope reads with
-`feed`:
+That is a contract. What follows a name on the command line is the calldata a scope reads with
+`feed`, and a chain has two ways in:
 
 ```sh
 aurora tx deposit 10     # a change: feed(0) is the 10, sent, and what it kept stays
 aurora call balance      # a question: answered for nothing, and 10 comes back
-```
-
-Off one, it is the last two lines, and the answer is the same:
-
-```sh
-$ aurora run
-10
 ```
 
 An **untyped, expression-only** language. Every value is a **tape**: a fixed run of bytes,

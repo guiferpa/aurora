@@ -5,6 +5,10 @@
 <h1 align="center">aurora</h1>
 
 <p align="center">
+  <em>A small language for the EVM whose programs answer the same thing on a chain and off it.</em>
+</p>
+
+<p align="center">
   <a href="https://pkg.go.dev/github.com/guiferpa/aurora">
     <img src="https://pkg.go.dev/badge/github.com/guiferpa/aurora.svg" alt="Go Reference" />
   </a>
@@ -15,9 +19,41 @@
   </a>
 </p>
 
-> ⚠ **Alpha.** The language moves. What is in and what is out: [CHANGELOG.md](CHANGELOG.md).
+<p align="center">
+  <a href="docs/language-design.md">Language</a> ·
+  <a href="examples/">Examples</a> ·
+  <a href="https://guiferpa.github.io/aurora">Playground</a> ·
+  <a href="docs/roadmap.md">Roadmap</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
+
+> ⚠ **Alpha.** The language moves, and what moved is in the [changelog](CHANGELOG.md).
 
 ## What Aurora is
+
+```aurora
+use std/evm/storage as s;
+
+ident deposit = defer { s.set(1, s.get(1) + callvalue); };
+ident balance = defer { s.get(1); };
+
+deposit();
+printd balance();
+```
+
+On a chain, that is two ways in:
+
+```sh
+aurora tx deposit --value 1000    # a change: sent, paid for, and what it kept stays
+aurora call balance               # a question: answered for nothing, and 1000 comes back
+```
+
+Off one, it is the last two lines, and the answer is the same:
+
+```sh
+$ aurora run --value 1000
+1000
+```
 
 An **untyped, expression-only** language. Every value is a **tape**: a fixed run of bytes,
 eight wide by default. Numbers, booleans, text and shapes are all the same kind of thing —
@@ -28,13 +64,17 @@ one sentence:
 
 > **The same program answers the same thing on a chain and off it.**
 
-That is what Aurora is for — an on-chain call you can simulate off-chain, with the same
-source. A differential harness compiles a program, deploys it to an EVM in memory, calls it,
-and compares the answer against the evaluator, so the sentence is checked rather than claimed.
+That is what Aurora is for — an on-chain call you can simulate off-chain, from the same source.
+It is checked rather than claimed: a differential harness compiles each program, deploys it to
+an EVM in memory, calls it, and compares the answer against the evaluator — and every time the
+two have disagreed, the disagreement became a test.
 
-> **Where the name comes from.** Aurora is the author's daughter, and the language is a
-> tribute to her. It is also why a new project says `Abidu abide` — it is what she was saying
-> at one year old, and it seemed like the right first thing for the language to say.
+## Why "Aurora"
+
+Aurora is the author's daughter, and the language is a tribute to her.
+
+It is also why a new project says `Abidu abide` — it is what she was saying at one year old,
+and it seemed like the right first thing for the language to say.
 
 ## Get started
 
@@ -50,8 +90,7 @@ and compares the answer against the evaluator, so the sentence is checked rather
 Full options, including the macOS Gatekeeper workaround: **[docs/install.md](docs/install.md)**.
 
 Nothing to install, if you would rather not: the **[playground](https://guiferpa.github.io/aurora)**
-runs the language in the browser. It has no standard library — that is a directory on disk and
-a browser has none — so `use std/...` is the one thing it cannot do.
+runs the language in the browser.
 
 ### First lines
 

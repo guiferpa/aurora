@@ -4,6 +4,26 @@ All notable changes and release notes for Aurora are documented here.
 
 ---
 
+## Unreleased
+
+### `callvalue` and `aurora tx --value` come back out
+
+They worked, and they were no use. Nothing in Aurora sends ether — there is no external call
+and no self-destruct — so what arrived at a contract stayed, and a program that could count
+what it was paid and never move it was a one-way box with a reserved word spent on it.
+`ident callvalue = 42;` compiles again.
+
+The flag went with the word, for the reason the two arrived together: sending money a program
+cannot see is worse than not sending it. Both come back when a contract can send.
+
+### `make build` builds
+
+It was `go build ./...`, which compiles every package and writes no binary — so it looked like
+it had rebuilt one and had not, and the old binary kept answering. `make compile` is that check
+now, and it is what `make check` and CI run.
+
+---
+
 ## v0.11.1-alpha — 2026-08-27
 
 ### A scope reads every value applied to it, not the first seven
@@ -57,6 +77,10 @@ scope somebody writes holds no `sstore` at all — `s.set(...)` is a call, and t
 file away.
 
 ### A transaction carries value, and a program can read it
+
+> **Taken back out.** This shipped in this version and was removed after it, for the reason
+> under [Unreleased](#unreleased): nothing sends ether, so a contract could be paid and could
+> do nothing with it. What follows describes a version of the language that was.
 
 ```
 aurora tx deposit --value 1000000000000000
